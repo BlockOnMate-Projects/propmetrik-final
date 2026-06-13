@@ -78,7 +78,7 @@ function LeaseSigningContent() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /></div>;
   }
 
   if (!lease) {
@@ -98,12 +98,12 @@ function LeaseSigningContent() {
           <CheckCircle2 className="w-8 h-8 text-green-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Lease Signed Successfully!</h2>
-        <p className="text-sm text-gray-500 mb-6">Your lease agreement has been signed and recorded. You can view it anytime from your documents.</p>
+        <p className="text-sm text-muted-foreground mb-6">Your lease agreement has been signed and recorded. You can view it anytime from your documents.</p>
         <div className="flex items-center justify-center gap-3">
-          <Link href={T} className="px-4 py-2.5 bg-cyan-600 text-white rounded-xl text-sm font-medium hover:bg-cyan-700 transition-colors">
+          <Link href={T} className="px-4 py-2.5 bg-cyan-600 text-foreground rounded-xl text-sm font-medium hover:bg-cyan-700 transition-colors">
             Go to Dashboard
           </Link>
-          <Link href={`${T}/documents`} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
+          <Link href={`${T}/documents`} className="px-4 py-2.5 bg-muted text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
             View Documents
           </Link>
         </div>
@@ -113,7 +113,7 @@ function LeaseSigningContent() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
-      <Link href={T} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium">
+      <Link href={T} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gray-700 font-medium">
         <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
       </Link>
 
@@ -122,7 +122,7 @@ function LeaseSigningContent() {
           <FileText className="w-6 h-6 text-cyan-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-900">Lease Agreement</h2>
-        <p className="text-sm text-gray-500 mt-1">Review and sign your lease agreement</p>
+        <p className="text-sm text-muted-foreground mt-1">Review and sign your lease agreement</p>
       </div>
 
       {/* Lease Summary */}
@@ -132,33 +132,33 @@ function LeaseSigningContent() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <Building2 className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+              <Building2 className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-gray-400">Property</p>
+                <p className="text-xs text-muted-foreground">Property</p>
                 <p className="text-sm font-medium text-gray-900">{lease.propertyName || 'Property'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <DollarSign className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+              <DollarSign className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-gray-400">Monthly Rent</p>
+                <p className="text-xs text-muted-foreground">Monthly Rent</p>
                 <p className="text-sm font-medium text-gray-900">{lease.currency || 'GHS'} {lease.rentAmount?.toLocaleString() || '—'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <Calendar className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-gray-400">Start Date</p>
+                <p className="text-xs text-muted-foreground">Start Date</p>
                 <p className="text-sm font-medium text-gray-900">
                   {lease.startDate ? new Date(lease.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <Calendar className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-xl">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-gray-400">End Date</p>
+                <p className="text-xs text-muted-foreground">End Date</p>
                 <p className="text-sm font-medium text-gray-900">
                   {lease.endDate ? new Date(lease.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
                 </p>
@@ -183,7 +183,7 @@ function LeaseSigningContent() {
             <CardTitle className="text-base">Terms & Conditions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-gray-50 rounded-xl p-4 max-h-64 overflow-y-auto">
+            <div className="bg-muted rounded-xl p-4 max-h-64 overflow-y-auto">
               <div className="prose prose-sm text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{lease.terms}</div>
             </div>
           </CardContent>
@@ -198,7 +198,7 @@ function LeaseSigningContent() {
         <CardContent className="space-y-4">
           {signatureData ? (
             <div className="space-y-3">
-              <div className="border border-gray-200 rounded-xl p-4 bg-white">
+              <div className="border border-border rounded-xl p-4 bg-card">
                 <img src={signatureData} alt="Your signature" className="max-h-20 mx-auto" />
               </div>
               <button onClick={() => setShowSignatureModal(true)} className="text-sm text-cyan-600 hover:underline font-medium">
@@ -207,7 +207,7 @@ function LeaseSigningContent() {
             </div>
           ) : (
             <button onClick={() => setShowSignatureModal(true)}
-              className="w-full py-8 border-2 border-dashed border-gray-200 rounded-xl hover:border-cyan-400 transition-colors flex flex-col items-center justify-center text-gray-400 hover:text-cyan-500">
+              className="w-full py-8 border-2 border-dashed border-border rounded-xl hover:border-cyan-400 transition-colors flex flex-col items-center justify-center text-muted-foreground hover:text-cyan-500">
               <Pen className="w-6 h-6 mb-2" />
               <p className="text-sm font-medium">Click to add your signature</p>
             </button>

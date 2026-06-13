@@ -39,10 +39,10 @@ export default function GuidePage() {
 
     if (!guide) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-white mb-4">Guide Not Found</h1>
-                    <p className="text-zinc-400 mb-8">
+                    <h1 className="text-3xl font-bold text-foreground mb-4">Guide Not Found</h1>
+                    <p className="text-muted-foreground mb-8">
                         The guide you&apos;re looking for doesn&apos;t exist.
                     </p>
                     <Link
@@ -60,14 +60,14 @@ export default function GuidePage() {
     const Icon = guide.icon;
 
     return (
-        <div className="min-h-screen bg-zinc-950">
+        <div className="min-h-screen bg-background">
             {/* Header */}
-            <section className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-40">
+            <section className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-40">
                 <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
                     <div className="flex items-center justify-between h-14">
                         <Link
                             href="/resources"
-                            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-amber-500 transition-colors"
+                            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-amber-500 transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                             All Resources
@@ -76,7 +76,7 @@ export default function GuidePage() {
                             {prev && (
                                 <Link
                                     href={`/resources/${prev.slug}`}
-                                    className="flex items-center gap-1 text-sm text-zinc-500 hover:text-amber-500 transition-colors"
+                                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-amber-500 transition-colors"
                                 >
                                     <ChevronLeft className="w-3.5 h-3.5" />
                                     Previous
@@ -85,7 +85,7 @@ export default function GuidePage() {
                             {next && (
                                 <Link
                                     href={`/resources/${next.slug}`}
-                                    className="flex items-center gap-1 text-sm text-zinc-500 hover:text-amber-500 transition-colors"
+                                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-amber-500 transition-colors"
                                 >
                                     Next
                                     <ChevronRight className="w-3.5 h-3.5" />
@@ -108,15 +108,15 @@ export default function GuidePage() {
                             <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                                 <Icon className="w-5 h-5 text-amber-500" />
                             </div>
-                            <span className="text-sm font-mono text-zinc-500">
+                            <span className="text-sm font-mono text-muted-foreground">
                                 Chapter {String(guide.chapter).padStart(2, '0')}
                             </span>
                         </div>
-                        <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
+                        <h1 className="text-4xl md:text-5xl font-black text-foreground mb-4 tracking-tight">
                             {guide.title}
                         </h1>
-                        <p className="text-lg text-zinc-400 mb-6">{guide.description}</p>
-                        <div className="flex items-center gap-4 text-sm text-zinc-500">
+                        <p className="text-lg text-muted-foreground mb-6">{guide.description}</p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1.5">
                                 <ImageIcon className="w-4 h-4 text-amber-500" />
                                 {guide.screenshotCount} screenshots
@@ -132,7 +132,7 @@ export default function GuidePage() {
 
             {/* Divider */}
             <div className="max-w-4xl mx-auto px-4 md:px-8 lg:px-12">
-                <div className="border-t border-zinc-800" />
+                <div className="border-t border-border" />
             </div>
 
             {/* Markdown Content */}
@@ -153,12 +153,12 @@ export default function GuidePage() {
                                 remarkPlugins={[remarkGfm]}
                                 components={{
                                     h1: ({ children }: any) => (
-                                        <h1 className="text-3xl font-black text-white mt-16 mb-6 first:mt-0">
+                                        <h1 className="text-3xl font-black text-foreground mt-16 mb-6 first:mt-0">
                                             {children}
                                         </h1>
                                     ),
                                     h2: ({ children }: any) => (
-                                        <h2 className="text-2xl font-bold text-white mt-14 mb-4 pb-3 border-b border-zinc-800">
+                                        <h2 className="text-2xl font-bold text-foreground mt-14 mb-4 pb-3 border-b border-border">
                                             {children}
                                         </h2>
                                     ),
@@ -168,27 +168,27 @@ export default function GuidePage() {
                                         </h3>
                                     ),
                                     h4: ({ children }: any) => (
-                                        <h4 className="text-lg font-semibold text-zinc-300 mt-8 mb-2">
+                                        <h4 className="text-lg font-semibold text-muted-foreground mt-8 mb-2">
                                             {children}
                                         </h4>
                                     ),
                                     p: ({ children }: any) => (
-                                        <p className="text-zinc-400 leading-relaxed mb-4">
+                                        <p className="text-muted-foreground leading-relaxed mb-4">
                                             {children}
                                         </p>
                                     ),
                                     ul: ({ children }: any) => (
-                                        <ul className="list-disc list-inside space-y-2 text-zinc-400 mb-6 ml-2">
+                                        <ul className="list-disc list-inside space-y-2 text-muted-foreground mb-6 ml-2">
                                             {children}
                                         </ul>
                                     ),
                                     ol: ({ children }: any) => (
-                                        <ol className="list-decimal list-inside space-y-2 text-zinc-400 mb-6 ml-2">
+                                        <ol className="list-decimal list-inside space-y-2 text-muted-foreground mb-6 ml-2">
                                             {children}
                                         </ol>
                                     ),
                                     li: ({ children }: any) => (
-                                        <li className="text-zinc-400 leading-relaxed">
+                                        <li className="text-muted-foreground leading-relaxed">
                                             {children}
                                         </li>
                                     ),
@@ -206,10 +206,10 @@ export default function GuidePage() {
                                         </strong>
                                     ),
                                     em: ({ children }: any) => (
-                                        <em className="text-zinc-300 italic">{children}</em>
+                                        <em className="text-muted-foreground italic">{children}</em>
                                     ),
                                     blockquote: ({ children }: any) => (
-                                        <blockquote className="border-l-4 border-amber-500/40 bg-amber-500/5 pl-4 py-3 pr-4 my-6 rounded-r-lg text-zinc-300">
+                                        <blockquote className="border-l-4 border-amber-500/40 bg-amber-500/5 pl-4 py-3 pr-4 my-6 rounded-r-lg text-muted-foreground">
                                             {children}
                                         </blockquote>
                                     ),
@@ -217,7 +217,7 @@ export default function GuidePage() {
                                         const isInline = !className;
                                         if (isInline) {
                                             return (
-                                                <code className="px-1.5 py-0.5 bg-zinc-800 text-amber-400 text-sm rounded font-mono">
+                                                <code className="px-1.5 py-0.5 bg-muted text-amber-600 dark:text-amber-400 text-sm rounded font-mono">
                                                     {children}
                                                 </code>
                                             );
@@ -229,46 +229,46 @@ export default function GuidePage() {
                                         );
                                     },
                                     pre: ({ children }: any) => (
-                                        <pre className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 overflow-x-auto mb-6 text-sm">
+                                        <pre className="bg-card border border-border rounded-xl p-4 overflow-x-auto mb-6 text-sm">
                                             {children}
                                         </pre>
                                     ),
                                     hr: () => (
-                                        <hr className="border-zinc-800 my-10" />
+                                        <hr className="border-border my-10" />
                                     ),
                                     table: ({ children }: any) => (
-                                        <div className="overflow-x-auto mb-6 rounded-lg border border-zinc-800">
+                                        <div className="overflow-x-auto mb-6 rounded-lg border border-border">
                                             <table className="min-w-full text-sm">
                                                 {children}
                                             </table>
                                         </div>
                                     ),
                                     thead: ({ children }: any) => (
-                                        <thead className="bg-zinc-900 text-zinc-300 uppercase text-xs tracking-wider">
+                                        <thead className="bg-card text-muted-foreground uppercase text-xs tracking-wider">
                                             {children}
                                         </thead>
                                     ),
                                     tbody: ({ children }: any) => (
-                                        <tbody className="divide-y divide-zinc-800">
+                                        <tbody className="divide-y divide-border">
                                             {children}
                                         </tbody>
                                     ),
                                     tr: ({ children }: any) => (
-                                        <tr className="hover:bg-zinc-900/50 transition-colors">
+                                        <tr className="hover:bg-card/50 transition-colors">
                                             {children}
                                         </tr>
                                     ),
                                     th: ({ children }: any) => (
-                                        <th className="px-4 py-3 text-left font-semibold text-zinc-300">
+                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
                                             {children}
                                         </th>
                                     ),
                                     td: ({ children }: any) => (
-                                        <td className="px-4 py-3 text-zinc-400">{children}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{children}</td>
                                     ),
                                     img: ({ src, alt }: any) => (
                                         <figure className="my-8">
-                                            <div className="rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900">
+                                            <div className="rounded-xl overflow-hidden border border-border bg-card">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={src}
@@ -278,7 +278,7 @@ export default function GuidePage() {
                                                 />
                                             </div>
                                             {alt && (
-                                                <figcaption className="mt-2 text-center text-sm text-zinc-500 italic">
+                                                <figcaption className="mt-2 text-center text-sm text-muted-foreground italic">
                                                     {alt}
                                                 </figcaption>
                                             )}
@@ -294,19 +294,19 @@ export default function GuidePage() {
             </section>
 
             {/* Bottom Navigation */}
-            <section className="border-t border-zinc-800 py-12">
+            <section className="border-t border-border py-12">
                 <div className="max-w-4xl mx-auto px-4 md:px-8 lg:px-12">
                     <div className="flex items-stretch gap-4">
                         {prev ? (
                             <Link
                                 href={`/resources/${prev.slug}`}
-                                className="flex-1 group block p-6 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-amber-500/30 transition-all"
+                                className="flex-1 group block p-6 bg-card/50 border border-border rounded-xl hover:border-amber-500/30 transition-all"
                             >
-                                <div className="flex items-center gap-2 text-sm text-zinc-500 mb-2">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                                     <ArrowLeft className="w-4 h-4" />
                                     Previous
                                 </div>
-                                <div className="font-semibold text-white group-hover:text-amber-400 transition-colors">
+                                <div className="font-semibold text-foreground group-hover:text-amber-400 transition-colors">
                                     {prev.title}
                                 </div>
                             </Link>
@@ -316,13 +316,13 @@ export default function GuidePage() {
                         {next ? (
                             <Link
                                 href={`/resources/${next.slug}`}
-                                className="flex-1 group block p-6 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-amber-500/30 transition-all text-right"
+                                className="flex-1 group block p-6 bg-card/50 border border-border rounded-xl hover:border-amber-500/30 transition-all text-right"
                             >
-                                <div className="flex items-center justify-end gap-2 text-sm text-zinc-500 mb-2">
+                                <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground mb-2">
                                     Next
                                     <ArrowRight className="w-4 h-4" />
                                 </div>
-                                <div className="font-semibold text-white group-hover:text-amber-400 transition-colors">
+                                <div className="font-semibold text-foreground group-hover:text-amber-400 transition-colors">
                                     {next.title}
                                 </div>
                             </Link>
@@ -334,7 +334,7 @@ export default function GuidePage() {
                     <div className="text-center mt-10">
                         <Link
                             href="/resources"
-                            className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-amber-500 transition-colors"
+                            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-amber-500 transition-colors"
                         >
                             <BookOpen className="w-4 h-4" />
                             View All Resources

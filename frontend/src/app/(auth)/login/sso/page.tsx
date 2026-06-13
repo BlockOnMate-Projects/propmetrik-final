@@ -72,8 +72,8 @@ function SSOForm() {
                 <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
                     <Building2 className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-1">Enterprise SSO</h2>
-                <p className="text-sm text-zinc-400">
+                <h2 className="text-2xl font-bold text-foreground mb-1">Enterprise SSO</h2>
+                <p className="text-sm text-muted-foreground">
                     Sign in securely with your organization&apos;s identity provider.
                 </p>
             </div>
@@ -85,7 +85,7 @@ function SSOForm() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400 flex items-start gap-3"
+                        className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-600 dark:text-red-400 flex items-start gap-3"
                     >
                         <Shield className="w-5 h-5 shrink-0 mt-0.5" />
                         {error}
@@ -96,12 +96,12 @@ function SSOForm() {
             <form onSubmit={handleSSOLogin} className="space-y-5">
                 {/* Org slug */}
                 <div>
-                    <label className="block text-xs font-medium mb-1.5 text-zinc-400">
+                    <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
                         Organization Identifier
                     </label>
                     <div className="flex">
                         <div className="relative flex-1">
-                            <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                            <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <input
                                 type="text"
                                 required
@@ -111,14 +111,14 @@ function SSOForm() {
                                     setError(null);
                                 }}
                                 placeholder="your-company"
-                                className="w-full pl-10 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-l-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                                className="w-full pl-10 pr-4 py-3 bg-card/50 border border-border rounded-l-xl text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                             />
                         </div>
-                        <span className="px-4 py-3 bg-zinc-900 border border-l-0 border-zinc-800 rounded-r-xl text-zinc-500 text-xs font-mono whitespace-nowrap flex items-center">
+                        <span className="px-4 py-3 bg-card border border-l-0 border-border rounded-r-xl text-muted-foreground text-xs font-mono whitespace-nowrap flex items-center">
                             .propmetrik.com
                         </span>
                     </div>
-                    <p className="mt-2 text-xs text-zinc-600">
+                    <p className="mt-2 text-xs text-muted-foreground">
                         Enter the unique identifier provided by your organization admin.
                     </p>
                 </div>
@@ -128,8 +128,8 @@ function SSOForm() {
                     <div className="flex items-start gap-3">
                         <Shield className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                         <div>
-                            <p className="text-xs text-zinc-300 font-medium mb-1">Secure enterprise authentication</p>
-                            <p className="text-xs text-zinc-500 leading-relaxed">
+                            <p className="text-xs text-muted-foreground font-medium mb-1">Secure enterprise authentication</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
                                 You&apos;ll be redirected to your organization&apos;s identity provider to authenticate.
                                 Your credentials never touch our servers.
                             </p>
@@ -139,12 +139,12 @@ function SSOForm() {
 
                 {/* Supported providers */}
                 <div>
-                    <p className="text-xs text-zinc-500 mb-2">Supported providers</p>
+                    <p className="text-xs text-muted-foreground mb-2">Supported providers</p>
                     <div className="flex flex-wrap gap-2">
                         {ssoProviders.map((p) => (
                             <span
                                 key={p}
-                                className="px-3 py-1 bg-zinc-900/60 border border-zinc-800 rounded-full text-[11px] text-zinc-400 font-medium"
+                                className="px-3 py-1 bg-card/60 border border-border rounded-full text-[11px] text-muted-foreground font-medium"
                             >
                                 {p}
                             </span>
@@ -176,7 +176,7 @@ function SSOForm() {
             <div className="mt-8 flex items-center justify-center">
                 <Link
                     href="/login"
-                    className="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors"
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Back to email login
@@ -184,8 +184,8 @@ function SSOForm() {
             </div>
 
             {/* Help */}
-            <div className="mt-6 pt-6 border-t border-zinc-800/50 text-center">
-                <p className="text-xs text-zinc-600">
+            <div className="mt-6 pt-6 border-t border-border/50 text-center">
+                <p className="text-xs text-muted-foreground">
                     Need help configuring SSO?{' '}
                     <a href="mailto:enterprise@propmetrik.com" className="text-primary hover:underline">
                         Contact our enterprise team
@@ -201,7 +201,7 @@ function SSOForm() {
 /* ================================================ */
 export default function SSOLoginPage() {
     return (
-        <div className="flex min-h-screen bg-zinc-950 text-white">
+        <div className="flex min-h-screen bg-background text-foreground">
             {/* ====== Left panel — Hero ====== */}
             <div className="hidden lg:flex lg:w-[45%] xl:w-[48%] relative overflow-hidden flex-col justify-between">
                 {/* Background */}
@@ -246,14 +246,14 @@ export default function SSOLoginPage() {
                                 <span className="text-xs font-medium text-primary">Enterprise Security</span>
                             </div>
 
-                            <h1 className="text-4xl xl:text-5xl font-bold text-white tracking-tight leading-tight mb-6">
+                            <h1 className="text-4xl xl:text-5xl font-bold text-foreground tracking-tight leading-tight mb-6">
                                 Secure access for{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                     your entire team
                                 </span>
                             </h1>
 
-                            <p className="text-lg text-zinc-400 leading-relaxed max-w-md mb-10">
+                            <p className="text-lg text-muted-foreground leading-relaxed max-w-md mb-10">
                                 PROPMETRIK integrates with your existing identity provider for seamless, secure team access.
                             </p>
 
@@ -274,7 +274,7 @@ export default function SSOLoginPage() {
                                         <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                                             {feat.icon}
                                         </div>
-                                        <span className="text-sm text-zinc-300 font-medium">{feat.text}</span>
+                                        <span className="text-sm text-muted-foreground font-medium">{feat.text}</span>
                                     </motion.div>
                                 ))}
                             </div>
@@ -286,7 +286,7 @@ export default function SSOLoginPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.8 }}
-                        className="bg-zinc-900/50 backdrop-blur border border-zinc-800/50 rounded-xl p-5"
+                        className="bg-card/50 backdrop-blur border border-border/50 rounded-xl p-5"
                     >
                         <div className="grid grid-cols-3 gap-4">
                             {[
@@ -295,8 +295,8 @@ export default function SSOLoginPage() {
                                 { label: 'Orgs Active', value: '120+' },
                             ].map((s) => (
                                 <div key={s.label} className="text-center">
-                                    <div className="text-lg font-bold text-white">{s.value}</div>
-                                    <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{s.label}</div>
+                                    <div className="text-lg font-bold text-foreground">{s.value}</div>
+                                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
                                 </div>
                             ))}
                         </div>
@@ -307,7 +307,7 @@ export default function SSOLoginPage() {
             {/* ====== Right panel — Form ====== */}
             <div className="flex-1 flex flex-col min-h-screen">
                 {/* Mobile header */}
-                <div className="lg:hidden flex items-center justify-between p-4 border-b border-zinc-900">
+                <div className="lg:hidden flex items-center justify-between p-4 border-b border-border">
                     <Link href="/">
                         <Image
                             src="/branding/logo-dark-bg.svg"
@@ -319,7 +319,7 @@ export default function SSOLoginPage() {
                     </Link>
                     <Link
                         href="/login"
-                        className="text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                        className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
                     >
                         Email login
                     </Link>
@@ -334,7 +334,7 @@ export default function SSOLoginPage() {
                     >
                         <Suspense
                             fallback={
-                                <div className="text-center text-zinc-500 py-20">
+                                <div className="text-center text-muted-foreground py-20">
                                     <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                                     Loading...
                                 </div>
@@ -346,7 +346,7 @@ export default function SSOLoginPage() {
                 </div>
 
                 {/* Bottom bar */}
-                <div className="p-4 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-zinc-600 uppercase tracking-wider">
+                <div className="p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-muted-foreground uppercase tracking-wider">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
                             <Lock className="w-3 h-3" />
@@ -357,10 +357,10 @@ export default function SSOLoginPage() {
                         <span className="text-zinc-800">|</span>
                         <span>SOC 2 Type II</span>
                     </div>
-                    <div className="flex items-center gap-3 text-zinc-600 normal-case">
-                        <Link href="/terms" className="hover:text-zinc-400 transition-colors">Terms</Link>
+                    <div className="flex items-center gap-3 text-muted-foreground normal-case">
+                        <Link href="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
                         <span className="text-zinc-800">·</span>
-                        <Link href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</Link>
+                        <Link href="/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
                     </div>
                 </div>
             </div>

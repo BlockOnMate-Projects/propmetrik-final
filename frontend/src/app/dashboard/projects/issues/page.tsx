@@ -43,14 +43,14 @@ interface Risk {
 interface Project { id: string; name: string; }
 
 const severityColors: Record<string, string> = {
-  low: 'bg-green-900/50 text-green-400 border-green-800', medium: 'bg-yellow-900/50 text-yellow-400 border-yellow-800',
-  high: 'bg-orange-900/50 text-orange-400 border-orange-800', critical: 'bg-red-900/50 text-red-400 border-red-800',
+  low: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800', medium: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border-yellow-800',
+  high: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 border-orange-800', critical: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-800',
 };
 const statusColors: Record<string, string> = {
-  open: 'bg-blue-900/50 text-blue-400 border-blue-800', in_progress: 'bg-amber-900/50 text-amber-400 border-amber-800',
-  resolved: 'bg-green-900/50 text-green-400 border-green-800', closed: 'bg-zinc-800 text-zinc-400 border-zinc-700',
-  identified: 'bg-blue-900/50 text-blue-400 border-blue-800', assessing: 'bg-yellow-900/50 text-yellow-400 border-yellow-800',
-  mitigating: 'bg-amber-900/50 text-amber-400 border-amber-800', monitoring: 'bg-purple-900/50 text-purple-400 border-purple-800',
+  open: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800', in_progress: 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800',
+  resolved: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800', closed: 'bg-muted text-muted-foreground border-border',
+  identified: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800', assessing: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border-yellow-800',
+  mitigating: 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800', monitoring: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-800',
 };
 
 export default function IssuesPage() {
@@ -160,12 +160,12 @@ export default function IssuesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">Issues & Risk Register</h1>
-          <p className="text-zinc-500 text-sm mt-1">Track and manage project issues and risks</p>
+          <h1 className="text-xl font-bold text-foreground">Issues & Risk Register</h1>
+          <p className="text-muted-foreground text-sm mt-1">Track and manage project issues and risks</p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800 text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
+            <SelectTrigger className="w-[200px] bg-card border-border text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
             <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -173,57 +173,57 @@ export default function IssuesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Open Issues</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Open Issues</p>
           <p className="text-2xl font-bold text-amber-500">{issueStats.open}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Critical</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Critical</p>
           <p className="text-2xl font-bold text-red-500">{issueStats.critical}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Overdue</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Overdue</p>
           <p className="text-2xl font-bold text-orange-500">{issueStats.overdue}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Total Issues</p>
-          <p className="text-2xl font-bold text-white">{issueStats.total}</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Total Issues</p>
+          <p className="text-2xl font-bold text-foreground">{issueStats.total}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">High Risks</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">High Risks</p>
           <p className="text-2xl font-bold text-red-500">{riskStats.high}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Total Risks</p>
-          <p className="text-2xl font-bold text-white">{riskStats.total}</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Total Risks</p>
+          <p className="text-2xl font-bold text-foreground">{riskStats.total}</p>
         </CardContent></Card>
       </div>
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <TabsList className="bg-zinc-900 border border-zinc-800">
+          <TabsList className="bg-card border border-border">
             <TabsTrigger value="issues" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-500"><AlertTriangle className="h-3.5 w-3.5 mr-1.5" />Issues ({issues.length})</TabsTrigger>
             <TabsTrigger value="risks" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-500"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Risks ({risks.length})</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
             {tab === 'issues' && (
-              <div className="flex items-center rounded-md border border-zinc-800 bg-zinc-900 p-0.5">
+              <div className="flex items-center rounded-md border border-border bg-card p-0.5">
                 <Button size="sm" variant="ghost" onClick={() => setIssuesView('board')}
-                  className={`h-7 px-2 text-xs ${issuesView === 'board' ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400'}`}>
+                  className={`h-7 px-2 text-xs ${issuesView === 'board' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
                   <LayoutGrid className="h-3.5 w-3.5 mr-1" />Board
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setIssuesView('table')}
-                  className={`h-7 px-2 text-xs ${issuesView === 'table' ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400'}`}>
+                  className={`h-7 px-2 text-xs ${issuesView === 'table' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
                   <List className="h-3.5 w-3.5 mr-1" />Table
                 </Button>
               </div>
             )}
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-              <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 w-[200px] bg-zinc-900 border-zinc-800" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 w-[200px] bg-card border-border" />
             </div>
-            <Button variant="outline" size="sm" className="border-zinc-700" onClick={() => exportData(tab)}><Download className="h-3.5 w-3.5 mr-1.5" />Export CSV</Button>
+            <Button variant="outline" size="sm" className="border-border" onClick={() => exportData(tab)}><Download className="h-3.5 w-3.5 mr-1.5" />Export CSV</Button>
             <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => { setForm({}); tab === 'issues' ? setShowCreateIssue(true) : setShowCreateRisk(true); }}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />{tab === 'issues' ? 'New Issue' : 'New Risk'}
             </Button>
@@ -234,53 +234,53 @@ export default function IssuesPage() {
         <TabsContent value="issues" className="mt-4">
           {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-amber-500" /></div> : issuesView === 'board' ? (
             issues.length === 0 ? (
-              <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="py-12 text-center text-zinc-500">No issues found. Create one to get started.</CardContent></Card>
+              <Card className="bg-card/80 border-border"><CardContent className="py-12 text-center text-muted-foreground">No issues found. Create one to get started.</CardContent></Card>
             ) : (
               <PmKanbanBoard
                 columns={ISSUE_COLUMNS}
                 items={issues.map((i) => ({ ...i, columnId: i.status }))}
                 onMove={(id, toColumnId) => updateIssueStatus(id, toColumnId)}
                 renderCard={(issue) => (
-                  <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 p-3 space-y-2">
+                  <Card className="bg-card border-border hover:border-border p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] text-zinc-500">{issue.issue_number}</span>
-                      <Badge variant="outline" className={`${severityColors[issue.severity] || 'border-zinc-700'} text-[10px] px-1.5 py-0`}>{issue.severity}</Badge>
+                      <span className="font-mono text-[10px] text-muted-foreground">{issue.issue_number}</span>
+                      <Badge variant="outline" className={`${severityColors[issue.severity] || 'border-border'} text-[10px] px-1.5 py-0`}>{issue.severity}</Badge>
                     </div>
-                    <p className="text-sm text-white leading-snug line-clamp-2">{issue.title}</p>
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                    <p className="text-sm text-foreground leading-snug line-clamp-2">{issue.title}</p>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <CalendarIcon className="h-3 w-3" />
                         {issue.due_date ? new Date(issue.due_date).toLocaleDateString('en-GB') : '—'}
                       </span>
-                      {issue.priority && <Badge variant="outline" className={`${severityColors[issue.priority] || 'border-zinc-700'} text-[10px] px-1.5 py-0`}>{issue.priority}</Badge>}
+                      {issue.priority && <Badge variant="outline" className={`${severityColors[issue.priority] || 'border-border'} text-[10px] px-1.5 py-0`}>{issue.priority}</Badge>}
                     </div>
                   </Card>
                 )}
               />
             )
           ) : (
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <Table>
-                <TableHeader><TableRow className="border-zinc-800 hover:bg-transparent">
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">NUMBER</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">TITLE</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">SEVERITY</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">PRIORITY</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">STATUS</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">DUE DATE</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">ACTIONS</TableHead>
+                <TableHeader><TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">NUMBER</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">TITLE</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">SEVERITY</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">PRIORITY</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">STATUS</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">DUE DATE</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">ACTIONS</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {issues.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-zinc-500 py-8">No issues found. Create one to get started.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No issues found. Create one to get started.</TableCell></TableRow>
                   ) : issues.map(issue => (
-                    <TableRow key={issue.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                      <TableCell className="font-mono text-xs text-zinc-400">{issue.issue_number}</TableCell>
-                      <TableCell className="text-sm text-white max-w-[200px] truncate">{issue.title}</TableCell>
-                      <TableCell><Badge variant="outline" className={severityColors[issue.severity] || 'border-zinc-700'}>{issue.severity}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className={severityColors[issue.priority] || 'border-zinc-700'}>{issue.priority}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className={statusColors[issue.status] || 'border-zinc-700'}>{issue.status.replace('_', ' ')}</Badge></TableCell>
-                      <TableCell className="text-xs text-zinc-400">{issue.due_date ? new Date(issue.due_date).toLocaleDateString('en-GB') : '—'}</TableCell>
+                    <TableRow key={issue.id} className="border-border hover:bg-muted/50">
+                      <TableCell className="font-mono text-xs text-muted-foreground">{issue.issue_number}</TableCell>
+                      <TableCell className="text-sm text-foreground max-w-[200px] truncate">{issue.title}</TableCell>
+                      <TableCell><Badge variant="outline" className={severityColors[issue.severity] || 'border-border'}>{issue.severity}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={severityColors[issue.priority] || 'border-border'}>{issue.priority}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={statusColors[issue.status] || 'border-border'}>{issue.status.replace('_', ' ')}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{issue.due_date ? new Date(issue.due_date).toLocaleDateString('en-GB') : '—'}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {issue.status === 'open' && <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-500" onClick={() => updateIssueStatus(issue.id, 'in_progress')}>Start</Button>}
@@ -298,29 +298,29 @@ export default function IssuesPage() {
         {/* Risks Table */}
         <TabsContent value="risks" className="mt-4">
           {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-amber-500" /></div> : (
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <Table>
-                <TableHeader><TableRow className="border-zinc-800 hover:bg-transparent">
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">NUMBER</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">TITLE</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">RISK LEVEL</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">PROBABILITY</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">IMPACT</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">STATUS</TableHead>
-                  <TableHead className="text-zinc-500 font-mono text-[10px]">COST IMPACT</TableHead>
+                <TableHeader><TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">NUMBER</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">TITLE</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">RISK LEVEL</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">PROBABILITY</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">IMPACT</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">STATUS</TableHead>
+                  <TableHead className="text-muted-foreground font-mono text-[10px]">COST IMPACT</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {risks.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-zinc-500 py-8">No risks registered. Add one to start tracking.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No risks registered. Add one to start tracking.</TableCell></TableRow>
                   ) : risks.map(risk => (
-                    <TableRow key={risk.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                      <TableCell className="font-mono text-xs text-zinc-400">{risk.risk_number}</TableCell>
-                      <TableCell className="text-sm text-white max-w-[200px] truncate">{risk.title}</TableCell>
-                      <TableCell><Badge variant="outline" className={severityColors[risk.risk_level] || 'border-zinc-700'}>{risk.risk_level}</Badge></TableCell>
-                      <TableCell className="text-xs text-zinc-400 capitalize">{risk.probability}</TableCell>
-                      <TableCell className="text-xs text-zinc-400 capitalize">{risk.impact}</TableCell>
-                      <TableCell><Badge variant="outline" className={statusColors[risk.status] || 'border-zinc-700'}>{risk.status}</Badge></TableCell>
-                      <TableCell className="text-xs text-zinc-400">{risk.cost_impact ? `$${Number(risk.cost_impact).toLocaleString()}` : '—'}</TableCell>
+                    <TableRow key={risk.id} className="border-border hover:bg-muted/50">
+                      <TableCell className="font-mono text-xs text-muted-foreground">{risk.risk_number}</TableCell>
+                      <TableCell className="text-sm text-foreground max-w-[200px] truncate">{risk.title}</TableCell>
+                      <TableCell><Badge variant="outline" className={severityColors[risk.risk_level] || 'border-border'}>{risk.risk_level}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground capitalize">{risk.probability}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground capitalize">{risk.impact}</TableCell>
+                      <TableCell><Badge variant="outline" className={statusColors[risk.status] || 'border-border'}>{risk.status}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{risk.cost_impact ? `$${Number(risk.cost_impact).toLocaleString()}` : '—'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -332,35 +332,35 @@ export default function IssuesPage() {
 
       {/* Create Issue Dialog */}
       <Dialog open={showCreateIssue} onOpenChange={setShowCreateIssue}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-lg">
+        <DialogContent className="bg-card border-border text-foreground max-w-lg">
           <DialogHeader><DialogTitle>Create Issue</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label className="text-zinc-400 text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
-            <div><Label className="text-zinc-400 text-xs">Description</Label><Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-zinc-800 border-zinc-700" rows={3} /></div>
+            <div><Label className="text-muted-foreground text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-muted border-border" /></div>
+            <div><Label className="text-muted-foreground text-xs">Description</Label><Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-muted border-border" rows={3} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-zinc-400 text-xs">Severity</Label>
+              <div><Label className="text-muted-foreground text-xs">Severity</Label>
                 <Select value={form.severity || 'medium'} onValueChange={(v) => setForm({ ...form, severity: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['low','medium','high','critical'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label className="text-zinc-400 text-xs">Priority</Label>
+              <div><Label className="text-muted-foreground text-xs">Priority</Label>
                 <Select value={form.priority || 'medium'} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['low','medium','high','critical'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-zinc-400 text-xs">Category</Label>
+              <div><Label className="text-muted-foreground text-xs">Category</Label>
                 <Select value={form.category || 'general'} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['general','safety','quality','design','schedule','budget','permit','environmental'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label className="text-zinc-400 text-xs">Due Date</Label><Input type="date" value={form.due_date || ''} onChange={(e) => setForm({ ...form, due_date: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
+              <div><Label className="text-muted-foreground text-xs">Due Date</Label><Input type="date" value={form.due_date || ''} onChange={(e) => setForm({ ...form, due_date: e.target.value })} className="bg-muted border-border" /></div>
             </div>
-            <div><Label className="text-zinc-400 text-xs">Location</Label><Input value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="e.g., Floor 3, Unit 201" /></div>
+            <div><Label className="text-muted-foreground text-xs">Location</Label><Input value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })} className="bg-muted border-border" placeholder="e.g., Floor 3, Unit 201" /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateIssue(false)} className="border-zinc-700">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreateIssue(false)} className="border-border">Cancel</Button>
             <Button onClick={createIssue} className="bg-amber-600 hover:bg-amber-700" disabled={!form.title}>Create Issue</Button>
           </DialogFooter>
         </DialogContent>
@@ -368,36 +368,36 @@ export default function IssuesPage() {
 
       {/* Create Risk Dialog */}
       <Dialog open={showCreateRisk} onOpenChange={setShowCreateRisk}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-lg">
+        <DialogContent className="bg-card border-border text-foreground max-w-lg">
           <DialogHeader><DialogTitle>Register Risk</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label className="text-zinc-400 text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
-            <div><Label className="text-zinc-400 text-xs">Description</Label><Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-zinc-800 border-zinc-700" rows={3} /></div>
+            <div><Label className="text-muted-foreground text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-muted border-border" /></div>
+            <div><Label className="text-muted-foreground text-xs">Description</Label><Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-muted border-border" rows={3} /></div>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label className="text-zinc-400 text-xs">Risk Level</Label>
+              <div><Label className="text-muted-foreground text-xs">Risk Level</Label>
                 <Select value={form.risk_level || 'medium'} onValueChange={(v) => setForm({ ...form, risk_level: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['low','medium','high','critical'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label className="text-zinc-400 text-xs">Probability</Label>
+              <div><Label className="text-muted-foreground text-xs">Probability</Label>
                 <Select value={form.probability || 'possible'} onValueChange={(v) => setForm({ ...form, probability: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['rare','unlikely','possible','likely','certain'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label className="text-zinc-400 text-xs">Impact</Label>
+              <div><Label className="text-muted-foreground text-xs">Impact</Label>
                 <Select value={form.impact || 'moderate'} onValueChange={(v) => setForm({ ...form, impact: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['negligible','minor','moderate','major','catastrophic'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
             </div>
-            <div><Label className="text-zinc-400 text-xs">Mitigation Plan</Label><Textarea value={form.mitigation_plan || ''} onChange={(e) => setForm({ ...form, mitigation_plan: e.target.value })} className="bg-zinc-800 border-zinc-700" rows={2} /></div>
+            <div><Label className="text-muted-foreground text-xs">Mitigation Plan</Label><Textarea value={form.mitigation_plan || ''} onChange={(e) => setForm({ ...form, mitigation_plan: e.target.value })} className="bg-muted border-border" rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-zinc-400 text-xs">Cost Impact ($)</Label><Input type="number" value={form.cost_impact || ''} onChange={(e) => setForm({ ...form, cost_impact: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
-              <div><Label className="text-zinc-400 text-xs">Schedule Impact (days)</Label><Input type="number" value={form.schedule_impact_days || ''} onChange={(e) => setForm({ ...form, schedule_impact_days: parseInt(e.target.value) })} className="bg-zinc-800 border-zinc-700" /></div>
+              <div><Label className="text-muted-foreground text-xs">Cost Impact ($)</Label><Input type="number" value={form.cost_impact || ''} onChange={(e) => setForm({ ...form, cost_impact: e.target.value })} className="bg-muted border-border" /></div>
+              <div><Label className="text-muted-foreground text-xs">Schedule Impact (days)</Label><Input type="number" value={form.schedule_impact_days || ''} onChange={(e) => setForm({ ...form, schedule_impact_days: parseInt(e.target.value) })} className="bg-muted border-border" /></div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateRisk(false)} className="border-zinc-700">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreateRisk(false)} className="border-border">Cancel</Button>
             <Button onClick={createRisk} className="bg-amber-600 hover:bg-amber-700" disabled={!form.title}>Register Risk</Button>
           </DialogFooter>
         </DialogContent>

@@ -34,10 +34,10 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-xl overflow-hidden hover:shadow-xl transition-all cursor-pointer border border-gray-200 group"
+      className="bg-card rounded-xl overflow-hidden hover:shadow-xl transition-all cursor-pointer border border-border group"
     >
       {/* Property Image */}
-      <div className="relative h-56 w-full bg-gray-100">
+      <div className="relative h-56 w-full bg-muted">
         {property.images && property.images.length > 0 && (property.images[0]?.url || typeof property.images[0] === 'string') ? (
           <img
             src={typeof property.images[0] === 'string' ? property.images[0] : property.images[0].url}
@@ -57,8 +57,8 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         <div className="absolute top-3 left-3">
           <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg ${
             property.transaction_type === 'rental' 
-              ? 'bg-emerald-500 text-white' 
-              : 'bg-indigo-600 text-white'
+              ? 'bg-emerald-500 text-foreground' 
+              : 'bg-indigo-600 text-foreground'
           }`}>
             {property.transaction_type === 'rental' ? 'FOR RENT' : 'FOR SALE'}
           </span>
@@ -67,14 +67,14 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         {/* Favorite Button */}
         <button
           onClick={handleFavoriteClick}
-          className="absolute top-3 right-3 p-2.5 bg-white/95 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+          className="absolute top-3 right-3 p-2.5 bg-card/95 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
         >
           <Heart className={`h-4 w-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`} />
         </button>
 
         {/* Image Count Badge */}
         {property.images && property.images.length > 1 && (
-          <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/70 text-white text-xs font-medium rounded-md backdrop-blur-sm flex items-center gap-1">
+          <div className="absolute bottom-3 left-3 px-2 py-1 bg-background/70 text-foreground text-xs font-medium rounded-md backdrop-blur-sm flex items-center gap-1">
             <ImageIcon className="h-3 w-3" />
             {property.images.length}
           </div>
@@ -82,7 +82,7 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
 
         {/* Distance Badge */}
         {showDistance && property.distance_km !== undefined && (
-          <div className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/80 text-white text-xs font-medium rounded-lg backdrop-blur-sm">
+          <div className="absolute bottom-3 right-3 px-3 py-1.5 bg-background/80 text-foreground text-xs font-medium rounded-lg backdrop-blur-sm">
             <MapPin className="inline-block h-3 w-3 mr-1" />
             {property.distance_km.toFixed(1)} km
           </div>
@@ -94,16 +94,16 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         {/* Price */}
         <div className="mb-3">
           {property.total_units > 0 && (
-            <span className="text-gray-500 text-sm font-medium mr-1">from</span>
+            <span className="text-muted-foreground text-sm font-medium mr-1">from</span>
           )}
           <span className="text-2xl font-bold text-gray-900">
             {property.currency} {property.price.toLocaleString()}
           </span>
           {property.transaction_type === 'rental' && (
-            <span className="text-gray-600 text-sm font-medium">/month</span>
+            <span className="text-muted-foreground text-sm font-medium">/month</span>
           )}
           {property.transaction_type === 'sale' && property.total_area_sqm && (
-            <span className="text-xs text-gray-500 ml-1">
+            <span className="text-xs text-muted-foreground ml-1">
               ({property.currency} {Math.round(property.price / property.total_area_sqm).toLocaleString()}/m²)
             </span>
           )}
@@ -115,7 +115,7 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         </h3>
         
         {/* Location */}
-        <div className="flex items-center gap-1.5 text-gray-600 text-sm mb-4">
+        <div className="flex items-center gap-1.5 text-muted-foreground text-sm mb-4">
           <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
           <span className="line-clamp-1">
             {property.neighborhood ? `${property.neighborhood}, ` : ''}{property.city}
@@ -129,35 +129,35 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         )}
         
         {/* Property Specs */}
-        <div className="flex items-center gap-5 text-gray-700 text-sm border-t border-gray-200 pt-4">
+        <div className="flex items-center gap-5 text-gray-700 text-sm border-t border-border pt-4">
           {property.total_units > 0 ? (
             <div className="flex items-center gap-1.5">
-              <Building2 className="h-4 w-4 text-gray-500" />
+              <Building2 className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{property.total_units} units available</span>
             </div>
           ) : (
             <>
               {property.bedrooms && (
                 <div className="flex items-center gap-1.5">
-                  <Bed className="h-4 w-4 text-gray-500" />
+                  <Bed className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{property.bedrooms}</span>
                 </div>
               )}
               {property.bathrooms && (
                 <div className="flex items-center gap-1.5">
-                  <Bath className="h-4 w-4 text-gray-500" />
+                  <Bath className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{property.bathrooms}</span>
                 </div>
               )}
               {property.total_area_sqm && (
                 <div className="flex items-center gap-1.5">
-                  <Square className="h-4 w-4 text-gray-500" />
+                  <Square className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{property.total_area_sqm} m²</span>
                 </div>
               )}
               {property.parking_spaces && (
                 <div className="flex items-center gap-1.5">
-                  <Car className="h-4 w-4 text-gray-500" />
+                  <Car className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{property.parking_spaces}</span>
                 </div>
               )}
@@ -169,12 +169,12 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         {property.amenities?.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {property.amenities.slice(0, 3).map((amenity: string) => (
-              <span key={amenity} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md border border-gray-200 capitalize">
+              <span key={amenity} className="text-xs px-2.5 py-1 bg-muted text-gray-700 rounded-md border border-border capitalize">
                 {amenity.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               </span>
             ))}
             {property.amenities.length > 3 && (
-              <span className="text-xs px-2.5 py-1 text-gray-500 font-medium">
+              <span className="text-xs px-2.5 py-1 text-muted-foreground font-medium">
                 +{property.amenities.length - 3} more
               </span>
             )}

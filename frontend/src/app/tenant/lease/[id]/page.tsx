@@ -136,7 +136,7 @@ export default function LeaseSigningPage() {
             <CardHeader>
               <CardTitle>Lease Document</CardTitle>
             </CardHeader>
-            <CardContent className="prose max-w-none text-slate-800 bg-white p-6 rounded-md border text-sm max-h-[600px] overflow-y-auto">
+            <CardContent className="prose max-w-none text-slate-800 bg-card p-6 rounded-md border text-sm max-h-[600px] overflow-y-auto">
               <div dangerouslySetInnerHTML={{ __html: lease.content || '' }} />
             </CardContent>
           </Card>
@@ -169,7 +169,7 @@ export default function LeaseSigningPage() {
                 <CardDescription>Draw your signature below</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative border-2 border-dashed border-slate-300 rounded bg-white">
+                <div className="relative border-2 border-dashed border-slate-300 rounded bg-card">
                   <canvas
                     ref={canvasRef}
                     width={280}
@@ -186,7 +186,7 @@ export default function LeaseSigningPage() {
                   {signatureData && (
                     <button
                       onClick={clearSignature}
-                      className="absolute top-2 right-2 p-1 bg-white/80 rounded hover:bg-slate-100"
+                      className="absolute top-2 right-2 p-1 bg-card/80 rounded hover:bg-slate-100"
                       title="Clear signature"
                     >
                       <RotateCcw className="h-4 w-4 text-slate-500" />

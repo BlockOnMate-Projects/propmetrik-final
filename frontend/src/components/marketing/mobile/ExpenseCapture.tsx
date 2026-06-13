@@ -292,13 +292,13 @@ export function ExpenseCapture() {
   const quickAmounts = [100, 500, 1000, 5000]
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-muted pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
+      <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button onClick={() => router.back()} className="p-2 -ml-2 mr-2">
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
             </button>
             <h1 className="text-lg font-semibold text-gray-900">Log Expense</h1>
           </div>
@@ -313,11 +313,11 @@ export function ExpenseCapture() {
 
       {/* Success overlay */}
       {saved && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl p-8 mx-4 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50">
+          <div className="bg-card rounded-xl p-8 mx-4 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">Expense Saved!</h2>
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               {isOnline ? 'Expense has been recorded.' : 'Will sync when online.'}
             </p>
           </div>
@@ -326,12 +326,12 @@ export function ExpenseCapture() {
 
       {/* Camera overlay */}
       {showCamera && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0 z-10">
-            <button onClick={closeCamera} className="p-2 bg-black/50 rounded-full">
-              <X className="h-6 w-6 text-white" />
+            <button onClick={closeCamera} className="p-2 bg-background/50 rounded-full">
+              <X className="h-6 w-6 text-foreground" />
             </button>
-            <span className="text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+            <span className="text-foreground text-sm bg-background/50 px-3 py-1 rounded-full">
               Capture Receipt
             </span>
           </div>
@@ -341,10 +341,10 @@ export function ExpenseCapture() {
             playsInline
             className="flex-1 object-cover"
           />
-          <div className="p-6 flex justify-center bg-black">
+          <div className="p-6 flex justify-center bg-background">
             <button
               onClick={captureReceipt}
-              className="w-16 h-16 rounded-full bg-white border-4 border-gray-300 active:scale-95 flex items-center justify-center"
+              className="w-16 h-16 rounded-full bg-card border-4 border-gray-300 active:scale-95 flex items-center justify-center"
             >
               <Camera className="h-8 w-8 text-gray-700" />
             </button>
@@ -372,7 +372,7 @@ export function ExpenseCapture() {
         )}
 
         {/* Receipt Capture - Featured at top */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <div className="bg-card rounded-xl p-4 border border-border">
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Receipt
           </label>
@@ -388,7 +388,7 @@ export function ExpenseCapture() {
                 onClick={removeReceipt}
                 className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
               >
-                <Trash2 className="h-4 w-4 text-white" />
+                <Trash2 className="h-4 w-4 text-foreground" />
               </button>
             </div>
           ) : (
@@ -396,7 +396,7 @@ export function ExpenseCapture() {
               <button
                 type="button"
                 onClick={openCamera}
-                className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-amber-500 hover:text-amber-500 transition-colors"
+                className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-gray-300 rounded-lg text-muted-foreground hover:border-amber-500 hover:text-amber-500 transition-colors"
               >
                 <Camera className="h-8 w-8 mb-1" />
                 <span className="text-sm">Take Photo</span>
@@ -404,7 +404,7 @@ export function ExpenseCapture() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-amber-500 hover:text-amber-500 transition-colors"
+                className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-gray-300 rounded-lg text-muted-foreground hover:border-amber-500 hover:text-amber-500 transition-colors"
               >
                 <Receipt className="h-8 w-8 mb-1" />
                 <span className="text-sm">Upload File</span>
@@ -414,7 +414,7 @@ export function ExpenseCapture() {
         </div>
 
         {/* Amount Input - Large and prominent */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
+        <div className="bg-card rounded-xl p-4 border border-border">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Amount *
           </label>
@@ -422,7 +422,7 @@ export function ExpenseCapture() {
             <select
               value={formData.currency}
               onChange={(e) => handleInput('currency', e.target.value)}
-              className="px-3 py-4 border border-gray-300 rounded-l-lg bg-gray-50 text-gray-900 font-medium"
+              className="px-3 py-4 border border-gray-300 rounded-l-lg bg-muted text-gray-900 font-medium"
             >
               {currencies.map((curr) => (
                 <option key={curr.value} value={curr.value}>
@@ -445,7 +445,7 @@ export function ExpenseCapture() {
                 key={amount}
                 type="button"
                 onClick={() => handleInput('amount', formData.amount + amount)}
-                className="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                className="flex-1 py-2 bg-muted rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
               >
                 +{amount}
               </button>
@@ -462,7 +462,7 @@ export function ExpenseCapture() {
           <select
             value={formData.projectId}
             onChange={(e) => handleInput('projectId', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           >
             <option value="">Select project</option>
             {projects.map((project) => (
@@ -490,11 +490,11 @@ export function ExpenseCapture() {
                   className={`flex flex-col items-center px-2 py-3 rounded-lg border-2 transition-colors ${
                     isSelected
                       ? 'border-amber-500 bg-amber-50'
-                      : 'border-gray-200 bg-white'
+                      : 'border-border bg-card'
                   }`}
                 >
                   <span className="text-xl">{type.icon}</span>
-                  <span className={`text-[10px] mt-1 ${isSelected ? 'text-amber-700 font-medium' : 'text-gray-500'}`}>
+                  <span className={`text-[10px] mt-1 ${isSelected ? 'text-amber-700 font-medium' : 'text-muted-foreground'}`}>
                     {type.label}
                   </span>
                 </button>
@@ -514,7 +514,7 @@ export function ExpenseCapture() {
             value={formData.description}
             onChange={(e) => handleInput('description', e.target.value)}
             placeholder="What was this expense for?"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
         </div>
 
@@ -529,7 +529,7 @@ export function ExpenseCapture() {
               type="date"
               value={formData.expenseDate}
               onChange={(e) => handleInput('expenseDate', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -542,7 +542,7 @@ export function ExpenseCapture() {
               value={formData.vendorName}
               onChange={(e) => handleInput('vendorName', e.target.value)}
               placeholder="Vendor name"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -557,7 +557,7 @@ export function ExpenseCapture() {
             onChange={(e) => handleInput('notes', e.target.value)}
             rows={2}
             placeholder="Additional notes..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
           />
         </div>
 
@@ -567,7 +567,7 @@ export function ExpenseCapture() {
             type="button"
             onClick={getLocation}
             disabled={gettingLocation}
-            className="flex items-center px-4 py-3 bg-gray-100 rounded-lg text-gray-700 w-full"
+            className="flex items-center px-4 py-3 bg-muted rounded-lg text-gray-700 w-full"
           >
             {gettingLocation ? (
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -589,7 +589,7 @@ export function ExpenseCapture() {
           type="button"
           onClick={handleSubmit}
           disabled={saving}
-          className="w-full py-4 bg-amber-500 text-white font-semibold rounded-lg flex items-center justify-center disabled:opacity-50 active:bg-amber-600 transition-colors"
+          className="w-full py-4 bg-amber-500 text-foreground font-semibold rounded-lg flex items-center justify-center disabled:opacity-50 active:bg-amber-600 transition-colors"
         >
           {saving ? (
             <>

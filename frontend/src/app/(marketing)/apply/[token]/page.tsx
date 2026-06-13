@@ -170,10 +170,10 @@ export default function PropertyApplicationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-card flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading property details...</p>
+          <p className="text-muted-foreground">Loading property details...</p>
         </div>
       </div>
     );
@@ -181,18 +181,18 @@ export default function PropertyApplicationPage() {
 
   if (error && !property) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-xl p-8 text-center border border-gray-200 shadow-sm">
+      <div className="min-h-screen bg-card flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-card rounded-xl p-8 text-center border border-border shadow-sm">
           <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <X className="w-8 h-8 text-red-500" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Property Not Found</h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6">
             {error || 'This property may have been removed or the link is invalid.'}
           </p>
           <button
             onClick={() => router.push('/marketplace')}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium inline-flex items-center gap-2"
+            className="px-6 py-3 bg-indigo-600 text-foreground rounded-lg hover:bg-indigo-700 transition-colors font-medium inline-flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Marketplace
@@ -228,14 +228,14 @@ export default function PropertyApplicationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pt-16 md:pt-20">
+    <div className="min-h-screen bg-card pt-16 md:pt-20">
       {/* Header with Back Button and Share */}
-      <div className="border-b border-gray-200 bg-white">
+      <div className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => router.push('/marketplace')}
-              className="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-2 font-medium"
+              className="text-muted-foreground hover:text-gray-900 transition-colors inline-flex items-center gap-2 font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Marketplace
@@ -248,7 +248,7 @@ export default function PropertyApplicationPage() {
                   navigator.clipboard.writeText(window.location.href);
                 }
               }}
-              className="text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-2 font-medium"
+              className="text-muted-foreground hover:text-gray-900 transition-colors inline-flex items-center gap-2 font-medium"
             >
               <Share2 className="w-4 h-4" />
               Share
@@ -265,7 +265,7 @@ export default function PropertyApplicationPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
               {property.title}
             </h1>
-            <div className="flex items-center text-gray-600 gap-2 mb-2 text-sm sm:text-base">
+            <div className="flex items-center text-muted-foreground gap-2 mb-2 text-sm sm:text-base">
               <MapPin className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span>{property.address}, {property.city}</span>
             </div>
@@ -283,13 +283,13 @@ export default function PropertyApplicationPage() {
             )}
             {!property.digital_address && <div className="mb-2" />}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-xs sm:text-sm font-medium">
+              <span className="px-2 sm:px-3 py-1 bg-muted text-gray-700 rounded-md text-xs sm:text-sm font-medium">
                 For {property.transaction_type === 'rental' ? 'Rent' : 'Sale'}
               </span>
-              <span className="px-2 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-xs sm:text-sm font-medium">
+              <span className="px-2 sm:px-3 py-1 bg-muted text-gray-700 rounded-md text-xs sm:text-sm font-medium">
                 {formatPropertyType(property.property_type)}
               </span>
-              <div className="flex items-center text-gray-600 text-xs sm:text-sm gap-1">
+              <div className="flex items-center text-muted-foreground text-xs sm:text-sm gap-1">
                 <Eye className="w-4 h-4" />
                 <span>{property.views} views</span>
               </div>
@@ -297,12 +297,12 @@ export default function PropertyApplicationPage() {
           </div>
 
           {/* Price and Application CTA */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 w-full md:min-w-[280px] md:max-w-sm shadow-sm">
+          <div className="bg-card border border-border rounded-xl p-5 sm:p-6 w-full md:min-w-[280px] md:max-w-sm shadow-sm">
             <div className="mb-4">
               <div className="text-3xl font-bold text-indigo-600 mb-1">
                 {formatPrice(property.price, property.currency)}
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 {property.transaction_type === 'rental' ? 'per month' : 'total price'}
               </div>
             </div>
@@ -310,7 +310,7 @@ export default function PropertyApplicationPage() {
             {/* Error Message */}
             {error && property && (
               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-400 text-xs">{error}</p>
+                <p className="text-red-600 dark:text-red-400 text-xs">{error}</p>
               </div>
             )}
 
@@ -320,7 +320,7 @@ export default function PropertyApplicationPage() {
                 <button
                   onClick={handleStartApplication}
                   disabled={applying}
-                  className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-indigo-600 text-foreground rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {applying ? (
                     <>
@@ -334,7 +334,7 @@ export default function PropertyApplicationPage() {
                     </>
                   )}
                 </button>
-                <p className="text-xs text-gray-500 mt-2 text-center">
+                <p className="text-xs text-muted-foreground mt-2 text-center">
                   Complete tenant application form
                 </p>
               </>
@@ -350,7 +350,7 @@ export default function PropertyApplicationPage() {
           imageUrls.length === 1 ? (
             /* Single image */
             <div
-              className="relative h-[250px] sm:h-[400px] md:h-[500px] bg-gray-100 rounded-xl overflow-hidden mb-6 border border-gray-200 cursor-pointer"
+              className="relative h-[250px] sm:h-[400px] md:h-[500px] bg-muted rounded-xl overflow-hidden mb-6 border border-border cursor-pointer"
               onClick={() => openLightbox(0)}
             >
               <Image
@@ -364,10 +364,10 @@ export default function PropertyApplicationPage() {
             /* Multiple images: grid layout */
             <div className="mb-6">
               {/* Desktop: large + thumbnails */}
-              <div className="hidden md:grid md:grid-cols-[1fr_240px] gap-2 h-[500px] rounded-xl overflow-hidden border border-gray-200">
+              <div className="hidden md:grid md:grid-cols-[1fr_240px] gap-2 h-[500px] rounded-xl overflow-hidden border border-border">
                 {/* Main image */}
                 <div
-                  className="relative bg-gray-100 cursor-pointer"
+                  className="relative bg-muted cursor-pointer"
                   onClick={() => openLightbox(0)}
                 >
                   <Image
@@ -382,7 +382,7 @@ export default function PropertyApplicationPage() {
                   {imageUrls.slice(1, 3).map((url, i) => (
                     <div
                       key={i}
-                      className="relative flex-1 bg-gray-100 cursor-pointer"
+                      className="relative flex-1 bg-muted cursor-pointer"
                       onClick={() => openLightbox(i + 1)}
                     >
                       <Image
@@ -393,8 +393,8 @@ export default function PropertyApplicationPage() {
                       />
                       {/* "View all" overlay on the last thumbnail */}
                       {i === Math.min(imageUrls.length - 2, 1) && imageUrls.length > 3 && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <div className="text-white text-center">
+                        <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                          <div className="text-foreground text-center">
                             <Camera className="w-6 h-6 mx-auto mb-1" />
                             <span className="text-sm font-semibold">View all {imageUrls.length} photos</span>
                           </div>
@@ -405,7 +405,7 @@ export default function PropertyApplicationPage() {
                 </div>
               </div>
               {/* Mobile: single image with "View all" button */}
-              <div className="md:hidden relative h-[250px] sm:h-[400px] bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+              <div className="md:hidden relative h-[250px] sm:h-[400px] bg-muted rounded-xl overflow-hidden border border-border">
                 <Image
                   src={imageUrls[0]}
                   alt={property.title}
@@ -416,7 +416,7 @@ export default function PropertyApplicationPage() {
                 {imageUrls.length > 1 && (
                   <button
                     onClick={() => openLightbox(0)}
-                    className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-1.5 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 shadow-sm"
+                    className="absolute bottom-3 right-3 bg-card/90 backdrop-blur-sm text-gray-900 px-3 py-1.5 rounded-lg text-sm font-medium inline-flex items-center gap-1.5 shadow-sm"
                   >
                     <Camera className="w-4 h-4" />
                     View all {imageUrls.length} photos
@@ -426,33 +426,33 @@ export default function PropertyApplicationPage() {
             </div>
           )
         ) : (
-          <div className="h-[250px] sm:h-[400px] md:h-[500px] bg-gray-100 rounded-xl flex items-center justify-center mb-6 border border-gray-200">
+          <div className="h-[250px] sm:h-[400px] md:h-[500px] bg-muted rounded-xl flex items-center justify-center mb-6 border border-border">
             <div className="text-center">
-              <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No images available</p>
+              <MapPin className="w-16 h-16 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No images available</p>
             </div>
           </div>
         )}
 
         {/* Lightbox Modal */}
         {showLightbox && imageUrls.length > 0 && (
-          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+          <div className="fixed inset-0 z-50 bg-background/90 flex items-center justify-center">
             {/* Close button */}
             <button
               onClick={closeLightbox}
-              className="absolute top-4 right-4 text-white/80 hover:text-white z-10 p-2"
+              className="absolute top-4 right-4 text-foreground/80 hover:text-foreground z-10 p-2"
             >
               <X className="w-7 h-7" />
             </button>
             {/* Image counter */}
-            <div className="absolute top-4 left-4 text-white/80 text-sm font-medium z-10">
+            <div className="absolute top-4 left-4 text-foreground/80 text-sm font-medium z-10">
               {lightboxIndex + 1} / {imageUrls.length}
             </div>
             {/* Previous button */}
             {imageUrls.length > 1 && (
               <button
                 onClick={prevImage}
-                className="absolute left-2 sm:left-4 text-white/70 hover:text-white z-10 p-2"
+                className="absolute left-2 sm:left-4 text-foreground/70 hover:text-foreground z-10 p-2"
               >
                 <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10" />
               </button>
@@ -472,7 +472,7 @@ export default function PropertyApplicationPage() {
             {imageUrls.length > 1 && (
               <button
                 onClick={nextImage}
-                className="absolute right-2 sm:right-4 text-white/70 hover:text-white z-10 p-2"
+                className="absolute right-2 sm:right-4 text-foreground/70 hover:text-foreground z-10 p-2"
               >
                 <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10" />
               </button>
@@ -484,14 +484,14 @@ export default function PropertyApplicationPage() {
         <div className="grid grid-cols-1 gap-6 mb-6">
           <div className="space-y-6">
             {/* Property Specs Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Property Details</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 {property.bedrooms !== undefined && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Bed className="w-5 h-5 text-indigo-600" />
-                      <span className="text-sm text-gray-600">Bedrooms</span>
+                      <span className="text-sm text-muted-foreground">Bedrooms</span>
                     </div>
                     <div className="text-2xl font-bold text-gray-900">{property.bedrooms}</div>
                   </div>
@@ -501,7 +501,7 @@ export default function PropertyApplicationPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Bath className="w-5 h-5 text-indigo-600" />
-                      <span className="text-sm text-gray-600">Bathrooms</span>
+                      <span className="text-sm text-muted-foreground">Bathrooms</span>
                     </div>
                     <div className="text-2xl font-bold text-gray-900">{property.bathrooms}</div>
                   </div>
@@ -511,7 +511,7 @@ export default function PropertyApplicationPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Square className="w-5 h-5 text-indigo-600" />
-                      <span className="text-sm text-gray-600">Area</span>
+                      <span className="text-sm text-muted-foreground">Area</span>
                     </div>
                     <div className="text-2xl font-bold text-gray-900">{property.total_area_sqm} m²</div>
                   </div>
@@ -520,54 +520,54 @@ export default function PropertyApplicationPage() {
             </div>
 
             {/* Key Facts */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Key Facts</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 mb-1">Property Type</p>
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Property Type</p>
                   <p className="text-sm font-semibold text-gray-900">{formatPropertyType(property.property_type)}</p>
                 </div>
                 {property.year_built && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Year Built</p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Year Built</p>
                     <p className="text-sm font-semibold text-gray-900">{property.year_built}</p>
                   </div>
                 )}
                 {property.parking_spaces && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Parking</p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Parking</p>
                     <p className="text-sm font-semibold text-gray-900">{property.parking_spaces} spaces</p>
                   </div>
                 )}
                 {property.land_area_sqm && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Land Area</p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Land Area</p>
                     <p className="text-sm font-semibold text-gray-900">{property.land_area_sqm} m&sup2;</p>
                   </div>
                 )}
                 {property.total_area_sqm && property.price && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Price / m&sup2;</p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Price / m&sup2;</p>
                     <p className="text-sm font-semibold text-gray-900">
                       {formatPrice(Math.round(property.price / property.total_area_sqm), property.currency)}
                     </p>
                   </div>
                 )}
                 {property.property_condition && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Condition</p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Condition</p>
                     <p className="text-sm font-semibold text-gray-900">
                       {property.property_condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </p>
                   </div>
                 )}
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 mb-1">Listed</p>
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Listed</p>
                   <p className="text-sm font-semibold text-gray-900">{new Date(property.listed_at).toLocaleDateString('en-GB')}</p>
                 </div>
                 {property.price_negotiable && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Negotiable</p>
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Negotiable</p>
                     <p className="text-sm font-semibold text-green-600">Yes</p>
                   </div>
                 )}
@@ -576,7 +576,7 @@ export default function PropertyApplicationPage() {
 
             {/* Description */}
             {property.description && (
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">About This Property</h2>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {property.description}
@@ -586,7 +586,7 @@ export default function PropertyApplicationPage() {
 
             {/* Amenities */}
             {property.amenities && property.amenities.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Amenities & Features</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {property.amenities.map((amenity, index) => (
@@ -604,7 +604,7 @@ export default function PropertyApplicationPage() {
 
             {/* Map */}
             {property.location && (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
                 <h2 className="text-xl font-semibold text-gray-900 p-6 pb-4">Location</h2>
                 <div className="h-[250px] sm:h-[350px]">
                   <iframe
@@ -630,30 +630,30 @@ export default function PropertyApplicationPage() {
                   <div
                     key={sp.id}
                     onClick={() => router.push(`/apply/${sp.permanent_link_token}`)}
-                    className="bg-white rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-all cursor-pointer group"
+                    className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all cursor-pointer group"
                   >
-                    <div className="relative h-40 bg-gray-100">
+                    <div className="relative h-40 bg-muted">
                       {spImageUrl ? (
                         <Image src={spImageUrl} alt={sp.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           <MapPin className="w-8 h-8" />
                         </div>
                       )}
-                      <span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-semibold text-white ${sp.transaction_type === 'rental' ? 'bg-emerald-500' : 'bg-indigo-600'}`}>
+                      <span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-semibold text-foreground ${sp.transaction_type === 'rental' ? 'bg-emerald-500' : 'bg-indigo-600'}`}>
                         {sp.transaction_type === 'rental' ? 'RENT' : 'SALE'}
                       </span>
                     </div>
                     <div className="p-4">
                       <div className="text-lg font-bold text-gray-900 mb-1">
                         {sp.currency} {sp.price.toLocaleString()}
-                        {sp.transaction_type === 'rental' && <span className="text-sm font-normal text-gray-500">/mo</span>}
+                        {sp.transaction_type === 'rental' && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
                       </div>
                       <h3 className="text-sm font-medium text-gray-800 line-clamp-1 mb-1">{sp.title}</h3>
-                      <p className="text-xs text-gray-500 line-clamp-1 mb-2">
+                      <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
                         <MapPin className="inline w-3 h-3 mr-0.5" />{sp.city}
                       </p>
-                      <div className="flex items-center gap-3 text-xs text-gray-600">
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {sp.bedrooms ? <span className="flex items-center gap-1"><Bed className="w-3.5 h-3.5" />{sp.bedrooms}</span> : null}
                         {sp.bathrooms ? <span className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{sp.bathrooms}</span> : null}
                         {sp.total_area_sqm ? <span className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{sp.total_area_sqm}m²</span> : null}

@@ -56,23 +56,23 @@ const PRODUCT_WEBSITE_PATH: Record<string, string> = {
 };
 
 const CATEGORY_BADGE: Record<string, string> = {
-  insights: 'bg-blue-900/30 text-blue-400 border-blue-800',
-  press: 'bg-amber-900/30 text-amber-400 border-amber-800',
+  insights: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-800',
+  press: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-800',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-zinc-700 text-zinc-300',
-  review: 'bg-yellow-900/50 text-yellow-400',
-  published: 'bg-green-900/50 text-green-400',
-  archived: 'bg-red-900/50 text-red-400',
-  scheduled: 'bg-blue-900/50 text-blue-400',
+  draft: 'bg-zinc-700 text-muted-foreground',
+  review: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400',
+  published: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400',
+  archived: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400',
+  scheduled: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
 };
 
 const TIER_COLORS: Record<string, string> = {
-  public: 'text-green-400',
-  registered: 'text-blue-400',
-  professional: 'text-amber-400',
-  enterprise: 'text-red-400',
+  public: 'text-green-600 dark:text-green-400',
+  registered: 'text-blue-600 dark:text-blue-400',
+  professional: 'text-amber-600 dark:text-amber-400',
+  enterprise: 'text-red-600 dark:text-red-400',
 };
 
 export default function PublicationsAdminPage() {
@@ -169,12 +169,12 @@ export default function PublicationsAdminPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="bg-zinc-900 border border-zinc-800 p-3"
+              className="bg-card border border-border p-3"
             >
-              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+              <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                 {stat.label}
               </div>
-              <div className="text-xl font-bold text-white font-mono mt-1">
+              <div className="text-xl font-bold text-foreground font-mono mt-1">
                 {stat.value}
               </div>
             </div>
@@ -183,7 +183,7 @@ export default function PublicationsAdminPage() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 bg-zinc-900 border border-zinc-800 p-4">
+      <div className="flex flex-wrap items-center gap-3 bg-card border border-border p-4">
         <input
           type="text"
           value={search}
@@ -195,7 +195,7 @@ export default function PublicationsAdminPage() {
             }
           }}
           placeholder="Search publications..."
-          className="flex-1 min-w-[200px] px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-600 font-mono"
+          className="flex-1 min-w-[200px] px-3 py-1.5 bg-background border border-border rounded text-sm text-foreground placeholder-zinc-500 focus:outline-none focus:border-red-600 font-mono"
         />
 
         <select
@@ -209,7 +209,7 @@ export default function PublicationsAdminPage() {
               setFilters((p) => ({ ...p, type: val, product: undefined, page: 1 }));
             }
           }}
-          className="px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded text-sm text-white font-mono"
+          className="px-3 py-1.5 bg-background border border-border rounded text-sm text-foreground font-mono"
         >
           <option value="">All Products</option>
           {Object.entries(PRODUCT_LABELS).map(([val, label]) => (
@@ -228,7 +228,7 @@ export default function PublicationsAdminPage() {
               page: 1,
             }))
           }
-          className="px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded text-sm text-white font-mono"
+          className="px-3 py-1.5 bg-background border border-border rounded text-sm text-foreground font-mono"
         >
           <option value="">All Statuses</option>
           <option value="draft">Draft</option>
@@ -247,7 +247,7 @@ export default function PublicationsAdminPage() {
               page: 1,
             }))
           }
-          className="px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded text-sm text-white font-mono"
+          className="px-3 py-1.5 bg-background border border-border rounded text-sm text-foreground font-mono"
         >
           <option value="">All Tiers</option>
           <option value="public">Public</option>
@@ -259,7 +259,7 @@ export default function PublicationsAdminPage() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded text-sm text-white font-mono"
+          className="px-3 py-1.5 bg-background border border-border rounded text-sm text-foreground font-mono"
         >
           <option value="">All Categories</option>
           <option value="insights">📊 Insights</option>
@@ -268,30 +268,30 @@ export default function PublicationsAdminPage() {
       </div>
 
       {/* Publications Table */}
-      <div className="bg-zinc-900 border border-zinc-800 overflow-hidden">
+      <div className="bg-card border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+              <tr className="border-b border-border">
+                <th className="text-left px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Title
                 </th>
-                <th className="text-left px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Category
                 </th>
-                <th className="text-left px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Type
                 </th>
-                <th className="text-left px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Status
                 </th>
-                <th className="text-left px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Tier
                 </th>
-                <th className="text-left px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Date
                 </th>
-                <th className="text-right px-4 py-3 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                <th className="text-right px-4 py-3 text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -299,9 +299,9 @@ export default function PublicationsAdminPage() {
             <tbody>
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} className="border-b border-zinc-800/50">
+                  <tr key={i} className="border-b border-border/50">
                     <td colSpan={7} className="px-4 py-4">
-                      <div className="h-4 bg-zinc-800 rounded animate-pulse w-3/4" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
                     </td>
                   </tr>
                 ))
@@ -309,7 +309,7 @@ export default function PublicationsAdminPage() {
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-12 text-center text-zinc-500 font-mono text-sm"
+                    className="px-4 py-12 text-center text-muted-foreground font-mono text-sm"
                   >
                     No publications found. Create your first one!
                   </td>
@@ -318,13 +318,13 @@ export default function PublicationsAdminPage() {
                 filteredPublications.map((pub) => (
                   <tr
                     key={pub.id}
-                    className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors cursor-pointer"
+                    className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors cursor-pointer"
                     onClick={() =>
                       router.push(`/dashboard/admin/publications/${pub.id}`)
                     }
                   >
                     <td className="px-4 py-3">
-                      <div className="text-sm text-white font-medium truncate max-w-[300px]">
+                      <div className="text-sm text-foreground font-medium truncate max-w-[300px]">
                         {pub.title}
                       </div>
 
@@ -335,7 +335,7 @@ export default function PublicationsAdminPage() {
                         return (
                           <span
                             className={`px-2 py-0.5 text-[10px] font-mono font-bold uppercase border rounded ${
-                              CATEGORY_BADGE[cat] || 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                              CATEGORY_BADGE[cat] || 'bg-muted text-muted-foreground border-border'
                             }`}
                             title={`Published to ${PRODUCT_WEBSITE_PATH[pub.product] || '/'}`}
                           >
@@ -345,7 +345,7 @@ export default function PublicationsAdminPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-mono text-zinc-400">
+                      <span className="text-xs font-mono text-muted-foreground">
                         {PRODUCT_LABELS[pub.product] || TYPE_LABELS[pub.type] || pub.product || pub.type}
                         {pub.edition && EDITION_LABELS[pub.edition] ? ` · ${EDITION_LABELS[pub.edition]}` : ''}
                       </span>
@@ -353,7 +353,7 @@ export default function PublicationsAdminPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded ${
-                          STATUS_COLORS[pub.status] || 'bg-zinc-700 text-zinc-300'
+                          STATUS_COLORS[pub.status] || 'bg-zinc-700 text-muted-foreground'
                         }`}
                       >
                         {pub.status}
@@ -362,13 +362,13 @@ export default function PublicationsAdminPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`text-xs font-mono capitalize ${
-                          TIER_COLORS[pub.access_tier] || 'text-zinc-400'
+                          TIER_COLORS[pub.access_tier] || 'text-muted-foreground'
                         }`}
                       >
                         {pub.access_tier}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs font-mono text-zinc-500">
+                    <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
                       {pub.published_at
                         ? new Date(pub.published_at).toLocaleDateString('en-GB', {
                             day: '2-digit',
@@ -389,7 +389,7 @@ export default function PublicationsAdminPage() {
                         {pub.status === 'draft' && (
                           <button
                             onClick={() => handlePublish(pub.id)}
-                            className="px-2 py-1 text-[10px] font-mono text-green-400 border border-green-800 rounded hover:bg-green-900/30"
+                            className="px-2 py-1 text-[10px] font-mono text-green-600 dark:text-green-400 border border-green-800 rounded hover:bg-green-900/30"
                           >
                             Publish
                           </button>
@@ -397,14 +397,14 @@ export default function PublicationsAdminPage() {
                         {pub.status !== 'archived' && (
                           <button
                             onClick={() => handleArchive(pub.id)}
-                            className="px-2 py-1 text-[10px] font-mono text-yellow-400 border border-yellow-800 rounded hover:bg-yellow-900/30"
+                            className="px-2 py-1 text-[10px] font-mono text-yellow-600 dark:text-yellow-400 border border-yellow-800 rounded hover:bg-yellow-900/30"
                           >
                             Archive
                           </button>
                         )}
                         <button
                           onClick={() => handleDelete(pub.id)}
-                          className="px-2 py-1 text-[10px] font-mono text-red-400 border border-red-800 rounded hover:bg-red-900/30"
+                          className="px-2 py-1 text-[10px] font-mono text-red-600 dark:text-red-400 border border-red-800 rounded hover:bg-red-900/30"
                         >
                           Delete
                         </button>
@@ -419,8 +419,8 @@ export default function PublicationsAdminPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-            <div className="text-xs font-mono text-zinc-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <div className="text-xs font-mono text-muted-foreground">
               Page {filters.page} of {totalPages} · {total} total
             </div>
             <div className="flex items-center gap-2">
@@ -432,7 +432,7 @@ export default function PublicationsAdminPage() {
                   }))
                 }
                 disabled={(filters.page || 1) <= 1}
-                className="px-3 py-1 text-xs font-mono text-zinc-400 border border-zinc-700 rounded hover:border-red-600 disabled:opacity-30"
+                className="px-3 py-1 text-xs font-mono text-muted-foreground border border-border rounded hover:border-red-600 disabled:opacity-30"
               >
                 ← Prev
               </button>
@@ -444,7 +444,7 @@ export default function PublicationsAdminPage() {
                   }))
                 }
                 disabled={(filters.page || 1) >= totalPages}
-                className="px-3 py-1 text-xs font-mono text-zinc-400 border border-zinc-700 rounded hover:border-red-600 disabled:opacity-30"
+                className="px-3 py-1 text-xs font-mono text-muted-foreground border border-border rounded hover:border-red-600 disabled:opacity-30"
               >
                 Next →
               </button>

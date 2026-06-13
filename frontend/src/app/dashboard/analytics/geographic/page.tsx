@@ -133,8 +133,8 @@ function Panel({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -158,8 +158,8 @@ function StatCard({
     <Panel title={label}>
       <div className="text-center py-2">
         {Icon && <Icon className="w-4 h-4 text-amber-500 mx-auto mb-1" />}
-        <div className="font-mono text-2xl text-white">{value}</div>
-        {sub && <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{sub}</div>}
+        <div className="font-mono text-2xl text-foreground">{value}</div>
+        {sub && <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
       </div>
     </Panel>
   );
@@ -173,12 +173,12 @@ function RegionBarChart({ data }: { data: GeographicDistribution[] }) {
       {data.map((d) => (
         <div key={d.region} className="group">
           <div className="flex items-center justify-between font-mono text-[10px] mb-0.5">
-            <span className="text-zinc-400">{formatRegion(d.region)}</span>
-            <span className="text-zinc-500">
+            <span className="text-muted-foreground">{formatRegion(d.region)}</span>
+            <span className="text-muted-foreground">
               {formatNumber(d.count)} ({d.percentage.toFixed(1)}%)
             </span>
           </div>
-          <div className="h-5 bg-zinc-800/50 overflow-hidden">
+          <div className="h-5 bg-muted/50 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-600 to-amber-500 transition-all duration-500"
               style={{ width: `${(d.count / max) * 100}%` }}
@@ -193,13 +193,13 @@ function RegionBarChart({ data }: { data: GeographicDistribution[] }) {
 // Price comparison table
 function PriceTable({ data }: { data: PriceIndex[] }) {
   if (!data.length) {
-    return <div className="font-mono text-xs text-zinc-600 text-center py-4">No price data available</div>;
+    return <div className="font-mono text-xs text-muted-foreground text-center py-4">No price data available</div>;
   }
   return (
     <div className="overflow-x-auto">
       <table className="w-full font-mono text-[10px]">
         <thead>
-          <tr className="text-zinc-500 border-b border-zinc-800">
+          <tr className="text-muted-foreground border-b border-border">
             <th className="text-left py-1.5 pr-3">REGION</th>
             <th className="text-left py-1.5 pr-3">TYPE</th>
             <th className="text-right py-1.5 pr-3">AVG PRICE</th>
@@ -209,14 +209,14 @@ function PriceTable({ data }: { data: PriceIndex[] }) {
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-              <td className="py-1.5 pr-3 text-white">{formatRegion(row.region || 'all')}</td>
-              <td className="py-1.5 pr-3 text-zinc-400">{formatRegion(row.property_type || 'all')}</td>
-              <td className="py-1.5 pr-3 text-right text-zinc-300">{formatCurrency(row.avg_price)}</td>
-              <td className="py-1.5 pr-3 text-right text-zinc-300">
+            <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+              <td className="py-1.5 pr-3 text-foreground">{formatRegion(row.region || 'all')}</td>
+              <td className="py-1.5 pr-3 text-muted-foreground">{formatRegion(row.property_type || 'all')}</td>
+              <td className="py-1.5 pr-3 text-right text-muted-foreground">{formatCurrency(row.avg_price)}</td>
+              <td className="py-1.5 pr-3 text-right text-muted-foreground">
                 {row.price_per_sqm ? formatCurrency(row.price_per_sqm) : '—'}
               </td>
-              <td className="py-1.5 text-right text-zinc-400">{formatNumber(row.listing_count)}</td>
+              <td className="py-1.5 text-right text-muted-foreground">{formatNumber(row.listing_count)}</td>
             </tr>
           ))}
         </tbody>
@@ -228,13 +228,13 @@ function PriceTable({ data }: { data: PriceIndex[] }) {
 // Rental comparison
 function RentalTable({ data }: { data: RentalByRegion[] }) {
   if (!data.length) {
-    return <div className="font-mono text-xs text-zinc-600 text-center py-4">No rental data available</div>;
+    return <div className="font-mono text-xs text-muted-foreground text-center py-4">No rental data available</div>;
   }
   return (
     <div className="overflow-x-auto">
       <table className="w-full font-mono text-[10px]">
         <thead>
-          <tr className="text-zinc-500 border-b border-zinc-800">
+          <tr className="text-muted-foreground border-b border-border">
             <th className="text-left py-1.5 pr-3">REGION</th>
             <th className="text-right py-1.5 pr-3">AVG RENT</th>
             <th className="text-right py-1.5 pr-3">MEDIAN RENT</th>
@@ -243,11 +243,11 @@ function RentalTable({ data }: { data: RentalByRegion[] }) {
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-              <td className="py-1.5 pr-3 text-white">{formatRegion(row.region)}</td>
-              <td className="py-1.5 pr-3 text-right text-green-400">{formatCurrency(row.avg_rent)}</td>
-              <td className="py-1.5 pr-3 text-right text-zinc-300">{formatCurrency(row.median_rent)}</td>
-              <td className="py-1.5 text-right text-zinc-400">{formatNumber(row.listing_count)}</td>
+            <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+              <td className="py-1.5 pr-3 text-foreground">{formatRegion(row.region)}</td>
+              <td className="py-1.5 pr-3 text-right text-green-600 dark:text-green-400">{formatCurrency(row.avg_rent)}</td>
+              <td className="py-1.5 pr-3 text-right text-muted-foreground">{formatCurrency(row.median_rent)}</td>
+              <td className="py-1.5 text-right text-muted-foreground">{formatNumber(row.listing_count)}</td>
             </tr>
           ))}
         </tbody>
@@ -306,9 +306,9 @@ export default function GeographicAnalyticsPage() {
         <div>
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-amber-500" />
-            <h1 className="font-mono text-sm text-white tracking-wider">GEOGRAPHIC ANALYTICS</h1>
+            <h1 className="font-mono text-sm text-foreground tracking-wider">GEOGRAPHIC ANALYTICS</h1>
           </div>
-          <p className="font-mono text-[10px] text-zinc-500 mt-0.5">
+          <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
             Property distribution and regional market comparison across Ghana
           </p>
         </div>
@@ -321,8 +321,8 @@ export default function GeographicAnalyticsPage() {
           className={cn(
             'flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] border transition-colors',
             isLoading
-              ? 'border-zinc-700 text-zinc-500 cursor-not-allowed'
-              : 'border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-500'
+              ? 'border-border text-muted-foreground cursor-not-allowed'
+              : 'border-border text-muted-foreground hover:border-amber-500 hover:text-amber-500'
           )}
         >
           <RefreshCw className={cn('w-3 h-3', isLoading && 'animate-spin')} />
@@ -335,7 +335,7 @@ export default function GeographicAnalyticsPage() {
         <div className="flex items-center justify-center py-20">
           <div className="flex items-center gap-3">
             <RefreshCw className="w-4 h-4 text-amber-500 animate-spin" />
-            <span className="font-mono text-xs text-zinc-400">Loading geographic data...</span>
+            <span className="font-mono text-xs text-muted-foreground">Loading geographic data...</span>
           </div>
         </div>
       )}
@@ -377,7 +377,7 @@ export default function GeographicAnalyticsPage() {
               {distribution.length > 0 ? (
                 <RegionBarChart data={distribution} />
               ) : (
-                <div className="font-mono text-xs text-zinc-600 text-center py-8">No distribution data</div>
+                <div className="font-mono text-xs text-muted-foreground text-center py-8">No distribution data</div>
               )}
             </Panel>
 
@@ -386,25 +386,25 @@ export default function GeographicAnalyticsPage() {
               {regional.length > 0 ? (
                 <div className="space-y-3">
                   {regional.map((r) => (
-                    <div key={r.region} className="border border-zinc-800 p-2 hover:bg-zinc-800/30">
+                    <div key={r.region} className="border border-border p-2 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono text-xs text-white">{formatRegion(r.region)}</span>
+                        <span className="font-mono text-xs text-foreground">{formatRegion(r.region)}</span>
                         <span className="font-mono text-[10px] text-amber-500">
                           {formatNumber(r.total_listings)} listings
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
                         <div>
-                          <span className="text-zinc-500">AVG PRICE</span>
-                          <div className="text-zinc-300">{formatCurrency(r.avg_price)}</div>
+                          <span className="text-muted-foreground">AVG PRICE</span>
+                          <div className="text-muted-foreground">{formatCurrency(r.avg_price)}</div>
                         </div>
                         <div>
-                          <span className="text-zinc-500">MEDIAN</span>
-                          <div className="text-zinc-300">{formatCurrency(r.median_price)}</div>
+                          <span className="text-muted-foreground">MEDIAN</span>
+                          <div className="text-muted-foreground">{formatCurrency(r.median_price)}</div>
                         </div>
                         <div>
-                          <span className="text-zinc-500">₵/SQM</span>
-                          <div className="text-zinc-300">
+                          <span className="text-muted-foreground">₵/SQM</span>
+                          <div className="text-muted-foreground">
                             {r.avg_price_per_sqm ? formatCurrency(r.avg_price_per_sqm) : '—'}
                           </div>
                         </div>
@@ -413,7 +413,7 @@ export default function GeographicAnalyticsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="font-mono text-xs text-zinc-600 text-center py-8">
+                <div className="font-mono text-xs text-muted-foreground text-center py-8">
                   No regional investment data
                 </div>
               )}
@@ -439,23 +439,23 @@ export default function GeographicAnalyticsPage() {
                   const types = r.property_types || {};
                   const total = Object.values(types).reduce((s, v) => s + v, 0) || 1;
                   return (
-                    <div key={r.region} className="border border-zinc-800 p-2">
-                      <div className="font-mono text-xs text-white mb-2">{formatRegion(r.region)}</div>
+                    <div key={r.region} className="border border-border p-2">
+                      <div className="font-mono text-xs text-foreground mb-2">{formatRegion(r.region)}</div>
                       <div className="space-y-1">
                         {Object.entries(types)
                           .sort(([, a], [, b]) => b - a)
                           .map(([type, count]) => (
                             <div key={type} className="flex items-center gap-2">
-                              <div className="w-24 font-mono text-[10px] text-zinc-400 truncate">
+                              <div className="w-24 font-mono text-[10px] text-muted-foreground truncate">
                                 {formatRegion(type)}
                               </div>
-                              <div className="flex-1 h-3 bg-zinc-800/50 overflow-hidden">
+                              <div className="flex-1 h-3 bg-muted/50 overflow-hidden">
                                 <div
                                   className="h-full bg-amber-600/60"
                                   style={{ width: `${(count / total) * 100}%` }}
                                 />
                               </div>
-                              <span className="font-mono text-[10px] text-zinc-500 w-10 text-right">
+                              <span className="font-mono text-[10px] text-muted-foreground w-10 text-right">
                                 {count}
                               </span>
                             </div>

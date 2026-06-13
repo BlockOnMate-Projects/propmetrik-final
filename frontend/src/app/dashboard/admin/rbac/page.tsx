@@ -118,22 +118,22 @@ export default function RbacAdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white font-mono flex items-center gap-2">
+          <h1 className="text-xl font-bold text-foreground font-mono flex items-center gap-2">
             <Shield className="w-5 h-5 text-red-500" />
             RBAC POLICY MANAGER
           </h1>
-          <p className="text-xs text-zinc-500 mt-1">Manage authorization policies, roles, and view audit trail</p>
+          <p className="text-xs text-muted-foreground mt-1">Manage authorization policies, roles, and view audit trail</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={invalidateCache}
-            className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-mono hover:bg-zinc-700 flex items-center gap-1"
+            className="px-3 py-1.5 bg-muted border border-border text-muted-foreground text-[10px] font-mono hover:bg-zinc-700 flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" /> INVALIDATE CACHE
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="px-3 py-1.5 bg-red-900/30 border border-red-800 text-red-400 text-[10px] font-mono hover:bg-red-900/50 flex items-center gap-1"
+            className="px-3 py-1.5 bg-red-100 dark:bg-red-900/30 border border-red-800 text-red-600 dark:text-red-400 text-[10px] font-mono hover:bg-red-900/50 flex items-center gap-1"
           >
             <Plus className="w-3 h-3" /> NEW POLICY
           </button>
@@ -141,12 +141,12 @@ export default function RbacAdminPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-800">
+      <div className="flex border-b border-border">
         {(['policies', 'audit'] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-[10px] font-mono uppercase tracking-wider border-b-2 ${tab === t ? 'border-red-500 text-white' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+            className={`px-4 py-2 text-[10px] font-mono uppercase tracking-wider border-b-2 ${tab === t ? 'border-red-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-muted-foreground'}`}
           >
             {t === 'policies' ? `Policies (${total})` : 'Audit Log'}
           </button>
@@ -158,19 +158,19 @@ export default function RbacAdminPage() {
           {/* Filters */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 type="text"
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="Search policies..."
-                className="w-full bg-zinc-900 border border-zinc-800 pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-zinc-600 font-mono focus:outline-none focus:border-zinc-600"
+                className="w-full bg-card border border-border pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground font-mono focus:outline-none focus:border-zinc-600"
               />
             </div>
             <select
               value={filterResource}
               onChange={e => { setFilterResource(e.target.value); setPage(1) }}
-              className="bg-zinc-900 border border-zinc-800 px-2 py-1.5 text-xs text-white font-mono focus:outline-none"
+              className="bg-card border border-border px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none"
             >
               <option value="">All Resources</option>
               {resourceTypes.map(r => <option key={r} value={r}>{r}</option>)}
@@ -178,7 +178,7 @@ export default function RbacAdminPage() {
             <select
               value={filterActive}
               onChange={e => { setFilterActive(e.target.value); setPage(1) }}
-              className="bg-zinc-900 border border-zinc-800 px-2 py-1.5 text-xs text-white font-mono focus:outline-none"
+              className="bg-card border border-border px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none"
             >
               <option value="">All Status</option>
               <option value="true">Active</option>
@@ -187,10 +187,10 @@ export default function RbacAdminPage() {
           </div>
 
           {/* Table */}
-          <div className="border border-zinc-800 overflow-x-auto">
+          <div className="border border-border overflow-x-auto">
             <table className="w-full text-xs font-mono">
               <thead>
-                <tr className="bg-zinc-900/50 text-zinc-500 text-[10px] uppercase tracking-wider">
+                <tr className="bg-card/50 text-muted-foreground text-[10px] uppercase tracking-wider">
                   <th className="px-3 py-2 text-left">Policy</th>
                   <th className="px-3 py-2 text-left">Resource</th>
                   <th className="px-3 py-2 text-left">Action</th>
@@ -202,23 +202,23 @@ export default function RbacAdminPage() {
                   <th className="px-3 py-2 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/50">
+              <tbody className="divide-y divide-border/50">
                 {loading ? (
-                  <tr><td colSpan={9} className="px-3 py-8 text-center text-zinc-500">Loading...</td></tr>
+                  <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : policies.length === 0 ? (
-                  <tr><td colSpan={9} className="px-3 py-8 text-center text-zinc-500">No policies found</td></tr>
+                  <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No policies found</td></tr>
                 ) : policies.map(policy => (
-                  <tr key={policy.id} className="hover:bg-zinc-900/30">
-                    <td className="px-3 py-2 text-white whitespace-nowrap">{policy.policy_name}</td>
-                    <td className="px-3 py-2 text-zinc-400">{policy.resource_type}</td>
-                    <td className="px-3 py-2 text-zinc-400">{policy.action}</td>
+                  <tr key={policy.id} className="hover:bg-card/30">
+                    <td className="px-3 py-2 text-foreground whitespace-nowrap">{policy.policy_name}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{policy.resource_type}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{policy.action}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {policy.allowed_roles.slice(0, 4).map(r => (
-                          <span key={r} className="px-1.5 py-0.5 bg-zinc-800 text-zinc-300 text-[9px] rounded">{r}</span>
+                          <span key={r} className="px-1.5 py-0.5 bg-muted text-muted-foreground text-[9px] rounded">{r}</span>
                         ))}
                         {policy.allowed_roles.length > 4 && (
-                          <span className="px-1.5 py-0.5 text-zinc-500 text-[9px]">+{policy.allowed_roles.length - 4}</span>
+                          <span className="px-1.5 py-0.5 text-muted-foreground text-[9px]">+{policy.allowed_roles.length - 4}</span>
                         )}
                       </div>
                     </td>
@@ -226,16 +226,16 @@ export default function RbacAdminPage() {
                     <td className="px-3 py-2 text-center">{policy.require_assignment ? <Check className="w-3 h-3 text-green-500 mx-auto" /> : <span className="text-zinc-700">—</span>}</td>
                     <td className="px-3 py-2 text-center">{policy.require_same_org ? <Check className="w-3 h-3 text-green-500 mx-auto" /> : <span className="text-zinc-700">—</span>}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className={`px-1.5 py-0.5 text-[9px] ${policy.is_active ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      <span className={`px-1.5 py-0.5 text-[9px] ${policy.is_active ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
                         {policy.is_active ? 'ON' : 'OFF'}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setEditingPolicy(policy)} className="p-1 hover:bg-zinc-800 rounded" title="Edit">
-                          <Edit2 className="w-3 h-3 text-zinc-400" />
+                        <button onClick={() => setEditingPolicy(policy)} className="p-1 hover:bg-muted rounded" title="Edit">
+                          <Edit2 className="w-3 h-3 text-muted-foreground" />
                         </button>
-                        <button onClick={() => deletePolicy(policy.id)} className="p-1 hover:bg-zinc-800 rounded" title="Deactivate">
+                        <button onClick={() => deletePolicy(policy.id)} className="p-1 hover:bg-muted rounded" title="Deactivate">
                           <Trash2 className="w-3 h-3 text-red-500" />
                         </button>
                       </div>
@@ -248,14 +248,14 @@ export default function RbacAdminPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
+            <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
               <span>{total} policies total</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30">
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1 hover:bg-muted rounded disabled:opacity-30">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span>{page} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30">
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1 hover:bg-muted rounded disabled:opacity-30">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -265,10 +265,10 @@ export default function RbacAdminPage() {
       )}
 
       {tab === 'audit' && (
-        <div className="border border-zinc-800 overflow-x-auto">
+        <div className="border border-border overflow-x-auto">
           <table className="w-full text-xs font-mono">
             <thead>
-              <tr className="bg-zinc-900/50 text-zinc-500 text-[10px] uppercase tracking-wider">
+              <tr className="bg-card/50 text-muted-foreground text-[10px] uppercase tracking-wider">
                 <th className="px-3 py-2 text-left">Time</th>
                 <th className="px-3 py-2 text-left">Decision</th>
                 <th className="px-3 py-2 text-left">Resource</th>
@@ -278,28 +278,28 @@ export default function RbacAdminPage() {
                 <th className="px-3 py-2 text-left">IP</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/50">
+            <tbody className="divide-y divide-border/50">
               {loading ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-zinc-500">Loading...</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
               ) : auditLog.length === 0 ? (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-zinc-500">No audit entries yet</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No audit entries yet</td></tr>
               ) : auditLog.map(entry => {
                 const parts = entry.action.split(':')
                 const decision = parts[1] || 'unknown'
                 const action = parts[2] || ''
                 return (
-                  <tr key={entry.id} className="hover:bg-zinc-900/30">
-                    <td className="px-3 py-2 text-zinc-400 whitespace-nowrap">{new Date(entry.created_at).toLocaleString()}</td>
+                  <tr key={entry.id} className="hover:bg-card/30">
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{new Date(entry.created_at).toLocaleString()}</td>
                     <td className="px-3 py-2">
-                      <span className={`px-1.5 py-0.5 text-[9px] ${decision === 'allowed' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      <span className={`px-1.5 py-0.5 text-[9px] ${decision === 'allowed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
                         {decision.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-zinc-400">{entry.entity_type}:{action}</td>
-                    <td className="px-3 py-2 text-white">{entry.user_email || entry.user_id?.slice(0, 8)}</td>
-                    <td className="px-3 py-2 text-zinc-400">{entry.metadata?.role || '—'}</td>
-                    <td className="px-3 py-2 text-zinc-500">{entry.metadata?.reason || '—'}</td>
-                    <td className="px-3 py-2 text-zinc-600">{entry.ip_address || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{entry.entity_type}:{action}</td>
+                    <td className="px-3 py-2 text-foreground">{entry.user_email || entry.user_id?.slice(0, 8)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{entry.metadata?.role || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{entry.metadata?.reason || '—'}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{entry.ip_address || '—'}</td>
                   </tr>
                 )
               })}
@@ -370,37 +370,37 @@ function PolicyModal({ policy, onClose, onSave }: { policy: Policy | null; onClo
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-zinc-900 border border-zinc-700 w-full max-w-lg p-6 space-y-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-background/60 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-card border border-border w-full max-w-lg p-6 space-y-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white font-mono">{isNew ? 'CREATE POLICY' : 'EDIT POLICY'}</h2>
-          <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded"><X className="w-4 h-4 text-zinc-400" /></button>
+          <h2 className="text-sm font-bold text-foreground font-mono">{isNew ? 'CREATE POLICY' : 'EDIT POLICY'}</h2>
+          <button onClick={onClose} className="p-1 hover:bg-muted rounded"><X className="w-4 h-4 text-muted-foreground" /></button>
         </div>
 
-        {error && <p className="text-xs text-red-400 bg-red-900/20 border border-red-800 px-3 py-1.5">{error}</p>}
+        {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border border-red-800 px-3 py-1.5">{error}</p>}
 
         <div className="space-y-3">
           {isNew && (
             <>
               <div>
-                <label className="text-[10px] text-zinc-500 font-mono uppercase">Policy Name</label>
-                <input value={form.policy_name} onChange={e => setForm(f => ({ ...f, policy_name: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs text-white font-mono mt-1 focus:outline-none focus:border-zinc-500" />
+                <label className="text-[10px] text-muted-foreground font-mono uppercase">Policy Name</label>
+                <input value={form.policy_name} onChange={e => setForm(f => ({ ...f, policy_name: e.target.value }))} className="w-full bg-muted border border-border px-3 py-1.5 text-xs text-foreground font-mono mt-1 focus:outline-none focus:border-zinc-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] text-zinc-500 font-mono uppercase">Resource Type</label>
-                  <input value={form.resource_type} onChange={e => setForm(f => ({ ...f, resource_type: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs text-white font-mono mt-1 focus:outline-none focus:border-zinc-500" />
+                  <label className="text-[10px] text-muted-foreground font-mono uppercase">Resource Type</label>
+                  <input value={form.resource_type} onChange={e => setForm(f => ({ ...f, resource_type: e.target.value }))} className="w-full bg-muted border border-border px-3 py-1.5 text-xs text-foreground font-mono mt-1 focus:outline-none focus:border-zinc-500" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-500 font-mono uppercase">Action</label>
-                  <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} className="w-full bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-xs text-white font-mono mt-1 focus:outline-none focus:border-zinc-500" />
+                  <label className="text-[10px] text-muted-foreground font-mono uppercase">Action</label>
+                  <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} className="w-full bg-muted border border-border px-3 py-1.5 text-xs text-foreground font-mono mt-1 focus:outline-none focus:border-zinc-500" />
                 </div>
               </div>
             </>
           )}
 
           <div>
-            <label className="text-[10px] text-zinc-500 font-mono uppercase">Allowed Roles</label>
+            <label className="text-[10px] text-muted-foreground font-mono uppercase">Allowed Roles</label>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {ALL_ROLES.map(role => (
                 <button
@@ -408,8 +408,8 @@ function PolicyModal({ policy, onClose, onSave }: { policy: Policy | null; onClo
                   onClick={() => toggleRole(role)}
                   className={`px-2 py-1 text-[10px] font-mono border ${
                     form.allowed_roles.includes(role)
-                      ? 'bg-green-900/30 border-green-700 text-green-400'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-zinc-300'
+                      ? 'bg-green-100 dark:bg-green-900/30 border-green-700 text-green-600 dark:text-green-400'
+                      : 'bg-muted border-border text-muted-foreground hover:text-muted-foreground'
                   }`}
                 >
                   {role}
@@ -427,18 +427,18 @@ function PolicyModal({ policy, onClose, onSave }: { policy: Policy | null; onClo
                   onChange={e => setForm(f => ({ ...f, [field]: e.target.checked }))}
                   className="accent-red-500"
                 />
-                <span className="text-[10px] text-zinc-400 font-mono">{field.replace(/_/g, ' ')}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">{field.replace(/_/g, ' ')}</span>
               </label>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
-          <button onClick={onClose} className="px-3 py-1.5 text-xs text-zinc-400 font-mono hover:text-white">Cancel</button>
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+          <button onClick={onClose} className="px-3 py-1.5 text-xs text-muted-foreground font-mono hover:text-foreground">Cancel</button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-1.5 bg-red-900/30 border border-red-800 text-red-400 text-xs font-mono hover:bg-red-900/50 disabled:opacity-50"
+            className="px-4 py-1.5 bg-red-100 dark:bg-red-900/30 border border-red-800 text-red-600 dark:text-red-400 text-xs font-mono hover:bg-red-900/50 disabled:opacity-50"
           >
             {saving ? 'Saving...' : isNew ? 'Create' : 'Save Changes'}
           </button>

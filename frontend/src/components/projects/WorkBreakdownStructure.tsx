@@ -28,9 +28,9 @@ export function WorkBreakdownStructure({
 
     if (!data || data.phases.length === 0) {
         return (
-            <div className={cn("border border-zinc-800/50 bg-zinc-950/50 rounded-xl p-8 text-center", className)}>
-                <p className="text-zinc-500 font-mono text-sm mb-4">No tasks in the Work Breakdown Structure.</p>
-                <Button onClick={onAddPhase} variant="outline" className="border-zinc-700 bg-zinc-900">
+            <div className={cn("border border-border/50 bg-background/50 rounded-xl p-8 text-center", className)}>
+                <p className="text-muted-foreground font-mono text-sm mb-4">No tasks in the Work Breakdown Structure.</p>
+                <Button onClick={onAddPhase} variant="outline" className="border-border bg-card">
                     <Plus className="w-4 h-4 mr-2" />
                     Add First Phase
                 </Button>
@@ -39,10 +39,10 @@ export function WorkBreakdownStructure({
     }
 
     return (
-        <Card className={cn("border-zinc-800/50 bg-zinc-950/50 backdrop-blur-sm overflow-hidden", className)}>
+        <Card className={cn("border-border/50 bg-background/50 backdrop-blur-sm overflow-hidden", className)}>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-zinc-900/50 border-b border-zinc-800/50 font-sans text-xs uppercase text-zinc-500 tracking-wider">
+                    <thead className="bg-card/50 border-b border-border/50 font-sans text-xs uppercase text-muted-foreground tracking-wider">
                         <tr>
                             <th className="px-4 py-3 w-10"></th>
                             <th className="px-4 py-3 min-w-[200px]">Phase / Task Name</th>
@@ -52,18 +52,18 @@ export function WorkBreakdownStructure({
                             <th className="px-4 py-3 w-24 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800/50">
+                    <tbody className="divide-y divide-border/50">
                         {data.phases.map((phase) => (
                             <tr
                                 key={phase.id}
                                 className={cn(
-                                    "hover:bg-zinc-800/30 transition-colors group",
-                                    editingId === phase.id ? "bg-zinc-800/20" : ""
+                                    "hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors group",
+                                    editingId === phase.id ? "bg-muted/20" : ""
                                 )}
                                 onClick={() => setEditingId(phase.id)}
                             >
                                 <td className="px-4 py-3">
-                                    <GripVertical className="w-4 h-4 text-zinc-600 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </td>
                                 <td className="px-4 py-3">
                                     {editingId === phase.id ? (
@@ -72,7 +72,7 @@ export function WorkBreakdownStructure({
                                             autoFocus
                                             onBlur={() => setEditingId(null)}
                                             onChange={(e) => onUpdatePhase?.({ ...phase, name: e.target.value })}
-                                            className="h-8 bg-zinc-900 border-zinc-700 font-mono text-sm"
+                                            className="h-8 bg-card border-border font-mono text-sm"
                                         />
                                     ) : (
                                         <div className="flex items-center gap-2">
@@ -81,25 +81,25 @@ export function WorkBreakdownStructure({
                                         </div>
                                     )}
                                 </td>
-                                <td className="px-4 py-3 font-mono text-[11px] text-zinc-400">
+                                <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                                     {phase.startDate ? format(new Date(phase.startDate), 'MMM dd, yyyy') : '—'}
                                 </td>
-                                <td className="px-4 py-3 font-mono text-[11px] text-zinc-400">
+                                <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                                     {phase.endDate ? format(new Date(phase.endDate), 'MMM dd, yyyy') : '—'}
                                 </td>
                                 <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
-                                        <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                                             <div className="h-full bg-blue-500 rounded-full" style={{ width: `${phase.progress}%` }} />
                                         </div>
-                                        <span className="font-mono text-[10px] text-zinc-500">{phase.progress}%</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">{phase.progress}%</span>
                                     </div>
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="h-7 w-7 text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                         onClick={(e) => {
                                             e.stopPropagation()
                                             onDeletePhase?.(phase.id)
@@ -113,8 +113,8 @@ export function WorkBreakdownStructure({
                     </tbody>
                 </table>
             </div>
-            <div className="p-3 border-t border-zinc-800/50 bg-zinc-900/30">
-                <Button onClick={onAddPhase} variant="ghost" size="sm" className="text-zinc-400 hover:text-white font-sans text-xs">
+            <div className="p-3 border-t border-border/50 bg-card/30">
+                <Button onClick={onAddPhase} variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground font-sans text-xs">
                     <Plus className="w-3 h-3 mr-2" />
                     Add Phase
                 </Button>

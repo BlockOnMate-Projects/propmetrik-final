@@ -182,6 +182,39 @@ export class PaystackService {
     }
 
     /**
+     * Charge a previously-saved authorization (reusable card token).
+     * Used for recurring subscription renewals — the customer is NOT present.
+     * The authorization_code comes from a prior successful charge's
+     * `authorization.authorization_code`. Returns a verify-shaped response
+     * (data.status === 'success' on a completed charge). Use a unique
+     * `reference` per attempt so the ledger/reconciliation stays idempotent.
+     */
+    async chargeAuthorization(params: {
+        email: string;
+        amount: number; // pesewas (GHS minor units), already ×100
+        authorization_code: string;
+        reference: string;
+        currency?: string;
+        metadata?: Record<string, any>;
+    }): Promise<PaystackVerifyResponse> {
+        try {
+            const payload = {
+                email: params.email,
+                amount: Math.round(params.amount),
+                authorization_code: params.authorization_code,
+                reference: params.reference,
+                currency: params.currency || 'GHS',
+                metadata: params.metadata || {},
+            };
+            const response = await this.client.post('/transaction/charge_authorization', payload);
+            return response.data;
+        } catch (error: any) {
+            this.handleError(error, 'chargeAuthorization');
+            throw error;
+        }
+    }
+
+    /**
      * Verify Webhook Signature
      * Ensures the request is genuinely from Paystack
      */

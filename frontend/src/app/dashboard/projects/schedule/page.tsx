@@ -121,19 +121,19 @@ export default function PMSchedulePage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Schedule</h1>
-          <p className="text-zinc-400 text-sm mt-1">Cross-project calendar view.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Schedule</h1>
+          <p className="text-muted-foreground text-sm mt-1">Cross-project calendar view.</p>
         </div>
-        <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => handleCreateEvent(new Date())}>
+        <Button className="bg-amber-600 hover:bg-amber-700 text-foreground" onClick={() => handleCreateEvent(new Date())}>
           <Plus className="h-4 w-4 mr-2" /> Add Event
         </Button>
       </div>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white">Calendar</CardTitle>
+          <CardTitle className="text-foreground">Calendar</CardTitle>
         </CardHeader>
-        <CardContent className="bg-zinc-950 rounded-xl">
+        <CardContent className="bg-background rounded-xl">
           <CalendarView
             onEventClick={handleEventClick}
             onCreateEvent={handleCreateEvent}
@@ -143,32 +143,32 @@ export default function PMSchedulePage() {
       </Card>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Create Schedule Event</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-zinc-400">Title</Label>
+              <Label className="text-muted-foreground">Title</Label>
               <Input
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Event title"
               />
             </div>
             <div>
-              <Label className="text-zinc-400">Type</Label>
+              <Label className="text-muted-foreground">Type</Label>
               <Select
                 value={formData.eventType}
                 onValueChange={(value) =>
                   setFormData({ ...formData, eventType: value as CalendarEvent['eventType'] })
                 }
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectContent className="bg-card border-border">
                   {eventTypeOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -179,37 +179,37 @@ export default function PMSchedulePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-zinc-400">Start</Label>
+                <Label className="text-muted-foreground">Start</Label>
                 <Input
                   type="datetime-local"
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   value={formData.startTime}
                   onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                 />
               </div>
               <div>
-                <Label className="text-zinc-400">End</Label>
+                <Label className="text-muted-foreground">End</Label>
                 <Input
                   type="datetime-local"
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                 />
               </div>
             </div>
             <div>
-              <Label className="text-zinc-400">Location</Label>
+              <Label className="text-muted-foreground">Location</Label>
               <Input
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="Site, meeting room, or call link"
               />
             </div>
             <div>
-              <Label className="text-zinc-400">Notes</Label>
+              <Label className="text-muted-foreground">Notes</Label>
               <Textarea
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Agenda or notes"
@@ -217,7 +217,7 @@ export default function PMSchedulePage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" className="border-zinc-700" onClick={() => setShowCreateDialog(false)}>
+            <Button variant="outline" className="border-border" onClick={() => setShowCreateDialog(false)}>
               <X className="h-4 w-4 mr-2" /> Cancel
             </Button>
             <Button className="bg-amber-600 hover:bg-amber-700" disabled={loading} onClick={handleSubmit}>
@@ -228,31 +228,31 @@ export default function PMSchedulePage() {
       </Dialog>
 
       <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Event Details</DialogTitle>
           </DialogHeader>
           {selectedEvent && (
-            <div className="space-y-3 text-sm text-zinc-300">
+            <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-amber-400" />
-                <span className="font-semibold text-white">{selectedEvent.title}</span>
+                <Calendar className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="font-semibold text-foreground">{selectedEvent.title}</span>
               </div>
               {selectedEvent.description && <p>{selectedEvent.description}</p>}
               <div>
-                <span className="text-zinc-400">Type:</span> {selectedEvent.eventType}
+                <span className="text-muted-foreground">Type:</span> {selectedEvent.eventType}
               </div>
               <div>
-                <span className="text-zinc-400">Start:</span>{' '}
+                <span className="text-muted-foreground">Start:</span>{' '}
                 {new Date(selectedEvent.startTime).toLocaleString()}
               </div>
               <div>
-                <span className="text-zinc-400">End:</span>{' '}
+                <span className="text-muted-foreground">End:</span>{' '}
                 {new Date(selectedEvent.endTime).toLocaleString()}
               </div>
               {selectedEvent.location && (
                 <div>
-                  <span className="text-zinc-400">Location:</span> {selectedEvent.location}
+                  <span className="text-muted-foreground">Location:</span> {selectedEvent.location}
                 </div>
               )}
             </div>
@@ -260,7 +260,7 @@ export default function PMSchedulePage() {
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              className="border-zinc-700"
+              className="border-border"
               onClick={handleCompleteEvent}
               disabled={loading || selectedEvent?.status === 'completed'}
             >

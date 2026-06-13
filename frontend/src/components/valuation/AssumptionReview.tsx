@@ -266,7 +266,7 @@ export function AssumptionReview({
                     'border rounded-lg p-3 transition-colors',
                     assumption.requires_user_confirmation && !override && 'border-yellow-300 bg-yellow-50/50',
                     override && 'border-blue-300 bg-blue-50/50',
-                    !assumption.requires_user_confirmation && !override && 'border-gray-200'
+                    !assumption.requires_user_confirmation && !override && 'border-border'
                   )}
                 >
                   {/* Header Row */}

@@ -139,22 +139,22 @@ export default function NewLeasePage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/property-management/leases">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white">New Lease Agreement</h1>
-                        <p className="text-sm text-zinc-400">Create a new tenancy for a property</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">New Lease Agreement</h1>
+                        <p className="text-sm text-muted-foreground">Create a new tenancy for a property</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Link href="/dashboard/property-management/leases">
-                        <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800">
+                        <Button variant="outline" className="border-border text-muted-foreground hover:text-foreground hover:bg-muted">
                             Cancel
                         </Button>
                     </Link>
-                    <Button onClick={handleSubmit} disabled={isSaving} className="bg-orange-600 hover:bg-orange-500 text-white">
+                    <Button onClick={handleSubmit} disabled={isSaving} className="bg-orange-600 hover:bg-orange-500 text-foreground">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Create Lease
                     </Button>
@@ -162,25 +162,25 @@ export default function NewLeasePage() {
             </div>
 
             {error && (
-                <div className="bg-red-900/20 border border-red-900 text-red-400 p-3 rounded text-sm">{error}</div>
+                <div className="bg-red-100 dark:bg-red-900/20 border border-red-900 text-red-600 dark:text-red-400 p-3 rounded text-sm">{error}</div>
             )}
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Step 1: Property & Tenant Selection */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                <Card className="bg-card border-border md:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Property & Tenant</CardTitle>
-                        <CardDescription className="text-zinc-500">Select the property and tenant for this lease</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Property & Tenant</CardTitle>
+                        <CardDescription className="text-muted-foreground">Select the property and tenant for this lease</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Property</Label>
+                                <Label className="text-muted-foreground">Property</Label>
                                 <Select value={propertyId} onValueChange={setPropertyId}>
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder="Select property" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300 max-h-72">
+                                    <SelectContent className="bg-card border-border text-muted-foreground max-h-72">
                                         {selectableProperties.map(p => (
                                             <SelectItem key={p.id} value={p.id}>
                                                 {p.title}{p.totalUnits ? ` (${p.totalUnits} units)` : ''}
@@ -190,16 +190,16 @@ export default function NewLeasePage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">
+                                <Label className="text-muted-foreground">
                                     Unit {isBuilding ? <span className="text-red-500">*</span> : '(N/A for single property)'}
                                 </Label>
                                 <Select value={unitId} onValueChange={setUnitId} disabled={!isBuilding || unitsLoading}>
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder={
                                             !isBuilding ? 'Single-unit property' : unitsLoading ? 'Loading units…' : 'Select unit'
                                         } />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300 max-h-72">
+                                    <SelectContent className="bg-card border-border text-muted-foreground max-h-72">
                                         {units.map(u => (
                                             <SelectItem key={u.id} value={u.id}>
                                                 {u.unitNumber || u.title}
@@ -211,12 +211,12 @@ export default function NewLeasePage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Tenant</Label>
+                                <Label className="text-muted-foreground">Tenant</Label>
                                 <Select value={tenantId} onValueChange={setTenantId}>
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder="Select tenant" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300 max-h-72">
+                                    <SelectContent className="bg-card border-border text-muted-foreground max-h-72">
                                         {tenants.map(t => (
                                             <SelectItem key={t.id} value={t.id}>{t.fullName}</SelectItem>
                                         ))}
@@ -228,52 +228,52 @@ export default function NewLeasePage() {
                 </Card>
 
                 {/* Step 2: Lease Terms */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Lease Duration</CardTitle>
-                        <CardDescription className="text-zinc-500">Define the start and end dates</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Lease Duration</CardTitle>
+                        <CardDescription className="text-muted-foreground">Define the start and end dates</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Start Date</Label>
-                                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                                <Label className="text-muted-foreground">Start Date</Label>
+                                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-background border-border focus:border-orange-500" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">End Date</Label>
-                                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                                <Label className="text-muted-foreground">End Date</Label>
+                                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-background border-border focus:border-orange-500" />
                             </div>
                         </div>
                         <div className="flex items-center space-x-2 pt-2">
                             <Checkbox id="autoRenew" checked={autoRenew} onCheckedChange={(v) => setAutoRenew(!!v)} className="border-zinc-600 data-[state=checked]:bg-orange-500" />
-                            <Label htmlFor="autoRenew" className="text-zinc-300 font-normal">Auto-renew lease at end of term</Label>
+                            <Label htmlFor="autoRenew" className="text-muted-foreground font-normal">Auto-renew lease at end of term</Label>
                         </div>
                         <div className="space-y-2 pt-2">
-                            <Label className="text-zinc-300">Notice Period (Days)</Label>
-                            <Input type="number" value={noticePeriod} onChange={e => setNoticePeriod(e.target.value)} className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                            <Label className="text-muted-foreground">Notice Period (Days)</Label>
+                            <Input type="number" value={noticePeriod} onChange={e => setNoticePeriod(e.target.value)} className="bg-background border-border focus:border-orange-500" />
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Step 3: Financial Details */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Financials</CardTitle>
-                        <CardDescription className="text-zinc-500">Rent, deposits, and payment terms</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Financials</CardTitle>
+                        <CardDescription className="text-muted-foreground">Rent, deposits, and payment terms</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Monthly Rent</Label>
-                                <Input type="number" placeholder="0.00" value={rentAmount} onChange={e => setRentAmount(e.target.value)} className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                                <Label className="text-muted-foreground">Monthly Rent</Label>
+                                <Input type="number" placeholder="0.00" value={rentAmount} onChange={e => setRentAmount(e.target.value)} className="bg-background border-border focus:border-orange-500" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Currency</Label>
+                                <Label className="text-muted-foreground">Currency</Label>
                                 <Select value={currency} onValueChange={setCurrency}>
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder="Select" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                    <SelectContent className="bg-card border-border text-muted-foreground">
                                         <SelectItem value="GHS">GHS (Cedi)</SelectItem>
                                         <SelectItem value="USD">USD ($)</SelectItem>
                                     </SelectContent>
@@ -282,21 +282,21 @@ export default function NewLeasePage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Security Deposit</Label>
-                                <Input type="number" placeholder="0.00" value={securityDeposit} onChange={e => setSecurityDeposit(e.target.value)} className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                                <Label className="text-muted-foreground">Security Deposit</Label>
+                                <Input type="number" placeholder="0.00" value={securityDeposit} onChange={e => setSecurityDeposit(e.target.value)} className="bg-background border-border focus:border-orange-500" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-zinc-300">Advance Months</Label>
-                                <Input type="number" value={advanceMonths} onChange={e => setAdvanceMonths(e.target.value)} className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                                <Label className="text-muted-foreground">Advance Months</Label>
+                                <Input type="number" value={advanceMonths} onChange={e => setAdvanceMonths(e.target.value)} className="bg-background border-border focus:border-orange-500" />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Rent Due Day</Label>
+                            <Label className="text-muted-foreground">Rent Due Day</Label>
                             <Select value={rentDueDay} onValueChange={setRentDueDay}>
-                                <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                     <SelectValue placeholder="Select day" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300 h-64 overflow-y-auto">
+                                <SelectContent className="bg-card border-border text-muted-foreground h-64 overflow-y-auto">
                                     {Array.from({ length: 28 }, (_, i) => (
                                         <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
                                     ))}
@@ -307,29 +307,29 @@ export default function NewLeasePage() {
                 </Card>
 
                 {/* Step 4: Additional Terms */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                <Card className="bg-card border-border md:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Terms & Conditions</CardTitle>
-                        <CardDescription className="text-zinc-500">Special clauses and included utilities</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Terms & Conditions</CardTitle>
+                        <CardDescription className="text-muted-foreground">Special clauses and included utilities</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div>
-                            <Label className="text-zinc-300 mb-3 block">Included Utilities</Label>
+                            <Label className="text-muted-foreground mb-3 block">Included Utilities</Label>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {UTILITIES.map(u => (
                                     <div key={u} className="flex items-center space-x-2">
                                         <Checkbox id={u} checked={includedUtilities.includes(u)} onCheckedChange={() => toggleUtility(u)} className="border-zinc-600 data-[state=checked]:bg-green-500" />
-                                        <Label htmlFor={u} className="text-zinc-400 font-normal capitalize">{u}</Label>
+                                        <Label htmlFor={u} className="text-muted-foreground font-normal capitalize">{u}</Label>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <Separator className="bg-zinc-800" />
+                        <Separator className="bg-muted" />
 
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Special Conditions</Label>
-                            <Textarea value={specialConditions} onChange={e => setSpecialConditions(e.target.value)} placeholder="Enter any additional clauses or conditions..." className="bg-zinc-950 border-zinc-800 focus:border-orange-500 h-24" />
+                            <Label className="text-muted-foreground">Special Conditions</Label>
+                            <Textarea value={specialConditions} onChange={e => setSpecialConditions(e.target.value)} placeholder="Enter any additional clauses or conditions..." className="bg-background border-border focus:border-orange-500 h-24" />
                         </div>
                     </CardContent>
                 </Card>

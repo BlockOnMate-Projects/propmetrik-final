@@ -151,12 +151,12 @@ export default function ESignDashboard() {
       delivered: { cls: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", label: "Delivered" },
       pending: { cls: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400", label: "Pending" },
       in_progress: { cls: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", label: "In Progress" },
-      draft: { cls: "bg-gray-100 text-gray-800", label: "Draft" },
+      draft: { cls: "bg-muted text-gray-800", label: "Draft" },
       voided: { cls: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", label: "Voided" },
       declined: { cls: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", label: "Declined" },
       expired: { cls: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400", label: "Expired" },
     };
-    const s = map[status] || { cls: "bg-gray-100 text-gray-800", label: status };
+    const s = map[status] || { cls: "bg-muted text-gray-800", label: status };
     return <Badge className={s.cls}>{s.label}</Badge>;
   };
 
@@ -255,7 +255,7 @@ export default function ESignDashboard() {
                   ) : (
                     <div className="divide-y">
                       {filteredEnvelopes.map((env) => (
-                        <div key={env.id} className="flex items-center gap-4 py-3 px-1 hover:bg-muted/30 rounded transition-colors group">
+                        <div key={env.id} className="flex items-center gap-4 py-3 px-1 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded transition-colors group">
                           <FileText className="h-9 w-9 text-primary/60 p-1.5 bg-primary/5 rounded shrink-0" />
                           <div className="flex-1 min-w-0">
                             <Link href={`/dashboard/e-sign/${env.id}`} className="font-medium text-sm hover:underline block truncate">

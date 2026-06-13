@@ -180,9 +180,9 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Unable to load your account.</p>
+          <p className="text-muted-foreground mb-4">Unable to load your account.</p>
           <button onClick={() => router.replace('/tenant-login')} className="text-cyan-600 hover:underline font-medium">
             Return to login
           </button>
@@ -193,9 +193,9 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
 
   return (
     <PortalContext.Provider value={{ profile, activeTenancy, refreshProfile: loadProfile }}>
-      <div className="min-h-screen bg-gray-50 flex">
+      <div className="min-h-screen bg-muted flex">
         {/* ── Desktop Sidebar ── */}
-        <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200 z-30">
+        <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-card border-r border-border z-30">
           {/* Brand */}
           <div className="h-16 flex items-center px-6 border-b border-gray-100">
             <Building2 className="h-7 w-7 text-cyan-600" />
@@ -207,7 +207,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
             <div className="px-4 py-3 mx-3 mt-4 rounded-xl bg-gradient-to-br from-cyan-50 to-cyan-100/50 border border-cyan-100">
               <p className="text-xs font-medium text-cyan-600 uppercase tracking-wider">Your Property</p>
               <p className="text-sm font-semibold text-gray-900 mt-0.5 truncate">{activeTenancy.propertyTitle}</p>
-              <p className="text-xs text-gray-500 truncate">{activeTenancy.propertyAddress}</p>
+              <p className="text-xs text-muted-foreground truncate">{activeTenancy.propertyAddress}</p>
             </div>
           )}
 
@@ -222,7 +222,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                     active
                       ? 'bg-cyan-50 text-cyan-700 shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      : 'text-muted-foreground hover:bg-muted hover:text-gray-900'
                   }`}
                 >
                   <item.icon className={`w-5 h-5 ${active ? 'text-cyan-600' : ''}`} />
@@ -240,7 +240,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
             <Link
               href={`${TENANT_BASE}/settings`}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                pathname === `${TENANT_BASE}/settings` ? 'bg-cyan-50 text-cyan-700' : 'text-gray-600 hover:bg-gray-50'
+                pathname === `${TENANT_BASE}/settings` ? 'bg-cyan-50 text-cyan-700' : 'text-muted-foreground hover:bg-muted'
               }`}
             >
               <Settings className="w-5 h-5" />
@@ -248,7 +248,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
             </Link>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-all"
             >
               <LogOut className="w-5 h-5" />
               <span>Sign Out</span>
@@ -259,10 +259,10 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
         {/* ── Main Content Area ── */}
         <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
           {/* Top Bar */}
-          <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-8 sticky top-0 z-20">
+          <header className="h-16 bg-card border-b border-border flex items-center px-4 lg:px-8 sticky top-0 z-20">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-gray-700 hover:bg-muted rounded-lg"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -275,7 +275,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
             {title && (
               <div className="hidden lg:block">
                 <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-                {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+                {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
               </div>
             )}
 
@@ -285,33 +285,33 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileMenuOpen(false); }}
-                className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="relative p-2 text-muted-foreground hover:text-gray-700 hover:bg-muted rounded-lg transition-colors"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                     {unreadCount}
                   </span>
                 )}
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 animate-slide-down overflow-hidden">
+                <div className="absolute right-0 top-12 w-80 bg-card rounded-xl shadow-xl border border-border z-50 animate-slide-down overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-semibold text-gray-900">Notifications</h3>
                     <button onClick={handleMarkAllRead} className="text-xs text-cyan-600 hover:underline">Mark all read</button>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-sm text-gray-400">No notifications yet</div>
+                      <div className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet</div>
                     ) : notifications.slice(0, 10).map(n => (
-                      <div key={n.id} onClick={() => !n.isRead && handleMarkRead(n.id)} className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-cyan-50/30' : ''}`}>
+                      <div key={n.id} onClick={() => !n.isRead && handleMarkRead(n.id)} className={`px-4 py-3 border-b border-gray-50 hover:bg-muted transition-colors cursor-pointer ${!n.isRead ? 'bg-cyan-50/30' : ''}`}>
                         <div className="flex items-start gap-3">
                           <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!n.isRead ? 'bg-cyan-500' : 'bg-transparent'}`} />
                           <div>
                             <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">{timeAgo(n.createdAt)}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{timeAgo(n.createdAt)}</p>
                           </div>
                         </div>
                       </div>
@@ -330,28 +330,28 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
             <div className="relative ml-2" ref={profileMenuRef}>
               <button
                 onClick={() => { setProfileMenuOpen(!profileMenuOpen); setNotificationsOpen(false); }}
-                className="flex items-center gap-2 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 p-1.5 hover:bg-muted rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-white text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center text-foreground text-sm font-bold">
                   {profile.fullName?.charAt(0)?.toUpperCase() || 'T'}
                 </div>
                 <span className="hidden md:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
                   {profile.fullName?.split(' ')[0]}
                 </span>
-                <ChevronDown className="hidden md:block w-4 h-4 text-gray-400" />
+                <ChevronDown className="hidden md:block w-4 h-4 text-muted-foreground" />
               </button>
 
               {profileMenuOpen && (
-                <div className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-xl border border-gray-200 z-50 animate-slide-down overflow-hidden">
+                <div className="absolute right-0 top-12 w-56 bg-card rounded-xl shadow-xl border border-border z-50 animate-slide-down overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-sm font-semibold text-gray-900">{profile.fullName}</p>
-                    <p className="text-xs text-gray-500 truncate">{profile.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
                   </div>
                   <div className="p-1.5">
-                    <Link href={`${TENANT_BASE}/profile`} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setProfileMenuOpen(false)}>
+                    <Link href={`${TENANT_BASE}/profile`} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-muted rounded-lg" onClick={() => setProfileMenuOpen(false)}>
                       <User className="w-4 h-4" /> My Profile
                     </Link>
-                    <Link href={`${TENANT_BASE}/settings`} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setProfileMenuOpen(false)}>
+                    <Link href={`${TENANT_BASE}/settings`} className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-muted rounded-lg" onClick={() => setProfileMenuOpen(false)}>
                       <Settings className="w-4 h-4" /> Settings
                     </Link>
                   </div>
@@ -372,7 +372,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
           {title && (
             <div className="lg:hidden px-4 pt-4">
               <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-              {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
             </div>
           )}
 
@@ -383,7 +383,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
         </div>
 
         {/* ── Mobile Bottom Navigation ── */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-pb">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-40 safe-area-pb">
           <div className="flex items-center justify-around h-16 max-w-md mx-auto">
             {BOTTOM_NAV.map(item => {
               const active = isActive(item.href);
@@ -392,7 +392,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
                   key={item.href}
                   href={item.href}
                   className={`flex flex-col items-center justify-center gap-0.5 w-16 py-1 ${
-                    active ? 'text-cyan-600' : 'text-gray-400'
+                    active ? 'text-cyan-600' : 'text-muted-foreground'
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -406,7 +406,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
                 className={`flex flex-col items-center justify-center gap-0.5 w-16 py-1 ${
                   [`${TENANT_BASE}/messages`, `${TENANT_BASE}/documents`, `${TENANT_BASE}/profile`, `${TENANT_BASE}/settings`].some(p => pathname.startsWith(p))
                     ? 'text-cyan-600'
-                    : 'text-gray-400'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <MoreHorizontal className="w-5 h-5" />
@@ -414,18 +414,18 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
               </button>
 
               {moreMenuOpen && (
-                <div className="absolute bottom-16 right-0 w-48 bg-white rounded-xl shadow-xl border border-gray-200 z-50 animate-slide-up overflow-hidden">
+                <div className="absolute bottom-16 right-0 w-48 bg-card rounded-xl shadow-xl border border-border z-50 animate-slide-up overflow-hidden">
                   <div className="p-1.5">
-                    <Link href={`${TENANT_BASE}/messages`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMoreMenuOpen(false)}>
+                    <Link href={`${TENANT_BASE}/messages`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-muted rounded-lg" onClick={() => setMoreMenuOpen(false)}>
                       <MessageSquare className="w-4 h-4" /> Messages
                     </Link>
-                    <Link href={`${TENANT_BASE}/documents`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMoreMenuOpen(false)}>
+                    <Link href={`${TENANT_BASE}/documents`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-muted rounded-lg" onClick={() => setMoreMenuOpen(false)}>
                       <FileText className="w-4 h-4" /> Documents
                     </Link>
-                    <Link href={`${TENANT_BASE}/profile`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMoreMenuOpen(false)}>
+                    <Link href={`${TENANT_BASE}/profile`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-muted rounded-lg" onClick={() => setMoreMenuOpen(false)}>
                       <User className="w-4 h-4" /> My Profile
                     </Link>
-                    <Link href={`${TENANT_BASE}/settings`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg" onClick={() => setMoreMenuOpen(false)}>
+                    <Link href={`${TENANT_BASE}/settings`} className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 hover:bg-muted rounded-lg" onClick={() => setMoreMenuOpen(false)}>
                       <Settings className="w-4 h-4" /> Settings
                     </Link>
                   </div>
@@ -443,15 +443,15 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
         {/* ── Mobile Sidebar Overlay ── */}
         {sidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-50">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+            <div className="absolute inset-0 bg-background/50" onClick={() => setSidebarOpen(false)} />
 
-            <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col animate-slide-right">
+            <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card shadow-2xl flex flex-col animate-slide-right">
               <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100">
                 <div className="flex items-center">
                   <Building2 className="h-7 w-7 text-cyan-600" />
                   <span className="ml-2.5 text-lg font-bold text-gray-900">PROPMETRIK</span>
                 </div>
-                <button onClick={() => setSidebarOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+                <button onClick={() => setSidebarOpen(false)} className="p-2 text-muted-foreground hover:text-muted-foreground rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -460,7 +460,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
                 <div className="px-4 py-3 mx-3 mt-4 rounded-xl bg-gradient-to-br from-cyan-50 to-cyan-100/50 border border-cyan-100">
                   <p className="text-xs font-medium text-cyan-600 uppercase tracking-wider">Your Property</p>
                   <p className="text-sm font-semibold text-gray-900 mt-0.5 truncate">{activeTenancy.propertyTitle}</p>
-                  <p className="text-xs text-gray-500 truncate">{activeTenancy.propertyAddress}</p>
+                  <p className="text-xs text-muted-foreground truncate">{activeTenancy.propertyAddress}</p>
                 </div>
               )}
 
@@ -473,7 +473,7 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                        active ? 'bg-cyan-50 text-cyan-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        active ? 'bg-cyan-50 text-cyan-700' : 'text-muted-foreground hover:bg-muted hover:text-gray-900'
                       }`}
                     >
                       <item.icon className={`w-5 h-5 ${active ? 'text-cyan-600' : ''}`} />
@@ -487,14 +487,14 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
                 <Link
                   href={`${TENANT_BASE}/profile`}
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted"
                 >
                   <User className="w-5 h-5" /> My Profile
                 </Link>
                 <Link
                   href={`${TENANT_BASE}/settings`}
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted"
                 >
                   <Settings className="w-5 h-5" /> Settings
                 </Link>
@@ -517,8 +517,8 @@ export default function PortalShell({ children, title, subtitle }: PortalShellPr
 
 function ShellSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200">
+    <div className="min-h-screen bg-muted flex">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-card border-r border-border">
         <div className="h-16 flex items-center px-6 border-b border-gray-100">
           <div className="skeleton w-7 h-7 rounded" />
           <div className="skeleton w-24 h-5 ml-2.5 rounded" />
@@ -530,7 +530,7 @@ function ShellSkeleton() {
         </div>
       </aside>
       <div className="flex-1 lg:pl-64">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-8">
+        <header className="h-16 bg-card border-b border-border flex items-center px-4 lg:px-8">
           <div className="skeleton w-32 h-6 rounded" />
           <div className="flex-1" />
           <div className="skeleton w-8 h-8 rounded-full" />

@@ -27,12 +27,12 @@ export default function Error({
       <div className="text-center space-y-4">
         <div className="text-4xl">⚠️</div>
         <h2 className="text-xl font-semibold text-zinc-100">Something went wrong</h2>
-        <p className="text-zinc-400 max-w-md">
+        <p className="text-muted-foreground max-w-md">
           An error occurred while loading this page. Please try again.
         </p>
         <button
           onClick={reset}
-          className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-foreground rounded-lg transition-colors"
         >
           Try again
         </button>

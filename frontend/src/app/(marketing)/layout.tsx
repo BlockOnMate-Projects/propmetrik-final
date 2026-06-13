@@ -14,7 +14,7 @@ export default function MarketingLayout({
   const isPropertyDetail = pathname?.startsWith('/apply');
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       <TopNav />
       {children}
       {/* Footer hidden on marketplace / property-detail pages.

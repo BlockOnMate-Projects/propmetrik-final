@@ -122,6 +122,12 @@ async function refreshConfig(now: number): Promise<RbacConfigPayload> {
     }
   }
 
+  // The Admin Console is gated by ROLE, not by a resource policy (there is no
+  // 'admin' resource in authorization_policies, so the loop above leaves it
+  // empty — which hid the tab for super_admins and bounced them off /admin).
+  // Source of truth = the admin layout's ADMIN_ROLES.
+  platformTabs.admin = ['super_admin', 'admin', 'firm_principal'];
+
   // 4. Build valuation sub-tab access from policies
   const VAL_TAB_RESOURCE_MAP: Record<string, { resource: string; action: string }> = {
     valuations: { resource: 'valuation', action: 'list' },

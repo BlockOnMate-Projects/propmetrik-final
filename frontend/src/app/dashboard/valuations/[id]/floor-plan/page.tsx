@@ -30,7 +30,7 @@ const ProfessionalFloorPlanBuilder = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-[600px] bg-zinc-900 border border-zinc-800">
+      <div className="flex items-center justify-center h-[600px] bg-card border border-border">
         <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
       </div>
     ),
@@ -224,16 +224,16 @@ export default function FloorPlanPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading floor plans...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading floor plans...</span>
       </div>
     )
   }
 
   if (error || !valuation) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <AlertBanner type="error" title="Error" message={error || 'Valuation not found'} />
       </div>
     )
@@ -244,25 +244,25 @@ export default function FloorPlanPage() {
   // Floor plan builder full-screen overlay
   if (showFloorPlanBuilder) {
     return (
-      <div className="fixed inset-0 bg-black z-50">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+      <div className="fixed inset-0 bg-background z-50">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowFloorPlanBuilder(false)}
-              className="p-2 hover:bg-zinc-800 transition-colors"
+              className="p-2 hover:bg-muted transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 text-zinc-400" />
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </button>
             <div>
-              <h2 className="font-mono text-lg text-white">PROFESSIONAL FLOOR PLAN BUILDER</h2>
-              <p className="font-mono text-[10px] text-zinc-500">
+              <h2 className="font-mono text-lg text-foreground">PROFESSIONAL FLOOR PLAN BUILDER</h2>
+              <p className="font-mono text-[10px] text-muted-foreground">
                 {floorPlans.find(f => f.floorNumber === activeFloor)?.name || `Floor ${activeFloor}`}
               </p>
             </div>
           </div>
           <button
             onClick={handleDoneFloorPlan}
-            className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+            className="px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
           >
             DONE
           </button>
@@ -282,22 +282,22 @@ export default function FloorPlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">STEP 2: FLOOR PLANS</h1>
+              <h1 className="font-mono text-xl text-foreground">STEP 2: FLOOR PLANS</h1>
               <StatusBadge status="in_progress" />
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               VAL-{valuationId.slice(0, 8).toUpperCase()} • {property?.address || 'Property'}
             </p>
           </div>
@@ -306,7 +306,7 @@ export default function FloorPlanPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -344,27 +344,27 @@ export default function FloorPlanPage() {
       {/* Measurements Summary */}
       <TerminalPanel title="MEASUREMENTS SUMMARY" className="mb-4">
         <div className="grid grid-cols-4 gap-4">
-          <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-            <div className="font-mono text-[10px] text-zinc-500 mb-1">FLOORS</div>
-            <div className="font-mono text-2xl text-white">{floorPlans.length}</div>
-            <div className="font-mono text-[10px] text-zinc-500">{completedFloors} completed</div>
+          <div className="p-4 bg-muted/30 border border-border">
+            <div className="font-mono text-[10px] text-muted-foreground mb-1">FLOORS</div>
+            <div className="font-mono text-2xl text-foreground">{floorPlans.length}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">{completedFloors} completed</div>
           </div>
-          <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-            <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL GFA</div>
-            <div className="font-mono text-2xl text-amber-400">{totalGFA.toLocaleString()}</div>
-            <div className="font-mono text-[10px] text-zinc-500">sqm</div>
+          <div className="p-4 bg-muted/30 border border-border">
+            <div className="font-mono text-[10px] text-muted-foreground mb-1">TOTAL GFA</div>
+            <div className="font-mono text-2xl text-amber-600 dark:text-amber-400">{totalGFA.toLocaleString()}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">sqm</div>
           </div>
-          <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-            <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL ROOMS</div>
-            <div className="font-mono text-2xl text-white">{totalRooms}</div>
-            <div className="font-mono text-[10px] text-zinc-500">across all floors</div>
+          <div className="p-4 bg-muted/30 border border-border">
+            <div className="font-mono text-[10px] text-muted-foreground mb-1">TOTAL ROOMS</div>
+            <div className="font-mono text-2xl text-foreground">{totalRooms}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">across all floors</div>
           </div>
-          <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-            <div className="font-mono text-[10px] text-zinc-500 mb-1">PLOT SIZE</div>
-            <div className="font-mono text-2xl text-white">
+          <div className="p-4 bg-muted/30 border border-border">
+            <div className="font-mono text-[10px] text-muted-foreground mb-1">PLOT SIZE</div>
+            <div className="font-mono text-2xl text-foreground">
               {(property?.plotSize || property?.plot_size || property?.landArea || property?.land_area)?.toLocaleString() || '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500">sqm</div>
+            <div className="font-mono text-[10px] text-muted-foreground">sqm</div>
           </div>
         </div>
       </TerminalPanel>
@@ -378,8 +378,8 @@ export default function FloorPlanPage() {
               key={floor.floorNumber}
               onClick={() => setActiveFloor(floor.floorNumber)}
               className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${activeFloor === floor.floorNumber
-                ? 'bg-amber-500 text-white font-bold'
-                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                ? 'bg-amber-500 text-foreground font-bold'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
             >
               {floor.isComplete && <CheckCircle2 className="w-3 h-3" />}
@@ -388,7 +388,7 @@ export default function FloorPlanPage() {
           ))}
           <button
             onClick={addFloor}
-            className="flex items-center gap-1 px-3 py-2 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-xs hover:text-white hover:border-zinc-700 transition-colors"
+            className="flex items-center gap-1 px-3 py-2 bg-card border border-border text-muted-foreground font-mono text-xs hover:text-foreground hover:border-border transition-colors"
           >
             <Plus className="w-3 h-3" />
             ADD FLOOR
@@ -402,7 +402,7 @@ export default function FloorPlanPage() {
               {/* Floor Actions */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-zinc-400">
+                  <span className="font-mono text-sm text-muted-foreground">
                     {floor.totalArea > 0
                       ? `${floor.totalArea.toLocaleString()} sqm • ${floor.rooms.length} rooms`
                       : 'No measurements yet'
@@ -413,7 +413,7 @@ export default function FloorPlanPage() {
                   {floorPlans.length > 1 && (
                     <button
                       onClick={() => removeFloor(floor.floorNumber)}
-                      className="flex items-center gap-1 px-3 py-2 bg-red-900/30 text-red-400 font-mono text-xs hover:bg-red-900/50 transition-colors"
+                      className="flex items-center gap-1 px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-mono text-xs hover:bg-red-900/50 transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
                       REMOVE
@@ -421,7 +421,7 @@ export default function FloorPlanPage() {
                   )}
                   <button
                     onClick={() => setShowFloorPlanBuilder(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
                   >
                     <Pencil className="w-3 h-3" />
                     {floor.isComplete ? 'EDIT FLOOR PLAN' : 'DRAW FLOOR PLAN'}
@@ -440,14 +440,14 @@ export default function FloorPlanPage() {
                     return (
                       <div
                         key={idx}
-                        className={`p-3 border ${meetsMinArea ? 'border-zinc-700 bg-zinc-800/30' : 'border-red-500/50 bg-red-900/10'}`}
+                        className={`p-3 border ${meetsMinArea ? 'border-border bg-muted/30' : 'border-red-500/50 bg-red-100 dark:bg-red-900/10'}`}
                       >
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">{(room.type || 'room').toUpperCase()}</div>
-                        <div className={`font-mono text-lg ${meetsMinArea ? 'text-white' : 'text-red-400'}`}>
+                        <div className="font-mono text-[10px] text-muted-foreground mb-1">{(room.type || 'room').toUpperCase()}</div>
+                        <div className={`font-mono text-lg ${meetsMinArea ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
                           {roomArea.toFixed(1)} sqm
                         </div>
                         {!meetsMinArea && (
-                          <div className="font-mono text-[9px] text-red-400 mt-1">
+                          <div className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">
                             Min: {roomType?.minArea || 0} sqm
                           </div>
                         )}
@@ -456,15 +456,15 @@ export default function FloorPlanPage() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-12 border border-dashed border-zinc-800">
-                  <Home className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-                  <div className="font-mono text-sm text-zinc-500 mb-1">No floor plan created yet</div>
-                  <div className="font-mono text-[10px] text-zinc-600 mb-4">
+                <div className="text-center py-12 border border-dashed border-border">
+                  <Home className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <div className="font-mono text-sm text-muted-foreground mb-1">No floor plan created yet</div>
+                  <div className="font-mono text-[10px] text-muted-foreground mb-4">
                     Use the professional floor plan builder to draw walls, add doors/windows, and define rooms
                   </div>
                   <button
                     onClick={() => setShowFloorPlanBuilder(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors mx-auto"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors mx-auto"
                   >
                     <Pencil className="w-3 h-3" />
                     DRAW FLOOR PLAN
@@ -480,14 +480,14 @@ export default function FloorPlanPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={`/dashboard/valuations/${valuationId}/property`}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK TO PROPERTY SETUP
         </Link>
         <button
           onClick={handleSaveAndContinue}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
             <>

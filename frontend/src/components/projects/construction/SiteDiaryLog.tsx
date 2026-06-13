@@ -65,13 +65,13 @@ export function SiteDiaryLog({ projectId }: SiteDiaryLogProps) {
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="bg-card border-border">
       <CardHeader>
         <div className="flex items-center gap-2">
           <ClipboardType className="h-5 w-5 text-amber-500" />
-          <CardTitle className="text-white">Daily Site Diary</CardTitle>
+          <CardTitle className="text-foreground">Daily Site Diary</CardTitle>
         </div>
-        <CardDescription className="text-zinc-500">
+        <CardDescription className="text-muted-foreground">
           Essential daily reporting. Triggers WhatsApp summary to PM.
         </CardDescription>
       </CardHeader>
@@ -81,21 +81,21 @@ export function SiteDiaryLog({ projectId }: SiteDiaryLogProps) {
           {/* Date & Weather Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-zinc-400 font-mono text-xs">Date</Label>
+              <Label className="text-muted-foreground font-mono text-xs">Date</Label>
               <Input
                 type="date"
                 value={formData.reportDate}
                 onChange={e => setFormData({...formData, reportDate: e.target.value})}
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                className="bg-muted border-border font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-400 font-mono text-xs">Weather</Label>
+              <Label className="text-muted-foreground font-mono text-xs">Weather</Label>
               <Select
                 value={formData.weatherCondition}
                 onValueChange={v => setFormData({...formData, weatherCondition: v})}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm">
+                <SelectTrigger className="bg-muted border-border font-mono text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,30 +110,30 @@ export function SiteDiaryLog({ projectId }: SiteDiaryLogProps) {
           </div>
 
           {/* Informal Labor Section */}
-          <div className="space-y-2 pt-2 border-t border-zinc-800">
+          <div className="space-y-2 pt-2 border-t border-border">
             <div className="flex items-center gap-2 mb-2">
                <Users className="h-4 w-4 text-emerald-500" />
-               <span className="text-sm font-medium text-white">Informal Labor Tracking</span>
+               <span className="text-sm font-medium text-foreground">Informal Labor Tracking</span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1 space-y-2">
-                 <Label className="text-zinc-400 font-mono text-xs">Count *</Label>
+                 <Label className="text-muted-foreground font-mono text-xs">Count *</Label>
                  <Input
                    type="number"
                    placeholder="0"
                    value={formData.informalLaborCount}
                    onChange={e => setFormData({...formData, informalLaborCount: e.target.value})}
-                   className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                   className="bg-muted border-border font-mono text-sm"
                    required
                  />
               </div>
               <div className="col-span-2 space-y-2">
-                 <Label className="text-zinc-400 font-mono text-xs">Labor Notes</Label>
+                 <Label className="text-muted-foreground font-mono text-xs">Labor Notes</Label>
                  <Input
                    placeholder="e.g. 5 Laborers, 2 Masons"
                    value={formData.informalLaborNotes}
                    onChange={e => setFormData({...formData, informalLaborNotes: e.target.value})}
-                   className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                   className="bg-muted border-border font-mono text-sm"
                  />
               </div>
             </div>
@@ -141,23 +141,23 @@ export function SiteDiaryLog({ projectId }: SiteDiaryLogProps) {
 
           {/* Progress & Issues */}
           <div className="space-y-2">
-            <Label className="text-zinc-400 font-mono text-xs">Work Performed</Label>
+            <Label className="text-muted-foreground font-mono text-xs">Work Performed</Label>
             <Textarea
               placeholder="What was achieved today?"
-              className="bg-zinc-800 border-zinc-700 font-mono text-sm h-20"
+              className="bg-muted border-border font-mono text-sm h-20"
               value={formData.workPerformed}
               onChange={e => setFormData({...formData, workPerformed: e.target.value})}
             />
           </div>
 
           <div className="space-y-2 pb-2">
-            <Label className="text-zinc-400 font-mono text-xs text-red-400 flex items-center gap-1">
+            <Label className="text-muted-foreground font-mono text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
               Incidents or Delays
             </Label>
             <Textarea
               placeholder="Any accidents, material shortages, or disputes?"
-              className="bg-zinc-800 border-zinc-700 font-mono text-sm h-16"
+              className="bg-muted border-border font-mono text-sm h-16"
               value={formData.incidentsOrDelays}
               onChange={e => setFormData({...formData, incidentsOrDelays: e.target.value})}
             />
@@ -165,7 +165,7 @@ export function SiteDiaryLog({ projectId }: SiteDiaryLogProps) {
 
           <Button 
             type="submit" 
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold font-mono"
+            className="w-full bg-amber-600 hover:bg-amber-700 text-foreground font-semibold font-mono"
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}

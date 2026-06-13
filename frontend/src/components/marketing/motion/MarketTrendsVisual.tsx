@@ -8,11 +8,11 @@ export default function MarketTrendsVisual() {
             {/* Header */}
             <div className="flex justify-between items-center mb-6 z-10">
                 <div>
-                    <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse mb-2" />
-                    <div className="h-3 w-20 bg-zinc-800/50 rounded" />
+                    <div className="h-4 w-32 bg-muted rounded animate-pulse mb-2" />
+                    <div className="h-3 w-20 bg-muted/50 rounded" />
                 </div>
                 <div className="flex gap-2">
-                    <span className="text-xs text-zinc-400 font-mono bg-zinc-800 px-2 py-1 rounded">ILLUSTRATIVE</span>
+                    <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">ILLUSTRATIVE</span>
                 </div>
             </div>
 
@@ -77,7 +77,7 @@ export default function MarketTrendsVisual() {
 
             {/* Floating Insight Bubbles */}
             <motion.div
-                className="absolute top-1/4 left-1/3 bg-zinc-900/90 border border-zinc-700 px-3 py-2 rounded-lg text-xs"
+                className="absolute top-1/4 left-1/3 bg-card/90 border border-border px-3 py-2 rounded-lg text-xs"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 2.5 }}

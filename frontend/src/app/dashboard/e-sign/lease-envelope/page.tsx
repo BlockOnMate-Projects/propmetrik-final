@@ -156,10 +156,10 @@ export default function LeaseEnvelopePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
-          <p className="text-white text-lg">Loading E-Sign...</p>
+          <p className="text-foreground text-lg">Loading E-Sign...</p>
         </div>
       </div>
     )
@@ -171,12 +171,12 @@ export default function LeaseEnvelopePage() {
 
   if (isSent) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md text-center">
           <CheckCircle className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Lease Sent for Signing</h2>
-          <p className="text-zinc-400 mb-6">
-            The lease agreement for <strong className="text-white">{leaseData?.propertyName}</strong> has been sent to all signers.
+          <h2 className="text-2xl font-bold text-foreground mb-2">Lease Sent for Signing</h2>
+          <p className="text-muted-foreground mb-6">
+            The lease agreement for <strong className="text-foreground">{leaseData?.propertyName}</strong> has been sent to all signers.
           </p>
           <div className="flex gap-3 justify-center">
             <Link href={getBackUrl()}>
@@ -185,7 +185,7 @@ export default function LeaseEnvelopePage() {
               </Button>
             </Link>
             <Link href="/dashboard/property-management/applications">
-              <Button variant="outline" className="border-zinc-700 text-zinc-300">
+              <Button variant="outline" className="border-border text-muted-foreground">
                 All Applications
               </Button>
             </Link>
@@ -201,11 +201,11 @@ export default function LeaseEnvelopePage() {
 
   if (isSending) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
-          <p className="text-white text-lg">Sending lease for signing...</p>
-          <p className="text-zinc-400 text-sm mt-2">This may take a moment</p>
+          <p className="text-foreground text-lg">Sending lease for signing...</p>
+          <p className="text-muted-foreground text-sm mt-2">This may take a moment</p>
         </div>
       </div>
     )
@@ -217,10 +217,10 @@ export default function LeaseEnvelopePage() {
 
   if (error && leaseData) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md text-center">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
-            <p className="text-red-400">{error}</p>
+          <div className="bg-red-100 dark:bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
           </div>
           <div className="flex gap-3 justify-center">
             <Button onClick={handleRetry} className="bg-emerald-600 hover:bg-emerald-700">
@@ -228,7 +228,7 @@ export default function LeaseEnvelopePage() {
               {signatureData ? 'Retry Sending' : 'Try Again'}
             </Button>
             <Link href={getBackUrl()}>
-              <Button variant="outline" className="border-zinc-700">
+              <Button variant="outline" className="border-border">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
@@ -241,13 +241,13 @@ export default function LeaseEnvelopePage() {
 
   if (!leaseData) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md text-center">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
-            <p className="text-red-400">No lease document found</p>
+          <div className="bg-red-100 dark:bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
+            <p className="text-red-600 dark:text-red-400">No lease document found</p>
           </div>
           <Link href="/dashboard/property-management/applications">
-            <Button variant="outline" className="border-zinc-700">
+            <Button variant="outline" className="border-border">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Applications
             </Button>
@@ -262,18 +262,18 @@ export default function LeaseEnvelopePage() {
   // =====================================================
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
+      <div className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center gap-4">
           <Link href={getBackUrl()}>
-            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white">E-Sign: Lease Agreement</h1>
-            <p className="text-sm text-zinc-400">{leaseData.propertyName}</p>
+            <h1 className="text-xl font-bold text-foreground">E-Sign: Lease Agreement</h1>
+            <p className="text-sm text-muted-foreground">{leaseData.propertyName}</p>
           </div>
         </div>
       </div>
@@ -282,46 +282,46 @@ export default function LeaseEnvelopePage() {
       <div className="flex-1 flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-2xl space-y-8">
           {/* Document Info Card */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-start gap-4 mb-6">
               <div className="bg-blue-600/20 rounded-lg p-3">
-                <FileText className="h-6 w-6 text-blue-400" />
+                <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-white mb-1">Lease Agreement</h2>
-                <p className="text-sm text-zinc-400">{leaseData.filename}</p>
+                <h2 className="text-lg font-semibold text-foreground mb-1">Lease Agreement</h2>
+                <p className="text-sm text-muted-foreground">{leaseData.filename}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-zinc-500">Property</span>
-                <p className="text-white mt-0.5">{leaseData.propertyName}</p>
+                <span className="text-muted-foreground">Property</span>
+                <p className="text-foreground mt-0.5">{leaseData.propertyName}</p>
               </div>
               <div>
-                <span className="text-zinc-500">Subject</span>
-                <p className="text-white mt-0.5">{leaseData.subject}</p>
+                <span className="text-muted-foreground">Subject</span>
+                <p className="text-foreground mt-0.5">{leaseData.subject}</p>
               </div>
             </div>
           </div>
 
           {/* Signers */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-3 mb-4">
-              <Users className="h-5 w-5 text-zinc-400" />
-              <h3 className="text-white font-medium">Signers ({leaseData.signers.length})</h3>
+              <Users className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-foreground font-medium">Signers ({leaseData.signers.length})</h3>
             </div>
             <div className="space-y-3">
               {leaseData.signers.map((signer, i) => (
-                <div key={i} className="flex items-center gap-3 bg-zinc-800/50 rounded-lg p-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-sm font-medium">
+                <div key={i} className="flex items-center gap-3 bg-muted/50 rounded-lg p-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-600 dark:text-blue-400 text-sm font-medium">
                     {i + 1}
                   </div>
                   <div className="flex-1">
-                    <p className="text-white text-sm">{signer.name}</p>
-                    <p className="text-zinc-500 text-xs">{signer.email}</p>
+                    <p className="text-foreground text-sm">{signer.name}</p>
+                    <p className="text-muted-foreground text-xs">{signer.email}</p>
                   </div>
-                  <span className="text-xs text-zinc-400 capitalize">{signer.role}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{signer.role}</span>
                 </div>
               ))}
             </div>
@@ -329,18 +329,18 @@ export default function LeaseEnvelopePage() {
 
           {/* Signature & Send */}
           {signatureData ? (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">
-                <PenTool className="h-5 w-5 text-emerald-400" />
-                <h3 className="text-white font-medium">Your Signature</h3>
+                <PenTool className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-foreground font-medium">Your Signature</h3>
               </div>
-              <div className="bg-white rounded-lg p-4 flex justify-center mb-4">
+              <div className="bg-card rounded-lg p-4 flex justify-center mb-4">
                 <img src={signatureData.data} alt="Your signature" className="max-h-16 object-contain" />
               </div>
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  className="border-zinc-700 text-zinc-300"
+                  className="border-border text-muted-foreground"
                   onClick={() => {
                     setSignatureData(null)
                     setShowSignatureModal(true)
@@ -358,14 +358,14 @@ export default function LeaseEnvelopePage() {
               </div>
             </div>
           ) : (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div className="bg-card border border-border rounded-xl p-6">
               <div className="text-center space-y-4">
                 <div className="bg-emerald-600/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                  <PenTool className="h-8 w-8 text-emerald-400" />
+                  <PenTool className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-1">Sign & Send</h3>
-                  <p className="text-zinc-400 text-sm">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Sign & Send</h3>
+                  <p className="text-muted-foreground text-sm">
                     Add your signature to authorise this lease agreement, then send to all signers.
                   </p>
                 </div>
@@ -381,7 +381,7 @@ export default function LeaseEnvelopePage() {
           )}
 
           {/* Legal notice */}
-          <p className="text-[10px] text-zinc-500 text-center max-w-lg mx-auto">
+          <p className="text-[10px] text-muted-foreground text-center max-w-lg mx-auto">
             By signing, I agree that this electronic signature is the legal equivalent of my handwritten signature
             for the purposes of this lease agreement.
           </p>

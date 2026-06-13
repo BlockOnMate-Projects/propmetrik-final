@@ -65,13 +65,13 @@ import { format, formatDistanceToNow, isPast, parseISO } from 'date-fns';
 // PHASE STATUS CONFIG
 // =====================================================
 const phaseStatusColors: Record<string, { bg: string; text: string }> = {
-  not_started: { bg: 'bg-zinc-700/50', text: 'text-zinc-400' },
-  pending: { bg: 'bg-zinc-700/50', text: 'text-zinc-400' },
-  in_progress: { bg: 'bg-amber-900/50', text: 'text-amber-400' },
-  completed: { bg: 'bg-green-900/50', text: 'text-green-400' },
-  delayed: { bg: 'bg-red-900/50', text: 'text-red-400' },
-  blocked: { bg: 'bg-red-900/50', text: 'text-red-400' },
-  cancelled: { bg: 'bg-zinc-800/50', text: 'text-zinc-500' },
+  not_started: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground' },
+  pending: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground' },
+  in_progress: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400' },
+  completed: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400' },
+  delayed: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400' },
+  blocked: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400' },
+  cancelled: { bg: 'bg-muted/50', text: 'text-muted-foreground' },
 };
 
 // =====================================================
@@ -83,12 +83,12 @@ const milestoneStatusConfig: Record<string, {
   bg: string;
   label: string;
 }> = {
-  pending: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Pending' },
-  not_started: { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Not Started' },
-  in_progress: { icon: PlayCircle, color: 'text-blue-400', bg: 'bg-blue-500/25', label: 'In Progress' },
-  completed: { icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/25', label: 'Completed' },
-  overdue: { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/25', label: 'Overdue' },
-  cancelled: { icon: AlertTriangle, color: 'text-zinc-400', bg: 'bg-zinc-500/25', label: 'Cancelled' },
+  pending: { icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/20', label: 'Pending' },
+  not_started: { icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/20', label: 'Not Started' },
+  in_progress: { icon: PlayCircle, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/25', label: 'In Progress' },
+  completed: { icon: CheckCircle2, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/25', label: 'Completed' },
+  overdue: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/25', label: 'Overdue' },
+  cancelled: { icon: AlertTriangle, color: 'text-muted-foreground', bg: 'bg-zinc-500/25', label: 'Cancelled' },
 };
 
 // =====================================================
@@ -127,7 +127,7 @@ function PhaseMilestoneCard({
 
   return (
     <div className={cn(
-      "bg-zinc-800/60 border border-zinc-700/50 rounded p-3 transition-all hover:border-zinc-600",
+      "bg-muted/60 border border-border/50 rounded p-3 transition-all hover:border-zinc-600",
       isOverdue && "border-red-500/50"
     )}>
       <div className="flex items-start gap-2.5">
@@ -138,7 +138,7 @@ function PhaseMilestoneCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h5 className="font-mono text-xs text-white truncate">{milestone.name}</h5>
+              <h5 className="font-mono text-xs text-foreground truncate">{milestone.name}</h5>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
@@ -149,10 +149,10 @@ function PhaseMilestoneCard({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <MoreHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+                    <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                <DropdownMenuContent align="end" className="bg-card border-border">
                   <DropdownMenuItem onClick={() => onEdit(milestone)} className="text-xs">
                     <Pencil className="h-3.5 w-3.5 mr-2" />
                     Edit
@@ -165,14 +165,14 @@ function PhaseMilestoneCard({
                           Start Progress
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem onClick={() => onComplete(milestone)} className="text-xs text-green-400">
+                      <DropdownMenuItem onClick={() => onComplete(milestone)} className="text-xs text-green-600 dark:text-green-400">
                         <Check className="h-3.5 w-3.5 mr-2" />
                         Mark Complete
                       </DropdownMenuItem>
                     </>
                   )}
-                  <DropdownMenuSeparator className="bg-zinc-800" />
-                  <DropdownMenuItem onClick={() => onDelete(milestone)} className="text-xs text-red-400">
+                  <DropdownMenuSeparator className="bg-muted" />
+                  <DropdownMenuItem onClick={() => onDelete(milestone)} className="text-xs text-red-600 dark:text-red-400">
                     <Trash2 className="h-3.5 w-3.5 mr-2" />
                     Delete
                   </DropdownMenuItem>
@@ -182,13 +182,13 @@ function PhaseMilestoneCard({
           </div>
 
           {milestone.description && (
-            <p className="text-[10px] text-zinc-300 mt-1 line-clamp-1">{milestone.description}</p>
+            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{milestone.description}</p>
           )}
 
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-700/30">
-            <div className="flex items-center gap-1 text-zinc-400">
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+            <div className="flex items-center gap-1 text-muted-foreground">
               <Calendar className="h-3 w-3" />
-              <span className={cn("text-[10px]", isOverdue && "text-red-400")}>
+              <span className={cn("text-[10px]", isOverdue && "text-red-600 dark:text-red-400")}>
                 {dueDate ? format(dueDate, 'MMM d, yyyy') : 'No date'}
                 {isOverdue && ' (overdue)'}
               </span>
@@ -197,7 +197,7 @@ function PhaseMilestoneCard({
             {milestone.progress !== undefined && milestone.progress > 0 && (
               <div className="flex items-center gap-2">
                 <Progress value={milestone.progress} className="w-12 h-1" />
-                <span className="text-[9px] text-zinc-400">{milestone.progress}%</span>
+                <span className="text-[9px] text-muted-foreground">{milestone.progress}%</span>
               </div>
             )}
           </div>
@@ -282,44 +282,44 @@ function MilestoneDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-zinc-900 border-zinc-800">
+      <DialogContent className="bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-white text-sm">
+          <DialogTitle className="text-foreground text-sm">
             {milestone ? 'Edit Milestone' : 'Add Milestone'}
           </DialogTitle>
-          <DialogDescription className="text-[10px] text-zinc-500">
+          <DialogDescription className="text-[10px] text-muted-foreground">
             {milestone ? 'Update milestone details' : 'Add a new milestone to this phase'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-3">
           <div className="space-y-1.5">
-            <Label className="text-[10px] text-zinc-400 font-mono">Milestone Name *</Label>
+            <Label className="text-[10px] text-muted-foreground font-mono">Milestone Name *</Label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="e.g., Foundation Complete, Permit Approved"
-              className="bg-zinc-800 border-zinc-700 text-xs"
+              className="bg-muted border-border text-xs"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] text-zinc-400 font-mono">Description</Label>
+            <Label className="text-[10px] text-muted-foreground font-mono">Description</Label>
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe what this milestone represents..."
-              className="bg-zinc-800 border-zinc-700 text-xs min-h-[60px]"
+              className="bg-muted border-border text-xs min-h-[60px]"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] text-zinc-400 font-mono">Target Date</Label>
+            <Label className="text-[10px] text-muted-foreground font-mono">Target Date</Label>
             <Input
               type="date"
               value={formData.target_date}
               onChange={(e) => setFormData(prev => ({ ...prev, target_date: e.target.value }))}
-              className="bg-zinc-800 border-zinc-700 text-xs"
+              className="bg-muted border-border text-xs"
             />
           </div>
         </div>
@@ -331,7 +331,7 @@ function MilestoneDialog({
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.name.trim()}
-            className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+            className="bg-amber-600 hover:bg-amber-700 text-foreground text-xs"
           >
             {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
             {milestone ? 'Update' : 'Add'} Milestone
@@ -404,26 +404,26 @@ function PhaseAccordionItem({
   };
 
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50">
+    <div className="border border-border bg-card/50">
       {/* Phase Header - Clickable to expand */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 p-3 hover:bg-zinc-800/30 transition-colors"
+        className="w-full flex items-center gap-3 p-3 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
       >
         <div className="flex items-center gap-2 shrink-0">
           {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 text-zinc-500" />
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           )}
-          <div className="w-6 h-6 flex items-center justify-center bg-zinc-800 font-mono text-[10px] text-amber-500">
+          <div className="w-6 h-6 flex items-center justify-center bg-muted font-mono text-[10px] text-amber-500">
             {phase.phase_number}
           </div>
         </div>
 
         <div className="flex-1 min-w-0 text-left">
-          <div className="font-mono text-xs text-white line-clamp-1">{phase.name || phase.phase_name}</div>
-          <div className="font-mono text-[10px] text-zinc-500 flex items-center gap-2">
+          <div className="font-mono text-xs text-foreground line-clamp-1">{phase.name || phase.phase_name}</div>
+          <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-2">
             <span>{milestoneCount} milestone{milestoneCount !== 1 ? 's' : ''}</span>
             {phase.planned_start_date && phase.planned_end_date && (
               <>
@@ -436,10 +436,10 @@ function PhaseAccordionItem({
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-amber-500" style={{ width: `${progressValue}%` }} />
             </div>
-            <span className="font-mono text-[9px] text-zinc-500 w-7 text-right">{progressValue}%</span>
+            <span className="font-mono text-[9px] text-muted-foreground w-7 text-right">{progressValue}%</span>
           </div>
           <span className={cn("font-mono text-[9px] px-1.5 py-0.5 rounded-sm", statusConfig.bg, statusConfig.text)}>
             {phase.status.replace('_', ' ').toUpperCase()}
@@ -449,12 +449,12 @@ function PhaseAccordionItem({
 
       {/* Expanded Content - Milestones */}
       {isExpanded && (
-        <div className="border-t border-zinc-800 bg-zinc-950/30">
+        <div className="border-t border-border bg-background/30">
           <div className="p-3 space-y-2">
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
-                <span className="ml-2 font-mono text-[10px] text-zinc-500">Loading milestones...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="ml-2 font-mono text-[10px] text-muted-foreground">Loading milestones...</span>
               </div>
             ) : milestones.length > 0 ? (
               <>
@@ -473,8 +473,8 @@ function PhaseAccordionItem({
             ) : (
               <div className="text-center py-6">
                 <Target className="h-6 w-6 text-zinc-700 mx-auto mb-2" />
-                <p className="font-mono text-[10px] text-zinc-500">No milestones in this phase</p>
-                <p className="font-mono text-[9px] text-zinc-600 mt-0.5">Add milestones to track progress and sub-tasks</p>
+                <p className="font-mono text-[10px] text-muted-foreground">No milestones in this phase</p>
+                <p className="font-mono text-[9px] text-muted-foreground mt-0.5">Add milestones to track progress and sub-tasks</p>
               </div>
             )}
 
@@ -482,7 +482,7 @@ function PhaseAccordionItem({
             <Button
               variant="ghost"
               onClick={() => { setEditingMilestone(null); setDialogOpen(true); }}
-              className="w-full h-8 border border-dashed border-zinc-800 hover:border-amber-600/50 hover:bg-amber-600/5 text-zinc-500 hover:text-amber-500 font-mono text-[10px]"
+              className="w-full h-8 border border-dashed border-border hover:border-amber-600/50 hover:bg-amber-600/5 text-muted-foreground hover:text-amber-500 font-mono text-[10px]"
             >
               <Plus className="h-3 w-3 mr-1.5" />
               Add Milestone
@@ -501,19 +501,19 @@ function PhaseAccordionItem({
 
           {/* Delete Confirmation */}
           <AlertDialog open={!!deletingMilestone} onOpenChange={(open) => { if (!open) setDeletingMilestone(null); }}>
-            <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+            <AlertDialogContent className="bg-card border-border">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-sm text-white">Delete Milestone</AlertDialogTitle>
-                <AlertDialogDescription className="text-xs text-zinc-400">
+                <AlertDialogTitle className="text-sm text-foreground">Delete Milestone</AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground">
                   Are you sure you want to delete &quot;{deletingMilestone?.name}&quot;? This will also remove all sub-tasks. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="text-xs bg-zinc-800 border-zinc-700 hover:bg-zinc-700">Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="text-xs bg-muted border-border hover:bg-zinc-700">Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="bg-red-600 hover:bg-red-700 text-white text-xs"
+                  className="bg-red-600 hover:bg-red-700 text-foreground text-xs"
                 >
                   {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                   Delete
@@ -598,9 +598,9 @@ export function PhaseHierarchy({ projectId, phases, onPhasesRefresh }: PhaseHier
 
       {/* Show unassigned milestones if any */}
       {milestonesByPhase['__unassigned__']?.length > 0 && (
-        <div className="border border-zinc-800/50 bg-zinc-900/30 mt-4">
-          <div className="p-3 border-b border-zinc-800/50">
-            <div className="font-mono text-[10px] text-zinc-500 flex items-center gap-1.5">
+        <div className="border border-border/50 bg-card/30 mt-4">
+          <div className="p-3 border-b border-border/50">
+            <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-1.5">
               <Flag className="h-3 w-3" />
               Unassigned Milestones ({milestonesByPhase['__unassigned__'].length})
             </div>

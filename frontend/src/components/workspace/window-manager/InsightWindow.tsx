@@ -91,14 +91,14 @@ export function InsightWindow({
                 left: pos.x,
             }}
             className={cn(
-                'flex flex-col bg-zinc-950 border border-zinc-800 shadow-2xl rounded-xl overflow-hidden',
+                'flex flex-col bg-background border border-border shadow-2xl rounded-xl overflow-hidden',
                 'ring-1 ring-white/5 backdrop-blur-xl'
             )}
         >
             {/* Title Bar */}
             <div
                 onPointerDown={(e) => controls.start(e)}
-                className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 bg-zinc-900/80 border-b border-zinc-800 cursor-move"
+                className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 bg-card/80 border-b border-border cursor-move"
             >
                 <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
@@ -110,19 +110,19 @@ export function InsightWindow({
                 <div className="flex items-center gap-1.5">
                     <button
                         onClick={(e) => { e.stopPropagation(); toggleMinimize(id); }}
-                        className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-muted-foreground transition-colors"
                     >
                         <Minus className="w-3.5 h-3.5" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); /* Fullscreen logic if needed */ }}
-                        className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-muted-foreground transition-colors"
                     >
                         <Maximize2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); closeWindow(id); }}
-                        className="p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors ml-1"
+                        className="p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors ml-1"
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -130,7 +130,7 @@ export function InsightWindow({
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto min-h-0 relative bg-zinc-950/50">
+            <div className="flex-1 overflow-auto min-h-0 relative bg-background/50">
                 {children}
             </div>
 
@@ -139,7 +139,7 @@ export function InsightWindow({
                 onMouseDown={(e) => handleResize(e, 'se')}
                 className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize flex items-center justify-center group"
             >
-                <div className="w-1.5 h-1.5 border-r border-b border-zinc-700 group-hover:border-amber-500 transition-colors" />
+                <div className="w-1.5 h-1.5 border-r border-b border-border group-hover:border-amber-500 transition-colors" />
             </div>
         </motion.div>
     );

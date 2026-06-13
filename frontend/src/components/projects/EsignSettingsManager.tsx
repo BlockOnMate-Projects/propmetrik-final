@@ -57,63 +57,63 @@ export function EsignSettingsManager() {
   }
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-zinc-400 text-sm font-mono py-8"><Loader2 className="h-4 w-4 animate-spin" /> Loading e-sign settings…</div>
+    return <div className="flex items-center gap-2 text-muted-foreground text-sm font-mono py-8"><Loader2 className="h-4 w-4 animate-spin" /> Loading e-sign settings…</div>
   }
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] font-mono text-zinc-500">
+      <p className="text-[11px] font-mono text-muted-foreground">
         Enable e-signature per document type. When enabled, documents are sent for signature automatically on approval.
         The manual “Request E-Signature” button always works regardless of these settings.
       </p>
       {configs.map(cfg => {
         const meta = DOC_META[cfg.doc_type]
         return (
-          <Card key={cfg.doc_type} className="bg-zinc-900/80 border-zinc-800">
+          <Card key={cfg.doc_type} className="bg-card/80 border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <PenLine className="h-4 w-4 text-amber-500" />
                   <div>
-                    <CardTitle className="text-sm font-mono text-white">{meta.title}</CardTitle>
-                    <CardDescription className="text-[10px] font-mono text-zinc-500">{meta.desc}</CardDescription>
+                    <CardTitle className="text-sm font-mono text-foreground">{meta.title}</CardTitle>
+                    <CardDescription className="text-[10px] font-mono text-muted-foreground">{meta.desc}</CardDescription>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="text-[10px] font-mono text-zinc-400">Auto-send on approval</Label>
+                  <Label className="text-[10px] font-mono text-muted-foreground">Auto-send on approval</Label>
                   <Switch checked={cfg.enabled} onCheckedChange={(v) => patch(cfg.doc_type, { enabled: v })} />
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label className="text-[10px] font-mono text-zinc-400">Signer roles (in signing order, comma-separated)</Label>
+                <Label className="text-[10px] font-mono text-muted-foreground">Signer roles (in signing order, comma-separated)</Label>
                 <Input
                   value={cfg.signer_roles.join(', ')}
                   onChange={(e) => patch(cfg.doc_type, { signer_roles: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                  className="bg-zinc-950 border-zinc-800 font-mono text-xs mt-1"
+                  className="bg-background border-border font-mono text-xs mt-1"
                   placeholder="project_manager, owner_representative, contractor"
                 />
               </div>
               {meta.hasAmount && (
                 <div>
-                  <Label className="text-[10px] font-mono text-zinc-400">Minimum amount threshold (only require e-sign above this)</Label>
+                  <Label className="text-[10px] font-mono text-muted-foreground">Minimum amount threshold (only require e-sign above this)</Label>
                   <Input
                     type="number"
                     value={cfg.min_amount_threshold}
                     onChange={(e) => patch(cfg.doc_type, { min_amount_threshold: Number(e.target.value) || 0 })}
-                    className="bg-zinc-950 border-zinc-800 font-mono text-xs mt-1"
+                    className="bg-background border-border font-mono text-xs mt-1"
                   />
                 </div>
               )}
               {meta.autoLabel && (
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-mono text-zinc-400">{meta.autoLabel}</Label>
+                  <Label className="text-[10px] font-mono text-muted-foreground">{meta.autoLabel}</Label>
                   <Switch checked={cfg.auto_action} onCheckedChange={(v) => patch(cfg.doc_type, { auto_action: v })} />
                 </div>
               )}
               <div className="flex justify-end pt-1">
-                <Button onClick={() => save(cfg)} disabled={savingType === cfg.doc_type} className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+                <Button onClick={() => save(cfg)} disabled={savingType === cfg.doc_type} className="bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs">
                   {savingType === cfg.doc_type ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null} Save
                 </Button>
               </div>

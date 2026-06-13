@@ -14,7 +14,7 @@ export default function LeasesPage() {
     
     return (
         <div className="flex flex-col items-center justify-center py-24">
-            <p className="text-zinc-500 font-mono text-sm">Redirecting to Tenants...</p>
+            <p className="text-muted-foreground font-mono text-sm">Redirecting to Tenants...</p>
         </div>
     )
 }

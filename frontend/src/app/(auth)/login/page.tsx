@@ -136,7 +136,7 @@ function LoginForm() {
     return (
         <div className="w-full">
             {/* ---- Tab switcher ---- */}
-            <div className="flex rounded-xl bg-zinc-900/60 border border-zinc-800 p-1 mb-8">
+            <div className="flex rounded-xl bg-card/60 border border-border p-1 mb-8">
                 {(['credentials', 'sso'] as AuthTab[]).map((tab) => (
                     <button
                         key={tab}
@@ -147,8 +147,8 @@ function LoginForm() {
                         }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                             activeTab === tab
-                                ? 'bg-zinc-800 text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-300'
+                                ? 'bg-muted text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-muted-foreground'
                         }`}
                     >
                         {tab === 'credentials' ? (
@@ -171,7 +171,7 @@ function LoginForm() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400 flex items-start gap-3"
+                        className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-600 dark:text-red-400 flex items-start gap-3"
                     >
                         <Shield className="w-5 h-5 shrink-0 mt-0.5" />
                         {error}
@@ -190,23 +190,23 @@ function LoginForm() {
                         transition={{ duration: 0.2 }}
                     >
                         <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-white mb-1">Welcome back</h2>
-                            <p className="text-sm text-zinc-400">Sign in to your account to continue.</p>
+                            <h2 className="text-2xl font-bold text-foreground mb-1">Welcome back</h2>
+                            <p className="text-sm text-muted-foreground">Sign in to your account to continue.</p>
                         </div>
 
                         <form onSubmit={handleCredentialsSubmit} className="space-y-5">
                             {/* Email */}
                             <div>
-                                <label className="block text-xs font-medium mb-1.5 text-zinc-400">Email Address</label>
+                                <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Email Address</label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <input
                                         type="email"
                                         required
                                         value={email}
                                         onChange={(e) => { setEmail(e.target.value); setError(null); }}
                                         placeholder="you@company.com"
-                                        className="w-full pl-10 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                                        className="w-full pl-10 pr-4 py-3 bg-card/50 border border-border rounded-xl text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                                     />
                                 </div>
                             </div>
@@ -214,25 +214,25 @@ function LoginForm() {
                             {/* Password */}
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <label className="text-xs font-medium text-zinc-400">Password</label>
+                                    <label className="text-xs font-medium text-muted-foreground">Password</label>
                                     <Link href="/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors">
                                         Forgot password?
                                     </Link>
                                 </div>
                                 <div className="relative">
-                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         required
                                         value={password}
                                         onChange={(e) => { setPassword(e.target.value); setError(null); }}
                                         placeholder="••••••••"
-                                        className="w-full pl-10 pr-12 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                                        className="w-full pl-10 pr-12 py-3 bg-card/50 border border-border rounded-xl text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors"
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground transition-colors"
                                     >
                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
@@ -246,9 +246,9 @@ function LoginForm() {
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-primary focus:ring-primary/50 focus:ring-offset-0"
+                                    className="h-4 w-4 rounded border-border bg-card text-primary focus:ring-primary/50 focus:ring-offset-0"
                                 />
-                                <label htmlFor="rememberMe" className="text-sm text-zinc-500">Remember me for 30 days</label>
+                                <label htmlFor="rememberMe" className="text-sm text-muted-foreground">Remember me for 30 days</label>
                             </div>
 
                             {/* Submit */}
@@ -269,10 +269,10 @@ function LoginForm() {
                         {/* Divider */}
                         <div className="relative my-8">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-zinc-800" />
+                                <div className="w-full border-t border-border" />
                             </div>
                             <div className="relative flex justify-center">
-                                <span className="bg-zinc-950 px-4 text-xs text-zinc-600 uppercase tracking-wider">
+                                <span className="bg-background px-4 text-xs text-muted-foreground uppercase tracking-wider">
                                     Or continue with
                                 </span>
                             </div>
@@ -282,7 +282,7 @@ function LoginForm() {
                         <button
                             type="button"
                             onClick={() => signIn('google', { callbackUrl })}
-                            className="w-full border border-zinc-800 bg-zinc-900/30 text-zinc-300 font-medium py-3 rounded-xl hover:bg-zinc-800 hover:border-zinc-700 transition-all flex items-center justify-center gap-2.5 text-sm"
+                            className="w-full border border-border bg-card/30 text-muted-foreground font-medium py-3 rounded-xl hover:bg-muted hover:border-border transition-all flex items-center justify-center gap-2.5 text-sm"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -297,17 +297,17 @@ function LoginForm() {
                         <button
                             type="button"
                             onClick={() => { setActiveTab('sso'); setError(null); }}
-                            className="w-full border border-zinc-800 bg-zinc-900/30 text-zinc-300 font-medium py-3 rounded-xl hover:bg-zinc-800 hover:border-zinc-700 transition-all flex items-center justify-center gap-2.5 text-sm"
+                            className="w-full border border-border bg-card/30 text-muted-foreground font-medium py-3 rounded-xl hover:bg-muted hover:border-border transition-all flex items-center justify-center gap-2.5 text-sm"
                         >
                             <Building2 className="w-4 h-4 text-primary" />
                             Enterprise SSO
                         </button>
 
                         {/* Sign up link */}
-                        <p className="mt-8 text-center text-sm text-zinc-500">
+                        <p className="mt-8 text-center text-sm text-muted-foreground">
                             Don&apos;t have an account?{' '}
                             <Link href="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                                Start free trial
+                                Get started
                             </Link>
                         </p>
                     </motion.div>
@@ -323,19 +323,19 @@ function LoginForm() {
                         transition={{ duration: 0.2 }}
                     >
                         <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-white mb-1">Enterprise SSO</h2>
-                            <p className="text-sm text-zinc-400">Sign in with your organization&apos;s identity provider.</p>
+                            <h2 className="text-2xl font-bold text-foreground mb-1">Enterprise SSO</h2>
+                            <p className="text-sm text-muted-foreground">Sign in with your organization&apos;s identity provider.</p>
                         </div>
 
                         <form onSubmit={handleSSOSubmit} className="space-y-5">
                             {/* Org slug */}
                             <div>
-                                <label className="block text-xs font-medium mb-1.5 text-zinc-400">
+                                <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
                                     Organization Identifier
                                 </label>
                                 <div className="flex">
                                     <div className="relative flex-1">
-                                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+                                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <input
                                             type="text"
                                             required
@@ -345,14 +345,14 @@ function LoginForm() {
                                                 setError(null);
                                             }}
                                             placeholder="your-company"
-                                            className="w-full pl-10 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-l-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                                            className="w-full pl-10 pr-4 py-3 bg-card/50 border border-border rounded-l-xl text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                                         />
                                     </div>
-                                    <span className="px-4 py-3 bg-zinc-900 border border-l-0 border-zinc-800 rounded-r-xl text-zinc-500 text-xs font-mono whitespace-nowrap flex items-center">
+                                    <span className="px-4 py-3 bg-card border border-l-0 border-border rounded-r-xl text-muted-foreground text-xs font-mono whitespace-nowrap flex items-center">
                                         .propmetrik.com
                                     </span>
                                 </div>
-                                <p className="mt-2 text-xs text-zinc-600">
+                                <p className="mt-2 text-xs text-muted-foreground">
                                     Enter the unique identifier provided by your organization admin.
                                 </p>
                             </div>
@@ -362,8 +362,8 @@ function LoginForm() {
                                 <div className="flex items-start gap-3">
                                     <Shield className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-xs text-zinc-300 font-medium mb-1">How SSO works</p>
-                                        <p className="text-xs text-zinc-500 leading-relaxed">
+                                        <p className="text-xs text-muted-foreground font-medium mb-1">How SSO works</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
                                             You&apos;ll be redirected to your organization&apos;s identity provider (Okta, Azure AD, Google Workspace, etc.) to authenticate securely.
                                         </p>
                                     </div>
@@ -389,15 +389,15 @@ function LoginForm() {
                         <button
                             type="button"
                             onClick={() => { setActiveTab('credentials'); setError(null); }}
-                            className="mt-6 mx-auto flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors"
+                            className="mt-6 mx-auto flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <ArrowLeft className="w-4 h-4" />
                             Back to email login
                         </button>
 
                         {/* Help */}
-                        <div className="mt-8 pt-6 border-t border-zinc-800/50 text-center">
-                            <p className="text-xs text-zinc-600">
+                        <div className="mt-8 pt-6 border-t border-border/50 text-center">
+                            <p className="text-xs text-muted-foreground">
                                 Need help? Contact{' '}
                                 <a href="mailto:support@propmetrik.com" className="text-primary hover:underline">
                                     support@propmetrik.com
@@ -416,9 +416,9 @@ function LoginForm() {
 /* ================================================ */
 export default function LoginPage() {
     return (
-        <div className="flex min-h-screen bg-zinc-950 text-white">
+        <div className="flex min-h-screen bg-background text-foreground">
             {/* ====== Left panel — Hero ====== */}
-            <div className="hidden lg:flex lg:w-[45%] xl:w-[48%] relative overflow-hidden flex-col justify-between">
+            <div className="dark hidden lg:flex lg:w-[45%] xl:w-[48%] relative overflow-hidden flex-col justify-between">
                 {/* Background */}
                 <div className="absolute inset-0">
                     <motion.div
@@ -461,14 +461,14 @@ export default function LoginPage() {
                                 <span className="text-xs font-medium text-primary">Trusted by 500+ professionals</span>
                             </div>
 
-                            <h1 className="text-4xl xl:text-5xl font-bold text-white tracking-tight leading-tight mb-6">
+                            <h1 className="text-4xl xl:text-5xl font-bold text-foreground tracking-tight leading-tight mb-6">
                                 Your property intelligence{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                     command center
                                 </span>
                             </h1>
 
-                            <p className="text-lg text-zinc-400 leading-relaxed max-w-md mb-10">
+                            <p className="text-lg text-muted-foreground leading-relaxed max-w-md mb-10">
                                 Access real-time valuations, market data, and deal insights — all in one platform built for Ghana.
                             </p>
 
@@ -484,7 +484,7 @@ export default function LoginPage() {
                                         <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                                             {feat.icon}
                                         </div>
-                                        <span className="text-sm text-zinc-300 font-medium">{feat.text}</span>
+                                        <span className="text-sm text-muted-foreground font-medium">{feat.text}</span>
                                     </motion.div>
                                 ))}
                             </div>
@@ -496,9 +496,9 @@ export default function LoginPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.8 }}
-                        className="bg-zinc-900/50 backdrop-blur border border-zinc-800/50 rounded-xl p-5"
+                        className="bg-card/50 backdrop-blur border border-border/50 rounded-xl p-5"
                     >
-                        <p className="text-sm text-zinc-300 italic leading-relaxed mb-3">
+                        <p className="text-sm text-muted-foreground italic leading-relaxed mb-3">
                             &ldquo;The valuation reports are institutional quality. Our clients and banks trust the data — it&apos;s a game changer.&rdquo;
                         </p>
                         <div className="flex items-center gap-3">
@@ -506,8 +506,8 @@ export default function LoginPage() {
                                 KM
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-white">Kwame Mensah</div>
-                                <div className="text-[10px] text-zinc-500">Snr. Valuer, Capital Estate Partners</div>
+                                <div className="text-xs font-bold text-foreground">Kwame Mensah</div>
+                                <div className="text-[10px] text-muted-foreground">Snr. Valuer, Capital Estate Partners</div>
                             </div>
                         </div>
                     </motion.div>
@@ -517,7 +517,7 @@ export default function LoginPage() {
             {/* ====== Right panel — Form ====== */}
             <div className="flex-1 flex flex-col min-h-screen">
                 {/* Mobile header */}
-                <div className="lg:hidden flex items-center justify-between p-4 border-b border-zinc-900">
+                <div className="lg:hidden flex items-center justify-between p-4 border-b border-border">
                     <Link href="/">
                         <Image
                             src="/branding/logo-dark-bg.svg"
@@ -544,7 +544,7 @@ export default function LoginPage() {
                     >
                         <Suspense
                             fallback={
-                                <div className="text-center text-zinc-500 py-20">
+                                <div className="text-center text-muted-foreground py-20">
                                     <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                                     Loading...
                                 </div>
@@ -556,7 +556,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Bottom bar */}
-                <div className="p-4 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-zinc-600 uppercase tracking-wider">
+                <div className="p-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-muted-foreground uppercase tracking-wider">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
                             <Lock className="w-3 h-3" />
@@ -567,10 +567,10 @@ export default function LoginPage() {
                         <span className="text-zinc-800">|</span>
                         <span>SOC 2 Type II</span>
                     </div>
-                    <div className="flex items-center gap-3 text-zinc-600 normal-case">
-                        <Link href="/terms" className="hover:text-zinc-400 transition-colors">Terms</Link>
+                    <div className="flex items-center gap-3 text-muted-foreground normal-case">
+                        <Link href="/terms" className="hover:text-muted-foreground transition-colors">Terms</Link>
                         <span className="text-zinc-800">·</span>
-                        <Link href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</Link>
+                        <Link href="/privacy" className="hover:text-muted-foreground transition-colors">Privacy</Link>
                     </div>
                 </div>
             </div>

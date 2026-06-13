@@ -172,11 +172,11 @@ export default function ContributionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-mono text-2xl text-amber-500 tracking-wider">USER CONTRIBUTIONS REVIEW</h1>
-        <p className="font-mono text-[10px] text-zinc-500 mt-1">
+        <p className="font-mono text-[10px] text-muted-foreground mt-1">
           COMMUNITY DATA VALIDATION • QUALITY CONTROL • CONTRIBUTOR REWARDS
         </p>
       </div>
@@ -231,8 +231,8 @@ export default function ContributionsPage() {
                 className={cn(
                   'px-4 py-2 font-mono text-[10px] tracking-wider transition-colors border whitespace-nowrap',
                   selectedContext === option.id
-                    ? 'bg-amber-500 text-white border-amber-500 font-bold'
-                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                    ? 'bg-amber-500 text-foreground border-amber-500 font-bold'
+                    : 'bg-card text-muted-foreground border-border hover:border-border hover:text-muted-foreground'
                 )}
               >
                 {option.label}
@@ -246,42 +246,42 @@ export default function ContributionsPage() {
               <div className="space-y-4">
                 {/* Sync Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="p-3 bg-zinc-800/50 border border-zinc-700">
+                  <div className="p-3 bg-muted/50 border border-border">
                     <div className="flex items-center gap-2 mb-1">
-                      <Building2 className="h-3 w-3 text-zinc-500" />
-                      <span className="font-mono text-[9px] text-zinc-500">TOTAL</span>
+                      <Building2 className="h-3 w-3 text-muted-foreground" />
+                      <span className="font-mono text-[9px] text-muted-foreground">TOTAL</span>
                     </div>
-                    <span className="font-mono text-xl text-white">{crmSyncStats.total_properties}</span>
+                    <span className="font-mono text-xl text-foreground">{crmSyncStats.total_properties}</span>
                   </div>
-                  <div className="p-3 bg-zinc-800/50 border border-green-500/30">
+                  <div className="p-3 bg-muted/50 border border-green-500/30">
                     <div className="flex items-center gap-2 mb-1">
                       <CheckCircle className="h-3 w-3 text-green-500" />
-                      <span className="font-mono text-[9px] text-zinc-500">SYNCED</span>
+                      <span className="font-mono text-[9px] text-muted-foreground">SYNCED</span>
                     </div>
-                    <span className="font-mono text-xl text-green-400">{crmSyncStats.synced_count}</span>
+                    <span className="font-mono text-xl text-green-600 dark:text-green-400">{crmSyncStats.synced_count}</span>
                   </div>
-                  <div className="p-3 bg-zinc-800/50 border border-blue-500/30">
+                  <div className="p-3 bg-muted/50 border border-blue-500/30">
                     <div className="flex items-center gap-2 mb-1">
                       <Clock className="h-3 w-3 text-blue-500" />
-                      <span className="font-mono text-[9px] text-zinc-500">PENDING</span>
+                      <span className="font-mono text-[9px] text-muted-foreground">PENDING</span>
                     </div>
-                    <span className="font-mono text-xl text-blue-400">{crmSyncStats.pending_count}</span>
+                    <span className="font-mono text-xl text-blue-600 dark:text-blue-400">{crmSyncStats.pending_count}</span>
                   </div>
-                  <div className="p-3 bg-zinc-800/50 border border-red-500/30">
+                  <div className="p-3 bg-muted/50 border border-red-500/30">
                     <div className="flex items-center gap-2 mb-1">
                       <AlertCircle className="h-3 w-3 text-red-500" />
-                      <span className="font-mono text-[9px] text-zinc-500">FAILED</span>
+                      <span className="font-mono text-[9px] text-muted-foreground">FAILED</span>
                     </div>
-                    <span className="font-mono text-xl text-red-400">{crmSyncStats.failed_count}</span>
+                    <span className="font-mono text-xl text-red-600 dark:text-red-400">{crmSyncStats.failed_count}</span>
                   </div>
                 </div>
 
                 {/* Sync Actions */}
-                <div className="flex items-center gap-3 pt-2 border-t border-zinc-800">
+                <div className="flex items-center gap-3 pt-2 border-t border-border">
                   <Button
                     onClick={handleBulkSync}
                     disabled={syncingAll || crmSyncStats.pending_count === 0}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-mono text-[10px] h-8"
+                    className="bg-blue-600 hover:bg-blue-700 text-foreground font-mono text-[10px] h-8"
                   >
                     {syncingAll ? (
                       <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
@@ -296,7 +296,7 @@ export default function ContributionsPage() {
                       onClick={handleRetryFailed}
                       disabled={retryingFailed}
                       variant="outline"
-                      className="border-red-500/50 text-red-400 hover:bg-red-500/10 font-mono text-[10px] h-8"
+                      className="border-red-500/50 text-red-600 dark:text-red-400 hover:bg-red-500/10 font-mono text-[10px] h-8"
                     >
                       {retryingFailed ? (
                         <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
@@ -310,28 +310,28 @@ export default function ContributionsPage() {
 
                 {/* Pending Properties Preview */}
                 {crmPendingProperties?.properties && crmPendingProperties.properties.length > 0 && (
-                  <div className="pt-3 border-t border-zinc-800">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-2">PENDING SYNC QUEUE</div>
+                  <div className="pt-3 border-t border-border">
+                    <div className="font-mono text-[10px] text-muted-foreground mb-2">PENDING SYNC QUEUE</div>
                     <div className="space-y-1">
                       {crmPendingProperties.properties.slice(0, 5).map((prop) => (
                         <div
                           key={prop.id}
-                          className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800"
+                          className="flex items-center justify-between p-2 bg-card/50 border border-border"
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Building2 className="h-3 w-3 text-zinc-500 flex-shrink-0" />
-                            <span className="font-mono text-xs text-white truncate">
+                            <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <span className="font-mono text-xs text-foreground truncate">
                               {prop.property_name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-zinc-500">
+                          <div className="flex items-center gap-2 text-muted-foreground">
                             <MapPin className="h-3 w-3" />
                             <span className="font-mono text-[10px]">{prop.city}</span>
                           </div>
                         </div>
                       ))}
                       {crmPendingProperties.properties.length > 5 && (
-                        <div className="font-mono text-[10px] text-zinc-500 text-center py-1">
+                        <div className="font-mono text-[10px] text-muted-foreground text-center py-1">
                           +{crmPendingProperties.properties.length - 5} more pending...
                         </div>
                       )}
@@ -346,7 +346,7 @@ export default function ContributionsPage() {
           <TerminalPanel title="Filter Contributions">
             <div className="flex items-center gap-4">
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                <SelectTrigger className="w-40 bg-muted border-border font-mono text-xs">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -359,7 +359,7 @@ export default function ContributionsPage() {
               </Select>
 
               <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger className="w-48 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                <SelectTrigger className="w-48 bg-muted border-border font-mono text-xs">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -380,20 +380,20 @@ export default function ContributionsPage() {
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-24 bg-zinc-800/30 animate-pulse" />
+                  <div key={i} className="h-24 bg-muted/30 animate-pulse" />
                 ))}
               </div>
             ) : contributions?.data?.length === 0 ? (
               <div className="text-center py-12">
                 <CheckCircle className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
-                <p className="font-mono text-sm text-zinc-500">No contributions found</p>
+                <p className="font-mono text-sm text-muted-foreground">No contributions found</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {contributions?.data?.map((contribution) => (
                   <div
                     key={contribution.id}
-                    className="p-4 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                    className="p-4 bg-muted/30 border border-border hover:border-border transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3 flex-1">
@@ -401,27 +401,27 @@ export default function ContributionsPage() {
 
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-sm text-white">
+                            <span className="font-mono text-sm text-foreground">
                               {contribution.contribution_type.replace(/_/g, ' ').toUpperCase()}
                             </span>
                             {contribution.validation_status === 'pending' && (
-                              <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 border border-yellow-500/30 font-mono text-[9px]">
+                              <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 border border-yellow-500/30 font-mono text-[9px]">
                                 PENDING
                               </span>
                             )}
                             {contribution.validation_status === 'approved' && (
-                              <span className="px-2 py-0.5 bg-green-900/30 text-green-400 border border-green-500/30 font-mono text-[9px]">
+                              <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-500/30 font-mono text-[9px]">
                                 APPROVED
                               </span>
                             )}
                             {contribution.validation_status === 'rejected' && (
-                              <span className="px-2 py-0.5 bg-red-900/30 text-red-400 border border-red-500/30 font-mono text-[9px]">
+                              <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-500/30 font-mono text-[9px]">
                                 REJECTED
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-4 font-mono text-[10px] text-zinc-500">
+                          <div className="flex items-center gap-4 font-mono text-[10px] text-muted-foreground">
                             {contribution.property_region && (
                               <>
                                 <div className="flex items-center gap-1">
@@ -439,9 +439,9 @@ export default function ContributionsPage() {
                               <>
                                 <span>•</span>
                                 <span className={cn(
-                                  contribution.confidence_score >= 0.8 ? 'text-green-400' :
-                                    contribution.confidence_score >= 0.5 ? 'text-yellow-400' :
-                                      'text-red-400'
+                                  contribution.confidence_score >= 0.8 ? 'text-green-600 dark:text-green-400' :
+                                    contribution.confidence_score >= 0.5 ? 'text-yellow-600 dark:text-yellow-400' :
+                                      'text-red-600 dark:text-red-400'
                                 )}>
                                   {(contribution.confidence_score * 100).toFixed(0)}% confidence
                                 </span>
@@ -456,26 +456,26 @@ export default function ContributionsPage() {
                           <button
                             onClick={() => approveMutation.mutate({ id: contribution.id, credits: 10 })}
                             disabled={approveMutation.isPending}
-                            className="p-2 bg-green-900/30 hover:bg-green-900/50 border border-green-500/30 hover:border-green-500 transition-colors disabled:opacity-50"
+                            className="p-2 bg-green-100 dark:bg-green-900/30 hover:bg-green-900/50 border border-green-500/30 hover:border-green-500 transition-colors disabled:opacity-50"
                           >
-                            <ThumbsUp className="w-4 h-4 text-green-400" />
+                            <ThumbsUp className="w-4 h-4 text-green-600 dark:text-green-400" />
                           </button>
                           <button
                             onClick={() => rejectMutation.mutate({ id: contribution.id, reason: 'Does not meet quality standards' })}
                             disabled={rejectMutation.isPending}
-                            className="p-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 hover:border-red-500 transition-colors disabled:opacity-50"
+                            className="p-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 hover:border-red-500 transition-colors disabled:opacity-50"
                           >
-                            <ThumbsDown className="w-4 h-4 text-red-400" />
+                            <ThumbsDown className="w-4 h-4 text-red-600 dark:text-red-400" />
                           </button>
-                          <button className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors">
-                            <Eye className="w-4 h-4 text-zinc-400" />
+                          <button className="p-2 bg-muted hover:bg-zinc-700 border border-border hover:border-amber-500 transition-colors">
+                            <Eye className="w-4 h-4 text-muted-foreground" />
                           </button>
                         </div>
                       )}
                     </div>
 
                     {/* Data Preview */}
-                    <div className="p-3 bg-zinc-900/50 border border-zinc-800 font-mono text-[10px] text-zinc-400">
+                    <div className="p-3 bg-card/50 border border-border font-mono text-[10px] text-muted-foreground">
                       <pre className="overflow-x-auto">
                         {JSON.stringify(contribution.data, null, 2).slice(0, 200)}
                         {JSON.stringify(contribution.data).length > 200 && '...'}
@@ -495,30 +495,30 @@ export default function ContributionsPage() {
               {leaderboard?.data?.map((contributor, index) => (
                 <div
                   key={contributor.id}
-                  className="flex items-center gap-3 p-3 bg-zinc-800/30 border border-zinc-800"
+                  className="flex items-center gap-3 p-3 bg-muted/30 border border-border"
                 >
                   <div className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center font-mono text-sm font-bold',
-                    index === 0 && 'bg-yellow-500/20 text-yellow-400',
+                    index === 0 && 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400',
                     index === 1 && 'bg-gray-400/20 text-gray-300',
-                    index === 2 && 'bg-orange-500/20 text-orange-400',
-                    index > 2 && 'bg-zinc-700 text-zinc-400'
+                    index === 2 && 'bg-orange-500/20 text-orange-600 dark:text-orange-400',
+                    index > 2 && 'bg-zinc-700 text-muted-foreground'
                   )}>
                     {index + 1}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="font-mono text-sm text-white truncate">
+                    <div className="font-mono text-sm text-foreground truncate">
                       {contributor.display_name || 'Anonymous'}
                     </div>
-                    <div className="font-mono text-[10px] text-zinc-500">
+                    <div className="font-mono text-[10px] text-muted-foreground">
                       {contributor.total_contributions} contributions
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 text-yellow-400" />
-                    <span className="font-mono text-xs text-white">
+                    <Star className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                    <span className="font-mono text-xs text-foreground">
                       {(contributor.total_credits || 0).toLocaleString()}
                     </span>
                   </div>

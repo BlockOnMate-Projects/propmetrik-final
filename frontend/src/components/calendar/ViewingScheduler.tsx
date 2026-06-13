@@ -122,7 +122,7 @@ export function ViewingScheduler({
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
           Viewing Booked!
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-muted-foreground mb-4">
           Your viewing has been scheduled for{' '}
           <span className="font-medium">
             {format(selectedSlot!.startTime, 'EEEE, MMMM d')} at{' '}
@@ -130,13 +130,13 @@ export function ViewingScheduler({
           </span>
         </p>
         {selectedSlot?.agentName && (
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Agent: {selectedSlot.agentName}
           </p>
         )}
         <button
           onClick={onCancel}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700"
         >
           Done
         </button>
@@ -150,7 +150,7 @@ export function ViewingScheduler({
       <div>
         <h3 className="text-lg font-semibold text-gray-900">Schedule a Viewing</h3>
         {propertyAddress && (
-          <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
             <MapPin className="h-4 w-4" />
             {propertyAddress}
           </p>
@@ -176,8 +176,8 @@ export function ViewingScheduler({
                   isSelected
                     ? 'border-blue-600 bg-blue-50 text-blue-600'
                     : hasSlots
-                    ? 'border-gray-200 hover:border-gray-300'
-                    : 'border-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'border-border hover:border-gray-300'
+                    : 'border-gray-100 text-muted-foreground cursor-not-allowed'
                 }`}
               >
                 <div className="text-xs font-medium">
@@ -186,7 +186,7 @@ export function ViewingScheduler({
                 <div className="text-lg font-semibold">
                   {format(date, 'd')}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {format(date, 'MMM')}
                 </div>
               </button>
@@ -206,15 +206,15 @@ export function ViewingScheduler({
             {[...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className="h-12 bg-gray-100 rounded-lg animate-pulse"
+                className="h-12 bg-muted rounded-lg animate-pulse"
               />
             ))}
           </div>
         ) : slots.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg">
-            <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-            <p className="text-gray-500">No available slots for this date</p>
-            <p className="text-sm text-gray-400">Try selecting another date</p>
+          <div className="text-center py-8 bg-muted rounded-lg">
+            <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-muted-foreground">No available slots for this date</p>
+            <p className="text-sm text-muted-foreground">Try selecting another date</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2">
@@ -228,14 +228,14 @@ export function ViewingScheduler({
                   className={`p-3 rounded-lg border text-center transition-colors ${
                     isSelected
                       ? 'border-blue-600 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                      : 'border-border hover:border-blue-300 hover:bg-blue-50'
                   }`}
                 >
                   <div className="font-medium">
                     {format(slot.startTime, 'h:mm a')}
                   </div>
                   {slot.agentName && (
-                    <div className="text-xs text-gray-500 mt-0.5 truncate">
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
                       {slot.agentName}
                     </div>
                   )}
@@ -256,7 +256,7 @@ export function ViewingScheduler({
               Full Name <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 value={contactName}
@@ -272,7 +272,7 @@ export function ViewingScheduler({
               Phone Number <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="tel"
                 value={contactPhone}
@@ -288,7 +288,7 @@ export function ViewingScheduler({
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="email"
                 value={contactEmail}
@@ -327,7 +327,7 @@ export function ViewingScheduler({
         {onCancel && (
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-muted"
           >
             Cancel
           </button>
@@ -335,7 +335,7 @@ export function ViewingScheduler({
         <button
           onClick={handleBooking}
           disabled={!selectedSlot || !contactName || !contactPhone || booking}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {booking ? (
             <>
@@ -368,12 +368,12 @@ export function ViewingSchedulerDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-background/50"
         onClick={onClose}
       />
       
       {/* Dialog */}
-      <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
         <ViewingScheduler
           {...props}
           onCancel={onClose}

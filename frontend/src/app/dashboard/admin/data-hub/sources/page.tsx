@@ -70,57 +70,57 @@ export default function DataSourcesPage() {
 
     const getClassificationColor = (classification: string) => {
         switch (classification) {
-            case 'Public': return 'text-green-400 bg-green-900/20 border-green-500/30'
-            case 'Internal': return 'text-blue-400 bg-blue-900/20 border-blue-500/30'
-            case 'Sensitive': return 'text-red-400 bg-red-900/20 border-red-500/30'
-            default: return 'text-zinc-400 bg-zinc-800/20 border-zinc-700/30'
+            case 'Public': return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20 border-green-500/30'
+            case 'Internal': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 border-blue-500/30'
+            case 'Sensitive': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border-red-500/30'
+            default: return 'text-muted-foreground bg-muted/20 border-border/30'
         }
     }
 
     const getUsageColor = (usage: string) => {
         switch (usage) {
-            case 'High': return 'text-red-400'
-            case 'Medium': return 'text-yellow-400'
-            case 'Low': return 'text-green-400'
-            default: return 'text-zinc-400'
+            case 'High': return 'text-red-600 dark:text-red-400'
+            case 'Medium': return 'text-yellow-600 dark:text-yellow-400'
+            case 'Low': return 'text-green-600 dark:text-green-400'
+            default: return 'text-muted-foreground'
         }
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pb-10">
+        <div className="min-h-screen bg-background text-foreground p-4 pb-10">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA SOURCES & CATALOG</h1>
-                    <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                    <p className="font-mono text-[10px] text-muted-foreground mt-1">
                         DATA INVENTORY • SCHEMA BROWSER • SOURCE MANAGEMENT
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <Link
                         href="/dashboard/admin/data-hub/quality"
-                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                        className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400"
                     >
                         <CheckCircle className="w-4 h-4" />
                         QUALITY
                     </Link>
                     <Link
                         href="/dashboard/admin/data-hub/lineage"
-                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                        className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400"
                     >
                         <GitBranch className="w-4 h-4" />
                         LINEAGE
                     </Link>
                     <Link
                         href="/dashboard/admin/data-hub/jobs"
-                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                        className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400"
                     >
                         <Activity className="w-4 h-4" />
                         ETL JOBS
                     </Link>
                     <Link
                         href="/dashboard/admin/data-hub/ingestion"
-                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                        className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400"
                     >
                         <Upload className="w-4 h-4" />
                         INGESTION
@@ -166,13 +166,13 @@ export default function DataSourcesPage() {
                 <TerminalPanel title="Search & Filter">
                     <div className="flex items-center gap-4">
                         <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <input
                                 type="text"
                                 placeholder="Search sources, fields, tags..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+                                className="w-full pl-10 pr-4 py-2 bg-muted border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500"
                             />
                         </div>
                         <div className="flex gap-1">
@@ -181,8 +181,8 @@ export default function DataSourcesPage() {
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
                                     className={`px-3 py-2 font-mono text-xs transition-colors ${selectedCategory === category
-                                        ? 'bg-amber-500 text-white'
-                                        : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                        ? 'bg-amber-500 text-foreground'
+                                        : 'bg-muted text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
                                     {category.toUpperCase()}
@@ -201,15 +201,15 @@ export default function DataSourcesPage() {
                         onClick={() => setSelectedEntry(entry.id)}
                         className={`p-4 border cursor-pointer transition-all ${selectedEntry === entry.id
                             ? 'border-amber-500 bg-amber-500/10'
-                            : 'border-zinc-800 bg-zinc-800/30 hover:border-zinc-700'
+                            : 'border-border bg-muted/30 hover:border-border'
                         }`}
                     >
                         <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-2">
-                                <Database className="w-5 h-5 text-blue-400" />
+                                <Database className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                 <div>
-                                    <div className="font-mono text-sm text-white">{entry.name}</div>
-                                    <div className="font-mono text-[10px] text-zinc-500">
+                                    <div className="font-mono text-sm text-foreground">{entry.name}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">
                                         {entry.source} • {entry.schema}
                                     </div>
                                 </div>
@@ -219,21 +219,21 @@ export default function DataSourcesPage() {
                             </span>
                         </div>
 
-                        <p className="font-mono text-[10px] text-zinc-400 mb-3 line-clamp-2">
+                        <p className="font-mono text-[10px] text-muted-foreground mb-3 line-clamp-2">
                             {entry.description}
                         </p>
 
                         <div className="grid grid-cols-3 gap-3 mb-3">
                             <div>
-                                <div className="font-mono text-[9px] text-zinc-500">RECORDS</div>
-                                <div className="font-mono text-sm text-white">{entry.records.toLocaleString()}</div>
+                                <div className="font-mono text-[9px] text-muted-foreground">RECORDS</div>
+                                <div className="font-mono text-sm text-foreground">{entry.records.toLocaleString()}</div>
                             </div>
                             <div>
-                                <div className="font-mono text-[9px] text-zinc-500">FIELDS</div>
-                                <div className="font-mono text-sm text-white">{entry.fields}</div>
+                                <div className="font-mono text-[9px] text-muted-foreground">FIELDS</div>
+                                <div className="font-mono text-sm text-foreground">{entry.fields}</div>
                             </div>
                             <div>
-                                <div className="font-mono text-[9px] text-zinc-500">USAGE</div>
+                                <div className="font-mono text-[9px] text-muted-foreground">USAGE</div>
                                 <div className={`font-mono text-sm ${getUsageColor(entry.usage)}`}>{entry.usage}</div>
                             </div>
                         </div>
@@ -241,12 +241,12 @@ export default function DataSourcesPage() {
                         <div className="flex items-center justify-between">
                             <div className="flex flex-wrap gap-1">
                                 {entry.tags.map((tag: string) => (
-                                    <span key={tag} className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 font-mono text-[9px]">
+                                    <span key={tag} className="px-1.5 py-0.5 bg-zinc-700 text-muted-foreground font-mono text-[9px]">
                                         {tag}
                                     </span>
                                 ))}
                             </div>
-                            <div className="flex items-center gap-1 text-zinc-500">
+                            <div className="flex items-center gap-1 text-muted-foreground">
                                 <Clock className="w-3 h-3" />
                                 <span className="font-mono text-[9px]">
                                     {mounted && entry.lastUpdated ? new Date(entry.lastUpdated).toLocaleDateString('en-GB') : 'Never'}
@@ -262,17 +262,17 @@ export default function DataSourcesPage() {
                 <TerminalPanel title={`Schema: ${(selectedEntryData as any).name}`}>
                     <div className="space-y-2">
                         {schemaFields.map((field: any) => (
-                            <div key={field.name} className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+                            <div key={field.name} className="flex items-center justify-between p-3 bg-muted/30 border border-border">
                                 <div className="flex items-center gap-4">
-                                    <div className="font-mono text-sm text-white min-w-[150px]">{field.name}</div>
-                                    <div className="font-mono text-xs text-blue-400">{field.type}</div>
-                                    <div className="font-mono text-[10px] text-zinc-500">{field.description}</div>
+                                    <div className="font-mono text-sm text-foreground min-w-[150px]">{field.name}</div>
+                                    <div className="font-mono text-xs text-blue-600 dark:text-blue-400">{field.type}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">{field.description}</div>
                                 </div>
                                 <div>
                                     {field.nullable ? (
-                                        <span className="px-2 py-1 bg-zinc-700 text-zinc-400 font-mono text-[9px]">NULLABLE</span>
+                                        <span className="px-2 py-1 bg-zinc-700 text-muted-foreground font-mono text-[9px]">NULLABLE</span>
                                     ) : (
-                                        <span className="px-2 py-1 bg-red-900/30 text-red-400 font-mono text-[9px]">REQUIRED</span>
+                                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-mono text-[9px]">REQUIRED</span>
                                     )}
                                 </div>
                             </div>

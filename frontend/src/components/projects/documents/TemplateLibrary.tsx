@@ -132,7 +132,7 @@ const CATEGORY_CONFIG: Record<string, { icon: React.ElementType; color: string; 
   },
   other: {
     icon: FolderOpen,
-    color: 'text-gray-600 bg-gray-50',
+    color: 'text-muted-foreground bg-muted',
     label: 'Other',
     description: 'Meeting minutes, correspondence, and general documents'
   }
@@ -352,7 +352,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
             <FolderOpen className="h-5 w-5 text-blue-600" />
             Document Templates
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Ghana-specific templates for construction and development projects
           </p>
         </div>
@@ -361,7 +361,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
       {/* Search and Filters */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search templates..."
             value={searchQuery}
@@ -404,7 +404,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : filteredTemplates && filteredTemplates.length > 0 ? (
           <div className="mt-6">
@@ -423,7 +423,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
                         </div>
                         <div>
                           <h3 className="font-semibold">{config.label}</h3>
-                          <p className="text-sm text-gray-500">{config.description}</p>
+                          <p className="text-sm text-muted-foreground">{config.description}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -460,7 +460,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
           <div className="text-center py-12">
             <FileText className="h-12 w-12 mx-auto text-gray-300 mb-4" />
             <h3 className="font-medium text-gray-700 mb-2">No Templates Found</h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {searchQuery
                 ? 'Try adjusting your search or filter criteria'
                 : 'No templates available for this category'}
@@ -484,10 +484,10 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
 
           <div className="space-y-6 py-4">
             {/* Template Info */}
-            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-start gap-4 p-4 bg-muted rounded-lg">
               <div className={cn(
                 'p-2 rounded-lg',
-                CATEGORY_CONFIG[selectedTemplate?.category || 'other']?.color || 'bg-gray-100'
+                CATEGORY_CONFIG[selectedTemplate?.category || 'other']?.color || 'bg-muted'
               )}>
                 {React.createElement(
                   CATEGORY_CONFIG[selectedTemplate?.category || 'other']?.icon || FileText,
@@ -496,7 +496,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
               </div>
               <div className="flex-1">
                 <h4 className="font-medium">{selectedTemplate?.name}</h4>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {selectedTemplate?.description}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
@@ -535,7 +535,7 @@ export function TemplateLibrary({ projectId, onTemplateSelect }: TemplateLibrary
 
                 {requestSignatures && (
                   <div className="space-y-4 pl-6 border-l-2 border-blue-100">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Add signers for this document
                     </p>
 

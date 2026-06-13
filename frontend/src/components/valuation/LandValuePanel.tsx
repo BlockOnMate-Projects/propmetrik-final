@@ -154,18 +154,18 @@ function ConfidenceBar({ confidence, size = 'md' }: { confidence: number; size?:
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <span className="font-mono text-[10px] text-zinc-400 w-8">{percentage}%</span>
+      <span className="font-mono text-[10px] text-muted-foreground w-8">{percentage}%</span>
     </div>
   );
 }
 
 function MethodStatusBadge({ status }: { status: MethodStatus }) {
   const styles = {
-    idle: 'bg-zinc-700 text-zinc-400',
-    loading: 'bg-blue-500/20 text-blue-400',
-    success: 'bg-green-500/20 text-green-400',
-    failed: 'bg-red-500/20 text-red-400',
-    excluded: 'bg-amber-500/20 text-amber-400',
+    idle: 'bg-zinc-700 text-muted-foreground',
+    loading: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    success: 'bg-green-500/20 text-green-600 dark:text-green-400',
+    failed: 'bg-red-500/20 text-red-600 dark:text-red-400',
+    excluded: 'bg-amber-500/20 text-amber-600 dark:text-amber-400',
   };
   
   const labels = {
@@ -188,7 +188,7 @@ function WeightBadge({ weight }: { weight: number }) {
   if (weight === 0) return null;
   
   return (
-    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[9px] font-mono">
+    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded text-[9px] font-mono">
       {(weight * 100).toFixed(0)}%
     </span>
   );
@@ -225,7 +225,7 @@ function MethodCard({ data, isSelected, onSelect, onViewDetails, disabled }: Met
         "relative p-4 border rounded-lg transition-all cursor-pointer",
         isSelected
           ? "border-amber-500 bg-amber-500/10"
-          : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600",
+          : "border-border bg-muted/50 hover:border-zinc-600",
         disabled && "opacity-50 cursor-not-allowed",
         data.status === 'failed' && "border-red-500/50"
       )}
@@ -242,8 +242,8 @@ function MethodCard({ data, isSelected, onSelect, onViewDetails, disabled }: Met
       {/* Header */}
       <div className="flex items-start justify-between mb-3 ml-6">
         <div className="flex items-center gap-2">
-          <span className="text-zinc-400">{data.icon}</span>
-          <span className="text-xs font-medium text-white uppercase tracking-wide">
+          <span className="text-muted-foreground">{data.icon}</span>
+          <span className="text-xs font-medium text-foreground uppercase tracking-wide">
             {data.label}
           </span>
         </div>
@@ -252,11 +252,11 @@ function MethodCard({ data, isSelected, onSelect, onViewDetails, disabled }: Met
       
       {/* Value */}
       <div className="mb-3 ml-6">
-        <div className="text-2xl font-mono font-semibold text-white">
+        <div className="text-2xl font-mono font-semibold text-foreground">
           {formatCurrency(data.value)}
         </div>
         {data.valuePerSqm !== null && (
-          <div className="text-[10px] font-mono text-zinc-500">
+          <div className="text-[10px] font-mono text-muted-foreground">
             {formatPerSqm(data.valuePerSqm)}
           </div>
         )}
@@ -266,12 +266,12 @@ function MethodCard({ data, isSelected, onSelect, onViewDetails, disabled }: Met
       {data.status === 'success' && !isUserEntered && (
         <div className="space-y-2 ml-6">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-zinc-500">Weight:</span>
+            <span className="text-[10px] text-muted-foreground">Weight:</span>
             <WeightBadge weight={data.weight} />
           </div>
           {data.confidence !== null && (
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-zinc-500">Conf:</span>
+              <span className="text-[10px] text-muted-foreground">Conf:</span>
               <div className="flex-1 max-w-[80px]">
                 <ConfidenceBar confidence={data.confidence} size="sm" />
               </div>
@@ -282,7 +282,7 @@ function MethodCard({ data, isSelected, onSelect, onViewDetails, disabled }: Met
       
       {/* Error message */}
       {data.status === 'failed' && data.error && (
-        <div className="mt-2 ml-6 text-[10px] text-red-400 flex items-start gap-1">
+        <div className="mt-2 ml-6 text-[10px] text-red-600 dark:text-red-400 flex items-start gap-1">
           <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
           <span>{data.error}</span>
         </div>
@@ -309,7 +309,7 @@ function MethodCard({ data, isSelected, onSelect, onViewDetails, disabled }: Met
             e.stopPropagation();
             onViewDetails();
           }}
-          className="mt-2 ml-6 flex items-center gap-1 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 rounded text-xs text-zinc-300 transition-colors"
+          className="mt-2 ml-6 flex items-center gap-1 px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 rounded text-xs text-muted-foreground transition-colors"
         >
           <Edit2 className="w-3 h-3" />
           Enter Value
@@ -333,29 +333,29 @@ interface ComparableDetailsModalProps {
 
 function ComparableDetailsModal({ open, onClose, comparables, methodDetail, strength }: ComparableDetailsModalProps) {
   const strengthColors = {
-    weak: 'text-red-400 bg-red-500/10',
-    balanced: 'text-amber-400 bg-amber-500/10',
-    strong: 'text-green-400 bg-green-500/10',
+    weak: 'text-red-600 dark:text-red-400 bg-red-500/10',
+    balanced: 'text-amber-600 dark:text-amber-400 bg-amber-500/10',
+    strong: 'text-green-600 dark:text-green-400 bg-green-500/10',
   };
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-700">
+      <DialogContent className="max-w-2xl bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
+          <DialogTitle className="text-foreground flex items-center gap-2">
             <Scale className="w-5 h-5 text-amber-500" />
             Comparable Land Sales Analysis
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-muted-foreground">
             {comparables.length} comparable land sales analyzed
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           {/* Summary */}
-          <div className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div>
-              <div className="text-xs text-zinc-500 uppercase">Comparable Strength</div>
+              <div className="text-xs text-muted-foreground uppercase">Comparable Strength</div>
               <span className={cn("px-2 py-0.5 rounded text-xs font-medium uppercase mt-1 inline-block", strengthColors[strength])}>
                 {strength}
               </span>
@@ -363,14 +363,14 @@ function ComparableDetailsModal({ open, onClose, comparables, methodDetail, stre
             {methodDetail && (
               <>
                 <div className="text-right">
-                  <div className="text-xs text-zinc-500 uppercase">Indicated Value</div>
-                  <div className="text-lg font-mono font-semibold text-white">
+                  <div className="text-xs text-muted-foreground uppercase">Indicated Value</div>
+                  <div className="text-lg font-mono font-semibold text-foreground">
                     {formatCurrency(methodDetail.value)}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-zinc-500 uppercase">Per sqm</div>
-                  <div className="font-mono text-amber-400">
+                  <div className="text-xs text-muted-foreground uppercase">Per sqm</div>
+                  <div className="font-mono text-amber-600 dark:text-amber-400">
                     {formatPerSqm(methodDetail.value_per_sqm)}
                   </div>
                 </div>
@@ -379,28 +379,28 @@ function ComparableDetailsModal({ open, onClose, comparables, methodDetail, stre
           </div>
           
           {/* Comparables table */}
-          <div className="border border-zinc-700 rounded-lg overflow-hidden">
+          <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-zinc-800">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-3 py-2 text-left text-zinc-400 font-medium">ID</th>
-                  <th className="px-3 py-2 text-right text-zinc-400 font-medium">Distance</th>
-                  <th className="px-3 py-2 text-right text-zinc-400 font-medium">Sale Date</th>
-                  <th className="px-3 py-2 text-right text-zinc-400 font-medium">Price/sqm</th>
-                  <th className="px-3 py-2 text-right text-zinc-400 font-medium">Adjusted</th>
-                  <th className="px-3 py-2 text-right text-zinc-400 font-medium">Score</th>
+                  <th className="px-3 py-2 text-left text-muted-foreground font-medium">ID</th>
+                  <th className="px-3 py-2 text-right text-muted-foreground font-medium">Distance</th>
+                  <th className="px-3 py-2 text-right text-muted-foreground font-medium">Sale Date</th>
+                  <th className="px-3 py-2 text-right text-muted-foreground font-medium">Price/sqm</th>
+                  <th className="px-3 py-2 text-right text-muted-foreground font-medium">Adjusted</th>
+                  <th className="px-3 py-2 text-right text-muted-foreground font-medium">Score</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-700">
+              <tbody className="divide-y divide-border">
                 {comparables.map((comp) => (
-                  <tr key={comp.id} className="hover:bg-zinc-800/50">
-                    <td className="px-3 py-2 font-mono text-zinc-300">{comp.id}</td>
-                    <td className="px-3 py-2 text-right text-zinc-400">{comp.distance_km.toFixed(1)} km</td>
-                    <td className="px-3 py-2 text-right text-zinc-400">{comp.sale_date}</td>
-                    <td className="px-3 py-2 text-right font-mono text-zinc-300">
+                  <tr key={comp.id} className="hover:bg-muted/50">
+                    <td className="px-3 py-2 font-mono text-muted-foreground">{comp.id}</td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">{comp.distance_km.toFixed(1)} km</td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">{comp.sale_date}</td>
+                    <td className="px-3 py-2 text-right font-mono text-muted-foreground">
                       {formatPerSqm(comp.sale_price_per_sqm)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-amber-400">
+                    <td className="px-3 py-2 text-right font-mono text-amber-600 dark:text-amber-400">
                       {formatPerSqm(comp.adjusted_price_per_sqm)}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -438,29 +438,29 @@ function ResidualDetailsModal({ open, onClose, methodDetail }: ResidualDetailsMo
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-zinc-900 border-zinc-700">
+      <DialogContent className="max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
+          <DialogTitle className="text-foreground flex items-center gap-2">
             <Building2 className="w-5 h-5 text-amber-500" />
             Residual (GDV-Based) Analysis
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-muted-foreground">
             Land value derived from development potential
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           {/* Summary */}
-          <div className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div>
-              <div className="text-xs text-zinc-500 uppercase">Residual Land Value</div>
-              <div className="text-xl font-mono font-semibold text-white mt-1">
+              <div className="text-xs text-muted-foreground uppercase">Residual Land Value</div>
+              <div className="text-xl font-mono font-semibold text-foreground mt-1">
                 {formatCurrency(methodDetail?.value)}
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-zinc-500 uppercase">Per sqm</div>
-              <div className="font-mono text-amber-400">
+              <div className="text-xs text-muted-foreground uppercase">Per sqm</div>
+              <div className="font-mono text-amber-600 dark:text-amber-400">
                 {formatPerSqm(methodDetail?.value_per_sqm)}
               </div>
             </div>
@@ -468,34 +468,34 @@ function ResidualDetailsModal({ open, onClose, methodDetail }: ResidualDetailsMo
           
           {/* Breakdown */}
           <div className="space-y-2">
-            <div className="flex justify-between py-2 border-b border-zinc-700">
-              <span className="text-zinc-400">Gross Development Value (GDV)</span>
-              <span className="font-mono text-white">{formatCurrency(specific.gdv)}</span>
+            <div className="flex justify-between py-2 border-b border-border">
+              <span className="text-muted-foreground">Gross Development Value (GDV)</span>
+              <span className="font-mono text-foreground">{formatCurrency(specific.gdv)}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-zinc-700">
-              <span className="text-zinc-400">Total Buildable Area</span>
-              <span className="font-mono text-white">{specific.total_buildable_sqm?.toLocaleString()} sqm</span>
+            <div className="flex justify-between py-2 border-b border-border">
+              <span className="text-muted-foreground">Total Buildable Area</span>
+              <span className="font-mono text-foreground">{specific.total_buildable_sqm?.toLocaleString()} sqm</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-zinc-700">
-              <span className="text-zinc-400">Less: Total Development Costs</span>
-              <span className="font-mono text-red-400">-{formatCurrency(specific.total_costs)}</span>
+            <div className="flex justify-between py-2 border-b border-border">
+              <span className="text-muted-foreground">Less: Total Development Costs</span>
+              <span className="font-mono text-red-600 dark:text-red-400">-{formatCurrency(specific.total_costs)}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-zinc-700">
-              <span className="text-zinc-400">Developer Profit Margin</span>
-              <span className="font-mono text-zinc-300">{((specific.developer_profit_pct || 0.20) * 100).toFixed(0)}%</span>
+            <div className="flex justify-between py-2 border-b border-border">
+              <span className="text-muted-foreground">Developer Profit Margin</span>
+              <span className="font-mono text-muted-foreground">{((specific.developer_profit_pct || 0.20) * 100).toFixed(0)}%</span>
             </div>
             <div className="flex justify-between py-2 pt-3 border-t border-amber-500/30">
-              <span className="text-amber-400 font-medium">Residual Land Value</span>
-              <span className="font-mono font-semibold text-amber-400">{formatCurrency(methodDetail?.value)}</span>
+              <span className="text-amber-600 dark:text-amber-400 font-medium">Residual Land Value</span>
+              <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(methodDetail?.value)}</span>
             </div>
           </div>
           
           {/* Confidence */}
           {methodDetail?.confidence && (
-            <div className="p-3 bg-zinc-800 rounded-lg">
+            <div className="p-3 bg-muted rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-zinc-500 uppercase">Confidence Score</span>
-                <span className="font-mono text-xs text-zinc-300">{(methodDetail.confidence * 100).toFixed(0)}%</span>
+                <span className="text-xs text-muted-foreground uppercase">Confidence Score</span>
+                <span className="font-mono text-xs text-muted-foreground">{(methodDetail.confidence * 100).toFixed(0)}%</span>
               </div>
               <ConfidenceBar confidence={methodDetail.confidence} size="md" />
             </div>
@@ -563,13 +563,13 @@ function UserOverrideModal({
   
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-zinc-900 border-zinc-700">
+      <DialogContent className="max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
+          <DialogTitle className="text-foreground flex items-center gap-2">
             <Edit2 className="w-5 h-5 text-amber-500" />
             Enter Land Value
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-muted-foreground">
             User-entered values override all automated calculations
           </DialogDescription>
         </DialogHeader>
@@ -586,19 +586,19 @@ function UserOverrideModal({
           
           {/* Value input */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5">Land Value (GHS)</label>
+            <label className="block text-xs text-muted-foreground mb-1.5">Land Value (GHS)</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">₵</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₵</span>
               <input
                 type="number"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="0"
-                className="w-full pl-8 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-white font-mono focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                className="w-full pl-8 pr-4 py-2 bg-muted border border-border rounded text-foreground font-mono focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
               />
             </div>
             {numericValue > 0 && landAreaSqm > 0 && (
-              <div className="mt-1 text-xs text-zinc-500 font-mono">
+              <div className="mt-1 text-xs text-muted-foreground font-mono">
                 = {formatPerSqm(perSqm)} × {landAreaSqm.toLocaleString()} sqm
               </div>
             )}
@@ -606,24 +606,24 @@ function UserOverrideModal({
           
           {/* Justification */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-1.5">
-              Justification <span className="text-red-400">*</span>
+            <label className="block text-xs text-muted-foreground mb-1.5">
+              Justification <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <textarea
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
               placeholder="Provide professional justification for this value (e.g., based on recent transaction for adjacent plot at GHS X)"
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-muted border border-border rounded text-foreground text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 resize-none"
             />
-            <div className="mt-1 text-xs text-zinc-500">
+            <div className="mt-1 text-xs text-muted-foreground">
               {justification.length}/500 characters (min 10)
             </div>
           </div>
           
           {/* Error */}
           {error && (
-            <div className="text-xs text-red-400 flex items-center gap-1">
+            <div className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
               {error}
             </div>
@@ -673,7 +673,7 @@ function DisclosureAlert({ text, required }: DisclosureAlertProps) {
         <div className="text-[10px] text-amber-500 uppercase font-medium mb-1">
           RICS Disclosure Required
         </div>
-        <p className="text-xs text-zinc-300 leading-relaxed">{text}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{text}</p>
       </div>
     </div>
   );
@@ -795,18 +795,18 @@ export function LandValuePanel({
   const primaryMethod = result?.primary_method || 'comparable';
   
   return (
-    <div className={cn("bg-zinc-900 border border-zinc-800 rounded-lg", className)}>
+    <div className={cn("bg-card border border-border rounded-lg", className)}>
       {/* Header */}
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-3">
           <Target className="w-5 h-5 text-amber-500" />
           <div>
-            <h3 className="text-sm font-medium text-white">Land Value</h3>
+            <h3 className="text-sm font-medium text-foreground">Land Value</h3>
             {result && (
-              <span className="text-xs text-zinc-500 font-mono">
+              <span className="text-xs text-muted-foreground font-mono">
                 {formatCurrency(result.final_land_value)} ({formatPerSqm(result.final_land_value_per_sqm)})
               </span>
             )}
@@ -816,7 +816,7 @@ export function LandValuePanel({
         <div className="flex items-center gap-2">
           {result && (
             <div className="flex items-center gap-2 mr-4">
-              <span className="text-[10px] text-zinc-500 uppercase">Confidence</span>
+              <span className="text-[10px] text-muted-foreground uppercase">Confidence</span>
               <div className="w-16">
                 <ConfidenceBar confidence={result.confidence_score} size="sm" />
               </div>
@@ -837,9 +837,9 @@ export function LandValuePanel({
           </Button>
           
           {collapsed ? (
-            <ChevronDown className="w-4 h-4 text-zinc-400" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronUp className="w-4 h-4 text-zinc-400" />
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </div>
@@ -851,7 +851,7 @@ export function LandValuePanel({
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-red-500" />
-              <span className="text-xs text-red-300">{error}</span>
+              <span className="text-xs text-red-600 dark:text-red-300">{error}</span>
             </div>
           )}
           
@@ -883,29 +883,29 @@ export function LandValuePanel({
           
           {/* Reconciled Value */}
           {result && !result.is_user_override && (
-            <div className="p-4 bg-zinc-800 border border-amber-500/30 rounded-lg">
+            <div className="p-4 bg-muted border border-amber-500/30 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[10px] text-amber-500 uppercase font-medium mb-1">
                     Reconciled Land Value
                   </div>
-                  <div className="text-2xl font-mono font-semibold text-white">
+                  <div className="text-2xl font-mono font-semibold text-foreground">
                     {formatCurrency(result.final_land_value)}
                   </div>
-                  <div className="text-xs text-zinc-500 font-mono mt-1">
+                  <div className="text-xs text-muted-foreground font-mono mt-1">
                     {formatPerSqm(result.final_land_value_per_sqm)} × {plotSizeSqm.toLocaleString()} sqm
                   </div>
                 </div>
                 
                 <div className="text-right space-y-2">
                   <div>
-                    <div className="text-[10px] text-zinc-500 uppercase">Confidence</div>
+                    <div className="text-[10px] text-muted-foreground uppercase">Confidence</div>
                     <div className="w-24 mt-1">
                       <ConfidenceBar confidence={result.confidence_score} size="md" />
                     </div>
                   </div>
                   {result.reconciliation && (
-                    <div className="text-[10px] text-zinc-400">
+                    <div className="text-[10px] text-muted-foreground">
                       Methods: {Object.entries(result.reconciliation.method_weights)
                         .map(([m, w]) => `${m} (${(w * 100).toFixed(0)}%)`)
                         .join(' + ')}
@@ -925,10 +925,10 @@ export function LandValuePanel({
                     <Edit2 className="w-3 h-3" />
                     User-Entered Land Value
                   </div>
-                  <div className="text-2xl font-mono font-semibold text-white">
+                  <div className="text-2xl font-mono font-semibold text-foreground">
                     {formatCurrency(result.final_land_value)}
                   </div>
-                  <div className="text-xs text-zinc-500 font-mono mt-1">
+                  <div className="text-xs text-muted-foreground font-mono mt-1">
                     {formatPerSqm(result.final_land_value_per_sqm)} × {plotSizeSqm.toLocaleString()} sqm
                   </div>
                 </div>
@@ -937,7 +937,7 @@ export function LandValuePanel({
                   variant="outline"
                   size="sm"
                   onClick={() => setShowUserOverride(true)}
-                  className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                  className="border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
                 >
                   <Edit2 className="w-3 h-3 mr-1" />
                   Edit
@@ -946,8 +946,8 @@ export function LandValuePanel({
               
               {result.user_justification && (
                 <div className="mt-3 pt-3 border-t border-amber-500/20">
-                  <div className="text-[10px] text-zinc-500 uppercase mb-1">Justification</div>
-                  <p className="text-xs text-zinc-300">{result.user_justification}</p>
+                  <div className="text-[10px] text-muted-foreground uppercase mb-1">Justification</div>
+                  <p className="text-xs text-muted-foreground">{result.user_justification}</p>
                 </div>
               )}
             </div>
@@ -962,7 +962,7 @@ export function LandValuePanel({
           )}
           
           {/* Info footer */}
-          <div className="flex items-center gap-1 text-[10px] text-zinc-500">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <HelpCircle className="w-3 h-3" />
             <span>
               Weights based on {result?.comparable_strength || 'balanced'} comparable evidence 

@@ -19,7 +19,7 @@ interface Project { id: string; name: string; }
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
-const STATUS_COLORS: Record<string, string> = { draft: 'bg-zinc-500/20 text-zinc-400', submitted: 'bg-blue-500/20 text-blue-400', approved: 'bg-green-500/20 text-green-400', rejected: 'bg-red-500/20 text-red-400' };
+const STATUS_COLORS: Record<string, string> = { draft: 'bg-zinc-500/20 text-muted-foreground', submitted: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', approved: 'bg-green-500/20 text-green-600 dark:text-green-400', rejected: 'bg-red-500/20 text-red-600 dark:text-red-400' };
 
 export default function TimesheetsPage() {
   const { toast } = useToast();
@@ -129,68 +129,68 @@ export default function TimesheetsPage() {
 
   const activeClockIn = (entries?.data || []).find((e: any) => e.clock_in && !e.clock_out && e.status === 'draft');
 
-  if (!projectId) return <div className="p-8 text-center text-zinc-500">Loading projects...</div>;
+  if (!projectId) return <div className="p-8 text-center text-muted-foreground">Loading projects...</div>;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-black min-h-screen">
+    <div className="p-4 md:p-6 space-y-6 bg-background min-h-screen">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-white">TIME TRACKING</h1>
-          <p className="text-[10px] font-mono text-zinc-500">CLOCK IN/OUT • GPS TRACKING • APPROVAL WORKFLOW</p>
+          <h1 className="text-lg font-bold text-foreground">TIME TRACKING</h1>
+          <p className="text-[10px] font-mono text-muted-foreground">CLOCK IN/OUT • GPS TRACKING • APPROVAL WORKFLOW</p>
           <Select value={projectId} onValueChange={setProjectId}>
-            <SelectTrigger className="mt-2 w-[260px] bg-zinc-900 border-zinc-700 text-white text-xs h-8">
+            <SelectTrigger className="mt-2 w-[260px] bg-card border-border text-foreground text-xs h-8">
               <SelectValue placeholder="Select project" />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-700">
-              {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-white text-xs">{p.name}</SelectItem>)}
+            <SelectContent className="bg-card border-border">
+              {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-foreground text-xs">{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="flex gap-2">
           {activeClockIn ? (
-            <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 text-xs hover:bg-red-500/10" onClick={() => clockOut.mutate(activeClockIn.id)}>
+            <Button size="sm" variant="outline" className="border-red-500/50 text-red-600 dark:text-red-400 text-xs hover:bg-red-500/10" onClick={() => clockOut.mutate(activeClockIn.id)}>
               <Clock className="h-3 w-3 mr-1" />CLOCK OUT
             </Button>
           ) : (
-            <Button size="sm" variant="outline" className="border-green-500/50 text-green-400 text-xs hover:bg-green-500/10" onClick={() => clockIn.mutate()}>
+            <Button size="sm" variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 text-xs hover:bg-green-500/10" onClick={() => clockIn.mutate()}>
               <Clock className="h-3 w-3 mr-1" />CLOCK IN
             </Button>
           )}
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">+ ENTRY</Button>
+              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-foreground text-xs">+ ENTRY</Button>
             </DialogTrigger>
-            <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
-              <DialogHeader><DialogTitle className="text-white">New Time Entry</DialogTitle></DialogHeader>
+            <DialogContent className="bg-card border-border max-w-lg">
+              <DialogHeader><DialogTitle className="text-foreground">New Time Entry</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label className="text-[10px] font-mono text-zinc-500">PROJECT</Label>
+                  <Label className="text-[10px] font-mono text-muted-foreground">PROJECT</Label>
                   <Select value={form.project_id || projectId} onValueChange={v => setForm({ ...form, project_id: v })}>
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue placeholder="Select project" /></SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-700">
-                      {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-white text-xs">{p.name}</SelectItem>)}
+                    <SelectTrigger className="bg-muted border-border text-foreground"><SelectValue placeholder="Select project" /></SelectTrigger>
+                    <SelectContent className="bg-muted border-border">
+                      {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-foreground text-xs">{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[10px] font-mono text-zinc-500">WORKER NAME / ID</Label>
-                  <Input placeholder="e.g. John Mensah or W-0042" className="bg-zinc-800 border-zinc-700 text-white" value={form.user_name || ''} onChange={e => setForm({ ...form, user_name: e.target.value })} />
+                  <Label className="text-[10px] font-mono text-muted-foreground">WORKER NAME / ID</Label>
+                  <Input placeholder="e.g. John Mensah or W-0042" className="bg-muted border-border text-foreground" value={form.user_name || ''} onChange={e => setForm({ ...form, user_name: e.target.value })} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-[10px] font-mono text-zinc-500">DATE</Label><Input type="date" className="bg-zinc-800 border-zinc-700 text-white" value={form.entry_date || ''} onChange={e => setForm({ ...form, entry_date: e.target.value })} /></div>
-                  <div><Label className="text-[10px] font-mono text-zinc-500">HOURS</Label><Input type="number" step="0.5" className="bg-zinc-800 border-zinc-700 text-white" value={form.hours_worked || ''} onChange={e => setForm({ ...form, hours_worked: e.target.value })} /></div>
+                  <div><Label className="text-[10px] font-mono text-muted-foreground">DATE</Label><Input type="date" className="bg-muted border-border text-foreground" value={form.entry_date || ''} onChange={e => setForm({ ...form, entry_date: e.target.value })} /></div>
+                  <div><Label className="text-[10px] font-mono text-muted-foreground">HOURS</Label><Input type="number" step="0.5" className="bg-muted border-border text-foreground" value={form.hours_worked || ''} onChange={e => setForm({ ...form, hours_worked: e.target.value })} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-[10px] font-mono text-zinc-500">ACTIVITY</Label>
-                    <Select value={form.activity_type || 'labor'} onValueChange={v => setForm({ ...form, activity_type: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="labor">Labor</SelectItem><SelectItem value="supervision">Supervision</SelectItem><SelectItem value="inspection">Inspection</SelectItem><SelectItem value="meeting">Meeting</SelectItem><SelectItem value="travel">Travel</SelectItem><SelectItem value="training">Training</SelectItem></SelectContent></Select></div>
-                  <div><Label className="text-[10px] font-mono text-zinc-500">COST CODE</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={form.cost_code || ''} onChange={e => setForm({ ...form, cost_code: e.target.value })} /></div>
+                  <div><Label className="text-[10px] font-mono text-muted-foreground">ACTIVITY</Label>
+                    <Select value={form.activity_type || 'labor'} onValueChange={v => setForm({ ...form, activity_type: v })}><SelectTrigger className="bg-muted border-border text-foreground"><SelectValue /></SelectTrigger><SelectContent className="bg-muted border-border"><SelectItem value="labor">Labor</SelectItem><SelectItem value="supervision">Supervision</SelectItem><SelectItem value="inspection">Inspection</SelectItem><SelectItem value="meeting">Meeting</SelectItem><SelectItem value="travel">Travel</SelectItem><SelectItem value="training">Training</SelectItem></SelectContent></Select></div>
+                  <div><Label className="text-[10px] font-mono text-muted-foreground">COST CODE</Label><Input className="bg-muted border-border text-foreground" value={form.cost_code || ''} onChange={e => setForm({ ...form, cost_code: e.target.value })} /></div>
                 </div>
-                <div><Label className="text-[10px] font-mono text-zinc-500">DESCRIPTION</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">DESCRIPTION</Label><Textarea className="bg-muted border-border text-foreground" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-[10px] font-mono text-zinc-500">HOURLY RATE</Label><Input type="number" step="0.01" className="bg-zinc-800 border-zinc-700 text-white" value={form.hourly_rate || ''} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} /></div>
-                  <div><Label className="text-[10px] font-mono text-zinc-500">OVERTIME HRS</Label><Input type="number" step="0.5" className="bg-zinc-800 border-zinc-700 text-white" value={form.overtime_hours || ''} onChange={e => setForm({ ...form, overtime_hours: e.target.value })} /></div>
+                  <div><Label className="text-[10px] font-mono text-muted-foreground">HOURLY RATE</Label><Input type="number" step="0.01" className="bg-muted border-border text-foreground" value={form.hourly_rate || ''} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} /></div>
+                  <div><Label className="text-[10px] font-mono text-muted-foreground">OVERTIME HRS</Label><Input type="number" step="0.5" className="bg-muted border-border text-foreground" value={form.overtime_hours || ''} onChange={e => setForm({ ...form, overtime_hours: e.target.value })} /></div>
                 </div>
-                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => createEntry.mutate(form)}>Add Entry</Button>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-foreground" onClick={() => createEntry.mutate(form)}>Add Entry</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -198,14 +198,14 @@ export default function TimesheetsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">TOTAL HOURS</p><p className="text-2xl font-bold text-white">{parseFloat(summary.total_hours || 0).toFixed(1)}</p></CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">OVERTIME</p><p className="text-2xl font-bold text-amber-400">{parseFloat(summary.total_overtime || 0).toFixed(1)}</p></CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">WORKERS</p><p className="text-2xl font-bold text-blue-400">{summary.unique_workers || 0}</p></CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">TOTAL COST</p><p className="text-2xl font-bold text-green-400">${parseFloat(summary.total_cost || 0).toLocaleString()}</p></CardContent></Card>
+        <Card className="bg-card/80 border-border"><CardContent className="p-4"><p className="text-[10px] font-mono text-muted-foreground">TOTAL HOURS</p><p className="text-2xl font-bold text-foreground">{parseFloat(summary.total_hours || 0).toFixed(1)}</p></CardContent></Card>
+        <Card className="bg-card/80 border-border"><CardContent className="p-4"><p className="text-[10px] font-mono text-muted-foreground">OVERTIME</p><p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{parseFloat(summary.total_overtime || 0).toFixed(1)}</p></CardContent></Card>
+        <Card className="bg-card/80 border-border"><CardContent className="p-4"><p className="text-[10px] font-mono text-muted-foreground">WORKERS</p><p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.unique_workers || 0}</p></CardContent></Card>
+        <Card className="bg-card/80 border-border"><CardContent className="p-4"><p className="text-[10px] font-mono text-muted-foreground">TOTAL COST</p><p className="text-2xl font-bold text-green-600 dark:text-green-400">${parseFloat(summary.total_cost || 0).toLocaleString()}</p></CardContent></Card>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-zinc-900 border border-zinc-800">
+        <TabsList className="bg-card border border-border">
           <TabsTrigger value="entries" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">ENTRIES ({entries?.data?.length || 0})</TabsTrigger>
           <TabsTrigger value="timesheets" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">TIMESHEETS ({timesheets?.data?.length || 0})</TabsTrigger>
           <TabsTrigger value="crews" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">CREWS ({crews?.data?.length || 0})</TabsTrigger>
@@ -214,42 +214,42 @@ export default function TimesheetsPage() {
         <TabsContent value="entries" className="mt-4">
           <div className="space-y-2">
             {(entries?.data || []).map((e: any) => (
-              <Card key={e.id} className="bg-zinc-900/80 border-zinc-800">
+              <Card key={e.id} className="bg-card/80 border-border">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge className={STATUS_COLORS[e.status] || ''}>{e.status}</Badge>
-                      <Badge variant="outline" className="border-zinc-700 text-zinc-400">{e.activity_type}</Badge>
-                      {e.latitude && <span className="text-[10px] text-green-400">📍 GPS</span>}
-                      {e.clock_in && !e.clock_out && <Badge className="bg-green-500/20 text-green-400 animate-pulse">Active</Badge>}
+                      <Badge variant="outline" className="border-border text-muted-foreground">{e.activity_type}</Badge>
+                      {e.latitude && <span className="text-[10px] text-green-600 dark:text-green-400">📍 GPS</span>}
+                      {e.clock_in && !e.clock_out && <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 animate-pulse">Active</Badge>}
                     </div>
-                    <p className="text-sm text-white">{e.description || e.activity_type} — {e.hours_worked ? `${parseFloat(e.hours_worked).toFixed(1)}h` : 'In progress'} {e.overtime_hours > 0 ? `(+${e.overtime_hours}h OT)` : ''}</p>
-                    <p className="text-xs text-zinc-500">{new Date(e.entry_date).toLocaleDateString('en-GB')} • {e.cost_code || 'No cost code'} • <span className="text-zinc-300 font-medium">{e.user_name || 'Self'}</span></p>
+                    <p className="text-sm text-foreground">{e.description || e.activity_type} — {e.hours_worked ? `${parseFloat(e.hours_worked).toFixed(1)}h` : 'In progress'} {e.overtime_hours > 0 ? `(+${e.overtime_hours}h OT)` : ''}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(e.entry_date).toLocaleDateString('en-GB')} • {e.cost_code || 'No cost code'} • <span className="text-muted-foreground font-medium">{e.user_name || 'Self'}</span></p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {e.total_cost && <span className="text-sm font-mono text-green-400">${parseFloat(e.total_cost).toFixed(2)}</span>}
+                    {e.total_cost && <span className="text-sm font-mono text-green-600 dark:text-green-400">${parseFloat(e.total_cost).toFixed(2)}</span>}
                     {e.clock_in && !e.clock_out && (
-                      <Button size="sm" variant="outline" className="text-xs border-red-500/50 text-red-400" onClick={() => clockOut.mutate(e.id)}>
+                      <Button size="sm" variant="outline" className="text-xs border-red-500/50 text-red-600 dark:text-red-400" onClick={() => clockOut.mutate(e.id)}>
                         <Clock className="h-3 w-3 mr-1" />Clock Out
                       </Button>
                     )}
                     {e.status === 'draft' && !(!e.clock_out && e.clock_in) && (
                       <>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="Edit" onClick={() => { setEditEntry(e); setShowEdit(true); }}>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Edit" onClick={() => { setEditEntry(e); setShowEdit(true); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="outline" className="text-xs border-blue-500/50 text-blue-400" onClick={() => submitEntry.mutate(e.id)}>
+                        <Button size="sm" variant="outline" className="text-xs border-blue-500/50 text-blue-600 dark:text-blue-400" onClick={() => submitEntry.mutate(e.id)}>
                           <Send className="h-3 w-3 mr-1" />Submit
                         </Button>
                       </>
                     )}
                     {e.status === 'submitted' && (
-                      <Button size="sm" variant="outline" className="text-xs border-green-500/50 text-green-400" onClick={() => approveEntry.mutate(e.id)}>
+                      <Button size="sm" variant="outline" className="text-xs border-green-500/50 text-green-600 dark:text-green-400" onClick={() => approveEntry.mutate(e.id)}>
                         <CheckCircle className="h-3 w-3 mr-1" />Approve
                       </Button>
                     )}
                     {(e.status === 'draft' || e.status === 'rejected') && (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" title="Delete" onClick={() => deleteEntry.mutate(e.id)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 dark:text-red-400 hover:text-red-300" title="Delete" onClick={() => deleteEntry.mutate(e.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
@@ -257,79 +257,79 @@ export default function TimesheetsPage() {
                 </CardContent>
               </Card>
             ))}
-            {(!entries?.data?.length) && <p className="text-center text-zinc-500 py-8 text-sm">No time entries</p>}
+            {(!entries?.data?.length) && <p className="text-center text-muted-foreground py-8 text-sm">No time entries</p>}
           </div>
         </TabsContent>
 
         <TabsContent value="timesheets" className="mt-4">
           <div className="space-y-2">
             {(timesheets?.data || []).map((ts: any) => (
-              <Card key={ts.id} className="bg-zinc-900/80 border-zinc-800">
+              <Card key={ts.id} className="bg-card/80 border-border">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className={STATUS_COLORS[ts.status] || ''}>{ts.status}</Badge>
-                      <span className="text-sm text-white">{ts.user_name}</span>
+                      <span className="text-sm text-foreground">{ts.user_name}</span>
                     </div>
-                    <p className="text-xs text-zinc-500">Week: {new Date(ts.week_start).toLocaleDateString('en-GB')} – {new Date(ts.week_end).toLocaleDateString('en-GB')}</p>
+                    <p className="text-xs text-muted-foreground">Week: {new Date(ts.week_start).toLocaleDateString('en-GB')} – {new Date(ts.week_end).toLocaleDateString('en-GB')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-mono text-white">{parseFloat(ts.total_regular_hours || 0).toFixed(1)}h</p>
-                    <p className="text-[10px] text-amber-400">{parseFloat(ts.total_overtime_hours || 0).toFixed(1)}h OT</p>
+                    <p className="text-sm font-mono text-foreground">{parseFloat(ts.total_regular_hours || 0).toFixed(1)}h</p>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400">{parseFloat(ts.total_overtime_hours || 0).toFixed(1)}h OT</p>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            {(!timesheets?.data?.length) && <p className="text-center text-zinc-500 py-8 text-sm">No timesheets</p>}
+            {(!timesheets?.data?.length) && <p className="text-center text-muted-foreground py-8 text-sm">No timesheets</p>}
           </div>
         </TabsContent>
 
         <TabsContent value="crews" className="mt-4">
           <div className="space-y-2">
             {(crews?.data || []).map((c: any) => (
-              <Card key={c.id} className="bg-zinc-900/80 border-zinc-800">
+              <Card key={c.id} className="bg-card/80 border-border">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-white">{c.crew_name}</p>
-                      <p className="text-xs text-zinc-500">{c.trade} • Foreman: {c.foreman_name || 'TBA'} • {c.headcount} workers</p>
-                      <p className="text-xs text-zinc-500">{new Date(c.schedule_date).toLocaleDateString('en-GB')} {c.start_time}–{c.end_time}</p>
+                      <p className="text-sm font-medium text-foreground">{c.crew_name}</p>
+                      <p className="text-xs text-muted-foreground">{c.trade} • Foreman: {c.foreman_name || 'TBA'} • {c.headcount} workers</p>
+                      <p className="text-xs text-muted-foreground">{new Date(c.schedule_date).toLocaleDateString('en-GB')} {c.start_time}–{c.end_time}</p>
                     </div>
-                    <Badge className={STATUS_COLORS[c.status] || 'bg-zinc-500/20 text-zinc-400'}>{c.status}</Badge>
+                    <Badge className={STATUS_COLORS[c.status] || 'bg-zinc-500/20 text-muted-foreground'}>{c.status}</Badge>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            {(!crews?.data?.length) && <p className="text-center text-zinc-500 py-8 text-sm">No crew schedules</p>}
+            {(!crews?.data?.length) && <p className="text-center text-muted-foreground py-8 text-sm">No crew schedules</p>}
           </div>
         </TabsContent>
       </Tabs>
 
       {/* Edit Entry Dialog */}
       <Dialog open={showEdit} onOpenChange={(open) => { setShowEdit(open); if (!open) setEditEntry(null); }}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
-          <DialogHeader><DialogTitle className="text-white">Edit Time Entry</DialogTitle></DialogHeader>
+        <DialogContent className="bg-card border-border max-w-lg">
+          <DialogHeader><DialogTitle className="text-foreground">Edit Time Entry</DialogTitle></DialogHeader>
           {editEntry && (
             <div className="space-y-3">
               <div>
-                <Label className="text-[10px] font-mono text-zinc-500">WORKER NAME / ID</Label>
-                <Input placeholder="e.g. John Mensah or W-0042" className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.user_name || ''} onChange={e => setEditEntry({ ...editEntry, user_name: e.target.value })} />
+                <Label className="text-[10px] font-mono text-muted-foreground">WORKER NAME / ID</Label>
+                <Input placeholder="e.g. John Mensah or W-0042" className="bg-muted border-border text-foreground" value={editEntry.user_name || ''} onChange={e => setEditEntry({ ...editEntry, user_name: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-[10px] font-mono text-zinc-500">DATE</Label><Input type="date" className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.entry_date?.split('T')[0] || ''} onChange={e => setEditEntry({ ...editEntry, entry_date: e.target.value })} /></div>
-                <div><Label className="text-[10px] font-mono text-zinc-500">HOURS</Label><Input type="number" step="0.5" className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.hours_worked || ''} onChange={e => setEditEntry({ ...editEntry, hours_worked: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">DATE</Label><Input type="date" className="bg-muted border-border text-foreground" value={editEntry.entry_date?.split('T')[0] || ''} onChange={e => setEditEntry({ ...editEntry, entry_date: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">HOURS</Label><Input type="number" step="0.5" className="bg-muted border-border text-foreground" value={editEntry.hours_worked || ''} onChange={e => setEditEntry({ ...editEntry, hours_worked: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-[10px] font-mono text-zinc-500">ACTIVITY</Label>
-                  <Select value={editEntry.activity_type || 'labor'} onValueChange={v => setEditEntry({ ...editEntry, activity_type: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="labor">Labor</SelectItem><SelectItem value="supervision">Supervision</SelectItem><SelectItem value="inspection">Inspection</SelectItem><SelectItem value="meeting">Meeting</SelectItem><SelectItem value="travel">Travel</SelectItem><SelectItem value="training">Training</SelectItem></SelectContent></Select></div>
-                <div><Label className="text-[10px] font-mono text-zinc-500">COST CODE</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.cost_code || ''} onChange={e => setEditEntry({ ...editEntry, cost_code: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">ACTIVITY</Label>
+                  <Select value={editEntry.activity_type || 'labor'} onValueChange={v => setEditEntry({ ...editEntry, activity_type: v })}><SelectTrigger className="bg-muted border-border text-foreground"><SelectValue /></SelectTrigger><SelectContent className="bg-muted border-border"><SelectItem value="labor">Labor</SelectItem><SelectItem value="supervision">Supervision</SelectItem><SelectItem value="inspection">Inspection</SelectItem><SelectItem value="meeting">Meeting</SelectItem><SelectItem value="travel">Travel</SelectItem><SelectItem value="training">Training</SelectItem></SelectContent></Select></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">COST CODE</Label><Input className="bg-muted border-border text-foreground" value={editEntry.cost_code || ''} onChange={e => setEditEntry({ ...editEntry, cost_code: e.target.value })} /></div>
               </div>
-              <div><Label className="text-[10px] font-mono text-zinc-500">DESCRIPTION</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.description || ''} onChange={e => setEditEntry({ ...editEntry, description: e.target.value })} /></div>
+              <div><Label className="text-[10px] font-mono text-muted-foreground">DESCRIPTION</Label><Textarea className="bg-muted border-border text-foreground" value={editEntry.description || ''} onChange={e => setEditEntry({ ...editEntry, description: e.target.value })} /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-[10px] font-mono text-zinc-500">HOURLY RATE</Label><Input type="number" step="0.01" className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.hourly_rate || ''} onChange={e => setEditEntry({ ...editEntry, hourly_rate: e.target.value })} /></div>
-                <div><Label className="text-[10px] font-mono text-zinc-500">OVERTIME HRS</Label><Input type="number" step="0.5" className="bg-zinc-800 border-zinc-700 text-white" value={editEntry.overtime_hours || ''} onChange={e => setEditEntry({ ...editEntry, overtime_hours: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">HOURLY RATE</Label><Input type="number" step="0.01" className="bg-muted border-border text-foreground" value={editEntry.hourly_rate || ''} onChange={e => setEditEntry({ ...editEntry, hourly_rate: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-muted-foreground">OVERTIME HRS</Label><Input type="number" step="0.5" className="bg-muted border-border text-foreground" value={editEntry.overtime_hours || ''} onChange={e => setEditEntry({ ...editEntry, overtime_hours: e.target.value })} /></div>
               </div>
-              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => updateEntry.mutate(editEntry)}>Save Changes</Button>
+              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-foreground" onClick={() => updateEntry.mutate(editEntry)}>Save Changes</Button>
             </div>
           )}
         </DialogContent>

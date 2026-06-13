@@ -261,29 +261,29 @@ export default function SubjectPropertyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">SUBJECT PROPERTY INFORMATION</h1>
+              <h1 className="font-mono text-xl text-foreground">SUBJECT PROPERTY INFORMATION</h1>
               <StatusBadge status="in_progress" />
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               VAL-{valuationId.slice(0, 8).toUpperCase()} • Edit property details
             </p>
           </div>
@@ -292,7 +292,7 @@ export default function SubjectPropertyPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 text-white font-mono text-xs hover:bg-zinc-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-muted text-foreground font-mono text-xs hover:bg-zinc-700 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -309,7 +309,7 @@ export default function SubjectPropertyPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -347,14 +347,14 @@ export default function SubjectPropertyPage() {
       <div className="flex justify-between">
         <Link
           href={`/dashboard/valuations/${valuationId}`}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK TO VALUATION OVERVIEW
         </Link>
         <button
           onClick={handleSaveAndContinue}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
             <>

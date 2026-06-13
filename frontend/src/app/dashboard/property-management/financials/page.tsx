@@ -251,24 +251,24 @@ export default function FinancialsPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono">FINANCIAL CENTER</h1>
-                    <p className="text-sm text-zinc-500 font-mono">Revenue, expenses, receivables & portfolio performance</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">FINANCIAL CENTER</h1>
+                    <p className="text-sm text-muted-foreground font-mono">Revenue, expenses, receivables & portfolio performance</p>
                     <RateStamp fx={fx} className="mt-1 block" />
                 </div>
                 {activeTab === 'overview' && <div className="flex items-center gap-2">
                         <Select value={period} onValueChange={setPeriod}>
-                                <SelectTrigger className="w-[180px] bg-black border-zinc-800 text-zinc-300 font-mono text-xs uppercase h-8">
+                                <SelectTrigger className="w-[180px] bg-background border-border text-muted-foreground font-mono text-xs uppercase h-8">
                                     <Calendar className="mr-2 h-3 w-3" />
                                     <SelectValue placeholder="Select period" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-black border-zinc-800 text-zinc-300 font-mono text-xs uppercase">
+                                <SelectContent className="bg-background border-border text-muted-foreground font-mono text-xs uppercase">
                                     <SelectItem value="this_month">This Month</SelectItem>
                                     <SelectItem value="last_month">Last Month</SelectItem>
                                     <SelectItem value="this_quarter">This Quarter</SelectItem>
                                     <SelectItem value="this_year">This Year</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button onClick={handleExport} disabled={isExporting} variant="outline" className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase disabled:opacity-60">
+                            <Button onClick={handleExport} disabled={isExporting} variant="outline" className="border-border text-muted-foreground hover:text-amber-500 hover:border-amber-900 bg-background font-mono text-xs uppercase disabled:opacity-60">
                                 {isExporting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Download className="mr-2 h-3 w-3" />}
                                 {isExporting ? 'Generating…' : 'Export PDF'}
                             </Button>
@@ -276,13 +276,13 @@ export default function FinancialsPage() {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex items-center gap-6 border-b border-zinc-800">
+            <div className="flex items-center gap-6 border-b border-border">
                 <button
                     onClick={() => setActiveTab('overview')}
                     className={`pb-2 font-mono text-xs uppercase tracking-wider transition-colors ${
                         activeTab === 'overview'
-                            ? 'text-white border-b-2 border-amber-500'
-                            : 'text-zinc-500 hover:text-zinc-300'
+                            ? 'text-foreground border-b-2 border-amber-500'
+                            : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                 >
                     Overview
@@ -291,8 +291,8 @@ export default function FinancialsPage() {
                     onClick={() => setActiveTab('payment-settings')}
                     className={`pb-2 font-mono text-xs uppercase tracking-wider transition-colors flex items-center gap-2 ${
                         activeTab === 'payment-settings'
-                            ? 'text-white border-b-2 border-amber-500'
-                            : 'text-zinc-500 hover:text-zinc-300'
+                            ? 'text-foreground border-b-2 border-amber-500'
+                            : 'text-muted-foreground hover:text-muted-foreground'
                     }`}
                 >
                     <CreditCard className="h-3 w-3" />
@@ -316,7 +316,7 @@ export default function FinancialsPage() {
             {error && !isLoading && (
                 <Card className="bg-red-950/30 border border-red-800">
                     <CardContent className="flex items-center gap-3 py-4">
-                        <p className="text-red-400 font-mono text-sm">{error}</p>
+                        <p className="text-red-600 dark:text-red-400 font-mono text-sm">{error}</p>
                         <Button variant="link" onClick={() => window.location.reload()} className="text-amber-500 ml-auto">
                             Retry
                         </Button>
@@ -328,51 +328,51 @@ export default function FinancialsPage() {
                 <>
                     {/* KPI Cards */}
                     <div className="grid gap-4 md:grid-cols-5">
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Revenue</CardTitle>
                                 <DollarSign className="h-4 w-4 text-green-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-white font-mono">{formatCurrency(totalIncome)}</div>
+                                <div className="text-2xl font-bold text-foreground font-mono">{formatCurrency(totalIncome)}</div>
                                 <div className="flex items-center text-[10px] text-green-500 mt-1 font-mono">
                                     <ArrowUpRight className="h-3 w-3 mr-1" /> For period
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Expenses</CardTitle>
                                 <CreditCard className="h-4 w-4 text-red-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-white font-mono">{formatCurrency(totalExpenses)}</div>
+                                <div className="text-2xl font-bold text-foreground font-mono">{formatCurrency(totalExpenses)}</div>
                                 <div className="flex items-center text-[10px] text-red-500 mt-1 font-mono">
                                     <ArrowDownRight className="h-3 w-3 mr-1" /> For period
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Net Operating Income</CardTitle>
                                 <TrendingUp className="h-4 w-4 text-blue-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className={`text-2xl font-bold font-mono ${noi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                <div className={`text-2xl font-bold font-mono ${noi >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                     {formatCurrency(noi)}
                                 </div>
-                                <div className="text-[10px] text-zinc-500 mt-1 font-mono">
+                                <div className="text-[10px] text-muted-foreground mt-1 font-mono">
                                     {noi >= 0 ? 'Positive cash flow' : 'Negative cash flow'}
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Outstanding</CardTitle>
                                 <Receipt className="h-4 w-4 text-orange-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-white font-mono">
+                                <div className="text-2xl font-bold text-foreground font-mono">
                                     {formatCurrency(receivablesSummary?.totalOutstanding || 0)}
                                 </div>
                                 <div className="text-[10px] text-orange-500 mt-1 font-mono">
@@ -380,16 +380,16 @@ export default function FinancialsPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Portfolio Value</CardTitle>
                                 <Building className="h-4 w-4 text-amber-600" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-white font-mono">
+                                <div className="text-2xl font-bold text-foreground font-mono">
                                     {portfolioValue >= 1000000 ? `₵${(portfolioValue / 1000000).toFixed(1)}M` : formatCurrency(portfolioValue)}
                                 </div>
-                                <p className="text-[10px] text-zinc-500 mt-1 font-mono">Latest valuation</p>
+                                <p className="text-[10px] text-muted-foreground mt-1 font-mono">Latest valuation</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -397,52 +397,52 @@ export default function FinancialsPage() {
                     {/* Advanced Financial Analytics */}
                     {portfolioFinancials && (
                         <div className="grid gap-4 md:grid-cols-4">
-                            <Card className="bg-zinc-900 border-zinc-800">
+                            <Card className="bg-card border-border">
                                 <CardContent className="pt-5 pb-4">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Portfolio NOI</p>
-                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">NOI</Badge>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">Portfolio NOI</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">NOI</Badge>
                                     </div>
-                                    <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                         {formatCurrency(portfolioFinancials.portfolioNOI ?? 0)}
                                     </p>
-                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">Annual Net Operating Income</p>
+                                    <p className="text-[9px] font-mono text-muted-foreground mt-1">Annual Net Operating Income</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-zinc-900 border-zinc-800">
+                            <Card className="bg-card border-border">
                                 <CardContent className="pt-5 pb-4">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Wtd. Cap Rate</p>
-                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">CAP</Badge>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">Wtd. Cap Rate</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">CAP</Badge>
                                     </div>
-                                    <p className="text-xl font-bold text-amber-400 font-mono">
+                                    <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono">
                                         {(portfolioFinancials.weightedCapRate ?? 0).toFixed(2)}%
                                     </p>
-                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">Weighted Capitalization Rate</p>
+                                    <p className="text-[9px] font-mono text-muted-foreground mt-1">Weighted Capitalization Rate</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-zinc-900 border-zinc-800">
+                            <Card className="bg-card border-border">
                                 <CardContent className="pt-5 pb-4">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Monthly Income</p>
-                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">REV</Badge>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">Monthly Income</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">REV</Badge>
                                     </div>
-                                    <p className="text-xl font-bold text-green-400 font-mono">
+                                    <p className="text-xl font-bold text-green-600 dark:text-green-400 font-mono">
                                         {formatCurrency(portfolioFinancials.totalMonthlyIncome ?? 0)}
                                     </p>
-                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">Effective Gross Income / 12</p>
+                                    <p className="text-[9px] font-mono text-muted-foreground mt-1">Effective Gross Income / 12</p>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-zinc-900 border-zinc-800">
+                            <Card className="bg-card border-border">
                                 <CardContent className="pt-5 pb-4">
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Net Monthly</p>
-                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">NET</Badge>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">Net Monthly</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">NET</Badge>
                                     </div>
-                                    <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                         {formatCurrency(portfolioFinancials.netMonthlyCashFlow ?? 0)}
                                     </p>
-                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">After Operating Expenses</p>
+                                    <p className="text-[9px] font-mono text-muted-foreground mt-1">After Operating Expenses</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -450,7 +450,7 @@ export default function FinancialsPage() {
 
                     {/* Crypto Revenue Card */}
                     {cryptoRevenue && cryptoRevenue.totalCryptoPayments > 0 && (
-                        <Card className="bg-zinc-950 border border-amber-900/40 shadow-[inset_0_1px_0_rgba(245,158,11,0.08)]">
+                        <Card className="bg-background border border-amber-900/40 shadow-[inset_0_1px_0_rgba(245,158,11,0.08)]">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -464,7 +464,7 @@ export default function FinancialsPage() {
                                     {cryptoRevenue.currenciesAccepted.length > 0 && (
                                         <div className="flex items-center gap-1">
                                             {cryptoRevenue.currenciesAccepted.map((c) => (
-                                                <Badge key={c} variant="outline" className="border-amber-800/50 text-amber-400 bg-amber-900/10 font-mono text-[9px] uppercase px-1.5 py-0">
+                                                <Badge key={c} variant="outline" className="border-amber-800/50 text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/10 font-mono text-[9px] uppercase px-1.5 py-0">
                                                     {c}
                                                 </Badge>
                                             ))}
@@ -474,49 +474,49 @@ export default function FinancialsPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-lg border border-zinc-800 bg-black/70 p-3">
-                                        <p className="text-[10px] text-zinc-400 font-mono uppercase">Crypto Payments</p>
-                                        <p className="text-xl font-bold text-white font-mono">{cryptoRevenue.totalCryptoPayments}</p>
+                                    <div className="rounded-lg border border-border bg-background/70 p-3">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">Crypto Payments</p>
+                                        <p className="text-xl font-bold text-foreground font-mono">{cryptoRevenue.totalCryptoPayments}</p>
                                     </div>
-                                    <div className="rounded-lg border border-zinc-800 bg-black/70 p-3">
-                                        <p className="text-[10px] text-zinc-400 font-mono uppercase">Total Rent Received</p>
-                                        <p className="text-xl font-bold text-green-400 font-mono">{formatCurrency(cryptoRevenue.totalCryptoRentGhs)}</p>
+                                    <div className="rounded-lg border border-border bg-background/70 p-3">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">Total Rent Received</p>
+                                        <p className="text-xl font-bold text-green-600 dark:text-green-400 font-mono">{formatCurrency(cryptoRevenue.totalCryptoRentGhs)}</p>
                                     </div>
                                 </div>
                                 {/* Crypto payment details table */}
                                 {cryptoRevenue.payments.length > 0 && (
-                                    <div className="mt-4 rounded-lg border border-zinc-800 bg-black/70 overflow-hidden">
-                                        <div className="border-b border-zinc-800 px-3 py-2">
-                                            <p className="text-[10px] text-zinc-400 font-mono uppercase">Payment Breakdown</p>
+                                    <div className="mt-4 rounded-lg border border-border bg-background/70 overflow-hidden">
+                                        <div className="border-b border-border px-3 py-2">
+                                            <p className="text-[10px] text-muted-foreground font-mono uppercase">Payment Breakdown</p>
                                         </div>
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className="border-zinc-800 bg-zinc-950 hover:bg-zinc-950">
-                                                    <TableHead className="text-zinc-400 font-mono text-[9px] uppercase">Date</TableHead>
-                                                    <TableHead className="text-zinc-400 font-mono text-[9px] uppercase">Reference</TableHead>
-                                                    <TableHead className="text-zinc-400 font-mono text-[9px] uppercase">Settled In</TableHead>
-                                                    <TableHead className="text-right text-zinc-400 font-mono text-[9px] uppercase">Settlement Amount</TableHead>
-                                                    <TableHead className="text-right text-zinc-400 font-mono text-[9px] uppercase">Rent (GHS)</TableHead>
+                                                <TableRow className="border-border bg-background hover:bg-background">
+                                                    <TableHead className="text-muted-foreground font-mono text-[9px] uppercase">Date</TableHead>
+                                                    <TableHead className="text-muted-foreground font-mono text-[9px] uppercase">Reference</TableHead>
+                                                    <TableHead className="text-muted-foreground font-mono text-[9px] uppercase">Settled In</TableHead>
+                                                    <TableHead className="text-right text-muted-foreground font-mono text-[9px] uppercase">Settlement Amount</TableHead>
+                                                    <TableHead className="text-right text-muted-foreground font-mono text-[9px] uppercase">Rent (GHS)</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {cryptoRevenue.payments.map((p) => (
-                                                    <TableRow key={p.reference} className="border-zinc-800 hover:bg-zinc-900/70">
-                                                        <TableCell className="font-mono text-[10px] text-zinc-300">
+                                                    <TableRow key={p.reference} className="border-border hover:bg-card/70">
+                                                        <TableCell className="font-mono text-[10px] text-muted-foreground">
                                                             {new Date(p.date).toLocaleDateString('en-GH')}
                                                         </TableCell>
-                                                        <TableCell className="font-mono text-[10px] text-white">
+                                                        <TableCell className="font-mono text-[10px] text-foreground">
                                                             {p.reference.slice(0, 12)}...
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Badge variant="outline" className="border-amber-700/40 text-amber-400 bg-amber-900/10 font-mono text-[9px] px-1 py-0">
+                                                            <Badge variant="outline" className="border-amber-700/40 text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/10 font-mono text-[9px] px-1 py-0">
                                                                 {p.settlementCurrency || p.cryptoCurrency || '—'}
                                                             </Badge>
                                                         </TableCell>
                                                         <TableCell className="text-right font-mono text-[10px] text-zinc-200">
                                                             {p.settlementAmount != null ? `${p.settlementAmount.toFixed(4)} ${p.settlementCurrency || ''}` : '—'}
                                                         </TableCell>
-                                                        <TableCell className="text-right font-mono text-xs text-green-400 font-bold">
+                                                        <TableCell className="text-right font-mono text-xs text-green-600 dark:text-green-400 font-bold">
                                                             {formatCurrency(p.principalGhs)}
                                                         </TableCell>
                                                     </TableRow>
@@ -532,10 +532,10 @@ export default function FinancialsPage() {
                     {/* Charts Section */}
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Income vs Expenses Chart */}
-                        <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                        <Card className="bg-card border-border md:col-span-2">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Income vs Expenses by Property</CardTitle>
-                                <CardDescription className="text-zinc-500 font-mono text-xs">Financial performance breakdown</CardDescription>
+                                <CardDescription className="text-muted-foreground font-mono text-xs">Financial performance breakdown</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {incomeVsExpenseData.length > 0 ? (
@@ -555,8 +555,8 @@ export default function FinancialsPage() {
                                         </BarChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <div className="h-[300px] flex items-center justify-center bg-black/50 rounded-lg border border-zinc-800 border-dashed">
-                                        <div className="text-center text-zinc-600 font-mono">
+                                    <div className="h-[300px] flex items-center justify-center bg-background/50 rounded-lg border border-border border-dashed">
+                                        <div className="text-center text-muted-foreground font-mono">
                                             <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-30" />
                                             <p>No financial data for this period</p>
                                             <p className="text-[10px]">Record transactions to see chart</p>
@@ -567,10 +567,10 @@ export default function FinancialsPage() {
                         </Card>
 
                         {/* Receivables Aging Pie Chart */}
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Receivables Aging</CardTitle>
-                                <CardDescription className="text-zinc-500 font-mono text-xs">Outstanding rent by age</CardDescription>
+                                <CardDescription className="text-muted-foreground font-mono text-xs">Outstanding rent by age</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {receivablesData.length > 0 ? (
@@ -596,13 +596,13 @@ export default function FinancialsPage() {
                                             />
                                             <Legend
                                                 wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace' }}
-                                                formatter={(value) => <span className="text-white">{value}</span>}
+                                                formatter={(value) => <span className="text-foreground">{value}</span>}
                                             />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 ) : (
                                     <div className="h-[250px] flex items-center justify-center">
-                                        <div className="text-center text-zinc-600 font-mono">
+                                        <div className="text-center text-muted-foreground font-mono">
                                             <PieChartIcon className="h-10 w-10 mx-auto mb-2 opacity-30" />
                                             <p className="text-xs">No outstanding receivables</p>
                                         </div>
@@ -613,10 +613,10 @@ export default function FinancialsPage() {
                     </div>
 
                     {/* Revenue Trend Chart */}
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Revenue Trend</CardTitle>
-                            <CardDescription className="text-zinc-500 font-mono text-xs">Actual & projected income vs expenses</CardDescription>
+                            <CardDescription className="text-muted-foreground font-mono text-xs">Actual & projected income vs expenses</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {monthlyTrendData.length > 0 ? (
@@ -638,8 +638,8 @@ export default function FinancialsPage() {
                                     </AreaChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-[280px] flex items-center justify-center bg-black/50 rounded-lg border border-zinc-800 border-dashed">
-                                    <div className="text-center text-zinc-600 font-mono">
+                                <div className="h-[280px] flex items-center justify-center bg-background/50 rounded-lg border border-border border-dashed">
+                                    <div className="text-center text-muted-foreground font-mono">
                                         <TrendingUp className="h-10 w-10 mx-auto mb-2 opacity-30" />
                                         <p className="text-xs">No trend data for this period</p>
                                         <p className="text-[10px]">Data builds as transactions are recorded monthly</p>
@@ -650,15 +650,15 @@ export default function FinancialsPage() {
                     </Card>
 
                     {/* Property Performance Table */}
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="text-sm font-mono uppercase text-amber-500">Property Financial Performance</CardTitle>
-                                    <CardDescription className="text-zinc-500 font-mono text-xs">Income, expenses and NOI by property</CardDescription>
+                                    <CardDescription className="text-muted-foreground font-mono text-xs">Income, expenses and NOI by property</CardDescription>
                                 </div>
                                 <Link href="/dashboard/property-management/reports">
-                                    <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-400 hover:text-amber-500 font-mono text-[10px] uppercase h-7">
+                                    <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-amber-500 font-mono text-[10px] uppercase h-7">
                                         View Full Report
                                     </Button>
                                 </Link>
@@ -667,43 +667,43 @@ export default function FinancialsPage() {
                         <CardContent>
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Property</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Region</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">Income</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">Expenses</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">NOI</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">Occupancy</TableHead>
+                                    <TableRow className="border-border hover:bg-card/50">
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Property</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Region</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">Income</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">Expenses</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">NOI</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">Occupancy</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {propertyPerformance.length === 0 ? (
-                                        <TableRow className="border-zinc-800">
-                                            <TableCell colSpan={6} className="text-center py-8 text-zinc-500 font-mono">
+                                        <TableRow className="border-border">
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground font-mono">
                                                 No property performance data available.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         propertyPerformance.slice(0, 10).map((prop) => (
-                                            <TableRow key={prop.propertyId} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                <TableCell className="font-mono text-sm text-white">
+                                            <TableRow key={prop.propertyId} className="border-border hover:bg-card/50">
+                                                <TableCell className="font-mono text-sm text-foreground">
                                                     {prop.propertyTitle?.substring(0, 30) || 'Property'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className="border-zinc-700 text-zinc-400 font-mono text-[10px] uppercase">
+                                                    <Badge variant="outline" className="border-border text-muted-foreground font-mono text-[10px] uppercase">
                                                         {prop.region?.replace('_', ' ')}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono text-xs text-green-400">
+                                                <TableCell className="text-right font-mono text-xs text-green-600 dark:text-green-400">
                                                     {formatCurrency(prop.totalIncome || 0)}
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono text-xs text-red-400">
+                                                <TableCell className="text-right font-mono text-xs text-red-600 dark:text-red-400">
                                                     {formatCurrency(prop.totalExpenses || 0)}
                                                 </TableCell>
-                                                <TableCell className={`text-right font-mono text-xs font-bold ${(prop.netOperatingIncome || 0) >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                                                <TableCell className={`text-right font-mono text-xs font-bold ${(prop.netOperatingIncome || 0) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                                                     {formatCurrency(prop.netOperatingIncome || 0)}
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono text-xs text-zinc-400">
+                                                <TableCell className="text-right font-mono text-xs text-muted-foreground">
                                                     {(prop.occupancyRate || 0).toFixed(0)}%
                                                 </TableCell>
                                             </TableRow>
@@ -715,14 +715,14 @@ export default function FinancialsPage() {
                     </Card>
 
                     {/* Recent Transactions Table */}
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle className="text-sm font-mono uppercase text-amber-500">Recent Transactions</CardTitle>
-                                    <CardDescription className="text-zinc-500 font-mono text-xs">Latest financial activity</CardDescription>
+                                    <CardDescription className="text-muted-foreground font-mono text-xs">Latest financial activity</CardDescription>
                                 </div>
-                                <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-400 hover:text-amber-500 font-mono text-[10px] uppercase h-7">
+                                <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-amber-500 font-mono text-[10px] uppercase h-7">
                                     <Plus className="mr-1 h-3 w-3" /> Add Transaction
                                 </Button>
                             </div>
@@ -730,18 +730,18 @@ export default function FinancialsPage() {
                         <CardContent>
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Date</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Description</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Property</TableHead>
-                                        <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Type</TableHead>
-                                        <TableHead className="text-right text-zinc-500 font-mono text-[10px] uppercase">Amount</TableHead>
+                                    <TableRow className="border-border hover:bg-card/50">
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Date</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Description</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Property</TableHead>
+                                        <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Type</TableHead>
+                                        <TableHead className="text-right text-muted-foreground font-mono text-[10px] uppercase">Amount</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {records.length === 0 ? (
-                                        <TableRow className="border-zinc-800">
-                                            <TableCell colSpan={5} className="text-center py-8 text-zinc-500 font-mono">
+                                        <TableRow className="border-border">
+                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground font-mono">
                                                 <Wallet className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                                 <p>No transactions recorded for this period.</p>
                                                 <p className="text-[10px] mt-1">Add transactions to track income and expenses.</p>
@@ -749,28 +749,28 @@ export default function FinancialsPage() {
                                         </TableRow>
                                     ) : (
                                         records.slice(0, 10).map((txn) => (
-                                            <TableRow key={txn.id} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                <TableCell className="font-mono text-xs text-zinc-400">
+                                            <TableRow key={txn.id} className="border-border hover:bg-card/50">
+                                                <TableCell className="font-mono text-xs text-muted-foreground">
                                                     {new Date(txn.transactionDate).toLocaleDateString('en-GH')}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-xs text-white">
+                                                <TableCell className="font-mono text-xs text-foreground">
                                                     {txn.description || txn.category?.replace('_', ' ')}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-[10px] text-zinc-500">
+                                                <TableCell className="font-mono text-[10px] text-muted-foreground">
                                                     {txn.propertyId?.substring(0, 8)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge
                                                         variant="outline"
                                                         className={`font-mono text-[10px] ${txn.recordType === 'income'
-                                                                ? 'border-green-800 text-green-400 bg-green-900/20'
-                                                                : 'border-red-800 text-red-400 bg-red-900/20'
+                                                                ? 'border-green-800 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
+                                                                : 'border-red-800 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20'
                                                             }`}
                                                     >
                                                         {txn.recordType}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className={`text-right font-mono text-sm font-bold ${txn.recordType === 'income' ? 'text-green-400' : 'text-red-400'}`}>
+                                                <TableCell className={`text-right font-mono text-sm font-bold ${txn.recordType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                                     {txn.recordType === 'income' ? '+' : '-'}₵{Math.abs(txn.amount).toLocaleString()}
                                                 </TableCell>
                                             </TableRow>

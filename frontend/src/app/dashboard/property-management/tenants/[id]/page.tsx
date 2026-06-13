@@ -322,11 +322,11 @@ export default function TenantDetailsPage() {
 
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
-            case 'active': return 'bg-green-900/40 text-green-500 border-green-900'
-            case 'expired': return 'bg-red-900/40 text-red-500 border-red-900'
-            case 'terminated': return 'bg-zinc-800 text-zinc-400 border-zinc-700'
-            case 'pending': case 'pending_verification': return 'bg-amber-900/40 text-amber-500 border-amber-900'
-            default: return 'bg-zinc-800 text-zinc-400 border-zinc-700'
+            case 'active': return 'bg-green-100 dark:bg-green-900/40 text-green-500 border-green-900'
+            case 'expired': return 'bg-red-100 dark:bg-red-900/40 text-red-500 border-red-900'
+            case 'terminated': return 'bg-muted text-muted-foreground border-border'
+            case 'pending': case 'pending_verification': return 'bg-amber-100 dark:bg-amber-900/40 text-amber-500 border-amber-900'
+            default: return 'bg-muted text-muted-foreground border-border'
         }
     }
 
@@ -529,7 +529,7 @@ export default function TenantDetailsPage() {
         return (
             <div className="flex flex-col items-center justify-center py-24">
                 <Loader2 className="h-8 w-8 text-amber-600 animate-spin" />
-                <p className="text-zinc-500 font-mono text-xs mt-4 uppercase">Loading tenant profile...</p>
+                <p className="text-muted-foreground font-mono text-xs mt-4 uppercase">Loading tenant profile...</p>
             </div>
         )
     }
@@ -540,7 +540,7 @@ export default function TenantDetailsPage() {
                 <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
                 <p className="text-red-500 font-mono text-sm">{error || 'Tenant not found'}</p>
                 <Link href="/dashboard/property-management/tenants">
-                    <Button variant="outline" className="mt-4 border-zinc-800 text-zinc-400">
+                    <Button variant="outline" className="mt-4 border-border text-muted-foreground">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Tenants
                     </Button>
@@ -555,24 +555,24 @@ export default function TenantDetailsPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/property-management/tenants">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                     <div className="flex items-center gap-3">
                         <Avatar className="h-14 w-14 border-2 border-amber-600">
-                            <AvatarFallback className="bg-zinc-900 text-amber-500 font-mono font-bold text-lg">
+                            <AvatarFallback className="bg-card text-amber-500 font-mono font-bold text-lg">
                                 {getInitials(tenant.fullName)}
                             </AvatarFallback>
                         </Avatar>
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-3">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono flex items-center gap-3">
                                 {tenant.fullName}
                                 <Badge className={getStatusColor(tenant.status)}>
                                     {tenant.status.replace('_', ' ')}
                                 </Badge>
                             </h1>
-                            <div className="flex items-center gap-3 text-sm text-zinc-500 font-mono">
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono">
                                 {tenant.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {tenant.email}</span>}
                                 <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {tenant.phonePrimary}</span>
                             </div>
@@ -593,7 +593,7 @@ export default function TenantDetailsPage() {
                         )}
                         Send Access Invite (Email)
                     </Button>
-                    <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 font-mono text-xs">
+                    <Button variant="outline" className="border-border text-muted-foreground hover:text-foreground hover:bg-muted font-mono text-xs">
                         <Edit2 className="mr-2 h-3 w-3" />
                         Edit Profile
                     </Button>
@@ -609,14 +609,14 @@ export default function TenantDetailsPage() {
             </div>
 
             {portalInviteMessage && (
-                <div className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs font-mono text-amber-400 space-y-1">
+                <div className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs font-mono text-amber-600 dark:text-amber-400 space-y-1">
                     <div>{portalInviteMessage}</div>
                     {portalInviteLink && (
                         <a
                             href={portalInviteLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block break-all text-cyan-400 underline hover:text-cyan-300"
+                            className="block break-all text-cyan-600 dark:text-cyan-400 underline hover:text-cyan-300"
                         >
                             {portalInviteLink}
                         </a>
@@ -633,28 +633,28 @@ export default function TenantDetailsPage() {
                             <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-sm font-mono uppercase text-amber-500">Active Lease</CardTitle>
-                                    <Badge className="bg-emerald-600 text-white text-[10px] font-mono">ACTIVE</Badge>
+                                    <Badge className="bg-emerald-600 text-foreground text-[10px] font-mono">ACTIVE</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center gap-3">
                                     <Building2 className="h-5 w-5 text-amber-500" />
                                     <div>
-                                        <div className="text-white font-mono font-medium">{activeTenancy.property?.title}</div>
-                                        <div className="text-zinc-500 text-xs font-mono">{activeTenancy.property?.address}</div>
+                                        <div className="text-foreground font-mono font-medium">{activeTenancy.property?.title}</div>
+                                        <div className="text-muted-foreground text-xs font-mono">{activeTenancy.property?.address}</div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-zinc-900/50 rounded p-2">
-                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Monthly Rent</div>
+                                    <div className="bg-card/50 rounded p-2">
+                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Monthly Rent</div>
                                         <div className="text-amber-500 font-mono font-bold text-lg">
                                             {activeTenancy.rentCurrency} {activeTenancy.monthlyRent?.toLocaleString()}
                                         </div>
                                     </div>
-                                    <div className="bg-zinc-900/50 rounded p-2">
-                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Days Left</div>
-                                        <div className="text-white font-mono font-bold text-lg">
+                                    <div className="bg-card/50 rounded p-2">
+                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Days Left</div>
+                                        <div className="text-foreground font-mono font-bold text-lg">
                                             {leaseProgress?.remaining || 0}
                                         </div>
                                     </div>
@@ -662,11 +662,11 @@ export default function TenantDetailsPage() {
 
                                 {leaseProgress && (
                                     <div>
-                                        <div className="flex justify-between text-[10px] font-mono text-zinc-500 mb-1">
+                                        <div className="flex justify-between text-[10px] font-mono text-muted-foreground mb-1">
                                             <span>Lease Progress</span>
                                             <span>{Math.round(leaseProgress.percent)}%</span>
                                         </div>
-                                        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                                             <div
                                                 className={`h-full transition-all ${leaseProgress.remaining < 30 ? 'bg-red-500' :
                                                     leaseProgress.remaining < 90 ? 'bg-amber-500' : 'bg-emerald-500'
@@ -674,7 +674,7 @@ export default function TenantDetailsPage() {
                                                 style={{ width: `${leaseProgress.percent}%` }}
                                             />
                                         </div>
-                                        <div className="flex justify-between text-[10px] font-mono text-zinc-600 mt-1">
+                                        <div className="flex justify-between text-[10px] font-mono text-muted-foreground mt-1">
                                             <span>{format(new Date(activeTenancy.leaseStartDate), 'dd MMM yyyy')}</span>
                                             <span>{format(new Date(activeTenancy.leaseEndDate), 'dd MMM yyyy')}</span>
                                         </div>
@@ -685,29 +685,29 @@ export default function TenantDetailsPage() {
                     )}
 
                     {!activeTenancy && (
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardContent className="py-6 text-center">
                                 <Building2 className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-                                <p className="text-zinc-500 font-mono text-sm">No Active Lease</p>
-                                <p className="text-zinc-600 font-mono text-xs mt-1">Create a new tenancy to get started</p>
+                                <p className="text-muted-foreground font-mono text-sm">No Active Lease</p>
+                                <p className="text-muted-foreground font-mono text-xs mt-1">Create a new tenancy to get started</p>
                             </CardContent>
                         </Card>
                     )}
 
                     {/* Source Application Link */}
                     {activeTenancy?.applicationId && (
-                        <Card className="bg-blue-900/20 border-blue-900/50">
+                        <Card className="bg-blue-100 dark:bg-blue-900/20 border-blue-900/50">
                             <CardContent className="py-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <FileText className="h-5 w-5 text-blue-400" />
+                                        <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                         <div>
-                                            <div className="text-blue-400 font-mono text-sm font-medium">From Application</div>
-                                            <div className="text-zinc-500 text-xs">Tenant created from application</div>
+                                            <div className="text-blue-600 dark:text-blue-400 font-mono text-sm font-medium">From Application</div>
+                                            <div className="text-muted-foreground text-xs">Tenant created from application</div>
                                         </div>
                                     </div>
                                     <Link href={`/dashboard/property-management/applications/${activeTenancy.applicationId}`}>
-                                        <Button variant="outline" size="sm" className="border-blue-800 text-blue-400 hover:bg-blue-900/30">
+                                        <Button variant="outline" size="sm" className="border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-900/30">
                                             <Eye className="h-3 w-3 mr-2" />
                                             View Application
                                         </Button>
@@ -717,38 +717,38 @@ export default function TenantDetailsPage() {
                         </Card>
                     )}
 
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Contact Information</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center gap-3 text-sm">
-                                <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
-                                    <Phone className="h-4 w-4 text-zinc-400" />
+                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                    <Phone className="h-4 w-4 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <div className="text-zinc-500 text-[10px] font-mono uppercase">Primary Phone</div>
+                                    <div className="text-muted-foreground text-[10px] font-mono uppercase">Primary Phone</div>
                                     <div className="text-zinc-200 font-mono">{tenant.phonePrimary}</div>
                                 </div>
                             </div>
                             {tenant.email && (
                                 <div className="flex items-center gap-3 text-sm">
-                                    <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
-                                        <Mail className="h-4 w-4 text-zinc-400" />
+                                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <div>
-                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Email Address</div>
+                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Email Address</div>
                                         <div className="text-zinc-200 font-mono text-sm">{tenant.email}</div>
                                     </div>
                                 </div>
                             )}
                             {tenant.ghanaCardNumber && (
                                 <div className="flex items-center gap-3 text-sm">
-                                    <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
-                                        <User className="h-4 w-4 text-zinc-400" />
+                                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                        <User className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <div>
-                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Ghana Card</div>
+                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Ghana Card</div>
                                         <div className="text-zinc-200 font-mono">{tenant.ghanaCardNumber}</div>
                                     </div>
                                 </div>
@@ -761,20 +761,20 @@ export default function TenantDetailsPage() {
                 {/* Main Content Tabs */}
                 <div className="md:col-span-8 md:order-1">
                     <Tabs defaultValue="tenancies" className="w-full">
-                        <TabsList className="grid grid-cols-3 sm:grid-cols-5 bg-zinc-900 border border-zinc-800 w-full h-auto p-1">
-                            <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
+                        <TabsList className="grid grid-cols-3 sm:grid-cols-5 bg-card border border-border w-full h-auto p-1">
+                            <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
                                 Tenancies
                             </TabsTrigger>
-                            <TabsTrigger value="utilities" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="utilities" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
                                 Utilities
                             </TabsTrigger>
-                            <TabsTrigger value="payments" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="payments" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
                                 Payments
                             </TabsTrigger>
-                            <TabsTrigger value="maintenance" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="maintenance" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
                                 Maintenance
                             </TabsTrigger>
-                            <TabsTrigger value="documents" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="documents" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
                                 Documents
                             </TabsTrigger>
                         </TabsList>
@@ -784,14 +784,14 @@ export default function TenantDetailsPage() {
                             <TabsContent value="tenancies">
                                 <div className="space-y-4">
                                     {tenancies.length > 0 ? tenancies.map((tenancy) => (
-                                        <Card key={tenancy.id} className="bg-zinc-900 border-zinc-800">
+                                        <Card key={tenancy.id} className="bg-card border-border">
                                             <CardHeader className="flex flex-row items-start justify-between pb-2">
                                                 <div>
-                                                    <CardTitle className="text-base text-white font-mono flex items-center gap-2">
+                                                    <CardTitle className="text-base text-foreground font-mono flex items-center gap-2">
                                                         <Building2 className="h-4 w-4 text-amber-500" />
                                                         {tenancy.property?.title || 'Property'}
                                                     </CardTitle>
-                                                    <CardDescription className="text-xs text-zinc-500 font-mono mt-1">
+                                                    <CardDescription className="text-xs text-muted-foreground font-mono mt-1">
                                                         REF: {tenancy.referenceNumber}
                                                     </CardDescription>
                                                 </div>
@@ -801,20 +801,20 @@ export default function TenantDetailsPage() {
                                                     </Badge>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-zinc-500 hover:text-white">
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 w-48">
+                                                        <DropdownMenuContent align="end" className="bg-background border-border w-48">
                                                             <DropdownMenuItem
-                                                                className="text-zinc-300 hover:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                                className="text-muted-foreground hover:text-foreground focus:bg-muted font-mono text-xs cursor-pointer"
                                                                 onClick={() => handleGenerateLease(tenancy)}
                                                             >
                                                                 <FileText className="h-3 w-3 mr-2" />
                                                                 Generate Lease
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                className="text-zinc-300 hover:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                                className="text-muted-foreground hover:text-foreground focus:bg-muted font-mono text-xs cursor-pointer"
                                                                 onClick={() => openEditDialog(tenancy)}
                                                             >
                                                                 <Edit2 className="h-3 w-3 mr-2" />
@@ -823,13 +823,13 @@ export default function TenantDetailsPage() {
                                                             {tenancy.status === 'active' && (
                                                                 <>
                                                                     <DropdownMenuItem
-                                                                        className="text-zinc-300 hover:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                                        className="text-muted-foreground hover:text-foreground focus:bg-muted font-mono text-xs cursor-pointer"
                                                                         onClick={() => openRenewDialog(tenancy)}
                                                                     >
                                                                         <RefreshCw className="h-3 w-3 mr-2" />
                                                                         Renew Lease
                                                                     </DropdownMenuItem>
-                                                                    <DropdownMenuSeparator className="bg-zinc-800" />
+                                                                    <DropdownMenuSeparator className="bg-muted" />
                                                                     <DropdownMenuItem
                                                                         className="text-red-500 hover:text-red-400 focus:bg-red-950/30 font-mono text-xs cursor-pointer"
                                                                         onClick={() => openTerminateDialog(tenancy)}
@@ -846,31 +846,31 @@ export default function TenantDetailsPage() {
                                             <CardContent>
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                                     <div>
-                                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Start Date</div>
-                                                        <div className="text-white font-mono">{format(new Date(tenancy.leaseStartDate), 'dd MMM yyyy')}</div>
+                                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Start Date</div>
+                                                        <div className="text-foreground font-mono">{format(new Date(tenancy.leaseStartDate), 'dd MMM yyyy')}</div>
                                                     </div>
                                                     <div>
-                                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">End Date</div>
-                                                        <div className="text-white font-mono">{format(new Date(tenancy.leaseEndDate), 'dd MMM yyyy')}</div>
+                                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">End Date</div>
+                                                        <div className="text-foreground font-mono">{format(new Date(tenancy.leaseEndDate), 'dd MMM yyyy')}</div>
                                                     </div>
                                                     <div>
-                                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Monthly Rent</div>
-                                                        <div className="text-white font-mono">
+                                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Monthly Rent</div>
+                                                        <div className="text-foreground font-mono">
                                                             {tenancy.rentCurrency === 'USD' ? '$' : '₵'}{tenancy.monthlyRent?.toLocaleString()}
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <div className="text-zinc-500 text-[10px] font-mono uppercase">Frequency</div>
-                                                        <div className="text-white font-mono capitalize">{tenancy.paymentFreq || 'Monthly'}</div>
+                                                        <div className="text-muted-foreground text-[10px] font-mono uppercase">Frequency</div>
+                                                        <div className="text-foreground font-mono capitalize">{tenancy.paymentFreq || 'Monthly'}</div>
                                                     </div>
                                                 </div>
                                                 {tenancy.status === 'active' && leaseProgress && tenancy.id === activeTenancy?.id && (
-                                                    <div className="mt-4 pt-4 border-t border-zinc-800">
-                                                        <div className="flex justify-between text-xs text-zinc-500 font-mono mb-2">
+                                                    <div className="mt-4 pt-4 border-t border-border">
+                                                        <div className="flex justify-between text-xs text-muted-foreground font-mono mb-2">
                                                             <span>Lease Progress</span>
                                                             <span>{leaseProgress.remaining} days remaining</span>
                                                         </div>
-                                                        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-amber-500 rounded-full transition-all"
                                                                 style={{ width: `${leaseProgress.percent}%` }}
@@ -881,11 +881,11 @@ export default function TenantDetailsPage() {
                                             </CardContent>
                                         </Card>
                                     )) : (
-                                        <Card className="bg-zinc-900 border-zinc-800">
+                                        <Card className="bg-card border-border">
                                             <CardContent className="py-12 text-center">
                                                 <Building2 className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
-                                                <p className="text-zinc-500 font-mono text-sm">No tenancies found</p>
-                                                <Button className="mt-4 bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs">
+                                                <p className="text-muted-foreground font-mono text-sm">No tenancies found</p>
+                                                <Button className="mt-4 bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-xs">
                                                     Create Tenancy
                                                 </Button>
                                             </CardContent>
@@ -897,15 +897,15 @@ export default function TenantDetailsPage() {
 
                             {/* Utility Charges Tab */}
                             <TabsContent value="utilities">
-                                <Card className="bg-zinc-900 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <div>
                                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Utility Charges</CardTitle>
-                                            <CardDescription className="text-xs text-zinc-500 font-mono">Bill tenant for utilities — auto-applied to rent schedule</CardDescription>
+                                            <CardDescription className="text-xs text-muted-foreground font-mono">Bill tenant for utilities — auto-applied to rent schedule</CardDescription>
                                         </div>
                                         <Button
                                             size="sm"
-                                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
+                                            className="bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-xs"
                                             onClick={() => setIsAddChargeOpen(true)}
                                             disabled={!activeTenancy}
                                         >
@@ -917,38 +917,38 @@ export default function TenantDetailsPage() {
                                             <div className="space-y-3">
                                                 {utilityCharges.map((charge) => {
                                                     const utilIcons: Record<string, React.ReactNode> = {
-                                                        electricity: <Zap className="h-4 w-4 text-yellow-400" />,
-                                                        water: <Droplets className="h-4 w-4 text-blue-400" />,
-                                                        gas: <Flame className="h-4 w-4 text-orange-400" />,
-                                                        internet: <Wifi className="h-4 w-4 text-cyan-400" />,
-                                                        waste: <Trash className="h-4 w-4 text-green-400" />,
-                                                        security: <Shield className="h-4 w-4 text-purple-400" />,
+                                                        electricity: <Zap className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />,
+                                                        water: <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />,
+                                                        gas: <Flame className="h-4 w-4 text-orange-600 dark:text-orange-400" />,
+                                                        internet: <Wifi className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />,
+                                                        waste: <Trash className="h-4 w-4 text-green-600 dark:text-green-400" />,
+                                                        security: <Shield className="h-4 w-4 text-purple-600 dark:text-purple-400" />,
                                                     }
                                                     const statusColors: Record<string, string> = {
-                                                        pending: 'bg-amber-900/40 text-amber-400 border-amber-900',
-                                                        applied: 'bg-blue-900/40 text-blue-400 border-blue-900',
-                                                        paid: 'bg-green-900/40 text-green-400 border-green-900',
-                                                        waived: 'bg-zinc-800 text-zinc-400 border-zinc-700',
-                                                        disputed: 'bg-red-900/40 text-red-400 border-red-900',
+                                                        pending: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 border-amber-900',
+                                                        applied: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-900',
+                                                        paid: 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 border-green-900',
+                                                        waived: 'bg-muted text-muted-foreground border-border',
+                                                        disputed: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 border-red-900',
                                                     }
                                                     return (
-                                                        <div key={charge.id} className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                                        <div key={charge.id} className="bg-background border border-border rounded-lg p-4 flex items-center justify-between group hover:border-border transition-colors">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center">
-                                                                    {utilIcons[charge.utility_type] || <Zap className="h-4 w-4 text-zinc-400" />}
+                                                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                                                                    {utilIcons[charge.utility_type] || <Zap className="h-4 w-4 text-muted-foreground" />}
                                                                 </div>
                                                                 <div>
-                                                                    <div className="text-sm font-medium text-zinc-300 font-mono capitalize">
+                                                                    <div className="text-sm font-medium text-muted-foreground font-mono capitalize">
                                                                         {charge.utility_type.replace('_', ' ')}
                                                                     </div>
-                                                                    <div className="text-xs text-zinc-500 font-mono">
+                                                                    <div className="text-xs text-muted-foreground font-mono">
                                                                         {format(new Date(charge.billing_period_start), 'dd MMM')} – {format(new Date(charge.billing_period_end), 'dd MMM yyyy')}
                                                                         {charge.description && ` • ${charge.description}`}
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="text-sm font-bold text-white font-mono">
+                                                                <span className="text-sm font-bold text-foreground font-mono">
                                                                     {charge.currency} {parseFloat(charge.amount).toFixed(2)}
                                                                 </span>
                                                                 <Badge className={`text-[10px] font-mono ${statusColors[charge.status] || statusColors.pending}`}>
@@ -957,18 +957,18 @@ export default function TenantDetailsPage() {
                                                                 {charge.status === 'pending' && (
                                                                     <DropdownMenu>
                                                                         <DropdownMenuTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-500 hover:text-white">
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
                                                                                 <MoreVertical className="h-3.5 w-3.5" />
                                                                             </Button>
                                                                         </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                                                                        <DropdownMenuContent align="end" className="bg-card border-border">
                                                                             {rentSchedules
                                                                                 .filter(s => s.status !== 'paid' && s.status !== 'waived')
                                                                                 .slice(0, 6)
                                                                                 .map(schedule => (
                                                                                     <DropdownMenuItem
                                                                                         key={schedule.id}
-                                                                                        className="text-xs font-mono text-zinc-300 hover:text-white cursor-pointer"
+                                                                                        className="text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
                                                                                         onClick={async () => {
                                                                                             try {
                                                                                                 await propertyManagementApi.applyUtilityCharge(charge.id, schedule.id)
@@ -985,9 +985,9 @@ export default function TenantDetailsPage() {
                                                                                         Apply to Period {schedule.period_number} ({format(new Date(schedule.period_start_date), 'MMM yyyy')})
                                                                                     </DropdownMenuItem>
                                                                                 ))}
-                                                                            <DropdownMenuSeparator className="bg-zinc-800" />
+                                                                            <DropdownMenuSeparator className="bg-muted" />
                                                                             <DropdownMenuItem
-                                                                                className="text-xs font-mono text-zinc-300 hover:text-white cursor-pointer"
+                                                                                className="text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
                                                                                 onClick={async () => {
                                                                                     try {
                                                                                         await propertyManagementApi.updateUtilityCharge(charge.id, { status: 'waived' } as any)
@@ -999,7 +999,7 @@ export default function TenantDetailsPage() {
                                                                                 Waive Charge
                                                                             </DropdownMenuItem>
                                                                             <DropdownMenuItem
-                                                                                className="text-xs font-mono text-red-400 hover:text-red-300 cursor-pointer"
+                                                                                className="text-xs font-mono text-red-600 dark:text-red-400 hover:text-red-300 cursor-pointer"
                                                                                 onClick={async () => {
                                                                                     try {
                                                                                         await propertyManagementApi.deleteUtilityCharge(charge.id)
@@ -1013,7 +1013,7 @@ export default function TenantDetailsPage() {
                                                                     </DropdownMenu>
                                                                 )}
                                                                 {charge.status === 'applied' && charge.schedule_period_number && (
-                                                                    <span className="text-[10px] text-zinc-500 font-mono">
+                                                                    <span className="text-[10px] text-muted-foreground font-mono">
                                                                         → Period {charge.schedule_period_number}
                                                                     </span>
                                                                 )}
@@ -1022,8 +1022,8 @@ export default function TenantDetailsPage() {
                                                     )
                                                 })}
                                                 {/* Summary */}
-                                                <div className="border-t border-zinc-800 pt-3 mt-2 flex justify-between items-center">
-                                                    <span className="text-xs text-zinc-500 font-mono">{utilityCharges.length} charge{utilityCharges.length !== 1 ? 's' : ''}</span>
+                                                <div className="border-t border-border pt-3 mt-2 flex justify-between items-center">
+                                                    <span className="text-xs text-muted-foreground font-mono">{utilityCharges.length} charge{utilityCharges.length !== 1 ? 's' : ''}</span>
                                                     <span className="text-sm font-bold text-amber-500 font-mono">
                                                         Total: GHS {utilityCharges.reduce((sum, c) => sum + parseFloat(c.amount), 0).toFixed(2)}
                                                     </span>
@@ -1032,8 +1032,8 @@ export default function TenantDetailsPage() {
                                         ) : (
                                             <div className="py-12 text-center">
                                                 <Zap className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
-                                                <p className="text-zinc-500 font-mono text-sm">No utility charges yet</p>
-                                                <p className="text-zinc-600 font-mono text-xs mt-1">Add a utility charge to bill the tenant</p>
+                                                <p className="text-muted-foreground font-mono text-sm">No utility charges yet</p>
+                                                <p className="text-muted-foreground font-mono text-xs mt-1">Add a utility charge to bill the tenant</p>
                                             </div>
                                         )}
                                     </CardContent>
@@ -1041,7 +1041,7 @@ export default function TenantDetailsPage() {
                             </TabsContent>
 
                             <TabsContent value="payments">
-                                <Card className="bg-zinc-900 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <CardTitle className="text-sm font-mono uppercase text-amber-500">Payment History</CardTitle>
                                         <Badge variant="outline" className="border-green-900 text-green-500 font-mono text-[10px]">
@@ -1052,18 +1052,18 @@ export default function TenantDetailsPage() {
                                         {payments.length > 0 ? (
                                             <div className="space-y-4">
                                                 {payments.map((payment) => (
-                                                    <div key={payment.id} className="flex items-center justify-between border-b border-zinc-800 pb-4 last:border-0 last:pb-0">
+                                                    <div key={payment.id} className="flex items-center justify-between border-b border-border pb-4 last:border-0 last:pb-0">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-full bg-green-900/20 flex items-center justify-center">
+                                                            <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                                                                 <CheckCircle className="h-5 w-5 text-green-500" />
                                                             </div>
                                                             <div>
-                                                                <div className="text-white font-medium font-mono">{payment.category || 'Rent'}</div>
-                                                                <div className="text-xs text-zinc-500 font-mono">{payment.transactionDate || payment.createdAt ? format(new Date(payment.transactionDate || payment.createdAt), 'dd MMM yyyy') : '—'}</div>
+                                                                <div className="text-foreground font-medium font-mono">{payment.category || 'Rent'}</div>
+                                                                <div className="text-xs text-muted-foreground font-mono">{payment.transactionDate || payment.createdAt ? format(new Date(payment.transactionDate || payment.createdAt), 'dd MMM yyyy') : '—'}</div>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className="text-white font-medium font-mono">
+                                                            <div className="text-foreground font-medium font-mono">
                                                                 {payment.currency === 'USD' ? '$' : '₵'}{payment.amount?.toLocaleString()}
                                                             </div>
                                                         </div>
@@ -1073,7 +1073,7 @@ export default function TenantDetailsPage() {
                                         ) : (
                                             <div className="py-12 text-center">
                                                 <CreditCard className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
-                                                <p className="text-zinc-500 font-mono text-sm">No payments recorded</p>
+                                                <p className="text-muted-foreground font-mono text-sm">No payments recorded</p>
                                             </div>
                                         )}
                                     </CardContent>
@@ -1082,10 +1082,10 @@ export default function TenantDetailsPage() {
 
                             {/* Maintenance Tab */}
                             <TabsContent value="maintenance">
-                                <Card className="bg-zinc-900 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <CardTitle className="text-sm font-mono uppercase text-amber-500">Maintenance Requests</CardTitle>
-                                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 font-mono text-[10px]">
+                                        <Badge variant="outline" className="border-border text-muted-foreground font-mono text-[10px]">
                                             {maintenanceRequests.length} request{maintenanceRequests.length !== 1 ? 's' : ''}
                                         </Badge>
                                     </CardHeader>
@@ -1094,22 +1094,22 @@ export default function TenantDetailsPage() {
                                             <div className="space-y-4">
                                                 {maintenanceRequests.map((wo) => (
                                                     <Link key={wo.id} href={`/dashboard/property-management/maintenance/${wo.id}`}>
-                                                        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 hover:border-amber-800 transition-colors cursor-pointer">
+                                                        <div className="bg-background border border-border rounded-lg p-4 hover:border-amber-800 transition-colors cursor-pointer">
                                                             <div className="flex items-start justify-between mb-3">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="h-10 w-10 rounded-full bg-amber-900/20 flex items-center justify-center">
+                                                                    <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
                                                                         <Wrench className="h-5 w-5 text-amber-500" />
                                                                     </div>
                                                                     <div>
-                                                                        <div className="text-white font-medium font-mono text-sm">{wo.title}</div>
-                                                                        <div className="text-xs text-zinc-500 font-mono">{wo.referenceNumber}</div>
+                                                                        <div className="text-foreground font-medium font-mono text-sm">{wo.title}</div>
+                                                                        <div className="text-xs text-muted-foreground font-mono">{wo.referenceNumber}</div>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <Badge variant="outline" className={`font-mono text-[10px] ${wo.priority === 'critical' ? 'border-red-900 text-red-500' :
                                                                         wo.priority === 'high' ? 'border-orange-900 text-orange-500' :
                                                                             wo.priority === 'medium' ? 'border-amber-900 text-amber-500' :
-                                                                                'border-zinc-700 text-zinc-400'
+                                                                                'border-border text-muted-foreground'
                                                                         }`}>
                                                                         {wo.priority}
                                                                     </Badge>
@@ -1117,16 +1117,16 @@ export default function TenantDetailsPage() {
                                                                         wo.status === 'in_progress' ? 'border-blue-900 text-blue-500' :
                                                                             wo.status === 'completed' ? 'border-green-900 text-green-500' :
                                                                                 wo.status === 'cancelled' ? 'border-red-900 text-red-500' :
-                                                                                    'border-zinc-700 text-zinc-400'
+                                                                                    'border-border text-muted-foreground'
                                                                         }`}>
                                                                         {wo.status?.replace(/_/g, ' ')}
                                                                     </Badge>
                                                                 </div>
                                                             </div>
                                                             {wo.description && (
-                                                                <p className="text-xs text-zinc-400 font-mono mb-3 line-clamp-2">{wo.description}</p>
+                                                                <p className="text-xs text-muted-foreground font-mono mb-3 line-clamp-2">{wo.description}</p>
                                                             )}
-                                                            <div className="flex items-center gap-4 text-[11px] text-zinc-500 font-mono">
+                                                            <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-mono">
                                                                 <span className="capitalize">{wo.category?.replace(/_/g, ' ')}</span>
                                                                 {wo.scheduledDate && (
                                                                     <>
@@ -1148,8 +1148,8 @@ export default function TenantDetailsPage() {
                                         ) : (
                                             <div className="py-12 text-center">
                                                 <Wrench className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
-                                                <p className="text-zinc-500 font-mono text-sm">No maintenance requests from tenant</p>
-                                                <p className="text-zinc-600 font-mono text-xs mt-1">Requests submitted via the tenant portal will appear here</p>
+                                                <p className="text-muted-foreground font-mono text-sm">No maintenance requests from tenant</p>
+                                                <p className="text-muted-foreground font-mono text-xs mt-1">Requests submitted via the tenant portal will appear here</p>
                                             </div>
                                         )}
                                     </CardContent>
@@ -1158,21 +1158,21 @@ export default function TenantDetailsPage() {
 
                             {/* Documents Tab */}
                             <TabsContent value="documents">
-                                <Card className="bg-zinc-900 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardHeader>
                                         <CardTitle className="text-sm font-mono uppercase text-amber-500">Document Vault</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             {tenancies.map((tenancy) => (
-                                                <div key={tenancy.id} className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                                <div key={tenancy.id} className="bg-background border border-border rounded-lg p-3 flex items-center justify-between group hover:border-border transition-colors">
                                                     <div className="flex items-center gap-3">
                                                         <FileText className="h-6 w-6 text-amber-500" />
                                                         <div>
-                                                            <div className="text-sm font-medium text-zinc-300 group-hover:text-white font-mono">
+                                                            <div className="text-sm font-medium text-muted-foreground group-hover:text-foreground font-mono">
                                                                 {tenancy.leaseSignedUrl ? 'Signed Lease Agreement' : 'Tenancy Agreement'}
                                                             </div>
-                                                            <div className="text-xs text-zinc-500 font-mono">
+                                                            <div className="text-xs text-muted-foreground font-mono">
                                                                 {tenancy.referenceNumber} • {format(new Date(tenancy.leaseStartDate), 'MMM yyyy')}
                                                             </div>
                                                         </div>
@@ -1180,7 +1180,7 @@ export default function TenantDetailsPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-zinc-500 hover:text-white"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                                         disabled={!getLeaseDocUrl(tenancy)}
                                                         onClick={() => openLeaseDocument(tenancy)}
                                                     >
@@ -1189,14 +1189,14 @@ export default function TenantDetailsPage() {
                                                 </div>
                                             ))}
                                             {tenantDocuments.map((document) => (
-                                                <div key={document.id} className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                                <div key={document.id} className="bg-background border border-border rounded-lg p-3 flex items-center justify-between group hover:border-border transition-colors">
                                                     <div className="flex items-center gap-3 min-w-0">
-                                                        <FileText className="h-6 w-6 text-blue-400 flex-shrink-0" />
+                                                        <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                                                         <div className="min-w-0">
-                                                            <div className="text-sm font-medium text-zinc-300 group-hover:text-white font-mono truncate">
+                                                            <div className="text-sm font-medium text-muted-foreground group-hover:text-foreground font-mono truncate">
                                                                 {document.title}
                                                             </div>
-                                                            <div className="text-xs text-zinc-500 font-mono truncate">
+                                                            <div className="text-xs text-muted-foreground font-mono truncate">
                                                                 {document.documentType.replace(/_/g, ' ')} • {document.fileName}
                                                             </div>
                                                         </div>
@@ -1204,7 +1204,7 @@ export default function TenantDetailsPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-zinc-500 hover:text-white flex-shrink-0"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground flex-shrink-0"
                                                         onClick={() => window.open(document.fileUrl, '_blank', 'noopener,noreferrer')}
                                                     >
                                                         <Download className="h-4 w-4" />
@@ -1213,11 +1213,11 @@ export default function TenantDetailsPage() {
                                             ))}
                                             <button
                                                 type="button"
-                                                className="bg-zinc-950 border border-dashed border-zinc-800 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-zinc-900 hover:border-zinc-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="bg-background border border-dashed border-border rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-card hover:border-border transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                                 disabled={!activeTenancy}
                                                 onClick={() => setIsUploadDocumentOpen(true)}
                                             >
-                                                <div className="text-sm text-zinc-500 flex items-center gap-2 font-mono">
+                                                <div className="text-sm text-muted-foreground flex items-center gap-2 font-mono">
                                                     <Upload className="h-4 w-4" /> Upload Document
                                                 </div>
                                             </button>
@@ -1231,43 +1231,43 @@ export default function TenantDetailsPage() {
                     <div className="mt-6 grid gap-6 xl:grid-cols-2">
                         {/* Lease Signing Workflow */}
                         {activeTenancy && (
-                            <Card className="bg-zinc-900 border-zinc-800">
+                            <Card className="bg-card border-border">
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-sm font-mono uppercase text-amber-500">Lease Document</CardTitle>
-                                        <Badge className={`text-[10px] font-mono ${leaseSigningState.status === 'none' ? 'bg-zinc-700 text-zinc-400' :
-                                            leaseSigningState.status === 'draft' ? 'bg-blue-900/50 text-blue-400 border-blue-800' :
-                                                leaseSigningState.status === 'pending_sign' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
-                                                    leaseSigningState.status === 'partially_signed' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
-                                                        leaseSigningState.status === 'signed' ? 'bg-emerald-900/50 text-emerald-400 border-emerald-800' :
-                                                            leaseSigningState.status === 'expired' ? 'bg-red-900/50 text-red-400 border-red-800' :
-                                                                'bg-zinc-700 text-zinc-400'
+                                        <Badge className={`text-[10px] font-mono ${leaseSigningState.status === 'none' ? 'bg-zinc-700 text-muted-foreground' :
+                                            leaseSigningState.status === 'draft' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800' :
+                                                leaseSigningState.status === 'pending_sign' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800' :
+                                                    leaseSigningState.status === 'partially_signed' ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800' :
+                                                        leaseSigningState.status === 'signed' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 border-emerald-800' :
+                                                            leaseSigningState.status === 'expired' ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-800' :
+                                                                'bg-zinc-700 text-muted-foreground'
                                             }`}>
                                             {leaseSigningState.label}
                                         </Badge>
                                     </div>
-                                    <CardDescription className="text-zinc-500 text-xs font-mono mt-1">
+                                    <CardDescription className="text-muted-foreground text-xs font-mono mt-1">
                                         {leaseSigningState.description}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <div className="flex items-center justify-between text-[10px] font-mono">
-                                        <div className={`flex flex-col items-center ${leaseSigningState.status !== 'none' ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status !== 'none' ? 'bg-emerald-900/50 border border-emerald-700' : 'bg-zinc-800 border border-zinc-700'}`}>
+                                        <div className={`flex flex-col items-center ${leaseSigningState.status !== 'none' ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status !== 'none' ? 'bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-700' : 'bg-muted border border-border'}`}>
                                                 {leaseSigningState.status !== 'none' ? <CheckCircle className="w-3 h-3" /> : '1'}
                                             </div>
                                             <span>Draft</span>
                                         </div>
-                                        <div className={`flex-1 h-0.5 mx-2 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-emerald-700' : 'bg-zinc-800'}`} />
-                                        <div className={`flex flex-col items-center ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'text-amber-500' : 'text-zinc-600'}`}>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-amber-900/50 border border-amber-700' : 'bg-zinc-800 border border-zinc-700'}`}>
+                                        <div className={`flex-1 h-0.5 mx-2 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-emerald-700' : 'bg-muted'}`} />
+                                        <div className={`flex flex-col items-center ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-amber-100 dark:bg-amber-900/50 border border-amber-700' : 'bg-muted border border-border'}`}>
                                                 {['signed'].includes(leaseSigningState.status) ? <CheckCircle className="w-3 h-3" /> : '2'}
                                             </div>
                                             <span>Sent</span>
                                         </div>
-                                        <div className={`flex-1 h-0.5 mx-2 ${leaseSigningState.status === 'signed' ? 'bg-emerald-700' : 'bg-zinc-800'}`} />
-                                        <div className={`flex flex-col items-center ${leaseSigningState.status === 'signed' ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status === 'signed' ? 'bg-emerald-900/50 border border-emerald-700' : 'bg-zinc-800 border border-zinc-700'}`}>
+                                        <div className={`flex-1 h-0.5 mx-2 ${leaseSigningState.status === 'signed' ? 'bg-emerald-700' : 'bg-muted'}`} />
+                                        <div className={`flex flex-col items-center ${leaseSigningState.status === 'signed' ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status === 'signed' ? 'bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-700' : 'bg-muted border border-border'}`}>
                                                 {leaseSigningState.status === 'signed' ? <CheckCircle className="w-3 h-3" /> : '3'}
                                             </div>
                                             <span>Signed</span>
@@ -1275,13 +1275,13 @@ export default function TenantDetailsPage() {
                                     </div>
 
                                     {leaseSigningState.signers && leaseSigningState.signers.length > 0 && (
-                                        <div className="bg-zinc-800/50 rounded p-2 space-y-2">
-                                            <p className="text-[10px] font-mono text-zinc-500 uppercase">Signers</p>
+                                        <div className="bg-muted/50 rounded p-2 space-y-2">
+                                            <p className="text-[10px] font-mono text-muted-foreground uppercase">Signers</p>
                                             {leaseSigningState.signers.map((signer, i) => (
                                                 <div key={i} className="flex items-center justify-between text-xs">
                                                     <div className="flex items-center gap-2">
                                                         <div className={`w-2 h-2 rounded-full ${signer.signed ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                                        <span className="text-zinc-300 font-mono">{signer.name}</span>
+                                                        <span className="text-muted-foreground font-mono">{signer.name}</span>
                                                     </div>
                                                     <span className={`text-[10px] font-mono ${signer.signed ? 'text-emerald-500' : 'text-amber-500'}`}>
                                                         {signer.signed ? 'Signed' : 'Pending'}
@@ -1294,7 +1294,7 @@ export default function TenantDetailsPage() {
                                     <div className="space-y-2 pt-1">
                                         {leaseSigningState.status === 'none' && (
                                             <Button
-                                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
                                                 onClick={() => handleGenerateLease()}
                                             >
                                                 <FileText className="h-3 w-3 mr-2" />
@@ -1305,7 +1305,7 @@ export default function TenantDetailsPage() {
                                         {leaseSigningState.status === 'draft' && (
                                             <>
                                                 <Button
-                                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+                                                    className="w-full bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
                                                     onClick={() => handleGenerateLease()}
                                                 >
                                                     <Send className="h-3 w-3 mr-2" />
@@ -1313,7 +1313,7 @@ export default function TenantDetailsPage() {
                                                 </Button>
                                                 <Button
                                                     variant="outline"
-                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    className="w-full border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                                     onClick={() => handleGenerateLease()}
                                                 >
                                                     <Edit2 className="h-3 w-3 mr-2" />
@@ -1333,7 +1333,7 @@ export default function TenantDetailsPage() {
                                                 </Button>
                                                 <Button
                                                     variant="outline"
-                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    className="w-full border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                                     onClick={() => handleGenerateLease()}
                                                 >
                                                     <Eye className="h-3 w-3 mr-2" />
@@ -1359,7 +1359,7 @@ export default function TenantDetailsPage() {
                                             <>
                                                 <Button
                                                     variant="outline"
-                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    className="w-full border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                                     disabled={!getLeaseDocUrl(activeTenancy)}
                                                     onClick={() => openLeaseDocument(activeTenancy)}
                                                 >
@@ -1368,7 +1368,7 @@ export default function TenantDetailsPage() {
                                                 </Button>
                                                 <Button
                                                     variant="outline"
-                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    className="w-full border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                                     disabled={!getLeaseDocUrl(activeTenancy)}
                                                     onClick={() => openLeaseDocument(activeTenancy)}
                                                 >
@@ -1380,7 +1380,7 @@ export default function TenantDetailsPage() {
 
                                         {(leaseSigningState.status === 'expired' || leaseSigningState.status === 'voided') && (
                                             <Button
-                                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
                                                 onClick={() => {
                                                     setLeaseSigningState({
                                                         status: 'none',
@@ -1400,12 +1400,12 @@ export default function TenantDetailsPage() {
                         )}
 
                         {/* Quick Actions */}
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Quick Actions</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <Button variant="outline" className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs">
+                                <Button variant="outline" className="w-full justify-start border-border text-muted-foreground hover:text-foreground font-mono text-xs">
                                     <MessageSquare className="h-3 w-3 mr-2" />
                                     Send Message
                                 </Button>
@@ -1414,7 +1414,7 @@ export default function TenantDetailsPage() {
                                     <>
                                         <Button
                                             variant="outline"
-                                            className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            className="w-full justify-start border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                             onClick={() => {
                                                 setSelectedTenancy(activeTenancy)
                                                 setRenewForm({
@@ -1430,7 +1430,7 @@ export default function TenantDetailsPage() {
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            className="w-full justify-start border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                             onClick={() => {
                                                 setSelectedTenancy(activeTenancy)
                                                 setEditForm({
@@ -1464,24 +1464,24 @@ export default function TenantDetailsPage() {
             </div>
 
             <Dialog open={isUploadDocumentOpen} onOpenChange={setIsUploadDocumentOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+                <DialogContent className="bg-card border-border text-foreground">
                     <DialogHeader>
                         <DialogTitle className="font-mono text-amber-500 uppercase">Upload Tenant Document</DialogTitle>
-                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                             Add identity, proof of address, or supporting files to this tenant vault.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Document Type</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Document Type</Label>
                             <Select
                                 value={documentForm.documentType}
                                 onValueChange={(value) => setDocumentForm(prev => ({ ...prev, documentType: value as PropertyDocumentType }))}
                             >
-                                <SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs">
+                                <SelectTrigger className="bg-background border-border text-muted-foreground font-mono text-xs">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent className="bg-card border-border">
                                     <SelectItem value={PropertyDocumentType.TENANT_AGREEMENTS}>Tenant ID / Ghana Card</SelectItem>
                                     <SelectItem value={PropertyDocumentType.UTILITY_BILLS}>Proof of Address</SelectItem>
                                     <SelectItem value={PropertyDocumentType.CORRESPONDENCE}>Correspondence</SelectItem>
@@ -1490,44 +1490,44 @@ export default function TenantDetailsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Title</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Title</Label>
                             <Input
                                 value={documentForm.title}
                                 onChange={(event) => setDocumentForm(prev => ({ ...prev, title: event.target.value }))}
                                 placeholder="Ghana Card - Cedyn"
-                                className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs"
+                                className="bg-background border-border text-muted-foreground font-mono text-xs"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">File</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">File</Label>
                             <Input
                                 type="file"
                                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
                                 onChange={(event) => setDocumentFile(event.target.files?.[0] || null)}
-                                className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs"
+                                className="bg-background border-border text-muted-foreground font-mono text-xs"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Notes</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Notes</Label>
                             <Textarea
                                 value={documentForm.description}
                                 onChange={(event) => setDocumentForm(prev => ({ ...prev, description: event.target.value }))}
                                 placeholder="Optional notes for this document"
-                                className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs min-h-20"
+                                className="bg-background border-border text-muted-foreground font-mono text-xs min-h-20"
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            className="border-zinc-800 text-zinc-400 font-mono text-xs"
+                            className="border-border text-muted-foreground font-mono text-xs"
                             onClick={() => setIsUploadDocumentOpen(false)}
                             disabled={isUploadingDocument}
                         >
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
                             onClick={handleUploadTenantDocument}
                             disabled={isUploadingDocument || !documentFile || !activeTenancy}
                         >
@@ -1540,39 +1540,39 @@ export default function TenantDetailsPage() {
 
             {/* Edit Tenancy Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="bg-zinc-950 border-zinc-800">
+                <DialogContent className="bg-background border-border">
                     <DialogHeader>
                         <DialogTitle className="text-amber-500 font-mono uppercase">Edit Tenancy</DialogTitle>
-                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                             Update lease terms for {selectedTenancy?.referenceNumber}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Monthly Rent</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Monthly Rent</Label>
                             <Input
                                 type="number"
                                 value={editForm.monthlyRent}
                                 onChange={(e) => setEditForm(prev => ({ ...prev, monthlyRent: parseFloat(e.target.value) || 0 }))}
-                                className="bg-black border-zinc-800 text-white font-mono"
+                                className="bg-background border-border text-foreground font-mono"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Lease End Date</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Lease End Date</Label>
                             <Input
                                 type="date"
                                 value={editForm.leaseEndDate}
                                 onChange={(e) => setEditForm(prev => ({ ...prev, leaseEndDate: e.target.value }))}
-                                className="bg-black border-zinc-800 text-white font-mono"
+                                className="bg-background border-border text-foreground font-mono"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Payment Frequency</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Payment Frequency</Label>
                             <Select value={editForm.paymentFreq} onValueChange={(v) => setEditForm(prev => ({ ...prev, paymentFreq: v }))}>
-                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-950 border-zinc-800">
+                                <SelectContent className="bg-background border-border">
                                     <SelectItem value="monthly">Monthly</SelectItem>
                                     <SelectItem value="quarterly">Quarterly</SelectItem>
                                     <SelectItem value="annually">Annually</SelectItem>
@@ -1581,8 +1581,8 @@ export default function TenantDetailsPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" className="border-zinc-800 text-zinc-400 font-mono text-xs" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs" onClick={handleSaveEdit} disabled={isSavingEdit}>
+                        <Button variant="outline" className="border-border text-muted-foreground font-mono text-xs" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-xs" onClick={handleSaveEdit} disabled={isSavingEdit}>
                             {isSavingEdit ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : null}
                             Save Changes
                         </Button>
@@ -1592,30 +1592,30 @@ export default function TenantDetailsPage() {
 
             {/* Terminate Dialog */}
             <AlertDialog open={isTerminateDialogOpen} onOpenChange={setIsTerminateDialogOpen}>
-                <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+                <AlertDialogContent className="bg-background border-border">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white font-mono uppercase flex items-center gap-2">
+                        <AlertDialogTitle className="text-foreground font-mono uppercase flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-red-500" />
                             Terminate Tenancy
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
+                        <AlertDialogDescription className="text-muted-foreground font-mono text-xs">
                             This will end the tenancy <span className="text-amber-500">{selectedTenancy?.referenceNumber}</span>.
                             The property will be marked as available.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Termination Date</Label>
-                            <Input type="date" value={terminateForm.terminationDate} onChange={(e) => setTerminateForm(prev => ({ ...prev, terminationDate: e.target.value }))} className="bg-black border-zinc-800 text-white font-mono" />
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Termination Date</Label>
+                            <Input type="date" value={terminateForm.terminationDate} onChange={(e) => setTerminateForm(prev => ({ ...prev, terminationDate: e.target.value }))} className="bg-background border-border text-foreground font-mono" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Reason (Optional)</Label>
-                            <Textarea placeholder="Reason..." value={terminateForm.reason} onChange={(e) => setTerminateForm(prev => ({ ...prev, reason: e.target.value }))} className="bg-black border-zinc-800 text-white font-mono text-sm resize-none" />
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Reason (Optional)</Label>
+                            <Textarea placeholder="Reason..." value={terminateForm.reason} onChange={(e) => setTerminateForm(prev => ({ ...prev, reason: e.target.value }))} className="bg-background border-border text-foreground font-mono text-sm resize-none" />
                         </div>
                     </div>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-zinc-900 border-zinc-800 text-zinc-400 font-mono text-xs">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleTerminate} disabled={isTerminating} className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs">
+                        <AlertDialogCancel className="bg-card border-border text-muted-foreground font-mono text-xs">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleTerminate} disabled={isTerminating} className="bg-red-600 hover:bg-red-500 text-foreground font-mono text-xs">
                             {isTerminating ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <XCircle className="h-3 w-3 mr-2" />}
                             Terminate
                         </AlertDialogAction>
@@ -1625,36 +1625,36 @@ export default function TenantDetailsPage() {
 
             {/* Renew Dialog */}
             <Dialog open={isRenewDialogOpen} onOpenChange={setIsRenewDialogOpen}>
-                <DialogContent className="bg-zinc-950 border-zinc-800">
+                <DialogContent className="bg-background border-border">
                     <DialogHeader>
                         <DialogTitle className="text-amber-500 font-mono uppercase flex items-center gap-2">
                             <RefreshCw className="h-5 w-5" />
                             Renew Lease
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                             Extend the lease for {tenant.fullName}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         {selectedTenancy && (
-                            <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                            <div className="p-3 bg-card rounded-lg border border-border">
                                 <div className="grid grid-cols-2 gap-4 text-xs font-mono">
                                     <div>
-                                        <span className="text-zinc-500">Current End:</span>
-                                        <p className="text-white">{format(new Date(selectedTenancy.leaseEndDate), 'dd MMM yyyy')}</p>
+                                        <span className="text-muted-foreground">Current End:</span>
+                                        <p className="text-foreground">{format(new Date(selectedTenancy.leaseEndDate), 'dd MMM yyyy')}</p>
                                     </div>
                                     <div>
-                                        <span className="text-zinc-500">Current Rent:</span>
-                                        <p className="text-white">{selectedTenancy.rentCurrency} {selectedTenancy.monthlyRent?.toLocaleString()}</p>
+                                        <span className="text-muted-foreground">Current Rent:</span>
+                                        <p className="text-foreground">{selectedTenancy.rentCurrency} {selectedTenancy.monthlyRent?.toLocaleString()}</p>
                                     </div>
                                 </div>
                             </div>
                         )}
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Duration</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Duration</Label>
                             <Select value={renewForm.duration} onValueChange={handleDurationChange}>
-                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono"><SelectValue /></SelectTrigger>
-                                <SelectContent className="bg-zinc-950 border-zinc-800">
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-background border-border">
                                     <SelectItem value="6m">6 Months</SelectItem>
                                     <SelectItem value="1">1 Year</SelectItem>
                                     <SelectItem value="2">2 Years</SelectItem>
@@ -1663,17 +1663,17 @@ export default function TenantDetailsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">New End Date</Label>
-                            <Input type="date" value={renewForm.newEndDate} onChange={(e) => setRenewForm(prev => ({ ...prev, newEndDate: e.target.value }))} className="bg-black border-zinc-800 text-white font-mono" />
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">New End Date</Label>
+                            <Input type="date" value={renewForm.newEndDate} onChange={(e) => setRenewForm(prev => ({ ...prev, newEndDate: e.target.value }))} className="bg-background border-border text-foreground font-mono" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">New Monthly Rent</Label>
-                            <Input type="number" value={renewForm.newMonthlyRent} onChange={(e) => setRenewForm(prev => ({ ...prev, newMonthlyRent: parseFloat(e.target.value) || 0 }))} className="bg-black border-zinc-800 text-white font-mono" />
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">New Monthly Rent</Label>
+                            <Input type="number" value={renewForm.newMonthlyRent} onChange={(e) => setRenewForm(prev => ({ ...prev, newMonthlyRent: parseFloat(e.target.value) || 0 }))} className="bg-background border-border text-foreground font-mono" />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" className="border-zinc-800 text-zinc-400 font-mono text-xs" onClick={() => setIsRenewDialogOpen(false)}>Cancel</Button>
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs" onClick={handleRenew} disabled={isRenewing}>
+                        <Button variant="outline" className="border-border text-muted-foreground font-mono text-xs" onClick={() => setIsRenewDialogOpen(false)}>Cancel</Button>
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-xs" onClick={handleRenew} disabled={isRenewing}>
                             {isRenewing ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-2" />}
                             Renew Lease
                         </Button>
@@ -1683,20 +1683,20 @@ export default function TenantDetailsPage() {
 
             {/* Delete Tenant Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+                <AlertDialogContent className="bg-background border-border">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white font-mono uppercase flex items-center gap-2">
+                        <AlertDialogTitle className="text-foreground font-mono uppercase flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-red-500" />
                             Delete Tenant
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
+                        <AlertDialogDescription className="text-muted-foreground font-mono text-xs">
                             Are you sure you want to delete <span className="text-amber-500">{tenant.fullName}</span>?
                             This will also remove all associated tenancies and cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-zinc-900 border-zinc-800 text-zinc-400 font-mono text-xs">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteTenant} disabled={isDeleting} className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs">
+                        <AlertDialogCancel className="bg-card border-border text-muted-foreground font-mono text-xs">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteTenant} disabled={isDeleting} className="bg-red-600 hover:bg-red-500 text-foreground font-mono text-xs">
                             {isDeleting ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Trash2 className="h-3 w-3 mr-2" />}
                             Delete Tenant
                         </AlertDialogAction>
@@ -1706,21 +1706,21 @@ export default function TenantDetailsPage() {
 
             {/* Add Utility Charge Dialog */}
             <Dialog open={isAddChargeOpen} onOpenChange={setIsAddChargeOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+                <DialogContent className="bg-card border-border text-foreground">
                     <DialogHeader>
                         <DialogTitle className="font-mono text-amber-500">Add Utility Charge</DialogTitle>
-                        <DialogDescription className="text-zinc-400 font-mono text-xs">
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                             Bill the tenant for a utility cost. Upload evidence in the Documents tab.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <div>
-                            <Label className="text-xs font-mono text-zinc-400">Utility Type</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Utility Type</Label>
                             <Select value={chargeForm.utilityType} onValueChange={(v) => setChargeForm(f => ({ ...f, utilityType: v as UtilityType }))}>
-                                <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1">
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono text-sm mt-1">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent className="bg-card border-border">
                                     {[
                                         { value: 'electricity', label: 'Electricity' },
                                         { value: 'water', label: 'Water' },
@@ -1732,33 +1732,33 @@ export default function TenantDetailsPage() {
                                         { value: 'maintenance', label: 'Common Area Maintenance' },
                                         { value: 'other', label: 'Other' },
                                     ].map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-300 font-mono text-sm">{opt.label}</SelectItem>
+                                        <SelectItem key={opt.value} value={opt.value} className="text-muted-foreground font-mono text-sm">{opt.label}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-xs font-mono text-zinc-400">Period Start</Label>
+                                <Label className="text-xs font-mono text-muted-foreground">Period Start</Label>
                                 <Input
                                     type="date"
                                     value={chargeForm.billingPeriodStart}
                                     onChange={e => setChargeForm(f => ({ ...f, billingPeriodStart: e.target.value }))}
-                                    className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1"
+                                    className="bg-background border-border text-foreground font-mono text-sm mt-1"
                                 />
                             </div>
                             <div>
-                                <Label className="text-xs font-mono text-zinc-400">Period End</Label>
+                                <Label className="text-xs font-mono text-muted-foreground">Period End</Label>
                                 <Input
                                     type="date"
                                     value={chargeForm.billingPeriodEnd}
                                     onChange={e => setChargeForm(f => ({ ...f, billingPeriodEnd: e.target.value }))}
-                                    className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1"
+                                    className="bg-background border-border text-foreground font-mono text-sm mt-1"
                                 />
                             </div>
                         </div>
                         <div>
-                            <Label className="text-xs font-mono text-zinc-400">Amount (GHS)</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Amount (GHS)</Label>
                             <Input
                                 type="number"
                                 step="0.01"
@@ -1766,24 +1766,24 @@ export default function TenantDetailsPage() {
                                 value={chargeForm.amount}
                                 onChange={e => setChargeForm(f => ({ ...f, amount: e.target.value }))}
                                 placeholder="0.00"
-                                className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1"
+                                className="bg-background border-border text-foreground font-mono text-sm mt-1"
                             />
                         </div>
                         <div>
-                            <Label className="text-xs font-mono text-zinc-400">Description (optional)</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Description (optional)</Label>
                             <Textarea
                                 value={chargeForm.description}
                                 onChange={e => setChargeForm(f => ({ ...f, description: e.target.value }))}
                                 placeholder="e.g. ECG bill for January 2026"
-                                className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1 resize-none"
+                                className="bg-background border-border text-foreground font-mono text-sm mt-1 resize-none"
                                 rows={2}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsAddChargeOpen(false)} className="text-zinc-400 font-mono text-xs">Cancel</Button>
+                        <Button variant="ghost" onClick={() => setIsAddChargeOpen(false)} className="text-muted-foreground font-mono text-xs">Cancel</Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-xs"
                             disabled={!chargeForm.billingPeriodStart || !chargeForm.billingPeriodEnd || !chargeForm.amount || isSubmittingCharge}
                             onClick={async () => {
                                 if (!activeTenancy) return

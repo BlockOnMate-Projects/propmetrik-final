@@ -81,11 +81,11 @@ const subphaseStatusConfig: Record<SubphaseStatus, {
   bg: string;
   label: string;
 }> = {
-  pending: { icon: Clock, color: 'text-zinc-400', bg: 'bg-zinc-500/20', label: 'Pending' },
-  in_progress: { icon: PlayCircle, color: 'text-blue-400', bg: 'bg-blue-500/20', label: 'In Progress' },
-  completed: { icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/20', label: 'Completed' },
-  blocked: { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Blocked' },
-  cancelled: { icon: AlertTriangle, color: 'text-zinc-500', bg: 'bg-zinc-600/20', label: 'Cancelled' },
+  pending: { icon: Clock, color: 'text-muted-foreground', bg: 'bg-zinc-500/20', label: 'Pending' },
+  in_progress: { icon: PlayCircle, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/20', label: 'In Progress' },
+  completed: { icon: CheckCircle2, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/20', label: 'Completed' },
+  blocked: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/20', label: 'Blocked' },
+  cancelled: { icon: AlertTriangle, color: 'text-muted-foreground', bg: 'bg-zinc-600/20', label: 'Cancelled' },
 };
 
 // =====================================================
@@ -107,9 +107,9 @@ function SubphaseItem({
   const hasDateRange = subphase.startDate && subphase.endDate;
 
   return (
-    <div className="flex items-center gap-3 py-2.5 px-3 bg-zinc-800/30 rounded-lg group hover:bg-zinc-800/50 transition-colors">
+    <div className="flex items-center gap-3 py-2.5 px-3 bg-muted/30 rounded-lg group hover:bg-muted/50 transition-colors">
       {/* Drag Handle */}
-      <GripVertical className="h-4 w-4 text-zinc-600 opacity-0 group-hover:opacity-100 cursor-grab" />
+      <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab" />
 
       {/* Status Icon */}
       <div className={cn("h-7 w-7 rounded flex items-center justify-center shrink-0", config.bg)}>
@@ -119,34 +119,34 @@ function SubphaseItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-300 font-medium truncate">{subphase.name}</span>
+          <span className="text-xs text-muted-foreground font-medium truncate">{subphase.name}</span>
           {subphase.assignedTeam && (
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-zinc-700 text-zinc-400">
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-border text-muted-foreground">
               {subphase.assignedTeam}
             </Badge>
           )}
         </div>
         {subphase.description && (
-          <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subphase.description}</p>
+          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{subphase.description}</p>
         )}
       </div>
 
       {/* Progress */}
       <div className="flex items-center gap-2 shrink-0">
         <Progress value={subphase.progressPercentage} className="w-12 h-1" />
-        <span className="text-[10px] text-zinc-400 w-8">{subphase.progressPercentage}%</span>
+        <span className="text-[10px] text-muted-foreground w-8">{subphase.progressPercentage}%</span>
       </div>
 
       {/* Date */}
       {hasDateRange && (
-        <div className="text-[10px] text-zinc-500 shrink-0">
+        <div className="text-[10px] text-muted-foreground shrink-0">
           {format(parseISO(subphase.startDate!), 'MMM d')} - {format(parseISO(subphase.endDate!), 'MMM d')}
         </div>
       )}
 
       {/* Hours */}
       {subphase.estimatedHours && (
-        <div className="flex items-center gap-1 text-zinc-500 shrink-0">
+        <div className="flex items-center gap-1 text-muted-foreground shrink-0">
           <Timer className="h-3 w-3" />
           <span className="text-[10px]">
             {subphase.actualHours ?? 0}/{subphase.estimatedHours}h
@@ -158,10 +158,10 @@ function SubphaseItem({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
-            <MoreHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+            <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+        <DropdownMenuContent align="end" className="bg-card border-border">
           <DropdownMenuItem onClick={() => onEdit(subphase)} className="text-xs">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
@@ -175,19 +175,19 @@ function SubphaseItem({
                   Start
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => onStatusChange(subphase, 'completed')} className="text-xs text-green-400">
+              <DropdownMenuItem onClick={() => onStatusChange(subphase, 'completed')} className="text-xs text-green-600 dark:text-green-400">
                 <Check className="h-3 w-3 mr-2" />
                 Complete
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange(subphase, 'blocked')} className="text-xs text-red-400">
+              <DropdownMenuItem onClick={() => onStatusChange(subphase, 'blocked')} className="text-xs text-red-600 dark:text-red-400">
                 <AlertTriangle className="h-3 w-3 mr-2" />
                 Mark Blocked
               </DropdownMenuItem>
             </>
           )}
 
-          <DropdownMenuSeparator className="bg-zinc-800" />
-          <DropdownMenuItem onClick={() => onDelete(subphase)} className="text-xs text-red-400">
+          <DropdownMenuSeparator className="bg-muted" />
+          <DropdownMenuItem onClick={() => onDelete(subphase)} className="text-xs text-red-600 dark:text-red-400">
             <Trash2 className="h-3 w-3 mr-2" />
             Delete
           </DropdownMenuItem>
@@ -311,12 +311,12 @@ function SubphaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+      <DialogContent className="bg-card border-border max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-white text-sm">
+          <DialogTitle className="text-foreground text-sm">
             {subphase ? 'Edit Sub-phase' : 'Add Sub-phase'}
           </DialogTitle>
-          <DialogDescription className="text-zinc-500 text-xs">
+          <DialogDescription className="text-muted-foreground text-xs">
             Sub-phases help break down milestones into manageable tasks.
           </DialogDescription>
         </DialogHeader>
@@ -324,44 +324,44 @@ function SubphaseDialog({
         <div className="space-y-4 py-4">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">Name *</Label>
+            <Label className="text-xs text-muted-foreground">Name *</Label>
             <Input
               placeholder="e.g., Site Survey, Foundation Layout"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="bg-zinc-800 border-zinc-700 text-sm"
+              className="bg-muted border-border text-sm"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">Description</Label>
+            <Label className="text-xs text-muted-foreground">Description</Label>
             <Textarea
               placeholder="What needs to be done..."
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="bg-zinc-800 border-zinc-700 text-sm min-h-[60px]"
+              className="bg-muted border-border text-sm min-h-[60px]"
             />
           </div>
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Start Date</Label>
+              <Label className="text-xs text-muted-foreground">Start Date</Label>
               <Input
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
-                className="bg-zinc-800 border-zinc-700 text-sm"
+                className="bg-muted border-border text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">End Date</Label>
+              <Label className="text-xs text-muted-foreground">End Date</Label>
               <Input
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                className="bg-zinc-800 border-zinc-700 text-sm"
+                className="bg-muted border-border text-sm"
               />
             </div>
           </div>
@@ -369,15 +369,15 @@ function SubphaseDialog({
           {/* Status and Progress */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Status</Label>
+              <Label className="text-xs text-muted-foreground">Status</Label>
               <Select
                 value={formData.status}
                 onValueChange={(v) => setFormData(prev => ({ ...prev, status: v as SubphaseStatus }))}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-sm">
+                <SelectTrigger className="bg-muted border-border text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectContent className="bg-card border-border">
                   <SelectItem value="pending" className="text-xs">Pending</SelectItem>
                   <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
                   <SelectItem value="completed" className="text-xs">Completed</SelectItem>
@@ -387,7 +387,7 @@ function SubphaseDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Progress: {formData.progress_percentage}%</Label>
+              <Label className="text-xs text-muted-foreground">Progress: {formData.progress_percentage}%</Label>
               <Slider
                 value={[formData.progress_percentage]}
                 onValueChange={([v]) => setFormData(prev => ({ ...prev, progress_percentage: v }))}
@@ -401,34 +401,34 @@ function SubphaseDialog({
           {/* Team and Hours */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Assigned Team</Label>
+              <Label className="text-xs text-muted-foreground">Assigned Team</Label>
               <Input
                 placeholder="e.g., Engineering, Contractors"
                 value={formData.assigned_team}
                 onChange={(e) => setFormData(prev => ({ ...prev, assigned_team: e.target.value }))}
-                className="bg-zinc-800 border-zinc-700 text-sm"
+                className="bg-muted border-border text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-400">Estimated Hours</Label>
+              <Label className="text-xs text-muted-foreground">Estimated Hours</Label>
               <Input
                 type="number"
                 placeholder="0"
                 value={formData.estimated_hours}
                 onChange={(e) => setFormData(prev => ({ ...prev, estimated_hours: e.target.value }))}
-                className="bg-zinc-800 border-zinc-700 text-sm"
+                className="bg-muted border-border text-sm"
               />
             </div>
           </div>
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">Notes</Label>
+            <Label className="text-xs text-muted-foreground">Notes</Label>
             <Textarea
               placeholder="Additional notes..."
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              className="bg-zinc-800 border-zinc-700 text-sm min-h-[60px]"
+              className="bg-muted border-border text-sm min-h-[60px]"
             />
           </div>
         </div>
@@ -437,14 +437,14 @@ function SubphaseDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="border-zinc-700 text-xs"
+            className="border-border text-xs"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.name.trim()}
-            className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+            className="bg-amber-600 hover:bg-amber-700 text-foreground text-xs"
           >
             {isSubmitting && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
             {subphase ? 'Save Changes' : 'Add Sub-phase'}
@@ -542,7 +542,7 @@ export function MilestoneSubphases({ projectId, milestone, isExpanded = false, o
   return (
     <>
       {/* Sub-phases Section */}
-      <div className="mt-3 pt-3 border-t border-zinc-800">
+      <div className="mt-3 pt-3 border-t border-border">
         {/* Header */}
         <button
           onClick={handleToggle}
@@ -550,16 +550,16 @@ export function MilestoneSubphases({ projectId, milestone, isExpanded = false, o
         >
           <div className="flex items-center gap-2">
             {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             )}
             <Layers className="h-3.5 w-3.5 text-amber-500" />
-            <span className="text-[11px] font-medium text-zinc-300">
+            <span className="text-[11px] font-medium text-muted-foreground">
               Sub-phases
             </span>
             {subphases.length > 0 && (
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-zinc-700">
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-border">
                 {completedCount}/{subphases.length}
               </Badge>
             )}
@@ -568,7 +568,7 @@ export function MilestoneSubphases({ projectId, milestone, isExpanded = false, o
           {subphases.length > 0 && !expanded && (
             <div className="flex items-center gap-2">
               <Progress value={avgProgress} className="w-12 h-1" />
-              <span className="text-[10px] text-zinc-500">{avgProgress}%</span>
+              <span className="text-[10px] text-muted-foreground">{avgProgress}%</span>
             </div>
           )}
         </button>
@@ -582,12 +582,12 @@ export function MilestoneSubphases({ projectId, milestone, isExpanded = false, o
               </div>
             ) : subphases.length === 0 ? (
               <div className="text-center py-4">
-                <p className="text-[11px] text-zinc-500 mb-2">No sub-phases yet</p>
+                <p className="text-[11px] text-muted-foreground mb-2">No sub-phases yet</p>
                 <Button
                   onClick={handleAddSubphase}
                   variant="outline"
                   size="sm"
-                  className="text-[10px] h-7 border-zinc-700 border-dashed"
+                  className="text-[10px] h-7 border-border border-dashed"
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   Add Sub-phase
@@ -609,7 +609,7 @@ export function MilestoneSubphases({ projectId, milestone, isExpanded = false, o
                   onClick={handleAddSubphase}
                   variant="ghost"
                   size="sm"
-                  className="w-full text-[10px] h-7 text-zinc-500 hover:text-amber-400"
+                  className="w-full text-[10px] h-7 text-muted-foreground hover:text-amber-400"
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   Add Sub-phase
@@ -632,15 +632,15 @@ export function MilestoneSubphases({ projectId, milestone, isExpanded = false, o
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingSubphase} onOpenChange={() => setDeletingSubphase(null)}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white text-sm">Delete Sub-phase?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400 text-xs">
+            <AlertDialogTitle className="text-foreground text-sm">Delete Sub-phase?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs">
               This will permanently delete "{deletingSubphase?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-muted border-border text-xs">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteSubphase}
               className="bg-red-600 hover:bg-red-700 text-xs"

@@ -29,7 +29,7 @@ export default function Error({
         <AlertTriangle className="h-8 w-8 text-red-500" />
       </div>
       <h2 className="text-sm text-zinc-200 uppercase tracking-wider mb-2">Something went wrong</h2>
-      <p className="text-[10px] text-zinc-500 max-w-md text-center mb-1">
+      <p className="text-[10px] text-muted-foreground max-w-md text-center mb-1">
         An error occurred loading property management. Please try again.
       </p>
       {error.digest && (
@@ -38,13 +38,13 @@ export default function Error({
       <div className="flex items-center gap-2 mt-4">
         <button
           onClick={reset}
-          className="px-4 py-1.5 text-[10px] uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded hover:bg-amber-500/20 transition-colors"
+          className="px-4 py-1.5 text-[10px] uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded hover:bg-amber-500/20 transition-colors"
         >
           Retry
         </button>
         <button
           onClick={() => window.location.href = '/dashboard'}
-          className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-zinc-500 border border-zinc-800 rounded hover:bg-zinc-800 transition-colors"
+          className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded hover:bg-muted transition-colors"
         >
           Dashboard
         </button>

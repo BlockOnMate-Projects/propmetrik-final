@@ -369,8 +369,8 @@ export default function NewDealPage() {
 
             {/* Error message */}
             {submitError && (
-                <div className="border border-red-900 bg-red-900/20 p-3 text-center">
-                    <p className="font-mono text-xs text-red-400">{submitError}</p>
+                <div className="border border-red-900 bg-red-100 dark:bg-red-900/20 p-3 text-center">
+                    <p className="font-mono text-xs text-red-600 dark:text-red-400">{submitError}</p>
                 </div>
             )}
 

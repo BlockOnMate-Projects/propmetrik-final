@@ -101,19 +101,19 @@ const defaultFormData: FormData = {
 };
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  open: { label: 'Open', color: 'bg-blue-900/50 text-blue-400', icon: Circle },
-  in_progress: { label: 'In Progress', color: 'bg-yellow-900/50 text-yellow-400', icon: Clock },
-  ready_for_review: { label: 'Ready for Review', color: 'bg-purple-900/50 text-purple-400', icon: Eye },
-  verified: { label: 'Verified', color: 'bg-emerald-900/50 text-emerald-400', icon: CheckCircle2 },
-  deferred: { label: 'Deferred', color: 'bg-orange-900/50 text-orange-400', icon: AlertTriangle },
-  cancelled: { label: 'Cancelled', color: 'bg-zinc-700 text-zinc-400', icon: AlertCircle },
+  open: { label: 'Open', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400', icon: Circle },
+  in_progress: { label: 'In Progress', color: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400', icon: Clock },
+  ready_for_review: { label: 'Ready for Review', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400', icon: Eye },
+  verified: { label: 'Verified', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+  deferred: { label: 'Deferred', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400', icon: AlertTriangle },
+  cancelled: { label: 'Cancelled', color: 'bg-zinc-700 text-muted-foreground', icon: AlertCircle },
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
-  critical: { label: 'Critical', color: 'bg-red-900/50 text-red-400' },
-  high: { label: 'High', color: 'bg-orange-900/50 text-orange-400' },
-  medium: { label: 'Medium', color: 'bg-yellow-900/50 text-yellow-400' },
-  low: { label: 'Low', color: 'bg-blue-900/50 text-blue-400' },
+  critical: { label: 'Critical', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' },
+  high: { label: 'High', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400' },
+  medium: { label: 'Medium', color: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400' },
+  low: { label: 'Low', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' },
 };
 
 const categoryLabels: Record<string, string> = {
@@ -386,14 +386,14 @@ export default function PunchListsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Punch Lists</h1>
-          <p className="text-zinc-400 text-sm mt-1">Track and manage punch list items across projects.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Punch Lists</h1>
+          <p className="text-muted-foreground text-sm mt-1">Track and manage punch list items across projects.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="border-zinc-700" onClick={fetchPunchItems}>
+          <Button variant="outline" size="icon" className="border-border" onClick={fetchPunchItems}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => setShowNewDialog(true)}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground" onClick={() => setShowNewDialog(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Item
           </Button>
         </div>
@@ -401,67 +401,67 @@ export default function PunchListsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.total}</p>
               </div>
               <Wrench className="h-5 w-5 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Open</p>
-                <p className="text-2xl font-bold text-blue-400 mt-1">{stats.open}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Open</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{stats.open}</p>
               </div>
               <Circle className="h-5 w-5 text-blue-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">In Progress</p>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.inProgress}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">In Progress</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats.inProgress}</p>
               </div>
               <Clock className="h-5 w-5 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">For Review</p>
-                <p className="text-2xl font-bold text-purple-400 mt-1">{stats.readyForReview}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">For Review</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{stats.readyForReview}</p>
               </div>
               <Eye className="h-5 w-5 text-purple-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Verified</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.verified}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Verified</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.verified}</p>
               </div>
               <CheckCircle2 className="h-5 w-5 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Critical</p>
-                <p className="text-2xl font-bold text-red-400 mt-1">{stats.critical}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Critical</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{stats.critical}</p>
               </div>
               <AlertTriangle className="h-5 w-5 text-red-500" />
             </div>
@@ -473,16 +473,16 @@ export default function PunchListsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search punch items..."
-              className="pl-9 bg-zinc-900 border-zinc-800"
+              className="pl-9 bg-card border-border"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800">
+            <SelectTrigger className="w-[150px] bg-card border-border">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -494,7 +494,7 @@ export default function PunchListsPage() {
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800">
+            <SelectTrigger className="w-[150px] bg-card border-border">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
             <SelectContent>
@@ -514,11 +514,11 @@ export default function PunchListsPage() {
           <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       ) : filteredItems.length === 0 ? (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
             <Wrench className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Punch Items Found</h3>
-            <p className="text-zinc-400 mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Punch Items Found</h3>
+            <p className="text-muted-foreground mb-4">
               {search || statusFilter !== 'all' || priorityFilter !== 'all' 
                 ? 'Try adjusting your filters' 
                 : 'Create your first punch item to get started'}
@@ -536,7 +536,7 @@ export default function PunchListsPage() {
             const StatusIcon = status.icon;
 
             return (
-              <Card key={item.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <Card key={item.id} className="bg-card border-border hover:border-border transition-colors">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -549,21 +549,21 @@ export default function PunchListsPage() {
                           {priority.label}
                         </Badge>
                         {item.category && (
-                          <Badge className="bg-zinc-800 text-zinc-300">
+                          <Badge className="bg-muted text-muted-foreground">
                             {categoryLabels[item.category] || item.category}
                           </Badge>
                         )}
                         {item.isOverdue && (
-                          <Badge className="bg-red-900/50 text-red-400">
+                          <Badge className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400">
                             Overdue
                           </Badge>
                         )}
                       </div>
-                      <h3 className="font-semibold text-white mb-1">{item.title}</h3>
+                      <h3 className="font-semibold text-foreground mb-1">{item.title}</h3>
                       {item.description && (
-                        <p className="text-sm text-zinc-400 line-clamp-2 mb-2">{item.description}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{item.description}</p>
                       )}
-                      <div className="flex items-center gap-4 text-sm text-zinc-500 flex-wrap">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         {item.projectName && (
                           <div className="flex items-center gap-1">
                             <Building2 className="h-3.5 w-3.5" />
@@ -602,17 +602,17 @@ export default function PunchListsPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                      <DropdownMenuContent align="end" className="bg-card border-border">
                         <DropdownMenuItem onClick={() => openViewSheet(item)}>
                           <Eye className="h-4 w-4 mr-2" /> View Details
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openEditDialog(item)}>
                           <Edit className="h-4 w-4 mr-2" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-zinc-800" />
+                        <DropdownMenuSeparator className="bg-muted" />
                         {item.status === 'open' && (
                           <DropdownMenuItem 
-                            className="text-yellow-400"
+                            className="text-yellow-600 dark:text-yellow-400"
                             onClick={() => handleStatusAction(item, 'start')}
                           >
                             <Clock className="h-4 w-4 mr-2" /> Start Work
@@ -620,7 +620,7 @@ export default function PunchListsPage() {
                         )}
                         {item.status === 'in_progress' && (
                           <DropdownMenuItem 
-                            className="text-purple-400"
+                            className="text-purple-600 dark:text-purple-400"
                             onClick={() => handleStatusAction(item, 'complete')}
                           >
                             <Check className="h-4 w-4 mr-2" /> Mark Complete
@@ -628,15 +628,15 @@ export default function PunchListsPage() {
                         )}
                         {item.status === 'ready_for_review' && (
                           <DropdownMenuItem 
-                            className="text-emerald-400"
+                            className="text-emerald-600 dark:text-emerald-400"
                             onClick={() => handleStatusAction(item, 'verify')}
                           >
                             <CheckCircle2 className="h-4 w-4 mr-2" /> Verify
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator className="bg-zinc-800" />
+                        <DropdownMenuSeparator className="bg-muted" />
                         <DropdownMenuItem 
-                          className="text-red-400"
+                          className="text-red-600 dark:text-red-400"
                           onClick={() => openDeleteDialog(item)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -660,45 +660,45 @@ export default function PunchListsPage() {
           setShowEditDialog(false);
         }
       }}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground">
               {showEditDialog ? 'Edit Punch Item' : 'Create Punch Item'}
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground">
               Fill in the details for the punch item.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Title *</Label>
+                <Label className="text-muted-foreground">Title *</Label>
                 <Input 
                   placeholder="Brief description of the issue"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700" 
+                  className="bg-muted border-border" 
                 />
               </div>
               
               <div className="space-y-2">
-                <Label className="text-zinc-300">Description</Label>
+                <Label className="text-muted-foreground">Description</Label>
                 <Textarea 
                   placeholder="Detailed description..."
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Category</Label>
+                  <Label className="text-muted-foreground">Category</Label>
                   <Select 
                     value={formData.category}
                     onValueChange={(value) => setFormData({...formData, category: value})}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="bg-muted border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -713,12 +713,12 @@ export default function PunchListsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Priority</Label>
+                  <Label className="text-muted-foreground">Priority</Label>
                   <Select 
                     value={formData.priority}
                     onValueChange={(value) => setFormData({...formData, priority: value})}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="bg-muted border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -732,22 +732,22 @@ export default function PunchListsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-zinc-300">Location</Label>
+                <Label className="text-muted-foreground">Location</Label>
                 <Input 
                   placeholder="Building, floor, room..."
                   value={formData.location}
                   onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700" 
+                  className="bg-muted border-border" 
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-zinc-300">Due Date</Label>
+                <Label className="text-muted-foreground">Due Date</Label>
                 <Input 
                   type="date"
                   value={formData.dueDate}
                   onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700" 
+                  className="bg-muted border-border" 
                 />
               </div>
             </div>
@@ -755,14 +755,14 @@ export default function PunchListsPage() {
               <Button 
                 type="button"
                 variant="outline" 
-                className="border-zinc-700" 
+                className="border-border" 
                 onClick={() => { setShowNewDialog(false); setShowEditDialog(false); }}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
+                className="bg-amber-600 hover:bg-amber-700 text-foreground"
                 disabled={submitting}
               >
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -775,10 +775,10 @@ export default function PunchListsPage() {
 
       {/* View Sheet */}
       <Sheet open={showViewSheet} onOpenChange={setShowViewSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle className="text-white">Punch Item Details</SheetTitle>
-            <SheetDescription className="text-zinc-400">
+            <SheetTitle className="text-foreground">Punch Item Details</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               {selectedItem?.title}
             </SheetDescription>
           </SheetHeader>
@@ -802,22 +802,22 @@ export default function PunchListsPage() {
 
               {selectedItem.description && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Description</Label>
-                  <p className="text-zinc-300 mt-1">{selectedItem.description}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Description</Label>
+                  <p className="text-muted-foreground mt-1">{selectedItem.description}</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 {selectedItem.projectName && (
                   <div>
-                    <Label className="text-zinc-500 text-xs uppercase">Project</Label>
-                    <p className="text-white mt-1">{selectedItem.projectName}</p>
+                    <Label className="text-muted-foreground text-xs uppercase">Project</Label>
+                    <p className="text-foreground mt-1">{selectedItem.projectName}</p>
                   </div>
                 )}
                 {selectedItem.location && (
                   <div>
-                    <Label className="text-zinc-500 text-xs uppercase">Location</Label>
-                    <p className="text-white mt-1">{selectedItem.location}</p>
+                    <Label className="text-muted-foreground text-xs uppercase">Location</Label>
+                    <p className="text-foreground mt-1">{selectedItem.location}</p>
                   </div>
                 )}
               </div>
@@ -825,29 +825,29 @@ export default function PunchListsPage() {
               <div className="grid grid-cols-2 gap-4">
                 {selectedItem.category && (
                   <div>
-                    <Label className="text-zinc-500 text-xs uppercase">Category</Label>
-                    <p className="text-white mt-1">{categoryLabels[selectedItem.category] || selectedItem.category}</p>
+                    <Label className="text-muted-foreground text-xs uppercase">Category</Label>
+                    <p className="text-foreground mt-1">{categoryLabels[selectedItem.category] || selectedItem.category}</p>
                   </div>
                 )}
                 {selectedItem.dueDate && (
                   <div>
-                    <Label className="text-zinc-500 text-xs uppercase">Due Date</Label>
-                    <p className="text-white mt-1">{new Date(selectedItem.dueDate).toLocaleDateString('en-GB')}</p>
+                    <Label className="text-muted-foreground text-xs uppercase">Due Date</Label>
+                    <p className="text-foreground mt-1">{new Date(selectedItem.dueDate).toLocaleDateString('en-GB')}</p>
                   </div>
                 )}
               </div>
 
               {selectedItem.contractorName && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Assigned To</Label>
-                  <p className="text-white mt-1">{selectedItem.contractorName}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Assigned To</Label>
+                  <p className="text-foreground mt-1">{selectedItem.contractorName}</p>
                 </div>
               )}
 
-              <div className="pt-4 border-t border-zinc-800 flex gap-2">
+              <div className="pt-4 border-t border-border flex gap-2">
                 <Button 
                   variant="outline" 
-                  className="flex-1 border-zinc-700"
+                  className="flex-1 border-border"
                   onClick={() => { setShowViewSheet(false); openEditDialog(selectedItem); }}
                 >
                   <Edit className="h-4 w-4 mr-2" /> Edit
@@ -860,23 +860,23 @@ export default function PunchListsPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Punch Item</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Delete Punch Item</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete this punch item? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <Button 
               variant="outline" 
-              className="border-zinc-700" 
+              className="border-border" 
               onClick={() => setShowDeleteDialog(false)}
             >
               Cancel
             </Button>
             <Button 
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-foreground"
               onClick={handleDelete}
               disabled={submitting}
             >

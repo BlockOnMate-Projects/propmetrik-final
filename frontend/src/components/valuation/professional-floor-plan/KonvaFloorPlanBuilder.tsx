@@ -1274,31 +1274,31 @@ export default function ProfessionalFloorPlanBuilder({
   // =====================================================
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900" ref={containerRef}>
+    <div className="flex flex-col h-full bg-card" ref={containerRef}>
       {/* Room Type Dialog */}
       {showRoomDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-zinc-800 rounded-lg p-4 w-80 border border-zinc-700 shadow-xl">
-            <h3 className="text-white font-bold mb-4">
+        <div className="fixed inset-0 bg-background/50 flex items-center justify-center z-50">
+          <div className="bg-muted rounded-lg p-4 w-80 border border-border shadow-xl">
+            <h3 className="text-foreground font-bold mb-4">
               {selectedRoomId ? 'Edit Room' : 'Create Room'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-zinc-400 block mb-1">Room Name</label>
+                <label className="text-xs text-muted-foreground block mb-1">Room Name</label>
                 <input
                   type="text"
                   value={newRoomName}
                   onChange={(e) => setNewRoomName(e.target.value)}
                   placeholder="e.g., Master Bedroom"
-                  className="w-full bg-zinc-700 text-white text-sm px-3 py-2 rounded border border-zinc-600 focus:border-amber-500 focus:outline-none"
+                  className="w-full bg-zinc-700 text-foreground text-sm px-3 py-2 rounded border border-zinc-600 focus:border-amber-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-xs text-zinc-400 block mb-1">Room Type</label>
+                <label className="text-xs text-muted-foreground block mb-1">Room Type</label>
                 <select
                   value={newRoomType}
                   onChange={(e) => setNewRoomType(e.target.value as RoomType)}
-                  className="w-full bg-zinc-700 text-white text-sm px-3 py-2 rounded border border-zinc-600 focus:border-amber-500 focus:outline-none"
+                  className="w-full bg-zinc-700 text-foreground text-sm px-3 py-2 rounded border border-zinc-600 focus:border-amber-500 focus:outline-none"
                 >
                   <optgroup label="Bedrooms">
                     <option value="bedroom">🛏️ Bedroom</option>
@@ -1330,13 +1330,13 @@ export default function ProfessionalFloorPlanBuilder({
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => { setShowRoomDialog(false); setPendingRoomPolygon(null); setSelectedRoomId(null); }}
-                className="flex-1 px-3 py-2 text-sm bg-zinc-700 hover:bg-zinc-600 text-white rounded"
+                className="flex-1 px-3 py-2 text-sm bg-zinc-700 hover:bg-zinc-600 text-foreground rounded"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmRoom}
-                className="flex-1 px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold rounded"
+                className="flex-1 px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-foreground font-bold rounded"
               >
                 {selectedRoomId ? 'Update' : 'Create'}
               </button>
@@ -1346,9 +1346,9 @@ export default function ProfessionalFloorPlanBuilder({
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-2 bg-zinc-800 border-b border-zinc-700 flex-wrap">
+      <div className="flex items-center gap-2 p-2 bg-muted border-b border-border flex-wrap">
         {/* Drawing Tools */}
-        <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+        <div className="flex items-center gap-1 border-r border-border pr-2">
           <ToolButton active={tool === 'select'} onClick={() => setTool('select')} title="Select (S)">
             <MousePointer2 className="h-4 w-4" />
           </ToolButton>
@@ -1378,7 +1378,7 @@ export default function ProfessionalFloorPlanBuilder({
         </div>
 
         {/* Undo/Redo */}
-        <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+        <div className="flex items-center gap-1 border-r border-border pr-2">
           <ToolButton onClick={undo} title="Undo (Ctrl+Z)" disabled={readonly || history.past.length === 0}>
             <Undo2 className="h-4 w-4" />
           </ToolButton>
@@ -1388,7 +1388,7 @@ export default function ProfessionalFloorPlanBuilder({
         </div>
 
         {/* Templates */}
-        <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+        <div className="flex items-center gap-1 border-r border-border pr-2">
           <ToolButton active={showTemplatePanel} onClick={() => setShowTemplatePanel(!showTemplatePanel)} title="Templates (T)" disabled={readonly}>
             <LayoutTemplate className="h-4 w-4" />
           </ToolButton>
@@ -1396,9 +1396,9 @@ export default function ProfessionalFloorPlanBuilder({
 
         {/* Wall Type */}
         {(tool === 'wall' || tool === 'room') && (
-          <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+          <div className="flex items-center gap-1 border-r border-border pr-2">
             <select value={wallType} onChange={(e) => setWallType(e.target.value as WallType)}
-              className="bg-zinc-700 text-white text-xs px-2 py-1 rounded border border-zinc-600">
+              className="bg-zinc-700 text-foreground text-xs px-2 py-1 rounded border border-zinc-600">
               <option value="exterior">Exterior (23cm)</option>
               <option value="interior">Interior (15cm)</option>
               <option value="partition">Partition (10cm)</option>
@@ -1407,7 +1407,7 @@ export default function ProfessionalFloorPlanBuilder({
         )}
 
         {/* Snap & Ortho */}
-        <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+        <div className="flex items-center gap-1 border-r border-border pr-2">
           <ToolButton active={snapSettings.enabled} onClick={() => setSnapSettings(prev => ({ ...prev, enabled: !prev.enabled }))} title="Snap (G)">
             <Magnet className="h-4 w-4" />
           </ToolButton>
@@ -1420,29 +1420,29 @@ export default function ProfessionalFloorPlanBuilder({
         </div>
 
         {/* Zoom */}
-        <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+        <div className="flex items-center gap-1 border-r border-border pr-2">
           <ToolButton onClick={handleZoomIn} title="Zoom In"><ZoomIn className="h-4 w-4" /></ToolButton>
-          <span className="text-xs text-zinc-400 w-12 text-center">{Math.round(zoom * 100)}%</span>
+          <span className="text-xs text-muted-foreground w-12 text-center">{Math.round(zoom * 100)}%</span>
           <ToolButton onClick={handleZoomOut} title="Zoom Out"><ZoomOut className="h-4 w-4" /></ToolButton>
           <ToolButton onClick={handleResetView} title="Reset"><RotateCcw className="h-4 w-4" /></ToolButton>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 border-r border-zinc-700 pr-2">
+        <div className="flex items-center gap-1 border-r border-border pr-2">
           <ToolButton onClick={() => {
             if (selectedWallId) deleteWall(selectedWallId);
             else if (selectedRoomId) deleteRoom(selectedRoomId);
           }} title="Delete (Del)" disabled={!selectedWallId && !selectedRoomId}>
             <Trash2 className="h-4 w-4" />
           </ToolButton>
-          <button onClick={handleClear} className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded">Clear</button>
+          <button onClick={handleClear} className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-foreground rounded">Clear</button>
         </div>
 
         {/* Export */}
         <div className="flex items-center gap-1">
           <ToolButton onClick={handleExport} title="Export JSON"><Download className="h-4 w-4" /></ToolButton>
-          <button onClick={handleExportPNG} className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded">PNG</button>
-          <button onClick={handleExportSVG} className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded">SVG</button>
+          <button onClick={handleExportPNG} className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-foreground rounded">PNG</button>
+          <button onClick={handleExportSVG} className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-foreground rounded">SVG</button>
           <label>
             <ToolButton title="Import JSON" disabled={readonly}><Upload className="h-4 w-4" /></ToolButton>
             <input type="file" accept=".json" className="hidden" onChange={handleImport} disabled={readonly} />
@@ -1452,13 +1452,13 @@ export default function ProfessionalFloorPlanBuilder({
         {/* Floor & Scale */}
         <div className="flex items-center gap-4 ml-auto">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-amber-400 font-bold">{floorLabel}</span>
-            <span className="text-xs text-zinc-500">(Floor {floorNumber})</span>
+            <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">{floorLabel}</span>
+            <span className="text-xs text-muted-foreground">(Floor {floorNumber})</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-400">Scale:</span>
+            <span className="text-xs text-muted-foreground">Scale:</span>
             <select value={scale} onChange={(e) => setScale(Number(e.target.value))}
-              className="bg-zinc-700 text-white text-xs px-2 py-1 rounded border border-zinc-600">
+              className="bg-zinc-700 text-foreground text-xs px-2 py-1 rounded border border-zinc-600">
               <option value={25}>1m = 25px (large plans)</option>
               <option value={35}>1m = 35px</option>
               <option value={50}>1m = 50px (default)</option>
@@ -1470,17 +1470,17 @@ export default function ProfessionalFloorPlanBuilder({
       </div>
 
       {/* Instructions */}
-      <div className="px-3 py-1 bg-zinc-800 text-xs text-zinc-400 border-b border-zinc-700">
+      <div className="px-3 py-1 bg-muted text-xs text-muted-foreground border-b border-border">
         {tool === 'wall' && (
           <span><strong>Wall:</strong> Click to start, move to draw, click to place. Double-click to finish chain.
-            {orthoMode && <span className="text-amber-400 ml-2">[ORTHO ON]</span>}
+            {orthoMode && <span className="text-amber-600 dark:text-amber-400 ml-2">[ORTHO ON]</span>}
           </span>
         )}
         {tool === 'room' && <span><strong>Room:</strong> Click and drag to draw a room rectangle. Room type dialog will appear.</span>}
         {tool === 'room_label' && <span><strong>Label:</strong> Click inside a room to assign type and name.</span>}
         {tool === 'select' && (
           <span><strong>Select:</strong> Drag rooms to move. Click walls to select. DEL to delete.
-            {selectedRoomTemplate && <span className="text-amber-400 ml-2">Click canvas to place: {selectedRoomTemplate.name}</span>}
+            {selectedRoomTemplate && <span className="text-amber-600 dark:text-amber-400 ml-2">Click canvas to place: {selectedRoomTemplate.name}</span>}
           </span>
         )}
         {tool === 'door' && <span><strong>Door:</strong> Click on a wall to place door.</span>}
@@ -1494,12 +1494,12 @@ export default function ProfessionalFloorPlanBuilder({
       <div className="flex flex-1 overflow-hidden">
         {/* Templates Panel */}
         {showTemplatePanel && (
-          <div className="w-48 bg-zinc-800 border-r border-zinc-700 p-2 overflow-y-auto">
+          <div className="w-48 bg-muted border-r border-border p-2 overflow-y-auto">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-bold text-white">Room Templates</h4>
-              <button onClick={() => setShowTemplatePanel(false)} className="text-zinc-400 hover:text-white text-xs">✕</button>
+              <h4 className="text-xs font-bold text-foreground">Room Templates</h4>
+              <button onClick={() => setShowTemplatePanel(false)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
             </div>
-            <p className="text-xs text-zinc-500 mb-2">Click template, then click canvas to place</p>
+            <p className="text-xs text-muted-foreground mb-2">Click template, then click canvas to place</p>
             <div className="space-y-1">
               {ROOM_TEMPLATES.map((template) => (
                 <button
@@ -1507,15 +1507,15 @@ export default function ProfessionalFloorPlanBuilder({
                   onClick={() => { setSelectedRoomTemplate(template); setTool('select'); }}
                   className={`w-full text-left p-2 rounded text-xs transition-colors ${
                     selectedRoomTemplate?.id === template.id
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-zinc-700 hover:bg-zinc-600 text-white'
+                      ? 'bg-amber-500 text-foreground'
+                      : 'bg-zinc-700 hover:bg-zinc-600 text-foreground'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span>{template.icon}</span>
                     <div>
                       <div className="font-medium">{template.name}</div>
-                      <div className="text-zinc-400 text-[10px]">{template.description}</div>
+                      <div className="text-muted-foreground text-[10px]">{template.description}</div>
                     </div>
                   </div>
                 </button>
@@ -1523,7 +1523,7 @@ export default function ProfessionalFloorPlanBuilder({
             </div>
             {selectedRoomTemplate && (
               <button onClick={() => setSelectedRoomTemplate(null)}
-                className="w-full mt-2 p-2 text-xs bg-zinc-600 hover:bg-zinc-500 text-white rounded">
+                className="w-full mt-2 p-2 text-xs bg-zinc-600 hover:bg-zinc-500 text-foreground rounded">
                 Cancel Template
               </button>
             )}
@@ -1531,8 +1531,8 @@ export default function ProfessionalFloorPlanBuilder({
         )}
 
         {/* Konva Canvas */}
-        <div className="flex-1 overflow-auto bg-zinc-950 p-4">
-          <div className="inline-block border border-zinc-700 rounded">
+        <div className="flex-1 overflow-auto bg-background p-4">
+          <div className="inline-block border border-border rounded">
             <Stage
               ref={stageRef}
               width={width}
@@ -1849,21 +1849,21 @@ export default function ProfessionalFloorPlanBuilder({
         </div>
 
         {/* Summary Panel */}
-        <div className="w-64 bg-zinc-800 border-l border-zinc-700 p-3 overflow-y-auto">
-          <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+        <div className="w-64 bg-muted border-l border-border p-3 overflow-y-auto">
+          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
             <Ruler className="h-4 w-4" />Building Summary
           </h3>
 
           <div className="mb-4">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-zinc-400">Valuation Ready</span>
+              <span className="text-muted-foreground">Valuation Ready</span>
               <span className={`font-bold ${
-                summary.valuationReadiness >= 90 ? 'text-green-400' :
-                summary.valuationReadiness >= 70 ? 'text-amber-400' : 'text-red-400'
+                summary.valuationReadiness >= 90 ? 'text-green-600 dark:text-green-400' :
+                summary.valuationReadiness >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
               }`}>{summary.valuationReadiness}%</span>
             </div>
             {summary.validationIssues.length > 0 && (
-              <div className="text-xs text-red-400 mt-1">
+              <div className="text-xs text-red-600 dark:text-red-400 mt-1">
                 <ul className="list-disc list-inside">
                   {summary.validationIssues.slice(0, 3).map((issue, i) => <li key={i}>{issue}</li>)}
                 </ul>
@@ -1871,52 +1871,52 @@ export default function ProfessionalFloorPlanBuilder({
             )}
           </div>
 
-          <hr className="border-zinc-700 my-3" />
+          <hr className="border-border my-3" />
 
           <div className="space-y-2 text-xs">
-            <div className="flex justify-between"><span className="text-zinc-400">Total Built Area</span><span className="text-white font-mono">{summary.totalBuiltArea.toFixed(1)} m²</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">Usable Area</span><span className="text-white font-mono">{summary.usableArea.toFixed(1)} m²</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">Efficiency</span><span className="text-white font-mono">{(summary.buildingEfficiency * 100).toFixed(0)}%</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total Built Area</span><span className="text-foreground font-mono">{summary.totalBuiltArea.toFixed(1)} m²</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Usable Area</span><span className="text-foreground font-mono">{summary.usableArea.toFixed(1)} m²</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Efficiency</span><span className="text-foreground font-mono">{(summary.buildingEfficiency * 100).toFixed(0)}%</span></div>
             <div className="flex justify-between">
-              <span className="text-zinc-400">Layout Score</span>
-              <span className={`font-mono ${summary.layoutQualityScore >= 80 ? 'text-green-400' : summary.layoutQualityScore >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+              <span className="text-muted-foreground">Layout Score</span>
+              <span className={`font-mono ${summary.layoutQualityScore >= 80 ? 'text-green-600 dark:text-green-400' : summary.layoutQualityScore >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                 {summary.layoutQualityScore}/100
               </span>
             </div>
           </div>
 
-          <hr className="border-zinc-700 my-3" />
+          <hr className="border-border my-3" />
 
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center gap-1"><span className="text-zinc-400">🛏️ Bedrooms:</span><span className="text-white">{summary.bedroomCount}</span></div>
-            <div className="flex items-center gap-1"><span className="text-zinc-400">🚿 Bathrooms:</span><span className="text-white">{summary.bathroomCount}</span></div>
-            <div className="flex items-center gap-1"><span className="text-zinc-400">🍳 Kitchens:</span><span className="text-white">{summary.kitchenCount}</span></div>
-            <div className="flex items-center gap-1"><span className="text-zinc-400">🛋️ Living:</span><span className="text-white">{summary.livingAreaCount}</span></div>
+            <div className="flex items-center gap-1"><span className="text-muted-foreground">🛏️ Bedrooms:</span><span className="text-foreground">{summary.bedroomCount}</span></div>
+            <div className="flex items-center gap-1"><span className="text-muted-foreground">🚿 Bathrooms:</span><span className="text-foreground">{summary.bathroomCount}</span></div>
+            <div className="flex items-center gap-1"><span className="text-muted-foreground">🍳 Kitchens:</span><span className="text-foreground">{summary.kitchenCount}</span></div>
+            <div className="flex items-center gap-1"><span className="text-muted-foreground">🛋️ Living:</span><span className="text-foreground">{summary.livingAreaCount}</span></div>
           </div>
 
-          <hr className="border-zinc-700 my-3" />
+          <hr className="border-border my-3" />
 
-          <h4 className="text-xs font-bold text-zinc-300 mb-2">Rooms</h4>
+          <h4 className="text-xs font-bold text-muted-foreground mb-2">Rooms</h4>
           {rooms.length === 0 ? (
-            <p className="text-xs text-zinc-500">Draw walls to create rooms</p>
+            <p className="text-xs text-muted-foreground">Draw walls to create rooms</p>
           ) : (
             <div className="space-y-1">
               {rooms.map((room) => (
                 <div key={room.id} className="flex justify-between items-center p-1 rounded bg-zinc-700/50 text-xs">
-                  <span className="text-zinc-300">{room.name}</span>
-                  <span className="text-zinc-400 font-mono">{room.area.toFixed(1)}m²</span>
+                  <span className="text-muted-foreground">{room.name}</span>
+                  <span className="text-muted-foreground font-mono">{room.area.toFixed(1)}m²</span>
                 </div>
               ))}
             </div>
           )}
 
-          <hr className="border-zinc-700 my-3" />
+          <hr className="border-border my-3" />
 
-          <h4 className="text-xs font-bold text-zinc-300 mb-2">Walls</h4>
+          <h4 className="text-xs font-bold text-muted-foreground mb-2">Walls</h4>
           <div className="space-y-1 text-xs">
-            <div className="flex justify-between"><span className="text-zinc-400">Total Walls</span><span className="text-white">{walls.length}</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">Exterior</span><span className="text-white font-mono">{summary.exteriorWallLength.toFixed(1)}m</span></div>
-            <div className="flex justify-between"><span className="text-zinc-400">Interior</span><span className="text-white font-mono">{summary.interiorWallLength.toFixed(1)}m</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total Walls</span><span className="text-foreground">{walls.length}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Exterior</span><span className="text-foreground font-mono">{summary.exteriorWallLength.toFixed(1)}m</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Interior</span><span className="text-foreground font-mono">{summary.interiorWallLength.toFixed(1)}m</span></div>
           </div>
         </div>
       </div>
@@ -1944,10 +1944,10 @@ function ToolButton({ active, onClick, title, disabled, children }: ToolButtonPr
       disabled={disabled}
       className={`p-1.5 rounded transition-colors ${
         active
-          ? 'bg-amber-500 text-white'
+          ? 'bg-amber-500 text-foreground'
           : disabled
-          ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
-          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+          ? 'bg-zinc-700 text-muted-foreground cursor-not-allowed'
+          : 'bg-zinc-700 text-muted-foreground hover:bg-zinc-600'
       }`}
     >
       {children}

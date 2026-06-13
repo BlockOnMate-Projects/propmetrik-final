@@ -74,7 +74,7 @@ function MilestoneTooltip({ task }: { task: Task; fontSize: string; fontFamily: 
   const colors = STATUS_COLORS[effectiveStatus] || STATUS_COLORS.pending;
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-xl min-w-[220px] max-w-[320px]">
+    <div className="bg-card border border-border rounded-lg p-3 shadow-xl min-w-[220px] max-w-[320px]">
       <div className="flex items-center gap-2 mb-2">
         <div
           className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -84,19 +84,19 @@ function MilestoneTooltip({ task }: { task: Task; fontSize: string; fontFamily: 
       </div>
 
       {ms?.phase_name && (
-        <p className="font-mono text-[10px] text-zinc-500 mb-1.5">
+        <p className="font-mono text-[10px] text-muted-foreground mb-1.5">
           Phase: {ms.phase_name}
         </p>
       )}
 
       <div className="space-y-1">
         <div className="flex items-center gap-1.5 text-[10px]">
-          <Calendar className="w-3 h-3 text-zinc-500" />
-          <span className="text-zinc-300">
+          <Calendar className="w-3 h-3 text-muted-foreground" />
+          <span className="text-muted-foreground">
             {format(task.start, 'MMM d')} &ndash; {format(task.end, 'MMM d, yyyy')}
           </span>
         </div>
-        <p className="font-mono text-[10px] text-zinc-400">
+        <p className="font-mono text-[10px] text-muted-foreground">
           Duration: {differenceInDays(task.end, task.start) + 1} days
         </p>
       </div>
@@ -109,7 +109,7 @@ function MilestoneTooltip({ task }: { task: Task; fontSize: string; fontFamily: 
             style={{ width: `${task.progress}%`, backgroundColor: colors.progress }}
           />
         </div>
-        <span className="font-mono text-[10px] text-zinc-300">{task.progress}%</span>
+        <span className="font-mono text-[10px] text-muted-foreground">{task.progress}%</span>
       </div>
 
       {/* Status badge */}
@@ -124,7 +124,7 @@ function MilestoneTooltip({ task }: { task: Task; fontSize: string; fontFamily: 
       </div>
 
       {ms?.description && (
-        <p className="font-mono text-[10px] text-zinc-500 mt-2 line-clamp-2">
+        <p className="font-mono text-[10px] text-muted-foreground mt-2 line-clamp-2">
           {ms.description}
         </p>
       )}
@@ -361,11 +361,11 @@ export function MilestoneGantt({
   // ── Empty state ──
   if (milestones.length === 0 || tasks.length === 0) {
     return (
-      <div className={cn('border border-zinc-800 bg-zinc-900/50 p-4', className)}>
-        <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+      <div className={cn('border border-border bg-card/50 p-4', className)}>
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
           <Flag className="h-8 w-8 mb-2 opacity-50" />
           <span className="font-mono text-sm">No milestones to chart</span>
-          <span className="font-mono text-xs text-zinc-600 mt-1">
+          <span className="font-mono text-xs text-muted-foreground mt-1">
             Create milestones with dates to see the Gantt chart
           </span>
         </div>
@@ -374,26 +374,26 @@ export function MilestoneGantt({
   }
 
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50 overflow-hidden rounded-lg', className)}>
+    <div className={cn('border border-border bg-card/50 overflow-hidden rounded-lg', className)}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-800/50 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-amber-500 tracking-wider font-semibold">
             MILESTONE GANTT
           </span>
           <div className="hidden sm:flex items-center gap-2 ml-2">
             {stats.completed > 0 && (
-              <Badge variant="outline" className="text-[9px] border-0 bg-green-500/15 text-green-400 px-1.5 py-0">
+              <Badge variant="outline" className="text-[9px] border-0 bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0">
                 {stats.completed} done
               </Badge>
             )}
             {stats.inProgress > 0 && (
-              <Badge variant="outline" className="text-[9px] border-0 bg-blue-500/15 text-blue-400 px-1.5 py-0">
+              <Badge variant="outline" className="text-[9px] border-0 bg-blue-500/15 text-blue-600 dark:text-blue-400 px-1.5 py-0">
                 {stats.inProgress} active
               </Badge>
             )}
             {stats.overdue > 0 && (
-              <Badge variant="outline" className="text-[9px] border-0 bg-red-500/15 text-red-400 px-1.5 py-0">
+              <Badge variant="outline" className="text-[9px] border-0 bg-red-500/15 text-red-600 dark:text-red-400 px-1.5 py-0">
                 {stats.overdue} overdue
               </Badge>
             )}
@@ -404,7 +404,7 @@ export function MilestoneGantt({
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom('out')}>
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
-          <span className="font-mono text-[10px] text-zinc-300 w-12 text-center capitalize">
+          <span className="font-mono text-[10px] text-muted-foreground w-12 text-center capitalize">
             {zoomLevel}
           </span>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom('in')}>
@@ -454,30 +454,30 @@ export function MilestoneGantt({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-2.5 border-t border-zinc-800 bg-zinc-900">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-2.5 border-t border-border bg-card">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#71717a' }} />
-          <span className="font-mono text-[10px] text-zinc-400">Pending</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Pending</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
-          <span className="font-mono text-[10px] text-zinc-400">In Progress</span>
+          <span className="font-mono text-[10px] text-muted-foreground">In Progress</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#22c55e' }} />
-          <span className="font-mono text-[10px] text-zinc-400">Completed</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Completed</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
-          <span className="font-mono text-[10px] text-zinc-400">Overdue</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Overdue</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-0.5 h-3 bg-amber-500" />
-          <span className="font-mono text-[10px] text-zinc-400">Today</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Today</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-1.5 rounded-sm" style={{ backgroundColor: '#f59e0b' }} />
-          <span className="font-mono text-[10px] text-zinc-400">Phase Group</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Phase Group</span>
         </div>
       </div>
 

@@ -35,7 +35,7 @@ export default function ProcessTimeline({ steps = defaultSteps }: ProcessTimelin
     return (
         <div className="relative py-12">
             {/* Timeline Line */}
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-zinc-800 md:left-1/2" />
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-muted md:left-1/2" />
 
             {/* Steps */}
             <div className="space-y-12">
@@ -54,7 +54,7 @@ export default function ProcessTimeline({ steps = defaultSteps }: ProcessTimelin
                             <div className={`w-full md:w-1/2 ${isEven ? 'md:pr-12' : 'md:pl-12'}`}>
                                 <motion.div
                                     whileHover={{ scale: 1.02 }}
-                                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors"
+                                    className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
                                 >
                                     {/* Step Number Badge */}
                                     <div className="flex items-start gap-4">
@@ -67,10 +67,10 @@ export default function ProcessTimeline({ steps = defaultSteps }: ProcessTimelin
                                                     Step {index + 1}
                                                 </span>
                                             </div>
-                                            <h3 className="text-xl font-bold text-white mb-2">
+                                            <h3 className="text-xl font-bold text-foreground mb-2">
                                                 {step.title}
                                             </h3>
-                                            <p className="text-zinc-400">
+                                            <p className="text-muted-foreground">
                                                 {step.description}
                                             </p>
                                         </div>
@@ -85,7 +85,7 @@ export default function ProcessTimeline({ steps = defaultSteps }: ProcessTimelin
                                     whileInView={{ scale: 1 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: index * 0.2 + 0.3 }}
-                                    className="w-16 h-16 rounded-full bg-zinc-950 border-4 border-primary flex items-center justify-center"
+                                    className="w-16 h-16 rounded-full bg-background border-4 border-primary flex items-center justify-center"
                                 >
                                     <CheckCircle2 className="w-8 h-8 text-primary" />
                                 </motion.div>

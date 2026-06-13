@@ -116,7 +116,7 @@ export default function NewMaintenanceRequest() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -125,12 +125,12 @@ export default function NewMaintenanceRequest() {
   const activeTenancy = profile?.tenancies?.find(t => t.status === 'active');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-card shadow">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
-            <Link href="/maintenance" className="text-gray-500 hover:text-gray-700">
+            <Link href="/maintenance" className="text-muted-foreground hover:text-gray-700">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -160,7 +160,7 @@ export default function NewMaintenanceRequest() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Issue Title *
             </label>
@@ -175,7 +175,7 @@ export default function NewMaintenanceRequest() {
           </div>
 
           {/* Category */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-4">
               Category *
             </label>
@@ -188,7 +188,7 @@ export default function NewMaintenanceRequest() {
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
                     category === cat.value
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-border hover:border-gray-300'
                   }`}
                 >
                   <span className="text-2xl mb-1 block">{cat.icon}</span>
@@ -202,7 +202,7 @@ export default function NewMaintenanceRequest() {
           </div>
 
           {/* Priority */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-4">
               Priority Level *
             </label>
@@ -213,7 +213,7 @@ export default function NewMaintenanceRequest() {
                   className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-colors ${
                     priority === p.value
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-border hover:border-gray-300'
                   }`}
                 >
                   <input
@@ -226,7 +226,7 @@ export default function NewMaintenanceRequest() {
                   />
                   <div className="flex-1">
                     <span className={`font-medium ${p.color}`}>{p.label}</span>
-                    <p className="text-sm text-gray-500">{p.description}</p>
+                    <p className="text-sm text-muted-foreground">{p.description}</p>
                   </div>
                   {priority === p.value && (
                     <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
@@ -239,7 +239,7 @@ export default function NewMaintenanceRequest() {
           </div>
 
           {/* Description */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Description *
             </label>
@@ -254,7 +254,7 @@ export default function NewMaintenanceRequest() {
           </div>
 
           {/* Location within property */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Location within Property
             </label>
@@ -268,11 +268,11 @@ export default function NewMaintenanceRequest() {
           </div>
 
           {/* Photos */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Photos (Optional)
             </label>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Upload up to 5 photos to help illustrate the issue
             </p>
             
@@ -287,7 +287,7 @@ export default function NewMaintenanceRequest() {
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-foreground rounded-full flex items-center justify-center"
                   >
                     ×
                   </button>
@@ -303,7 +303,7 @@ export default function NewMaintenanceRequest() {
                     className="sr-only"
                     multiple
                   />
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </label>
@@ -312,14 +312,14 @@ export default function NewMaintenanceRequest() {
           </div>
 
           {/* Contact Preferences */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <label className="block text-sm font-medium text-gray-700 mb-4">
               Contact Preferences
             </label>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-muted-foreground mb-2">
                   Preferred Contact Method
                 </label>
                 <select
@@ -334,7 +334,7 @@ export default function NewMaintenanceRequest() {
               </div>
               
               <div>
-                <label className="block text-sm text-gray-600 mb-2">
+                <label className="block text-sm text-muted-foreground mb-2">
                   Preferred Time for Access
                 </label>
                 <select
@@ -356,14 +356,14 @@ export default function NewMaintenanceRequest() {
           <div className="flex gap-4">
             <Link
               href="/maintenance"
-              className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg text-center hover:bg-gray-200 transition-colors"
+              className="flex-1 px-6 py-3 bg-muted text-gray-700 rounded-lg text-center hover:bg-gray-200 transition-colors"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={submitting || !title || !category || !description}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <span className="flex items-center justify-center">

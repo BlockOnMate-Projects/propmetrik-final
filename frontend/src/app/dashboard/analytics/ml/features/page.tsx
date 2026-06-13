@@ -76,8 +76,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -88,18 +88,18 @@ function Panel({
 
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
-    location: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    physical: 'text-green-400 bg-green-500/10 border-green-500/20',
-    financial: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    market: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-    temporal: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-    condition: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+    location: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20',
+    physical: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+    financial: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+    market: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20',
+    temporal: 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+    condition: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20',
   }
   return (
     <span
       className={cn(
         'px-1.5 py-0.5 font-mono text-[9px] border rounded',
-        colors[category] || 'text-zinc-400 border-zinc-700'
+        colors[category] || 'text-muted-foreground border-border'
       )}
     >
       {category.toUpperCase()}
@@ -110,7 +110,7 @@ function CategoryBadge({ category }: { category: string }) {
 function DirectionArrow({ direction }: { direction: string }) {
   const isPositive = direction === 'positive'
   return (
-    <span className={cn('inline-flex items-center', isPositive ? 'text-green-400' : 'text-red-400')}>
+    <span className={cn('inline-flex items-center', isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
       {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
     </span>
   )
@@ -180,12 +180,12 @@ export default function FeatureImportancePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-72" />
+          <div className="h-8 bg-muted rounded w-72" />
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 h-96 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-4 h-96 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="col-span-8 h-96 bg-muted/50 rounded border border-border" />
+            <div className="col-span-4 h-96 bg-muted/50 rounded border border-border" />
           </div>
         </div>
       </div>
@@ -193,21 +193,21 @@ export default function FeatureImportancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <Layers className="w-5 h-5 text-amber-500" />
             FEATURE IMPORTANCE & SHAP ANALYSIS
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             Global feature rankings, category breakdown & per-prediction explanations — Section 8.2
           </p>
         </div>
         <button
           onClick={loadData}
-          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
           REFRESH
@@ -219,9 +219,9 @@ export default function FeatureImportancePage() {
         {Object.entries(categoryGroups).map(([cat, grp]) => (
           <Panel key={cat} title={cat.toUpperCase()}>
             <div className="text-center py-1">
-              <div className="font-mono text-2xl text-white">{grp.count}</div>
-              <div className="font-mono text-[10px] text-zinc-500">FEATURES</div>
-              <div className="font-mono text-[10px] text-amber-400 mt-0.5">
+              <div className="font-mono text-2xl text-foreground">{grp.count}</div>
+              <div className="font-mono text-[10px] text-muted-foreground">FEATURES</div>
+              <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
                 Σ {(grp.totalImportance * 100).toFixed(1)}%
               </div>
             </div>
@@ -243,8 +243,8 @@ export default function FeatureImportancePage() {
                   className={cn(
                     'px-1.5 py-0.5 font-mono text-[9px] border rounded transition-colors',
                     selectedCategory === cat
-                      ? 'text-amber-400 border-amber-500/50 bg-amber-500/10'
-                      : 'text-zinc-500 border-zinc-700 hover:border-zinc-600'
+                      ? 'text-amber-600 dark:text-amber-400 border-amber-500/50 bg-amber-500/10'
+                      : 'text-muted-foreground border-border hover:border-zinc-600'
                   )}
                 >
                   {cat.toUpperCase()}
@@ -259,7 +259,7 @@ export default function FeatureImportancePage() {
               .map((f, idx) => (
                 <div key={f.feature_name} className="group">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-zinc-600 w-4 text-right">{idx + 1}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground w-4 text-right">{idx + 1}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
                         <div className="flex items-center gap-1.5">
@@ -269,11 +269,11 @@ export default function FeatureImportancePage() {
                           <DirectionArrow direction={f.direction} />
                           <CategoryBadge category={f.category} />
                         </div>
-                        <span className="font-mono text-[10px] text-amber-400 tabular-nums">
+                        <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400 tabular-nums">
                           {(f.importance_score * 100).toFixed(2)}%
                         </span>
                       </div>
-                      <div className="w-full h-1.5 bg-zinc-800 rounded overflow-hidden">
+                      <div className="w-full h-1.5 bg-muted rounded overflow-hidden">
                         <div
                           className="h-full bg-amber-500/70 rounded transition-all"
                           style={{ width: `${(f.importance_score / maxImportance) * 100}%` }}
@@ -282,7 +282,7 @@ export default function FeatureImportancePage() {
                     </div>
                   </div>
                   {f.description && (
-                    <div className="ml-6 mt-0.5 font-mono text-[9px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="ml-6 mt-0.5 font-mono text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                       {f.description}
                     </div>
                   )}
@@ -290,7 +290,7 @@ export default function FeatureImportancePage() {
               ))}
           </div>
           {filteredFeatures.length === 0 && (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-6">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-6">
               No features for selected category
             </div>
           )}
@@ -308,11 +308,11 @@ export default function FeatureImportancePage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <CategoryBadge category={cat} />
-                        <span className="font-mono text-[10px] text-zinc-400">{grp.count} features</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">{grp.count} features</span>
                       </div>
-                      <span className="font-mono text-[10px] text-white">{pct.toFixed(1)}%</span>
+                      <span className="font-mono text-[10px] text-foreground">{pct.toFixed(1)}%</span>
                     </div>
-                    <div className="w-full h-1.5 bg-zinc-800 rounded overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted rounded overflow-hidden">
                       <div className="h-full bg-amber-500/50 rounded" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -320,18 +320,18 @@ export default function FeatureImportancePage() {
               })}
 
             {/* Top 3 overall */}
-            <div className="border-t border-zinc-800 pt-3 mt-4">
-              <div className="font-mono text-[9px] text-zinc-500 mb-2">TOP 3 FEATURES</div>
+            <div className="border-t border-border pt-3 mt-4">
+              <div className="font-mono text-[9px] text-muted-foreground mb-2">TOP 3 FEATURES</div>
               {features
                 .sort((a, b) => b.importance_score - a.importance_score)
                 .slice(0, 3)
                 .map((f, i) => (
                   <div key={f.feature_name} className="flex items-center gap-2 py-1">
-                    <span className="font-mono text-[10px] text-amber-400 w-4">{i + 1}.</span>
-                    <span className="font-mono text-[10px] text-zinc-300 flex-1 truncate">
+                    <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400 w-4">{i + 1}.</span>
+                    <span className="font-mono text-[10px] text-muted-foreground flex-1 truncate">
                       {f.feature_name.replace(/_/g, ' ')}
                     </span>
-                    <span className="font-mono text-[10px] text-white tabular-nums">
+                    <span className="font-mono text-[10px] text-foreground tabular-nums">
                       {(f.importance_score * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -346,22 +346,22 @@ export default function FeatureImportancePage() {
         title="PREDICTION EXPLAINER"
         actions={
           <div className="flex items-center gap-1">
-            <Info className="w-3 h-3 text-zinc-600" />
-            <span className="font-mono text-[9px] text-zinc-600">Enter a prediction ID to see SHAP breakdown</span>
+            <Info className="w-3 h-3 text-muted-foreground" />
+            <span className="font-mono text-[9px] text-muted-foreground">Enter a prediction ID to see SHAP breakdown</span>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 type="text"
                 value={predictionId}
                 onChange={(e) => setPredictionId(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleExplain()}
                 placeholder="Prediction ID (e.g., pred-abc-123)"
-                className="w-full pl-7 pr-3 py-1.5 bg-zinc-900 border border-zinc-700 font-mono text-[10px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full pl-7 pr-3 py-1.5 bg-card border border-border font-mono text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-amber-500/50"
               />
             </div>
             <button
@@ -370,8 +370,8 @@ export default function FeatureImportancePage() {
               className={cn(
                 'px-4 py-1.5 font-mono text-[10px] border transition-colors',
                 explainLoading || !predictionId.trim()
-                  ? 'text-zinc-600 border-zinc-800 cursor-not-allowed'
-                  : 'text-amber-400 border-amber-500/50 hover:bg-amber-500/10'
+                  ? 'text-muted-foreground border-border cursor-not-allowed'
+                  : 'text-amber-600 dark:text-amber-400 border-amber-500/50 hover:bg-amber-500/10'
               )}
             >
               {explainLoading ? 'ANALYZING...' : 'EXPLAIN'}
@@ -379,7 +379,7 @@ export default function FeatureImportancePage() {
           </div>
 
           {explainError && (
-            <div className="p-2 border border-red-500/30 bg-red-500/5 font-mono text-[10px] text-red-400">
+            <div className="p-2 border border-red-500/30 bg-red-500/5 font-mono text-[10px] text-red-600 dark:text-red-400">
               {explainError}
             </div>
           )}
@@ -389,8 +389,8 @@ export default function FeatureImportancePage() {
               {/* Contributions bar chart */}
               <div className="col-span-8 space-y-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-[10px] text-zinc-400">FEATURE CONTRIBUTIONS</span>
-                  <span className="font-mono text-[10px] text-zinc-300">
+                  <span className="font-mono text-[10px] text-muted-foreground">FEATURE CONTRIBUTIONS</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     Predicted: GH₵{explanation.predicted_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                 </div>
@@ -406,7 +406,7 @@ export default function FeatureImportancePage() {
                     const isPos = c.contribution >= 0
                     return (
                       <div key={c.feature} className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-zinc-400 w-32 text-right truncate">
+                        <span className="font-mono text-[10px] text-muted-foreground w-32 text-right truncate">
                           {c.feature.replace(/_/g, ' ')}
                         </span>
                         <div className="flex-1 flex items-center">
@@ -431,7 +431,7 @@ export default function FeatureImportancePage() {
                         <span
                           className={cn(
                             'font-mono text-[10px] w-20 text-right tabular-nums',
-                            isPos ? 'text-green-400' : 'text-red-400'
+                            isPos ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                           )}
                         >
                           {isPos ? '+' : ''}{c.contribution.toFixed(4)}
@@ -444,30 +444,30 @@ export default function FeatureImportancePage() {
               {/* Top drivers */}
               <div className="col-span-4 space-y-3">
                 <div>
-                  <div className="font-mono text-[9px] text-zinc-500 mb-1">TOP POSITIVE DRIVERS</div>
+                  <div className="font-mono text-[9px] text-muted-foreground mb-1">TOP POSITIVE DRIVERS</div>
                   {explanation.top_positive.map((f) => (
                     <div key={f} className="flex items-center gap-1 py-0.5">
-                      <ArrowUpRight className="w-3 h-3 text-green-400" />
-                      <span className="font-mono text-[10px] text-green-300">{f.replace(/_/g, ' ')}</span>
+                      <ArrowUpRight className="w-3 h-3 text-green-600 dark:text-green-400" />
+                      <span className="font-mono text-[10px] text-green-600 dark:text-green-300">{f.replace(/_/g, ' ')}</span>
                     </div>
                   ))}
                 </div>
                 <div>
-                  <div className="font-mono text-[9px] text-zinc-500 mb-1">TOP NEGATIVE DRIVERS</div>
+                  <div className="font-mono text-[9px] text-muted-foreground mb-1">TOP NEGATIVE DRIVERS</div>
                   {explanation.top_negative.map((f) => (
                     <div key={f} className="flex items-center gap-1 py-0.5">
-                      <ArrowDownRight className="w-3 h-3 text-red-400" />
-                      <span className="font-mono text-[10px] text-red-300">{f.replace(/_/g, ' ')}</span>
+                      <ArrowDownRight className="w-3 h-3 text-red-600 dark:text-red-400" />
+                      <span className="font-mono text-[10px] text-red-600 dark:text-red-300">{f.replace(/_/g, ' ')}</span>
                     </div>
                   ))}
                 </div>
                 {explanation.confidence_factors && Object.keys(explanation.confidence_factors).length > 0 && (
-                  <div className="border-t border-zinc-800 pt-2">
-                    <div className="font-mono text-[9px] text-zinc-500 mb-1">CONFIDENCE FACTORS</div>
+                  <div className="border-t border-border pt-2">
+                    <div className="font-mono text-[9px] text-muted-foreground mb-1">CONFIDENCE FACTORS</div>
                     {Object.entries(explanation.confidence_factors).map(([key, val]) => (
                       <div key={key} className="flex justify-between font-mono text-[10px] py-0.5">
-                        <span className="text-zinc-500">{key.replace(/_/g, ' ').toUpperCase()}</span>
-                        <span className="text-white">{typeof val === 'number' ? val.toFixed(3) : String(val)}</span>
+                        <span className="text-muted-foreground">{key.replace(/_/g, ' ').toUpperCase()}</span>
+                        <span className="text-foreground">{typeof val === 'number' ? val.toFixed(3) : String(val)}</span>
                       </div>
                     ))}
                   </div>
@@ -479,7 +479,7 @@ export default function FeatureImportancePage() {
           {!explanation && !explainError && !explainLoading && (
             <div className="text-center py-6">
               <BarChart3 className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-              <div className="font-mono text-[10px] text-zinc-600">
+              <div className="font-mono text-[10px] text-muted-foreground">
                 Enter a prediction ID above to see a SHAP-based feature contribution breakdown
               </div>
             </div>

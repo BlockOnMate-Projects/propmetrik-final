@@ -76,17 +76,17 @@ function Steps({ current }: { current: number }) {
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-bold ${
               i < current
-                ? 'bg-green-600 text-white'
+                ? 'bg-green-600 text-foreground'
                 : i === current
-                ? 'bg-red-600 text-white'
-                : 'bg-zinc-800 text-zinc-500'
+                ? 'bg-red-600 text-foreground'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {i < current ? '✓' : i + 1}
           </div>
           <span
             className={`text-xs font-mono ${
-              i === current ? 'text-white' : 'text-zinc-500'
+              i === current ? 'text-foreground' : 'text-muted-foreground'
             } hidden md:inline`}
           >
             {s}
@@ -357,17 +357,17 @@ export default function NewPublicationPage() {
       {step === 0 && (
         <div className="space-y-6">
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-3">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-3">
               Publication Type
             </label>
 
             {/* Insights Category */}
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-blue-900/30 text-blue-400 border border-blue-800 rounded">
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-800 rounded">
                   Insights
                 </span>
-                <span className="text-[10px] text-zinc-600 font-mono">Research & thought leadership → appears on /insights/*</span>
+                <span className="text-[10px] text-muted-foreground font-mono">Research & thought leadership → appears on /insights/*</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {INSIGHTS_TYPES.map((t) => (
@@ -376,12 +376,12 @@ export default function NewPublicationPage() {
                     onClick={() => setPubType(t.value)}
                     className={`text-left p-4 border rounded transition-colors ${
                       pubType === t.value
-                        ? 'border-red-600 bg-red-900/20'
-                        : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                        ? 'border-red-600 bg-red-100 dark:bg-red-900/20'
+                        : 'border-border bg-card hover:border-zinc-600'
                     }`}
                   >
-                    <div className="text-sm font-bold text-white">{t.label}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{t.desc}</div>
+                    <div className="text-sm font-bold text-foreground">{t.label}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">{t.desc}</div>
                     <div className="text-[9px] text-zinc-700 font-mono mt-1">→ {t.website_path}</div>
                   </button>
                 ))}
@@ -391,10 +391,10 @@ export default function NewPublicationPage() {
             {/* Press Category */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-amber-900/30 text-amber-400 border border-amber-800 rounded">
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-800 rounded">
                   Press
                 </span>
-                <span className="text-[10px] text-zinc-600 font-mono">Corporate communications → appears on /press/*</span>
+                <span className="text-[10px] text-muted-foreground font-mono">Corporate communications → appears on /press/*</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {PRESS_TYPES.map((t) => (
@@ -403,12 +403,12 @@ export default function NewPublicationPage() {
                     onClick={() => setPubType(t.value)}
                     className={`text-left p-4 border rounded transition-colors ${
                       pubType === t.value
-                        ? 'border-red-600 bg-red-900/20'
-                        : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                        ? 'border-red-600 bg-red-100 dark:bg-red-900/20'
+                        : 'border-border bg-card hover:border-zinc-600'
                     }`}
                   >
-                    <div className="text-sm font-bold text-white">{t.label}</div>
-                    <div className="text-[10px] text-zinc-500 mt-1">{t.desc}</div>
+                    <div className="text-sm font-bold text-foreground">{t.label}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">{t.desc}</div>
                     <div className="text-[9px] text-zinc-700 font-mono mt-1">→ {t.website_path}</div>
                   </button>
                 ))}
@@ -417,7 +417,7 @@ export default function NewPublicationPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Title
             </label>
             <input
@@ -425,12 +425,12 @@ export default function NewPublicationPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Ghana Housing Affordability Index — Q4 2025"
-              className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded text-white placeholder-zinc-600 focus:outline-none focus:border-red-600 font-mono"
+              className="w-full px-4 py-3 bg-card border border-border rounded text-foreground placeholder-zinc-600 focus:outline-none focus:border-red-600 font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Subtitle (optional)
             </label>
             <input
@@ -438,12 +438,12 @@ export default function NewPublicationPage() {
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
               placeholder="A brief subtitle for the publication"
-              className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded text-white placeholder-zinc-600 focus:outline-none focus:border-red-600 font-mono text-sm"
+              className="w-full px-4 py-2 bg-card border border-border rounded text-foreground placeholder-zinc-600 focus:outline-none focus:border-red-600 font-mono text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-3">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-3">
               Access Tier
             </label>
             <div className="flex flex-wrap gap-3">
@@ -453,8 +453,8 @@ export default function NewPublicationPage() {
                   onClick={() => setAccessTier(t.value)}
                   className={`px-4 py-2 border rounded text-sm transition-colors ${
                     accessTier === t.value
-                      ? 'border-red-600 bg-red-900/20 text-white'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+                      ? 'border-red-600 bg-red-100 dark:bg-red-900/20 text-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:border-zinc-600'
                   }`}
                 >
                   {t.label}
@@ -504,34 +504,34 @@ export default function NewPublicationPage() {
       {/* ── STEP 3: AI Draft ─────────────────────────────── */}
       {step === 2 && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded">
-            <h3 className="text-sm font-mono text-white font-bold mb-2">
+          <div className="bg-card border border-border p-6 rounded">
+            <h3 className="text-sm font-mono text-foreground font-bold mb-2">
               AI Content Generation
             </h3>
-            <p className="text-xs text-zinc-500 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Gemini 2.5 Flash will generate a structured draft based on your
               title, type, and taxonomy selections. You can edit everything
               afterwards.
             </p>
-            <div className="bg-zinc-950 border border-zinc-700 rounded p-4 mb-4">
-              <div className="text-xs font-mono text-zinc-400 space-y-1">
+            <div className="bg-background border border-border rounded p-4 mb-4">
+              <div className="text-xs font-mono text-muted-foreground space-y-1">
                 <div>
-                  <span className="text-zinc-600">Type:</span>{' '}
+                  <span className="text-muted-foreground">Type:</span>{' '}
                   {TYPE_LABELS[pubType] || pubType}
                 </div>
                 <div>
-                  <span className="text-zinc-600">Title:</span> {title}
+                  <span className="text-muted-foreground">Title:</span> {title}
                 </div>
                 <div>
-                  <span className="text-zinc-600">Sectors:</span>{' '}
+                  <span className="text-muted-foreground">Sectors:</span>{' '}
                   {selectedSectors.join(', ') || '-'}
                 </div>
                 <div>
-                  <span className="text-zinc-600">Topics:</span>{' '}
+                  <span className="text-muted-foreground">Topics:</span>{' '}
                   {selectedTopics.join(', ') || '-'}
                 </div>
                 <div>
-                  <span className="text-zinc-600">Regions:</span>{' '}
+                  <span className="text-muted-foreground">Regions:</span>{' '}
                   {selectedRegions.join(', ') || '-'}
                 </div>
               </div>
@@ -541,7 +541,7 @@ export default function NewPublicationPage() {
               <button
                 onClick={generateDraft}
                 disabled={aiLoading}
-                className="px-6 py-3 bg-red-600 text-white font-bold rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
+                className="px-6 py-3 bg-red-600 text-foreground font-bold rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
               >
                 {aiLoading ? (
                   <span className="flex items-center gap-2">
@@ -554,13 +554,13 @@ export default function NewPublicationPage() {
               </button>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-xs text-green-400 font-mono">
+                <span className="text-xs text-green-600 dark:text-green-400 font-mono">
                   ✓ Draft generated ({contentBlocks.length} blocks)
                 </span>
                 <button
                   onClick={generateDraft}
                   disabled={aiLoading}
-                  className="text-xs font-mono text-zinc-500 hover:text-red-400"
+                  className="text-xs font-mono text-muted-foreground hover:text-red-400"
                 >
                   Regenerate
                 </button>
@@ -572,23 +572,23 @@ export default function NewPublicationPage() {
           {contentBlocks.length > 0 && (
             <>
               <div>
-                <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
                   Excerpt
                 </label>
                 <textarea
                   value={excerpt}
                   onChange={(e) => setExcerpt(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono resize-none"
+                  className="w-full px-4 py-2 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono resize-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
                   Key Findings
                 </label>
                 {keyFindings.map((kf, i) => (
                   <div key={i} className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-zinc-600 font-mono w-6">
+                    <span className="text-xs text-muted-foreground font-mono w-6">
                       {i + 1}.
                     </span>
                     <input
@@ -599,7 +599,7 @@ export default function NewPublicationPage() {
                           p.map((x, j) => (j === i ? e.target.value : x))
                         )
                       }
-                      className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono"
+                      className="flex-1 px-3 py-1.5 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono"
                     />
                     <button
                       onClick={() =>
@@ -613,7 +613,7 @@ export default function NewPublicationPage() {
                 ))}
                 <button
                   onClick={() => setKeyFindings((p) => [...p, ''])}
-                  className="text-xs font-mono text-zinc-500 hover:text-white"
+                  className="text-xs font-mono text-muted-foreground hover:text-foreground"
                 >
                   + Add Finding
                 </button>
@@ -629,19 +629,19 @@ export default function NewPublicationPage() {
           {/* Content Editor */}
           <div className="lg:col-span-2 space-y-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+              <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
                 Content Blocks ({contentBlocks.length})
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={addTextBlock}
-                  className="text-xs font-mono text-zinc-500 hover:text-white border border-zinc-700 px-2 py-1 rounded"
+                  className="text-xs font-mono text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
                 >
                   + Text
                 </button>
                 <button
                   onClick={addCalloutBlock}
-                  className="text-xs font-mono text-zinc-500 hover:text-white border border-zinc-700 px-2 py-1 rounded"
+                  className="text-xs font-mono text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
                 >
                   + Callout
                 </button>
@@ -651,12 +651,12 @@ export default function NewPublicationPage() {
             {contentBlocks.map((block, idx) => (
               <div
                 key={block.id}
-                className={`bg-zinc-900 border rounded p-4 ${
+                className={`bg-card border rounded p-4 ${
                   block.type === 'chart'
                     ? 'border-blue-800'
                     : block.type === 'callout'
                     ? 'border-amber-800'
-                    : 'border-zinc-800'
+                    : 'border-border'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -664,18 +664,18 @@ export default function NewPublicationPage() {
                     <span
                       className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                         block.type === 'chart'
-                          ? 'bg-blue-900/50 text-blue-400'
+                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
                           : block.type === 'callout'
-                          ? 'bg-amber-900/50 text-amber-400'
+                          ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400'
                           : block.type === 'heading'
-                          ? 'bg-purple-900/50 text-purple-400'
-                          : 'bg-zinc-800 text-zinc-400'
+                          ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400'
+                          : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {block.type}
                     </span>
                     {block.aiGenerated && (
-                      <span className="text-[10px] font-mono text-purple-400">
+                      <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400">
                         AI
                       </span>
                     )}
@@ -684,14 +684,14 @@ export default function NewPublicationPage() {
                     <button
                       onClick={() => moveBlock(idx, -1)}
                       disabled={idx === 0}
-                      className="text-xs text-zinc-600 hover:text-white disabled:opacity-30 px-1"
+                      className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
                     >
                       ↑
                     </button>
                     <button
                       onClick={() => moveBlock(idx, 1)}
                       disabled={idx === contentBlocks.length - 1}
-                      className="text-xs text-zinc-600 hover:text-white disabled:opacity-30 px-1"
+                      className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
                     >
                       ↓
                     </button>
@@ -699,7 +699,7 @@ export default function NewPublicationPage() {
                       <button
                         onClick={() => regenerateSection(block.id)}
                         disabled={aiLoading}
-                        className="text-[10px] font-mono text-purple-400 hover:text-purple-300 px-1"
+                        className="text-[10px] font-mono text-purple-600 dark:text-purple-400 hover:text-purple-300 px-1"
                       >
                         ⟳ AI
                       </button>
@@ -714,9 +714,9 @@ export default function NewPublicationPage() {
                 </div>
 
                 {block.type === 'chart' ? (
-                  <div className="text-sm text-blue-400 font-mono">
+                  <div className="text-sm text-blue-600 dark:text-blue-400 font-mono">
                     📊 {block.content}
-                    <div className="text-[10px] text-zinc-600 mt-1">
+                    <div className="text-[10px] text-muted-foreground mt-1">
                       {(block.metadata as Record<string, unknown>)?.endpoint as string}
                     </div>
                   </div>
@@ -729,7 +729,7 @@ export default function NewPublicationPage() {
                         ? 1
                         : Math.max(3, block.content.split('\n').length + 1)
                     }
-                    className="w-full bg-transparent text-white text-sm font-mono focus:outline-none resize-y"
+                    className="w-full bg-transparent text-foreground text-sm font-mono focus:outline-none resize-y"
                     placeholder={
                       block.type === 'heading'
                         ? 'Section heading...'
@@ -745,12 +745,12 @@ export default function NewPublicationPage() {
 
           {/* Charts Sidebar */}
           <div className="space-y-4">
-            <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
               Chart Library
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 rounded max-h-[600px] overflow-y-auto">
+            <div className="bg-card border border-border rounded max-h-[600px] overflow-y-auto">
               {chartsCatalog.length === 0 ? (
-                <div className="p-4 text-xs text-zinc-500 font-mono text-center">
+                <div className="p-4 text-xs text-muted-foreground font-mono text-center">
                   Loading chart catalog...
                 </div>
               ) : (
@@ -761,12 +761,12 @@ export default function NewPublicationPage() {
                   return (
                     <div
                       key={chart.id}
-                      className="p-3 border-b border-zinc-800 last:border-0"
+                      className="p-3 border-b border-border last:border-0"
                     >
-                      <div className="text-xs text-white font-mono font-bold">
+                      <div className="text-xs text-foreground font-mono font-bold">
                         {chart.title}
                       </div>
-                      <div className="text-[10px] text-zinc-500 font-mono">
+                      <div className="text-[10px] text-muted-foreground font-mono">
                         {chart.category} · {chart.chartType}
                       </div>
                       <button
@@ -775,7 +775,7 @@ export default function NewPublicationPage() {
                         className={`mt-1 text-[10px] font-mono ${
                           isAdded
                             ? 'text-green-500'
-                            : 'text-blue-400 hover:text-blue-300'
+                            : 'text-blue-600 dark:text-blue-400 hover:text-blue-300'
                         }`}
                       >
                         {isAdded ? '✓ Added' : '+ Insert Chart'}
@@ -789,26 +789,26 @@ export default function NewPublicationPage() {
             {/* Chart Insights */}
             {selectedCharts.length > 0 && (
               <div>
-                <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+                <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
                   Chart Insights
                 </div>
                 {selectedCharts.map((chart, i) => (
                   <div
                     key={i}
-                    className="bg-zinc-900 border border-blue-800 rounded p-3 mb-2"
+                    className="bg-card border border-blue-800 rounded p-3 mb-2"
                   >
-                    <div className="text-xs font-mono text-white mb-1">
+                    <div className="text-xs font-mono text-foreground mb-1">
                       {chart.title}
                     </div>
                     {chart.insight ? (
-                      <p className="text-[10px] text-zinc-400 font-mono">
+                      <p className="text-[10px] text-muted-foreground font-mono">
                         {chart.insight}
                       </p>
                     ) : (
                       <button
                         onClick={() => generateChartInsight(i)}
                         disabled={aiLoading}
-                        className="text-[10px] font-mono text-purple-400 hover:text-purple-300"
+                        className="text-[10px] font-mono text-purple-600 dark:text-purple-400 hover:text-purple-300"
                       >
                         ⟳ Generate AI Insight
                       </button>
@@ -824,88 +824,88 @@ export default function NewPublicationPage() {
       {/* ── STEP 5: Review ───────────────────────────────── */}
       {step === 4 && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border border-zinc-800 rounded p-6 space-y-4">
-            <h3 className="text-sm font-mono text-white font-bold">
+          <div className="bg-card border border-border rounded p-6 space-y-4">
+            <h3 className="text-sm font-mono text-foreground font-bold">
               Publication Summary
             </h3>
             <div className="grid grid-cols-2 gap-4 text-xs font-mono">
               <div>
-                <span className="text-zinc-600">Type:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Type:</span>{' '}
+                <span className="text-foreground">
                   {TYPE_LABELS[pubType] || pubType}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Access:</span>{' '}
-                <span className="text-white capitalize">{accessTier}</span>
+                <span className="text-muted-foreground">Access:</span>{' '}
+                <span className="text-foreground capitalize">{accessTier}</span>
               </div>
               <div className="col-span-2">
-                <span className="text-zinc-600">Title:</span>{' '}
-                <span className="text-white">{title}</span>
+                <span className="text-muted-foreground">Title:</span>{' '}
+                <span className="text-foreground">{title}</span>
               </div>
               {subtitle && (
                 <div className="col-span-2">
-                  <span className="text-zinc-600">Subtitle:</span>{' '}
-                  <span className="text-white">{subtitle}</span>
+                  <span className="text-muted-foreground">Subtitle:</span>{' '}
+                  <span className="text-foreground">{subtitle}</span>
                 </div>
               )}
               <div className="col-span-2">
-                <span className="text-zinc-600">Sectors:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Sectors:</span>{' '}
+                <span className="text-foreground">
                   {selectedSectors.join(', ')}
                 </span>
               </div>
               <div className="col-span-2">
-                <span className="text-zinc-600">Topics:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Topics:</span>{' '}
+                <span className="text-foreground">
                   {selectedTopics.join(', ') || '-'}
                 </span>
               </div>
               <div className="col-span-2">
-                <span className="text-zinc-600">Regions:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Regions:</span>{' '}
+                <span className="text-foreground">
                   {selectedRegions.join(', ') || '-'}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Content Blocks:</span>{' '}
-                <span className="text-white">{contentBlocks.length}</span>
+                <span className="text-muted-foreground">Content Blocks:</span>{' '}
+                <span className="text-foreground">{contentBlocks.length}</span>
               </div>
               <div>
-                <span className="text-zinc-600">Charts:</span>{' '}
-                <span className="text-white">{selectedCharts.length}</span>
+                <span className="text-muted-foreground">Charts:</span>{' '}
+                <span className="text-foreground">{selectedCharts.length}</span>
               </div>
               <div>
-                <span className="text-zinc-600">Key Findings:</span>{' '}
-                <span className="text-white">{keyFindings.length}</span>
+                <span className="text-muted-foreground">Key Findings:</span>{' '}
+                <span className="text-foreground">{keyFindings.length}</span>
               </div>
               <div>
-                <span className="text-zinc-600">AI Generated:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">AI Generated:</span>{' '}
+                <span className="text-foreground">
                   {contentBlocks.some((b) => b.aiGenerated) ? 'Yes' : 'No'}
                 </span>
               </div>
             </div>
 
             {excerpt && (
-              <div className="mt-4 pt-4 border-t border-zinc-800">
-                <div className="text-[10px] font-mono text-zinc-600 uppercase mb-1">
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="text-[10px] font-mono text-muted-foreground uppercase mb-1">
                   Excerpt
                 </div>
-                <p className="text-sm text-zinc-300">{excerpt}</p>
+                <p className="text-sm text-muted-foreground">{excerpt}</p>
               </div>
             )}
 
             {keyFindings.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-zinc-800">
-                <div className="text-[10px] font-mono text-zinc-600 uppercase mb-2">
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="text-[10px] font-mono text-muted-foreground uppercase mb-2">
                   Key Findings
                 </div>
                 <ul className="space-y-1">
                   {keyFindings.map((kf, i) => (
                     <li
                       key={i}
-                      className="text-xs text-zinc-400 font-mono flex gap-2"
+                      className="text-xs text-muted-foreground font-mono flex gap-2"
                     >
                       <span className="text-red-500">{i + 1}.</span> {kf}
                     </li>
@@ -916,35 +916,35 @@ export default function NewPublicationPage() {
           </div>
 
           {/* Content Preview */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded p-6">
-            <h3 className="text-sm font-mono text-white font-bold mb-4">
+          <div className="bg-card border border-border rounded p-6">
+            <h3 className="text-sm font-mono text-foreground font-bold mb-4">
               Content Preview
             </h3>
             <div className="prose prose-invert prose-sm max-w-none">
               {contentBlocks.map((block) => (
                 <div key={block.id} className="mb-4">
                   {block.type === 'heading' && (
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="text-lg font-bold text-foreground">
                       {block.content}
                     </h3>
                   )}
                   {block.type === 'text' && (
-                    <div className="text-sm text-zinc-300 whitespace-pre-wrap">
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                       {block.content}
                     </div>
                   )}
                   {block.type === 'chart' && (
-                    <div className="p-4 border border-blue-800 rounded bg-blue-900/10 text-sm text-blue-400 font-mono">
+                    <div className="p-4 border border-blue-800 rounded bg-blue-100 dark:bg-blue-900/10 text-sm text-blue-600 dark:text-blue-400 font-mono">
                       📊 {block.content}
                     </div>
                   )}
                   {block.type === 'callout' && (
-                    <div className="p-3 border-l-4 border-amber-500 bg-amber-900/10 text-sm text-amber-200">
+                    <div className="p-3 border-l-4 border-amber-500 bg-amber-100 dark:bg-amber-900/10 text-sm text-amber-200">
                       {block.content}
                     </div>
                   )}
                   {block.type === 'quote' && (
-                    <blockquote className="border-l-4 border-zinc-600 pl-4 italic text-sm text-zinc-400">
+                    <blockquote className="border-l-4 border-zinc-600 pl-4 italic text-sm text-muted-foreground">
                       {block.content}
                     </blockquote>
                   )}
@@ -956,11 +956,11 @@ export default function NewPublicationPage() {
       )}
 
       {/* ── Navigation ───────────────────────────────────── */}
-      <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+      <div className="flex items-center justify-between pt-4 border-t border-border">
         <button
           onClick={prev}
           disabled={step === 0}
-          className="px-4 py-2 text-sm font-mono text-zinc-400 border border-zinc-700 rounded hover:border-white hover:text-white disabled:opacity-30 transition-colors"
+          className="px-4 py-2 text-sm font-mono text-muted-foreground border border-border rounded hover:border-white hover:text-foreground disabled:opacity-30 transition-colors"
         >
           ← Previous
         </button>
@@ -971,14 +971,14 @@ export default function NewPublicationPage() {
               <button
                 onClick={() => handleSave(false)}
                 disabled={saving}
-                className="px-4 py-2 text-sm font-mono text-zinc-300 border border-zinc-700 rounded hover:border-white hover:text-white disabled:opacity-50 transition-colors"
+                className="px-4 py-2 text-sm font-mono text-muted-foreground border border-border rounded hover:border-white hover:text-foreground disabled:opacity-50 transition-colors"
               >
                 {saving ? 'Saving...' : 'Save as Draft'}
               </button>
               <button
                 onClick={() => handleSave(true)}
                 disabled={saving}
-                className="px-4 py-2 text-sm font-mono font-bold text-white bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 text-sm font-mono font-bold text-foreground bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
               >
                 {saving ? 'Publishing...' : 'Publish Now'}
               </button>
@@ -989,7 +989,7 @@ export default function NewPublicationPage() {
             <button
               onClick={next}
               disabled={!canAdvance()}
-              className="px-4 py-2 text-sm font-mono font-bold text-white bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm font-mono font-bold text-foreground bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
             >
               Next →
             </button>
@@ -1014,7 +1014,7 @@ function TaxonomyMultiSelect({
 }) {
   return (
     <div>
-      <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-3">
+      <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-3">
         {label}{' '}
         <span className="text-zinc-700">({selected.length} selected)</span>
       </label>
@@ -1025,8 +1025,8 @@ function TaxonomyMultiSelect({
             onClick={() => onToggle(opt)}
             className={`px-3 py-1.5 text-xs font-mono rounded border transition-colors ${
               selected.includes(opt)
-                ? 'border-red-600 bg-red-900/20 text-white'
-                : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+                ? 'border-red-600 bg-red-100 dark:bg-red-900/20 text-foreground'
+                : 'border-border bg-card text-muted-foreground hover:border-zinc-600'
             }`}
           >
             {opt}

@@ -226,7 +226,7 @@ export default function SubmitPropertyPage() {
 
             {error && (
                 <div className="border border-red-500/30 bg-red-500/10 p-4 rounded">
-                    <p className="font-mono text-sm text-red-400">{error}</p>
+                    <p className="font-mono text-sm text-red-600 dark:text-red-400">{error}</p>
                 </div>
             )}
 
@@ -241,7 +241,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('property_name', e.target.value)}
                                 placeholder="e.g., 4-Bedroom Executive House in East Legon"
                                 required
-                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
@@ -251,7 +251,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.property_type}
                                 onValueChange={(v) => handleChange('property_type', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-card border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -285,7 +285,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.listing_type}
                                 onValueChange={(v) => handleChange('listing_type', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-card border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -303,7 +303,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('description', e.target.value)}
                                 placeholder="Describe the property..."
                                 rows={3}
-                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                             />
                         </div>
                     </div>
@@ -358,12 +358,12 @@ export default function SubmitPropertyPage() {
                                     <button
                                         type="button"
                                         onClick={() => setPendingImageFiles(prev => prev.filter((_, idx) => idx !== i))}
-                                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-background/60 text-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
                                     >
                                         ×
                                     </button>
-                                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
-                                        <p className="text-[9px] text-white truncate">{file.name}</p>
+                                    <div className="absolute bottom-0 left-0 right-0 bg-background/50 p-1">
+                                        <p className="text-[9px] text-foreground truncate">{file.name}</p>
                                     </div>
                                 </div>
                             ))}
@@ -381,7 +381,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('address', e.target.value)}
                                 placeholder="Street address"
                                 required
-                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
@@ -392,7 +392,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('city', e.target.value)}
                                 placeholder="e.g., Accra"
                                 required
-                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
@@ -402,7 +402,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.region}
                                 onValueChange={(v) => handleChange('region', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-card border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border max-h-[200px]">
@@ -421,7 +421,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.digital_address}
                                 onChange={(e) => handleChange('digital_address', e.target.value)}
                                 placeholder="e.g., GA-123-4567"
-                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                             />
                         </div>
                     </div>
@@ -440,7 +440,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('price', e.target.value)}
                                 placeholder="0.00"
                                 required
-                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
@@ -450,7 +450,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.currency}
                                 onValueChange={(v) => handleChange('currency', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-card border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -476,7 +476,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('bedrooms', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
 
@@ -488,7 +488,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('bathrooms', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
 
@@ -500,7 +500,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('area_sqm', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
 
@@ -512,7 +512,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('land_size_sqm', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -531,7 +531,7 @@ export default function SubmitPropertyPage() {
                                     placeholder="0"
                                     required
                                     min="0"
-                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="mt-1 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -549,7 +549,7 @@ export default function SubmitPropertyPage() {
                                     value={formData.owner_name}
                                     onChange={(e) => handleChange('owner_name', e.target.value)}
                                     placeholder="Full name"
-                                    className="pl-10 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="pl-10 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -562,7 +562,7 @@ export default function SubmitPropertyPage() {
                                     value={formData.owner_contact}
                                     onChange={(e) => handleChange('owner_contact', e.target.value)}
                                     placeholder="+233..."
-                                    className="pl-10 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="pl-10 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -576,7 +576,7 @@ export default function SubmitPropertyPage() {
                                     value={formData.owner_email}
                                     onChange={(e) => handleChange('owner_email', e.target.value)}
                                     placeholder="owner@example.com"
-                                    className="pl-10 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                    className="pl-10 bg-card border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -593,7 +593,7 @@ export default function SubmitPropertyPage() {
                     <Button 
                         type="submit" 
                         disabled={isSubmitting}
-                        className="bg-primary hover:bg-primary/90 text-white font-mono text-xs"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-mono text-xs"
                     >
                         {isSubmitting ? (
                             <>

@@ -201,13 +201,13 @@ export default function PortfoliosPage() {
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <Briefcase className="h-5 w-5 text-amber-500" />
-                        <h1 className="text-2xl font-bold tracking-tight text-white font-mono uppercase">Portfolio Engine</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono uppercase">Portfolio Engine</h1>
                     </div>
-                    <p className="text-sm text-zinc-500 font-mono">Real-time portfolio analytics & asset performance tracking</p>
+                    <p className="text-sm text-muted-foreground font-mono">Real-time portfolio analytics & asset performance tracking</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Link href="/dashboard/property-management/properties/new">
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase">
                             <Plus className="mr-2 h-3 w-3" />
                             New Asset
                         </Button>
@@ -218,12 +218,12 @@ export default function PortfoliosPage() {
             {/* Primary KPI Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {/* Total Portfolio Value */}
-                <Card className="bg-zinc-900 border-zinc-800 col-span-2">
+                <Card className="bg-card border-border col-span-2">
                     <CardContent className="pt-6 pb-4">
                         <div className="flex items-start justify-between">
                             <div>
-                                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Total Portfolio Value</p>
-                                <h2 className="text-3xl font-black text-white font-mono tracking-tight">{formatCurrency(metrics?.totalValue || 0)}</h2>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Total Portfolio Value</p>
+                                <h2 className="text-3xl font-black text-foreground font-mono tracking-tight">{formatCurrency(metrics?.totalValue || 0)}</h2>
                                 <RateStamp fx={metrics?.fx} className="mt-1 block" />
                                 <div className="flex items-center gap-2 mt-2">
                                     {(metrics?.valueTrend || 0) >= 0 ? (
@@ -247,11 +247,11 @@ export default function PortfoliosPage() {
                 </Card>
 
                 {/* Monthly Revenue */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardContent className="pt-6 pb-4">
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Monthly Revenue</p>
-                        <h2 className="text-xl font-bold text-white font-mono">{formatCurrency(metrics?.monthlyIncome || 0)}</h2>
-                        <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Monthly Revenue</p>
+                        <h2 className="text-xl font-bold text-foreground font-mono">{formatCurrency(metrics?.monthlyIncome || 0)}</h2>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-1">
                             <span className={metrics?.incomeTrend && metrics.incomeTrend >= 0 ? 'text-emerald-500' : 'text-red-500'}>
                                 {metrics?.incomeTrend && metrics.incomeTrend >= 0 ? '+' : ''}{metrics?.incomeTrend || 0}%
                             </span> vs last month
@@ -260,11 +260,11 @@ export default function PortfoliosPage() {
                 </Card>
 
                 {/* Occupancy Rate */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardContent className="pt-6 pb-4">
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Occupancy Rate</p>
-                        <h2 className="text-xl font-bold text-white font-mono">{metrics?.occupancyRate?.toFixed(1) || 0}%</h2>
-                        <div className="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Occupancy Rate</p>
+                        <h2 className="text-xl font-bold text-foreground font-mono">{metrics?.occupancyRate?.toFixed(1) || 0}%</h2>
+                        <div className="w-full bg-muted h-1.5 rounded-full mt-2 overflow-hidden">
                             <div
                                 className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-amber-500 to-amber-400"
                                 style={{ width: `${metrics?.occupancyRate || 0}%` }}
@@ -274,22 +274,22 @@ export default function PortfoliosPage() {
                 </Card>
 
                 {/* Collection Rate */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardContent className="pt-6 pb-4">
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Collection Rate</p>
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Collection Rate</p>
                         <h2 className="text-xl font-bold text-emerald-500 font-mono">{metrics?.collectionRate?.toFixed(1) || 0}%</h2>
-                        <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                        <p className="text-[10px] text-muted-foreground font-mono mt-1">
                             <span className="text-emerald-500">{metrics?.overduePayments || 0}</span> overdue
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* Total Assets */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardContent className="pt-6 pb-4">
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Total Assets</p>
-                        <h2 className="text-xl font-bold text-white font-mono">{metrics?.totalProperties || 0}</h2>
-                        <p className="text-[10px] text-zinc-500 font-mono mt-1">
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Total Assets</p>
+                        <h2 className="text-xl font-bold text-foreground font-mono">{metrics?.totalProperties || 0}</h2>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-1">
                             {composition?.byRegion?.length || 0} region{(composition?.byRegion?.length || 0) !== 1 ? 's' : ''}
                         </p>
                     </CardContent>
@@ -298,43 +298,43 @@ export default function PortfoliosPage() {
 
             {/* Secondary Metrics Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center gap-4">
+                <div className="bg-card/50 border border-border rounded-lg p-4 flex items-center gap-4">
                     <div className="h-10 w-10 rounded-lg bg-sky-500/10 flex items-center justify-center">
                         <Users className="h-5 w-5 text-sky-500" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase">Active Tenants</p>
-                        <p className="text-lg font-bold text-white font-mono">{metrics?.totalTenants || 0}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase">Active Tenants</p>
+                        <p className="text-lg font-bold text-foreground font-mono">{metrics?.totalTenants || 0}</p>
                     </div>
                 </div>
 
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center gap-4">
+                <div className="bg-card/50 border border-border rounded-lg p-4 flex items-center gap-4">
                     <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase">Active Leases</p>
-                        <p className="text-lg font-bold text-white font-mono">{leaseSummary?.activeLeases || 0}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase">Active Leases</p>
+                        <p className="text-lg font-bold text-foreground font-mono">{leaseSummary?.activeLeases || 0}</p>
                     </div>
                 </div>
 
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center gap-4">
+                <div className="bg-card/50 border border-border rounded-lg p-4 flex items-center gap-4">
                     <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
                         <Clock className="h-5 w-5 text-amber-500" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase">Pending Work Orders</p>
-                        <p className="text-lg font-bold text-white font-mono">{metrics?.pendingWorkOrders || 0}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase">Pending Work Orders</p>
+                        <p className="text-lg font-bold text-foreground font-mono">{metrics?.pendingWorkOrders || 0}</p>
                     </div>
                 </div>
 
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center gap-4">
+                <div className="bg-card/50 border border-border rounded-lg p-4 flex items-center gap-4">
                     <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
                         <Target className="h-5 w-5 text-violet-500" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase">Avg. Asset Value</p>
-                        <p className="text-lg font-bold text-white font-mono">{formatCurrencyShort(avgPropertyValue)}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground uppercase">Avg. Asset Value</p>
+                        <p className="text-lg font-bold text-foreground font-mono">{formatCurrencyShort(avgPropertyValue)}</p>
                     </div>
                 </div>
             </div>
@@ -342,49 +342,49 @@ export default function PortfoliosPage() {
             {/* Financial Analytics Row */}
             {portfolioFinancials && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardContent className="pt-5 pb-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Portfolio NOI</p>
-                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Portfolio NOI</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {formatCurrency(portfolioFinancials.portfolioNOI ?? 0)}
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Net Operating Income</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Net Operating Income</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardContent className="pt-5 pb-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Wtd. Cap Rate</p>
-                            <p className="text-xl font-bold text-amber-400 font-mono">
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Wtd. Cap Rate</p>
+                            <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono">
                                 {(portfolioFinancials.weightedCapRate ?? 0).toFixed(2)}%
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Weighted Capitalization</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Weighted Capitalization</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardContent className="pt-5 pb-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Monthly Income</p>
-                            <p className="text-xl font-bold text-green-400 font-mono">
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Monthly Income</p>
+                            <p className="text-xl font-bold text-green-600 dark:text-green-400 font-mono">
                                 {formatCurrency(portfolioFinancials.totalMonthlyIncome ?? 0)}
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Gross Monthly</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Gross Monthly</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardContent className="pt-5 pb-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Net Monthly</p>
-                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Net Monthly</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {formatCurrency(portfolioFinancials.netMonthlyCashFlow ?? 0)}
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">After Expenses</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">After Expenses</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardContent className="pt-5 pb-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Avg Occupancy</p>
-                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.averageOccupancy ?? 0) >= 90 ? 'text-green-400' : (portfolioFinancials.averageOccupancy ?? 0) >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Avg Occupancy</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.averageOccupancy ?? 0) >= 90 ? 'text-green-600 dark:text-green-400' : (portfolioFinancials.averageOccupancy ?? 0) >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {(portfolioFinancials.averageOccupancy ?? 0).toFixed(0)}%
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Portfolio Average</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Portfolio Average</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -392,13 +392,13 @@ export default function PortfoliosPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Asset Distribution Charts */}
-                <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+                <Card className="bg-card border-border lg:col-span-2">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-mono text-white flex items-center gap-2">
+                        <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
                             <PieChartIcon className="h-4 w-4 text-amber-500" />
                             PORTFOLIO COMPOSITION
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-mono text-zinc-500">
+                        <CardDescription className="text-[10px] font-mono text-muted-foreground">
                             Asset distribution by property type and geographic region
                         </CardDescription>
                     </CardHeader>
@@ -406,7 +406,7 @@ export default function PortfoliosPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* By Property Type */}
                             <div className="h-[280px]">
-                                <p className="text-center text-[10px] text-zinc-500 font-mono uppercase mb-4 flex items-center justify-center gap-2">
+                                <p className="text-center text-[10px] text-muted-foreground font-mono uppercase mb-4 flex items-center justify-center gap-2">
                                     <Building2 className="h-3 w-3" /> By Property Type
                                 </p>
                                 {mounted && typeChartData.length > 0 ? (
@@ -443,12 +443,12 @@ export default function PortfoliosPage() {
                                                 verticalAlign="bottom"
                                                 height={50}
                                                 wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace' }}
-                                                formatter={(value) => <span className="text-zinc-400">{value}</span>}
+                                                formatter={(value) => <span className="text-muted-foreground">{value}</span>}
                                             />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <div className="h-full flex items-center justify-center text-zinc-600 font-mono text-xs">
+                                    <div className="h-full flex items-center justify-center text-muted-foreground font-mono text-xs">
                                         No property data
                                     </div>
                                 )}
@@ -456,7 +456,7 @@ export default function PortfoliosPage() {
 
                             {/* By Region */}
                             <div className="h-[280px]">
-                                <p className="text-center text-[10px] text-zinc-500 font-mono uppercase mb-4 flex items-center justify-center gap-2">
+                                <p className="text-center text-[10px] text-muted-foreground font-mono uppercase mb-4 flex items-center justify-center gap-2">
                                     <MapPin className="h-3 w-3" /> By Region
                                 </p>
                                 {mounted && regionChartData.length > 0 ? (
@@ -493,12 +493,12 @@ export default function PortfoliosPage() {
                                                 verticalAlign="bottom"
                                                 height={50}
                                                 wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace' }}
-                                                formatter={(value) => <span className="text-zinc-400">{value}</span>}
+                                                formatter={(value) => <span className="text-muted-foreground">{value}</span>}
                                             />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <div className="h-full flex items-center justify-center text-zinc-600 font-mono text-xs">
+                                    <div className="h-full flex items-center justify-center text-muted-foreground font-mono text-xs">
                                         No region data
                                     </div>
                                 )}
@@ -506,8 +506,8 @@ export default function PortfoliosPage() {
                         </div>
 
                         {/* Type Breakdown Bar */}
-                        <div className="mt-6 pt-4 border-t border-zinc-800">
-                            <div className="flex gap-2 h-3 rounded-full overflow-hidden bg-zinc-800">
+                        <div className="mt-6 pt-4 border-t border-border">
+                            <div className="flex gap-2 h-3 rounded-full overflow-hidden bg-muted">
                                 {typeChartData.map((item, index) => (
                                     <div
                                         key={item.name}
@@ -527,7 +527,7 @@ export default function PortfoliosPage() {
                                             className="h-2 w-2 rounded-full"
                                             style={{ backgroundColor: COLORS[index % COLORS.length] }}
                                         />
-                                        <span className="text-[10px] font-mono text-zinc-500">
+                                        <span className="text-[10px] font-mono text-muted-foreground">
                                             {item.name} ({item.value})
                                         </span>
                                     </div>
@@ -538,13 +538,13 @@ export default function PortfoliosPage() {
                 </Card>
 
                 {/* Lease & Risk Dashboard */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-mono text-white flex items-center gap-2">
+                        <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
                             <Activity className="h-4 w-4 text-amber-500" />
                             LEASE INTELLIGENCE
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-mono text-zinc-500">
+                        <CardDescription className="text-[10px] font-mono text-muted-foreground">
                             Lease status and upcoming expirations
                         </CardDescription>
                     </CardHeader>
@@ -552,33 +552,33 @@ export default function PortfoliosPage() {
                         {/* Occupancy Gauge */}
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] text-zinc-500 font-mono uppercase">Portfolio Occupancy</span>
-                                <span className="text-sm font-bold text-white font-mono">
+                                <span className="text-[10px] text-muted-foreground font-mono uppercase">Portfolio Occupancy</span>
+                                <span className="text-sm font-bold text-foreground font-mono">
                                     {occupiedUnits} / {totalUnits} Units
                                 </span>
                             </div>
-                            <div className="w-full bg-zinc-800 h-3 rounded-full overflow-hidden">
+                            <div className="w-full bg-muted h-3 rounded-full overflow-hidden">
                                 <div
                                     className="bg-gradient-to-r from-amber-600 to-amber-400 h-full rounded-full transition-all duration-1000 relative"
                                     style={{ width: `${leaseSummary?.globalOccupancyRate || metrics?.occupancyRate || 0}%` }}
                                 >
-                                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-white/30" />
+                                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-card/30" />
                                 </div>
                             </div>
                             <div className="flex justify-between mt-2">
                                 <span className="text-[10px] font-mono text-emerald-500">
                                     Occupied: {occupiedUnits}
                                 </span>
-                                <span className="text-[10px] font-mono text-zinc-500">
+                                <span className="text-[10px] font-mono text-muted-foreground">
                                     Vacant: {vacantUnits}
                                 </span>
                             </div>
                         </div>
 
                         {/* Expiring Leases */}
-                        <div className="bg-black/40 rounded-lg p-4 border border-zinc-800/50">
+                        <div className="bg-background/40 rounded-lg p-4 border border-border/50">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] text-zinc-400 font-mono uppercase flex items-center gap-1.5">
+                                <span className="text-[10px] text-muted-foreground font-mono uppercase flex items-center gap-1.5">
                                     <AlertTriangle className="h-3 w-3 text-amber-500" />
                                     Expiring Leases
                                 </span>
@@ -589,15 +589,15 @@ export default function PortfoliosPage() {
                             <div className="grid grid-cols-3 gap-2">
                                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-center">
                                     <p className="text-lg font-black text-red-500 font-mono">{leaseSummary?.expiringSoon?.within30Days || 0}</p>
-                                    <p className="text-[9px] text-red-400/70 font-mono uppercase">30 Days</p>
+                                    <p className="text-[9px] text-red-600 dark:text-red-400/70 font-mono uppercase">30 Days</p>
                                 </div>
                                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-center">
                                     <p className="text-lg font-black text-amber-500 font-mono">{leaseSummary?.expiringSoon?.within60Days || 0}</p>
-                                    <p className="text-[9px] text-amber-400/70 font-mono uppercase">60 Days</p>
+                                    <p className="text-[9px] text-amber-600 dark:text-amber-400/70 font-mono uppercase">60 Days</p>
                                 </div>
-                                <div className="bg-zinc-700/30 border border-zinc-700/50 rounded-lg p-3 text-center">
-                                    <p className="text-lg font-black text-zinc-300 font-mono">{leaseSummary?.expiringSoon?.within90Days || 0}</p>
-                                    <p className="text-[9px] text-zinc-500 font-mono uppercase">90 Days</p>
+                                <div className="bg-zinc-700/30 border border-border/50 rounded-lg p-3 text-center">
+                                    <p className="text-lg font-black text-muted-foreground font-mono">{leaseSummary?.expiringSoon?.within90Days || 0}</p>
+                                    <p className="text-[9px] text-muted-foreground font-mono uppercase">90 Days</p>
                                 </div>
                             </div>
                         </div>
@@ -607,7 +607,7 @@ export default function PortfoliosPage() {
                             <div className="flex items-center justify-between p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
                                 <div className="flex items-center gap-2">
                                     <Percent className="h-4 w-4 text-emerald-500" />
-                                    <span className="text-[10px] font-mono text-zinc-400 uppercase">Collection Rate</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground uppercase">Collection Rate</span>
                                 </div>
                                 <span className="text-lg font-black text-emerald-500 font-mono">{metrics?.collectionRate?.toFixed(1) || 0}%</span>
                             </div>
@@ -615,9 +615,9 @@ export default function PortfoliosPage() {
                             <div className="flex items-center justify-between p-3 bg-sky-500/5 border border-sky-500/20 rounded-lg">
                                 <div className="flex items-center gap-2">
                                     <DollarSign className="h-4 w-4 text-sky-500" />
-                                    <span className="text-[10px] font-mono text-zinc-400 uppercase">Annual Revenue</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground uppercase">Annual Revenue</span>
                                 </div>
-                                <span className="text-sm font-bold text-sky-400 font-mono">
+                                <span className="text-sm font-bold text-sky-600 dark:text-sky-400 font-mono">
                                     {formatCurrencyShort((leaseSummary?.totalMonthlyRevenue || 0) * 12)}
                                 </span>
                             </div>
@@ -627,30 +627,30 @@ export default function PortfoliosPage() {
             </div>
 
             {/* Asset Inventory */}
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
                 <CardHeader className="flex flex-row items-center justify-between pb-4">
                     <div>
-                        <CardTitle className="text-sm font-mono text-white uppercase tracking-tight flex items-center gap-2">
+                        <CardTitle className="text-sm font-mono text-foreground uppercase tracking-tight flex items-center gap-2">
                             <FileText className="h-4 w-4 text-amber-500" />
                             Asset Registry
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-mono text-zinc-500 mt-1">
+                        <CardDescription className="text-[10px] font-mono text-muted-foreground mt-1">
                             Complete inventory of {properties.length} properties in your portfolio
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <input
                                 type="text"
                                 placeholder="Search properties..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-black border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 w-[220px] placeholder:text-zinc-600"
+                                className="bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-xs text-foreground font-mono focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 w-[220px] placeholder:text-muted-foreground"
                             />
                         </div>
                         <Link href="/dashboard/property-management/properties/new">
-                            <Button size="sm" variant="outline" className="border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-600 font-mono text-[10px]">
+                            <Button size="sm" variant="outline" className="border-border text-muted-foreground hover:text-foreground hover:border-zinc-600 font-mono text-[10px]">
                                 <Plus className="h-3 w-3 mr-1" />
                                 Add Property
                             </Button>
@@ -658,9 +658,9 @@ export default function PortfoliosPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="relative w-full overflow-auto border border-zinc-800 rounded-lg">
+                    <div className="relative w-full overflow-auto border border-border rounded-lg">
                         <table className="w-full text-xs font-mono text-left border-collapse">
-                            <thead className="bg-black/60 text-[10px] text-zinc-500 uppercase sticky top-0">
+                            <thead className="bg-background/60 text-[10px] text-muted-foreground uppercase sticky top-0">
                                 <tr>
                                     <th className="px-4 py-3 font-medium w-[140px]">Reference</th>
                                     <th className="px-4 py-3 font-medium">Property</th>
@@ -670,25 +670,25 @@ export default function PortfoliosPage() {
                                     <th className="px-4 py-3 font-medium text-center w-[60px]"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-zinc-800/50">
+                            <tbody className="divide-y divide-border/50">
                                 {filteredProperties.map((property, idx) => (
                                     <tr
                                         key={property.id}
-                                        className="hover:bg-zinc-800/30 transition-colors group"
+                                        className="hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors group"
                                     >
                                         <td className="px-4 py-3">
-                                            <code className="text-[10px] text-zinc-500 group-hover:text-amber-500 transition-colors">
+                                            <code className="text-[10px] text-muted-foreground group-hover:text-amber-500 transition-colors">
                                                 {property.referenceNumber}
                                             </code>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                                                    {TYPE_ICONS[property.propertyType] || <Building2 className="h-3 w-3 text-zinc-500" />}
+                                                <div className="h-8 w-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                                                    {TYPE_ICONS[property.propertyType] || <Building2 className="h-3 w-3 text-muted-foreground" />}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-zinc-200 group-hover:text-white transition-colors">{property.title}</p>
-                                                    <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+                                                    <p className="font-semibold text-zinc-200 group-hover:text-foreground transition-colors">{property.title}</p>
+                                                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                                                         <MapPin className="h-2.5 w-2.5" />
                                                         {property.addressCity}, {property.region?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                                                     </p>
@@ -698,7 +698,7 @@ export default function PortfoliosPage() {
                                         <td className="px-4 py-3 text-center">
                                             <Badge
                                                 variant="outline"
-                                                className="text-[9px] uppercase border-zinc-700 bg-zinc-800/50 font-normal"
+                                                className="text-[9px] uppercase border-border bg-muted/50 font-normal"
                                             >
                                                 {TYPE_LABELS[property.propertyType] || property.propertyType}
                                             </Badge>
@@ -706,13 +706,13 @@ export default function PortfoliosPage() {
                                         <td className="px-4 py-3 text-right">
                                             <span className="font-semibold text-zinc-200">{formatNative(property.price, property.priceCurrency)}</span>
                                             {ghsEquivalent(property.price, property.priceCurrency) && (
-                                                <span className="block text-[9px] text-zinc-500 font-normal">{ghsEquivalent(property.price, property.priceCurrency)}</span>
+                                                <span className="block text-[9px] text-muted-foreground font-normal">{ghsEquivalent(property.price, property.priceCurrency)}</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-zinc-800/50">
+                                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted/50">
                                                 <div className={`h-1.5 w-1.5 rounded-full ${property.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                                                <span className={`uppercase text-[9px] ${property.status === 'active' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                <span className={`uppercase text-[9px] ${property.status === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                     {property.status}
                                                 </span>
                                             </div>
@@ -722,7 +722,7 @@ export default function PortfoliosPage() {
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-7 w-7 text-zinc-600 hover:text-amber-500 hover:bg-amber-500/10"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
                                                 >
                                                     <ArrowUpRight className="h-3.5 w-3.5" />
                                                 </Button>
@@ -734,18 +734,18 @@ export default function PortfoliosPage() {
                                     <tr>
                                         <td colSpan={6} className="px-4 py-16 text-center">
                                             <div className="flex flex-col items-center gap-3">
-                                                <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                                                    <Building2 className="h-6 w-6 text-zinc-600" />
+                                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                                                    <Building2 className="h-6 w-6 text-muted-foreground" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-zinc-400 font-mono text-sm">No properties found</p>
-                                                    <p className="text-zinc-600 font-mono text-[10px] mt-1">
+                                                    <p className="text-muted-foreground font-mono text-sm">No properties found</p>
+                                                    <p className="text-muted-foreground font-mono text-[10px] mt-1">
                                                         {searchTerm ? 'Try adjusting your search' : 'Add your first property to get started'}
                                                     </p>
                                                 </div>
                                                 {!searchTerm && (
                                                     <Link href="/dashboard/property-management/properties/new">
-                                                        <Button size="sm" className="mt-2 bg-amber-600 hover:bg-amber-500 text-white font-mono text-[10px]">
+                                                        <Button size="sm" className="mt-2 bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-[10px]">
                                                             <Plus className="h-3 w-3 mr-1" />
                                                             Add First Property
                                                         </Button>
@@ -761,11 +761,11 @@ export default function PortfoliosPage() {
 
                     {/* Table Footer */}
                     {filteredProperties.length > 0 && (
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
-                            <p className="text-[10px] font-mono text-zinc-500">
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                            <p className="text-[10px] font-mono text-muted-foreground">
                                 Showing {filteredProperties.length} of {properties.length} properties
                             </p>
-                            <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-500">
+                            <div className="flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
                                 <RateStamp fx={fx} />
                                 <span>Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + toGHS(p.price || 0, p.priceCurrency), 0))}</span></span>
                             </div>

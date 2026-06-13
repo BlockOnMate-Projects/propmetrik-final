@@ -27,13 +27,13 @@ const resources = [
 
 export default function DataForJournalistsPage() {
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <section className="pb-10">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl">
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">For the Press</div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-5">Data for Journalists</h1>
-            <p className="text-zinc-400 text-lg">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-5">Data for Journalists</h1>
+            <p className="text-muted-foreground text-lg">
               Attribution-ready charts, embeddable widgets, and market statistics for journalists covering
               Ghana and West Africa real estate.
             </p>
@@ -51,26 +51,26 @@ export default function DataForJournalistsPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors"
+                className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
               >
                 <div className="text-2xl mb-3">{item.icon}</div>
-                <h3 className="font-bold text-white mb-2">{item.title}</h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+                <h3 className="font-bold text-foreground mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
 
           <div className="mt-12 max-w-2xl">
-            <h2 className="text-2xl font-bold text-white mb-4">Request Data Access</h2>
-            <p className="text-zinc-400 mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-4">Request Data Access</h2>
+            <p className="text-muted-foreground mb-6">
               Journalists can request complimentary access to PROPMETRIK data for editorial purposes.
               All data usage must include attribution to PROPMETRIK Research.
             </p>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <div className="space-y-3 text-zinc-300">
-                <p><span className="text-zinc-500">Email:</span> press@propmetrik.com</p>
-                <p><span className="text-zinc-500">Subject:</span> Data Request — [Publication Name]</p>
-                <p><span className="text-zinc-500">Response Time:</span> Within 24 hours</p>
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="space-y-3 text-muted-foreground">
+                <p><span className="text-muted-foreground">Email:</span> press@propmetrik.com</p>
+                <p><span className="text-muted-foreground">Subject:</span> Data Request — [Publication Name]</p>
+                <p><span className="text-muted-foreground">Response Time:</span> Within 24 hours</p>
               </div>
             </div>
           </div>

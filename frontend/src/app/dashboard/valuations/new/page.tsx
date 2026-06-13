@@ -145,7 +145,7 @@ export default function NewValuationPage() {
 
   if (loadingInitial) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     )
@@ -263,15 +263,15 @@ export default function NewValuationPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard/valuations" className="p-2 hover:bg-zinc-800 transition-colors">
-          <ArrowLeft className="w-4 h-4 text-zinc-400" />
+        <Link href="/dashboard/valuations" className="p-2 hover:bg-muted transition-colors">
+          <ArrowLeft className="w-4 h-4 text-muted-foreground" />
         </Link>
         <div>
-          <h1 className="font-mono text-xl text-white">NEW VALUATION</h1>
-          <p className="font-mono text-[10px] text-zinc-500">Create a new property valuation assessment</p>
+          <h1 className="font-mono text-xl text-foreground">NEW VALUATION</h1>
+          <p className="font-mono text-[10px] text-muted-foreground">Create a new property valuation assessment</p>
         </div>
       </div>
 
@@ -284,20 +284,20 @@ export default function NewValuationPage() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => setStep(1)}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-white font-bold' :
-            step > 1 ? 'bg-zinc-800 text-emerald-400 hover:text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-foreground font-bold' :
+            step > 1 ? 'bg-muted text-emerald-600 dark:text-emerald-400 hover:text-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
         >
           {step > 1 ? <CheckCircle className="w-3 h-3" /> : null}
           1. SELECT PROPERTY
         </button>
-        <ChevronRight className="w-4 h-4 text-zinc-600" />
+        <ChevronRight className="w-4 h-4 text-muted-foreground" />
         <button
           onClick={() => (selectedProperty || createNewProperty) && valuationPurpose ? setStep(2) : null}
           disabled={(!selectedProperty && !createNewProperty) || !valuationPurpose}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 2 ? 'bg-amber-500 text-white font-bold' :
-            (selectedProperty || createNewProperty) && valuationPurpose ? 'bg-zinc-800 text-zinc-400 hover:text-white' :
-              'bg-zinc-900 text-zinc-600 cursor-not-allowed'
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 2 ? 'bg-amber-500 text-foreground font-bold' :
+            (selectedProperty || createNewProperty) && valuationPurpose ? 'bg-muted text-muted-foreground hover:text-foreground' :
+              'bg-card text-muted-foreground cursor-not-allowed'
             }`}
         >
           2. REVIEW & START
@@ -310,7 +310,7 @@ export default function NewValuationPage() {
           {/* Search Existing Property */}
           <TerminalPanel title="SEARCH EXISTING PROPERTY">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchQuery}
@@ -319,7 +319,7 @@ export default function NewValuationPage() {
                   setCreateNewProperty(false)
                 }}
                 placeholder="Search by address, title, or reference..."
-                className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full pl-10 pr-4 py-3 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
               {searching && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 animate-spin" />
@@ -338,21 +338,21 @@ export default function NewValuationPage() {
                     }}
                     className={`w-full p-4 text-left border transition-colors ${selectedProperty?.id === property.id
                       ? 'border-amber-500 bg-amber-500/10'
-                      : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                      : 'border-border bg-card/50 hover:border-border'
                       }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-mono text-sm text-white">
+                        <div className="font-mono text-sm text-foreground">
                           {property.title || property.address_street}
                         </div>
-                        <div className="font-mono text-xs text-zinc-500">
+                        <div className="font-mono text-xs text-muted-foreground">
                           {property.address_city}, {property.region}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <PropertyTypeBadge type={property.property_type} />
-                        <ChevronRight className="w-4 h-4 text-zinc-500" />
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>
                   </button>
@@ -361,7 +361,7 @@ export default function NewValuationPage() {
             )}
 
             {searchQuery.length >= 2 && properties.length === 0 && !searching && (
-              <div className="mt-4 p-4 text-center text-zinc-500 font-mono text-xs">
+              <div className="mt-4 p-4 text-center text-muted-foreground font-mono text-xs">
                 No properties found matching &quot;{searchQuery}&quot;
               </div>
             )}
@@ -369,9 +369,9 @@ export default function NewValuationPage() {
 
           {/* Or Create New Property */}
           <div className="flex items-center gap-4">
-            <div className="flex-1 h-px bg-zinc-800" />
-            <span className="font-mono text-[10px] text-zinc-500">OR CREATE NEW</span>
-            <div className="flex-1 h-px bg-zinc-800" />
+            <div className="flex-1 h-px bg-muted" />
+            <span className="font-mono text-[10px] text-muted-foreground">OR CREATE NEW</span>
+            <div className="flex-1 h-px bg-muted" />
           </div>
 
           <TerminalPanel title="CREATE NEW PROPERTY">
@@ -382,7 +382,7 @@ export default function NewValuationPage() {
               }}
               className={`w-full p-4 border transition-colors flex items-center justify-center gap-2 ${createNewProperty
                 ? 'border-amber-500 bg-amber-500/10'
-                : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                : 'border-border bg-card/50 hover:border-border'
                 }`}
             >
               <Plus className="w-4 h-4" />
@@ -413,7 +413,7 @@ export default function NewValuationPage() {
                     }
                   }}
                   disabled={!newProperty.address || !newProperty.city || (!newProperty.valuation_purpose && !valuationPurpose)}
-                  className="w-full py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   REVIEW WORKFLOW
                 </button>
@@ -431,14 +431,14 @@ export default function NewValuationPage() {
                     onClick={() => setValuationPurpose(type.value)}
                     className={`p-4 border text-left transition-colors ${valuationPurpose === type.value
                       ? 'border-amber-500 bg-amber-500/10'
-                      : 'border-zinc-800 hover:border-zinc-700'
+                      : 'border-border hover:border-border'
                       }`}
                   >
-                    <div className={`font-mono text-sm mb-1 ${valuationPurpose === type.value ? 'text-amber-400' : 'text-white'
+                    <div className={`font-mono text-sm mb-1 ${valuationPurpose === type.value ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
                       }`}>
                       {type.label.toUpperCase()}
                     </div>
-                    <div className="font-mono text-[10px] text-zinc-500">
+                    <div className="font-mono text-[10px] text-muted-foreground">
                       {type.description}
                     </div>
                   </button>
@@ -448,7 +448,7 @@ export default function NewValuationPage() {
               <button
                 onClick={() => valuationPurpose ? setStep(2) : null}
                 disabled={!valuationPurpose}
-                className="w-full mt-4 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-4 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 REVIEW WORKFLOW
                 <ChevronRight className="w-4 h-4" />
@@ -465,20 +465,20 @@ export default function NewValuationPage() {
           <TerminalPanel title="VALUATION SUMMARY">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">PROPERTY</div>
-                <div className="font-mono text-sm text-white">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">PROPERTY</div>
+                <div className="font-mono text-sm text-foreground">
                   {selectedProperty?.title || selectedProperty?.address_street || newProperty.address}
                 </div>
-                <div className="font-mono text-xs text-zinc-500">
+                <div className="font-mono text-xs text-muted-foreground">
                   {selectedProperty?.address_city || newProperty.city}, {selectedProperty?.region || newProperty.region}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">PURPOSE</div>
-                <div className="font-mono text-sm text-amber-400">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">PURPOSE</div>
+                <div className="font-mono text-sm text-amber-600 dark:text-amber-400">
                   {valuationPurposes.find(p => p.value === valuationPurpose)?.label?.toUpperCase() || valuationPurpose.toUpperCase()}
                 </div>
-                <div className="font-mono text-xs text-zinc-500">
+                <div className="font-mono text-xs text-muted-foreground">
                   {valuationPurposes.find(p => p.value === valuationPurpose)?.description}
                 </div>
               </div>
@@ -487,7 +487,7 @@ export default function NewValuationPage() {
 
           {/* Workflow Steps Preview */}
           <TerminalPanel title="VALUATION WORKFLOW">
-            <div className="font-mono text-[10px] text-zinc-500 mb-4">
+            <div className="font-mono text-[10px] text-muted-foreground mb-4">
               Your valuation will follow this RICS-aligned workflow. Each step must be completed before proceeding.
             </div>
             <div className="space-y-3">
@@ -500,14 +500,14 @@ export default function NewValuationPage() {
                 { icon: Scale, label: 'Reconciliation', desc: 'Reconcile method results and determine final market value', step: 6 },
                 { icon: FileText, label: 'Report Generation', desc: 'Generate RICS-compliant professional valuation report', step: 7 },
               ].map((item, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 border border-zinc-800 bg-zinc-900/50">
+                <div key={i} className="flex items-start gap-3 p-3 border border-border bg-card/50">
                   <div className="flex items-center gap-2 min-w-[28px]">
-                    <span className="font-mono text-xs text-zinc-600">{item.step}.</span>
+                    <span className="font-mono text-xs text-muted-foreground">{item.step}.</span>
                   </div>
                   <item.icon className="w-4 h-4 text-amber-500/60 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="font-mono text-sm text-white">{item.label.toUpperCase()}</div>
-                    <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{item.desc}</div>
+                    <div className="font-mono text-sm text-foreground">{item.label.toUpperCase()}</div>
+                    <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{item.desc}</div>
                   </div>
                 </div>
               ))}
@@ -518,14 +518,14 @@ export default function NewValuationPage() {
           <div className="flex gap-4">
             <button
               onClick={() => setStep(1)}
-              className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+              className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
             >
               ← BACK
             </button>
             <button
               onClick={handleCreateValuation}
               disabled={creating}
-              className="flex-1 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {creating ? (
                 <>

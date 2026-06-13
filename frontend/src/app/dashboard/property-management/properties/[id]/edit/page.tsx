@@ -144,7 +144,7 @@ export default function EditPropertyPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <Loader2 className="h-10 w-10 text-amber-600 animate-spin" />
-                <p className="text-zinc-500 font-mono text-xs uppercase animate-pulse">Loading Property Data...</p>
+                <p className="text-muted-foreground font-mono text-xs uppercase animate-pulse">Loading Property Data...</p>
             </div>
         )
     }
@@ -167,19 +167,19 @@ export default function EditPropertyPage() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-zinc-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => router.back()}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         CANCEL
                     </Button>
-                    <div className="h-4 w-px bg-zinc-800" />
+                    <div className="h-4 w-px bg-muted" />
                     <h1 className="text-lg font-mono text-amber-500 uppercase">Edit Property</h1>
                 </div>
                 <Button
                     onClick={handleSubmit}
                     disabled={isSaving}
-                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                    className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase"
                 >
                     {isSaving ? (
                         <>
@@ -209,7 +209,7 @@ export default function EditPropertyPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Basic Information */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="bg-background border-border">
                     <CardHeader>
                         <CardTitle className="text-sm font-mono text-amber-500 uppercase flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
@@ -219,32 +219,32 @@ export default function EditPropertyPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Property Title *</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Property Title *</Label>
                                 <Input
                                     value={formData.title}
                                     onChange={(e) => handleInputChange('title', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     placeholder="Ex: Luxury Villa in East Legon"
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Unit Number</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Unit Number</Label>
                                 <Input
                                     value={formData.unitNumber}
                                     onChange={(e) => handleInputChange('unitNumber', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     placeholder="Ex: Unit 4B"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Description</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Description</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => handleInputChange('description', e.target.value)}
-                                className="bg-black border-zinc-800 text-white font-mono resize-none"
+                                className="bg-background border-border text-foreground font-mono resize-none"
                                 rows={4}
                                 placeholder="Describe the property..."
                             />
@@ -252,15 +252,15 @@ export default function EditPropertyPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Property Type</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Property Type</Label>
                                 <Select
                                     value={formData.propertyType}
                                     onValueChange={(v) => handleInputChange('propertyType', v)}
                                 >
-                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                    <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                    <SelectContent className="bg-background border-border">
                                         <SelectItem value="residential_house">Residential House</SelectItem>
                                         <SelectItem value="apartment_flat">Apartment / Flat</SelectItem>
                                         <SelectItem value="commercial_shop">Commercial Shop</SelectItem>
@@ -273,15 +273,15 @@ export default function EditPropertyPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Transaction Type</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Transaction Type</Label>
                                 <Select
                                     value={formData.transactionType}
                                     onValueChange={(v) => handleInputChange('transactionType', v)}
                                 >
-                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                    <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                    <SelectContent className="bg-background border-border">
                                         <SelectItem value="rental">Rental</SelectItem>
                                         <SelectItem value="sale">Sale</SelectItem>
                                         <SelectItem value="lease">Lease</SelectItem>
@@ -289,15 +289,15 @@ export default function EditPropertyPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Status</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Status</Label>
                                 <Select
                                     value={formData.status}
                                     onValueChange={(v) => handleInputChange('status', v)}
                                 >
-                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                    <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                    <SelectContent className="bg-background border-border">
                                         <SelectItem value="draft">Draft</SelectItem>
                                         <SelectItem value="pending_review">Pending Review</SelectItem>
                                         <SelectItem value="active">Active</SelectItem>
@@ -314,32 +314,32 @@ export default function EditPropertyPage() {
                 </Card>
 
                 {/* Pricing */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="bg-background border-border">
                     <CardHeader>
                         <CardTitle className="text-sm font-mono text-amber-500 uppercase">Pricing</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Price</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Price</Label>
                                 <Input
                                     type="number"
                                     value={formData.price}
                                     onChange={(e) => handleInputChange('price', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     placeholder="0.00"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Currency</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Currency</Label>
                                 <Select
                                     value={formData.priceCurrency}
                                     onValueChange={(v) => handleInputChange('priceCurrency', v)}
                                 >
-                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                    <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                    <SelectContent className="bg-background border-border">
                                         <SelectItem value="GHS">GHS</SelectItem>
                                         <SelectItem value="USD">USD</SelectItem>
                                         <SelectItem value="EUR">EUR</SelectItem>
@@ -352,7 +352,7 @@ export default function EditPropertyPage() {
                 </Card>
 
                 {/* Location */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="bg-background border-border">
                     <CardHeader>
                         <CardTitle className="text-sm font-mono text-amber-500 uppercase flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
@@ -362,35 +362,35 @@ export default function EditPropertyPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Street Address</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Street Address</Label>
                                 <Input
                                     value={formData.addressStreet}
                                     onChange={(e) => handleInputChange('addressStreet', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     placeholder="Ex: 123 Independence Ave"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">City</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">City</Label>
                                 <Input
                                     value={formData.addressCity}
                                     onChange={(e) => handleInputChange('addressCity', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     placeholder="Ex: Accra"
                                 />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Region</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Region</Label>
                                 <Select
                                     value={formData.region}
                                     onValueChange={(v) => handleInputChange('region', v)}
                                 >
-                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                    <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                         <SelectValue placeholder="Select region" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                    <SelectContent className="bg-background border-border">
                                         <SelectItem value="greater_accra">Greater Accra</SelectItem>
                                         <SelectItem value="ashanti">Ashanti</SelectItem>
                                         <SelectItem value="western">Western</SelectItem>
@@ -411,11 +411,11 @@ export default function EditPropertyPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Digital Address</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Digital Address</Label>
                                 <Input
                                     value={formData.digitalAddress}
                                     onChange={(e) => handleInputChange('digitalAddress', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     placeholder="Ex: GA-057-1363"
                                 />
                             </div>
@@ -424,49 +424,49 @@ export default function EditPropertyPage() {
                 </Card>
 
                 {/* Property Details */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="bg-background border-border">
                     <CardHeader>
                         <CardTitle className="text-sm font-mono text-amber-500 uppercase">Property Specifications</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Bedrooms</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Bedrooms</Label>
                                 <Input
                                     type="number"
                                     value={formData.bedrooms}
                                     onChange={(e) => handleInputChange('bedrooms', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     min="0"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Bathrooms</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Bathrooms</Label>
                                 <Input
                                     type="number"
                                     value={formData.bathrooms}
                                     onChange={(e) => handleInputChange('bathrooms', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     min="0"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Total Area (m²)</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Total Area (m²)</Label>
                                 <Input
                                     type="number"
                                     value={formData.totalAreaSqm}
                                     onChange={(e) => handleInputChange('totalAreaSqm', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     min="0"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Floors</Label>
+                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Floors</Label>
                                 <Input
                                     type="number"
                                     value={formData.floors}
                                     onChange={(e) => handleInputChange('floors', e.target.value)}
-                                    className="bg-black border-zinc-800 text-white font-mono"
+                                    className="bg-background border-border text-foreground font-mono"
                                     min="1"
                                 />
                             </div>
@@ -479,7 +479,7 @@ export default function EditPropertyPage() {
                     <Button
                         type="submit"
                         disabled={isSaving}
-                        className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono uppercase"
+                        className="w-full bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono uppercase"
                     >
                         {isSaving ? (
                             <>

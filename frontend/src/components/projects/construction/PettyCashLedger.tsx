@@ -71,13 +71,13 @@ export function PettyCashLedger({ projectId, currency = 'GHS' }: PettyCashLedger
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800">
+    <Card className="bg-card border-border">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Banknote className="h-5 w-5 text-green-500" />
-          <CardTitle className="text-white">"Chop Money" Ledger</CardTitle>
+          <CardTitle className="text-foreground">"Chop Money" Ledger</CardTitle>
         </div>
-        <CardDescription className="text-zinc-500">
+        <CardDescription className="text-muted-foreground">
            Daily subsistence & petty cash. Amounts &gt; 500 {currency} trigger approval alerts.
         </CardDescription>
       </CardHeader>
@@ -86,25 +86,25 @@ export function PettyCashLedger({ projectId, currency = 'GHS' }: PettyCashLedger
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-               <Label className="text-zinc-400 font-mono text-xs">Amount ({currency}) *</Label>
+               <Label className="text-muted-foreground font-mono text-xs">Amount ({currency}) *</Label>
                <Input
                  type="number"
                  placeholder="0.00"
                  value={formData.amount}
                  onChange={e => setFormData({...formData, amount: e.target.value})}
-                 className="bg-zinc-800 border-zinc-700 font-mono text-lg text-white"
+                 className="bg-muted border-border font-mono text-lg text-foreground"
                  required
                  min="0.1"
                  step="0.1"
                />
             </div>
             <div className="space-y-2">
-               <Label className="text-zinc-400 font-mono text-xs">Category</Label>
+               <Label className="text-muted-foreground font-mono text-xs">Category</Label>
                <Select
                  value={formData.category}
                  onValueChange={v => setFormData({...formData, category: v})}
                >
-                 <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm">
+                 <SelectTrigger className="bg-muted border-border font-mono text-sm">
                    <div className="flex items-center gap-2">
                      {formData.category === 'transport' && <CarTaxiFront className="h-4 w-4" />}
                      {formData.category === 'food' && <Utensils className="h-4 w-4" />}
@@ -126,29 +126,29 @@ export function PettyCashLedger({ projectId, currency = 'GHS' }: PettyCashLedger
           </div>
 
           <div className="space-y-2">
-             <Label className="text-zinc-400 font-mono text-xs">Recipient Name *</Label>
+             <Label className="text-muted-foreground font-mono text-xs">Recipient Name *</Label>
              <Input
                placeholder="e.g. Ama Food Vendor"
                value={formData.recipientName}
                onChange={e => setFormData({...formData, recipientName: e.target.value})}
-               className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+               className="bg-muted border-border font-mono text-sm"
                required
              />
           </div>
 
           <div className="space-y-2">
-             <Label className="text-zinc-400 font-mono text-xs">Description (Optional)</Label>
+             <Label className="text-muted-foreground font-mono text-xs">Description (Optional)</Label>
              <Input
                placeholder="Brief notes..."
                value={formData.description}
                onChange={e => setFormData({...formData, description: e.target.value})}
-               className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+               className="bg-muted border-border font-mono text-sm"
              />
           </div>
 
           <Button 
             type="submit" 
-            className="w-full bg-green-700 hover:bg-green-800 text-white font-mono"
+            className="w-full bg-green-700 hover:bg-green-800 text-foreground font-mono"
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}

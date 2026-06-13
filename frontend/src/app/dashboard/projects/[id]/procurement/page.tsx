@@ -106,13 +106,13 @@ interface Project {
 }
 
 const statusConfig: Record<POStatus, { label: string; color: string; icon: any }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-700 text-zinc-300', icon: FileText },
-  submitted: { label: 'Submitted', color: 'bg-blue-900/50 text-blue-400', icon: Send },
-  approved: { label: 'Approved', color: 'bg-emerald-900/50 text-emerald-400', icon: CheckCircle },
-  rejected: { label: 'Rejected', color: 'bg-red-900/50 text-red-400', icon: XCircle },
-  ordered: { label: 'Ordered', color: 'bg-purple-900/50 text-purple-400', icon: ShoppingCart },
-  received: { label: 'Received', color: 'bg-emerald-900/50 text-emerald-400', icon: Package },
-  cancelled: { label: 'Cancelled', color: 'bg-zinc-700 text-zinc-500', icon: XCircle }
+  draft: { label: 'Draft', color: 'bg-zinc-700 text-muted-foreground', icon: FileText },
+  submitted: { label: 'Submitted', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400', icon: Send },
+  approved: { label: 'Approved', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: CheckCircle },
+  rejected: { label: 'Rejected', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400', icon: XCircle },
+  ordered: { label: 'Ordered', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400', icon: ShoppingCart },
+  received: { label: 'Received', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: Package },
+  cancelled: { label: 'Cancelled', color: 'bg-zinc-700 text-muted-foreground', icon: XCircle }
 };
 
 export default function ProjectProcurementPage() {
@@ -401,19 +401,19 @@ export default function ProjectProcurementPage() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label className="text-zinc-400">Vendor Name *</Label>
+          <Label className="text-muted-foreground">Vendor Name *</Label>
           <Input
-            className="bg-zinc-800 border-zinc-700 mt-1"
+            className="bg-muted border-border mt-1"
             placeholder="Vendor name..."
             value={formData.vendorName}
             onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
           />
         </div>
         <div>
-          <Label className="text-zinc-400">Vendor Email</Label>
+          <Label className="text-muted-foreground">Vendor Email</Label>
           <Input
             type="email"
-            className="bg-zinc-800 border-zinc-700 mt-1"
+            className="bg-muted border-border mt-1"
             placeholder="vendor@example.com"
             value={formData.vendorEmail}
             onChange={(e) => setFormData({ ...formData, vendorEmail: e.target.value })}
@@ -423,8 +423,8 @@ export default function ProjectProcurementPage() {
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <Label className="text-zinc-400">Line Items</Label>
-          <Button type="button" variant="outline" size="sm" className="border-zinc-700" onClick={addLineItem}>
+          <Label className="text-muted-foreground">Line Items</Label>
+          <Button type="button" variant="outline" size="sm" className="border-border" onClick={addLineItem}>
             <Plus className="h-3 w-3 mr-1" /> Add Item
           </Button>
         </div>
@@ -433,7 +433,7 @@ export default function ProjectProcurementPage() {
             <div key={index} className="grid grid-cols-12 gap-2 items-center">
               <div className="col-span-5">
                 <Input
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   placeholder="Description"
                   value={item.description}
                   onChange={(e) => updateLineItem(index, 'description', e.target.value)}
@@ -442,7 +442,7 @@ export default function ProjectProcurementPage() {
               <div className="col-span-2">
                 <Input
                   type="number"
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   placeholder="Qty"
                   value={item.quantity}
                   onChange={(e) => updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
@@ -450,7 +450,7 @@ export default function ProjectProcurementPage() {
               </div>
               <div className="col-span-2">
                 <Input
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   placeholder="Unit"
                   value={item.unit}
                   onChange={(e) => updateLineItem(index, 'unit', e.target.value)}
@@ -460,7 +460,7 @@ export default function ProjectProcurementPage() {
                 <Input
                   type="number"
                   step="0.01"
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   placeholder="Price"
                   value={item.unitPrice}
                   onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
@@ -471,7 +471,7 @@ export default function ProjectProcurementPage() {
                   type="button" 
                   variant="ghost" 
                   size="icon" 
-                  className="h-8 w-8 text-red-400 hover:text-red-300"
+                  className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-300"
                   onClick={() => removeLineItem(index)}
                   disabled={formData.lineItems.length === 1}
                 >
@@ -482,15 +482,15 @@ export default function ProjectProcurementPage() {
           ))}
         </div>
         <div className="text-right mt-2">
-          <span className="text-zinc-400">Total: </span>
-          <span className="text-white font-semibold">{formatCurrency(calculateTotal(formData.lineItems))}</span>
+          <span className="text-muted-foreground">Total: </span>
+          <span className="text-foreground font-semibold">{formatCurrency(calculateTotal(formData.lineItems))}</span>
         </div>
       </div>
 
       <div>
-        <Label className="text-zinc-400">Notes</Label>
+        <Label className="text-muted-foreground">Notes</Label>
         <Textarea
-          className="bg-zinc-800 border-zinc-700 mt-1"
+          className="bg-muted border-border mt-1"
           rows={2}
           placeholder="Additional notes..."
           value={formData.notes}
@@ -509,18 +509,18 @@ export default function ProjectProcurementPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Procurement</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Procurement</h1>
             {project && (
-              <p className="text-zinc-400 text-sm mt-1">{project.name}</p>
+              <p className="text-muted-foreground text-sm mt-1">{project.name}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="border-zinc-700" onClick={fetchOrders}>
+          <Button variant="outline" size="icon" className="border-border" onClick={fetchOrders}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
           <Button 
-            className="bg-amber-600 hover:bg-amber-700 text-white"
+            className="bg-amber-600 hover:bg-amber-700 text-foreground"
             onClick={() => { resetForm(); setShowCreateDialog(true); }}
           >
             <Plus className="h-4 w-4 mr-2" /> New PO
@@ -532,45 +532,45 @@ export default function ProjectProcurementPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total POs</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total POs</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.total}</p>
               </div>
               <ShoppingCart className="h-5 w-5 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total Value</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{formatCurrency(stats.totalValue)}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total Value</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(stats.totalValue)}</p>
               </div>
               <DollarSign className="h-5 w-5 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Pending</p>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.pending}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Pending</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats.pending}</p>
               </div>
               <Clock className="h-5 w-5 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Approved</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.approved}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Approved</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.approved}</p>
               </div>
               <CheckCircle className="h-5 w-5 text-emerald-500" />
             </div>
@@ -581,16 +581,16 @@ export default function ProjectProcurementPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-wrap">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search POs..."
-            className="pl-9 bg-zinc-900 border-zinc-800"
+            className="pl-9 bg-card border-border"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800">
+          <SelectTrigger className="w-[150px] bg-card border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -611,11 +611,11 @@ export default function ProjectProcurementPage() {
           <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       ) : filteredOrders.length === 0 ? (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
             <ShoppingCart className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Purchase Orders</h3>
-            <p className="text-zinc-400 mb-4">Create a new purchase order to get started</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Purchase Orders</h3>
+            <p className="text-muted-foreground mb-4">Create a new purchase order to get started</p>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={() => { resetForm(); setShowCreateDialog(true); }}>
               <Plus className="h-4 w-4 mr-2" /> New PO
             </Button>
@@ -628,26 +628,26 @@ export default function ProjectProcurementPage() {
             const StatusIcon = status.icon;
 
             return (
-              <Card key={order.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <Card key={order.id} className="bg-card border-border hover:border-border transition-colors">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-medium text-white">{order.poNumber}</h3>
+                        <h3 className="font-medium text-foreground">{order.poNumber}</h3>
                         <Badge className={status.color}>
                           <StatusIcon className="h-3 w-3 mr-1" />
                           {status.label}
                         </Badge>
                       </div>
-                      <p className="text-sm text-zinc-400 mb-2">{order.vendorName}</p>
+                      <p className="text-sm text-muted-foreground mb-2">{order.vendorName}</p>
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="text-emerald-400 font-medium">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                           {formatCurrency(order.totalAmount || 0)}
                         </span>
-                        <span className="text-zinc-500">
+                        <span className="text-muted-foreground">
                           {order.lineItems?.length || 0} items
                         </span>
-                        <span className="text-zinc-500">
+                        <span className="text-muted-foreground">
                           {new Date(order.createdAt).toLocaleDateString('en-GB')}
                         </span>
                       </div>
@@ -658,7 +658,7 @@ export default function ProjectProcurementPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                      <DropdownMenuContent align="end" className="bg-card border-border">
                         <DropdownMenuItem onClick={() => openViewSheet(order)}>
                           <Eye className="h-4 w-4 mr-2" /> View Details
                         </DropdownMenuItem>
@@ -667,7 +667,7 @@ export default function ProjectProcurementPage() {
                             <Pencil className="h-4 w-4 mr-2" /> Edit
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator className="bg-zinc-800" />
+                        <DropdownMenuSeparator className="bg-muted" />
                         {order.status === 'draft' && (
                           <DropdownMenuItem onClick={() => handleStatusChange(order, 'submit')}>
                             <Send className="h-4 w-4 mr-2" /> Submit for Approval
@@ -675,10 +675,10 @@ export default function ProjectProcurementPage() {
                         )}
                         {order.status === 'submitted' && (
                           <>
-                            <DropdownMenuItem className="text-emerald-400" onClick={() => handleStatusChange(order, 'approve')}>
+                            <DropdownMenuItem className="text-emerald-600 dark:text-emerald-400" onClick={() => handleStatusChange(order, 'approve')}>
                               <CheckCircle className="h-4 w-4 mr-2" /> Approve
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-400" onClick={() => handleStatusChange(order, 'reject')}>
+                            <DropdownMenuItem className="text-red-600 dark:text-red-400" onClick={() => handleStatusChange(order, 'reject')}>
                               <XCircle className="h-4 w-4 mr-2" /> Reject
                             </DropdownMenuItem>
                           </>
@@ -688,8 +688,8 @@ export default function ProjectProcurementPage() {
                             <ShoppingCart className="h-4 w-4 mr-2" /> Mark as Ordered
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator className="bg-zinc-800" />
-                        <DropdownMenuItem className="text-red-400" onClick={() => openDeleteDialog(order)}>
+                        <DropdownMenuSeparator className="bg-muted" />
+                        <DropdownMenuItem className="text-red-600 dark:text-red-400" onClick={() => openDeleteDialog(order)}>
                           <Trash2 className="h-4 w-4 mr-2" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -704,16 +704,16 @@ export default function ProjectProcurementPage() {
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white">New Purchase Order</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">New Purchase Order</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Create a new purchase order.
             </DialogDescription>
           </DialogHeader>
           <OrderForm />
           <DialogFooter className="mt-4">
-            <Button variant="outline" className="border-zinc-700" onClick={() => setShowCreateDialog(false)}>
+            <Button variant="outline" className="border-border" onClick={() => setShowCreateDialog(false)}>
               Cancel
             </Button>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleCreate} disabled={submitting}>
@@ -726,16 +726,16 @@ export default function ProjectProcurementPage() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white">Edit Purchase Order</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Edit Purchase Order</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Update purchase order details.
             </DialogDescription>
           </DialogHeader>
           <OrderForm />
           <DialogFooter className="mt-4">
-            <Button variant="outline" className="border-zinc-700" onClick={() => setShowEditDialog(false)}>
+            <Button variant="outline" className="border-border" onClick={() => setShowEditDialog(false)}>
               Cancel
             </Button>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleUpdate} disabled={submitting}>
@@ -748,15 +748,15 @@ export default function ProjectProcurementPage() {
 
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Purchase Order</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Delete Purchase Order</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete this purchase order? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button variant="outline" className="border-zinc-700" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" className="border-border" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
             <Button className="bg-red-600 hover:bg-red-700" onClick={handleDelete} disabled={submitting}>
@@ -769,10 +769,10 @@ export default function ProjectProcurementPage() {
 
       {/* Detail Sheet */}
       <Sheet open={showDetailSheet} onOpenChange={setShowDetailSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle className="text-white">{selectedOrder?.poNumber}</SheetTitle>
-            <SheetDescription className="text-zinc-400">
+            <SheetTitle className="text-foreground">{selectedOrder?.poNumber}</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               Purchase order details
             </SheetDescription>
           </SheetHeader>
@@ -783,50 +783,50 @@ export default function ProjectProcurementPage() {
               </Badge>
 
               <div>
-                <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Vendor</h4>
-                <p className="text-white">{selectedOrder.vendorName}</p>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Vendor</h4>
+                <p className="text-foreground">{selectedOrder.vendorName}</p>
                 {selectedOrder.vendorEmail && (
-                  <p className="text-zinc-400 text-sm">{selectedOrder.vendorEmail}</p>
+                  <p className="text-muted-foreground text-sm">{selectedOrder.vendorEmail}</p>
                 )}
               </div>
 
               <div>
-                <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Line Items</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Line Items</h4>
                 <div className="space-y-2">
                   {selectedOrder.lineItems?.map((item, i) => (
-                    <div key={i} className="flex justify-between text-sm p-2 bg-zinc-800 rounded">
-                      <span className="text-zinc-300">{item.description}</span>
-                      <span className="text-white">{item.quantity} x {formatCurrency(item.unitPrice)}</span>
+                    <div key={i} className="flex justify-between text-sm p-2 bg-muted rounded">
+                      <span className="text-muted-foreground">{item.description}</span>
+                      <span className="text-foreground">{item.quantity} x {formatCurrency(item.unitPrice)}</span>
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between mt-3 pt-3 border-t border-zinc-700">
-                  <span className="text-zinc-400 font-medium">Total</span>
-                  <span className="text-emerald-400 font-semibold">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
+                <div className="flex justify-between mt-3 pt-3 border-t border-border">
+                  <span className="text-muted-foreground font-medium">Total</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(selectedOrder.totalAmount || 0)}</span>
                 </div>
               </div>
 
               {selectedOrder.notes && (
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Notes</h4>
-                  <p className="text-zinc-300">{selectedOrder.notes}</p>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Notes</h4>
+                  <p className="text-muted-foreground">{selectedOrder.notes}</p>
                 </div>
               )}
 
               <div>
-                <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Created</h4>
-                <p className="text-white">{new Date(selectedOrder.createdAt).toLocaleDateString('en-GB')}</p>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Created</h4>
+                <p className="text-foreground">{new Date(selectedOrder.createdAt).toLocaleDateString('en-GB')}</p>
               </div>
 
               {selectedOrder.status === 'draft' && (
-                <div className="flex gap-2 pt-4 border-t border-zinc-800">
+                <div className="flex gap-2 pt-4 border-t border-border">
                   <Button className="flex-1 bg-amber-600 hover:bg-amber-700" onClick={() => {
                     setShowDetailSheet(false);
                     openEditDialog(selectedOrder);
                   }}>
                     <Pencil className="h-4 w-4 mr-2" /> Edit
                   </Button>
-                  <Button variant="outline" className="flex-1 border-zinc-700" onClick={() => {
+                  <Button variant="outline" className="flex-1 border-border" onClick={() => {
                     setShowDetailSheet(false);
                     handleStatusChange(selectedOrder, 'submit');
                   }}>

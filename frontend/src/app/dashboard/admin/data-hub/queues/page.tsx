@@ -136,7 +136,7 @@ export default function QueuesPage() {
                     <div className="flex items-center gap-2">
                       <Server className={cn(
                         'h-5 w-5',
-                        isActive ? 'text-green-400' : 'text-zinc-400'
+                        isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                       )} />
                       <CardTitle className="text-base font-medium">
                         {queue.displayName}
@@ -149,25 +149,25 @@ export default function QueuesPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-4 gap-4 text-center">
                       <div>
-                        <p className="text-2xl font-bold text-yellow-400">
+                        <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                           {formatNumber(queue.waiting + queue.delayed)}
                         </p>
                         <p className="text-xs text-muted-foreground">Pending</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-blue-400">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {queue.active}
                         </p>
                         <p className="text-xs text-muted-foreground">Processing</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-green-400">
+                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {formatNumber(queue.completed)}
                         </p>
                         <p className="text-xs text-muted-foreground">Completed</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-red-400">
+                        <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                           {queue.failed}
                         </p>
                         <p className="text-xs text-muted-foreground">Failed</p>

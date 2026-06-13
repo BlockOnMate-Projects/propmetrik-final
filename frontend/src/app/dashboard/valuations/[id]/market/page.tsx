@@ -890,34 +890,34 @@ export default function MarketDataPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading sales comparison data...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading sales comparison data...</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}/comparables`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-sm text-zinc-500">VALUATION:</span>
+              <span className="font-mono text-sm text-muted-foreground">VALUATION:</span>
               <span className="font-mono text-sm text-amber-500">{valuationId.slice(0, 8).toUpperCase()}</span>
               <MethodBadge method="Sales Comparison" />
             </div>
-            <h1 className="text-xl font-mono text-white mt-1">
+            <h1 className="text-xl font-mono text-foreground mt-1">
               MARKET ANALYSIS
             </h1>
-            <p className="font-mono text-xs text-zinc-500 mt-0.5">
+            <p className="font-mono text-xs text-muted-foreground mt-0.5">
               Step 5: Apply adjustments and calculate indicated value
             </p>
           </div>
@@ -953,7 +953,7 @@ export default function MarketDataPage() {
       {/* ===== 2-COLUMN REFERENCE DATA GRID: Market | Construction ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Column 1: Market Context */}
-        <div className="border border-zinc-800 bg-black/30 rounded overflow-hidden">
+        <div className="border border-border bg-background/30 rounded overflow-hidden">
           <MarketContextPanel
             region={region}
             propertyType={valuation?.property?.property_type}
@@ -963,7 +963,7 @@ export default function MarketDataPage() {
         </div>
 
         {/* Column 2: Construction Costs (for reference, based on selected region) */}
-        <div className="border border-zinc-800 bg-black/30 rounded overflow-hidden">
+        <div className="border border-border bg-background/30 rounded overflow-hidden">
           <EditableConstructionCostPanel
             region={region}
             qualityTier={subjectProperty.quality_rating}
@@ -997,15 +997,15 @@ export default function MarketDataPage() {
                 <span className="font-mono text-sm font-bold text-red-500 uppercase">
                   Insufficient Comparables
                 </span>
-                <span className="px-2 py-0.5 bg-red-500/20 rounded font-mono text-xs text-red-400">
+                <span className="px-2 py-0.5 bg-red-500/20 rounded font-mono text-xs text-red-600 dark:text-red-400">
                   {selectedComparables.length} / 3 minimum
                 </span>
               </div>
-              <p className="mt-1 text-sm text-zinc-400">
-                RICS standards require a minimum of <strong className="text-white">3 comparable properties</strong> for a reliable market value indication. 
+              <p className="mt-1 text-sm text-muted-foreground">
+                RICS standards require a minimum of <strong className="text-foreground">3 comparable properties</strong> for a reliable market value indication. 
                 <Link 
                   href={`/dashboard/valuations/${valuationId}/comparables`}
-                  className="ml-2 text-amber-400 hover:text-amber-300 underline"
+                  className="ml-2 text-amber-600 dark:text-amber-400 hover:text-amber-300 underline"
                 >
                   Go back to add more comparables →
                 </Link>
@@ -1033,11 +1033,11 @@ export default function MarketDataPage() {
             }
           >
             {selectedComparables.length === 0 ? (
-              <div className="text-center py-12 text-zinc-500 font-mono text-xs">
+              <div className="text-center py-12 text-muted-foreground font-mono text-xs">
                 <p>No comparables loaded from basket.</p>
                 <Link 
                   href={`/dashboard/valuations/${valuationId}/comparables`}
-                  className="mt-2 inline-block text-amber-400 hover:text-amber-300 underline"
+                  className="mt-2 inline-block text-amber-600 dark:text-amber-400 hover:text-amber-300 underline"
                 >
                   Go to Comparable Search to select properties →
                 </Link>
@@ -1060,13 +1060,13 @@ export default function MarketDataPage() {
           <TerminalPanel title="VALUE RECONCILIATION">
             {/* RICS Method Indicator */}
             <div className="flex items-center gap-4 mb-4">
-              <span className="font-mono text-[10px] text-zinc-500">METHOD:</span>
+              <span className="font-mono text-[10px] text-muted-foreground">METHOD:</span>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 font-mono text-[10px] border border-amber-500 bg-amber-500/20 text-amber-500">
                   RICS SALES COMPARISON
                 </span>
                 {isCalculating && (
-                  <span className="font-mono text-[10px] text-amber-400 animate-pulse">
+                  <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400 animate-pulse">
                     CALCULATING...
                   </span>
                 )}
@@ -1075,33 +1075,33 @@ export default function MarketDataPage() {
             
             {/* Value Display */}
             <div className="grid grid-cols-4 gap-4">
-              <div className="p-4 bg-zinc-800/30 text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">VALUE RANGE</div>
-                <div className="font-mono text-sm text-white">
+              <div className="p-4 bg-muted/30 text-center">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">VALUE RANGE</div>
+                <div className="font-mono text-sm text-foreground">
                   {pythonValuationResult?.sales_comparison?.value_range ? (
                     <>₵{Math.round(pythonValuationResult.sales_comparison.value_range.low).toLocaleString()} - ₵{Math.round(pythonValuationResult.sales_comparison.value_range.high).toLocaleString()}</>
                   ) : '—'}
                 </div>
               </div>
-              <div className="p-4 bg-zinc-800/30 text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">IMPLIED ₵/SQM</div>
-                <div className="font-mono text-xl text-white">
+              <div className="p-4 bg-muted/30 text-center">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">IMPLIED ₵/SQM</div>
+                <div className="font-mono text-xl text-foreground">
                   ₵{pythonValuationResult?.sales_comparison?.estimated_value && subjectProperty.gfa
                     ? Math.round(pythonValuationResult.sales_comparison.estimated_value / subjectProperty.gfa).toLocaleString()
                     : '—'}
                 </div>
               </div>
-              <div className="p-4 bg-zinc-800/30 text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">SUBJECT GFA</div>
-                <div className="font-mono text-xl text-white">
+              <div className="p-4 bg-muted/30 text-center">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">SUBJECT GFA</div>
+                <div className="font-mono text-xl text-foreground">
                   {subjectProperty.gfa || '—'} sqm
                 </div>
               </div>
-              <div className="p-4 bg-green-900/20 border border-green-800 text-center">
-                <div className="font-mono text-[10px] text-green-400 mb-1">
+              <div className="p-4 bg-green-100 dark:bg-green-900/20 border border-green-800 text-center">
+                <div className="font-mono text-[10px] text-green-600 dark:text-green-400 mb-1">
                   {isCalculating ? 'CALCULATING...' : 'INDICATED VALUE'}
                 </div>
-                <div className="font-mono text-2xl text-green-400 font-bold">
+                <div className="font-mono text-2xl text-green-600 dark:text-green-400 font-bold">
                   {isCalculating ? (
                     <div className="animate-pulse">...</div>
                   ) : (
@@ -1111,7 +1111,7 @@ export default function MarketDataPage() {
                   )}
                 </div>
                 {pythonValuationResult?.sales_comparison?.confidence_level && (
-                  <div className="font-mono text-[9px] text-green-400 mt-1 opacity-75">
+                  <div className="font-mono text-[9px] text-green-600 dark:text-green-400 mt-1 opacity-75">
                     {pythonValuationResult.sales_comparison.confidence_level.toUpperCase()} CONFIDENCE
                   </div>
                 )}
@@ -1119,14 +1119,14 @@ export default function MarketDataPage() {
             </div>
 
             {/* Confidence & Stats */}
-            <div className="mt-4 pt-4 border-t border-zinc-800">
+            <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500">CONFIDENCE: </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">CONFIDENCE: </span>
                     <ConfidenceBar score={calculateConfidence() * 100} />
                   </div>
-                  <div className="flex items-center gap-2 font-mono text-[10px] text-zinc-500">
+                  <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
                     <span>{selectedComparables.length} comparables</span>
                     <span>•</span>
                     <span>
@@ -1145,8 +1145,8 @@ export default function MarketDataPage() {
                   <div className="flex items-center gap-4">
                     {selectedComparables.slice(0, 4).map((comp, idx) => (
                       <div key={comp.id} className="text-center">
-                        <div className="font-mono text-[9px] text-zinc-500">C{idx + 1} QUALITY</div>
-                        <div className="font-mono text-xs text-amber-400">
+                        <div className="font-mono text-[9px] text-muted-foreground">C{idx + 1} QUALITY</div>
+                        <div className="font-mono text-xs text-amber-600 dark:text-amber-400">
                           {Math.round(calculateQualityScore(comp))}%
                         </div>
                       </div>
@@ -1163,14 +1163,14 @@ export default function MarketDataPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={`/dashboard/valuations/${valuationId}/comparables`}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK TO COMPARABLES
         </Link>
         <button
           onClick={handleSave}
           disabled={saving || selectedComparables.length < 3}
-          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {(() => {

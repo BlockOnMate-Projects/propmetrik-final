@@ -445,10 +445,10 @@ function ComparablesPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="flex items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-          <span className="font-mono text-sm text-zinc-400">Loading comparables...</span>
+          <span className="font-mono text-sm text-muted-foreground">Loading comparables...</span>
         </div>
       </div>
     )
@@ -456,10 +456,10 @@ function ComparablesPageContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="font-mono text-sm text-red-400 mb-4">{error}</p>
+          <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>
           <Link
             href="/dashboard/valuations"
             className="font-mono text-sm text-amber-500 hover:text-amber-400"
@@ -472,22 +472,22 @@ function ComparablesPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
               href={`/dashboard/valuations/${valuationId}/methods`}
-              className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="font-mono text-sm">BACK TO METHODS</span>
             </Link>
-            <div className="h-6 w-px bg-zinc-800" />
+            <div className="h-6 w-px bg-muted" />
             <div>
-              <h1 className="font-mono text-2xl text-white">COMPARABLE SEARCH</h1>
-              <p className="font-mono text-xs text-zinc-500">
+              <h1 className="font-mono text-2xl text-foreground">COMPARABLE SEARCH</h1>
+              <p className="font-mono text-xs text-muted-foreground">
                 Step 4: {hasSalesComparison 
                   ? 'Select comparables for Sales Comparison Approach' 
                   : 'Optional - Select reference comparables for valuation'}
@@ -496,13 +496,13 @@ function ComparablesPageContent() {
           </div>
           
           <div className="flex items-center gap-3">
-            <span className="font-mono text-sm text-zinc-500">
+            <span className="font-mono text-sm text-muted-foreground">
               {selectedComparables.length} / {hasSalesComparison ? '3+' : '0+'} SELECTED
             </span>
             <button
               onClick={saveAndProceed}
               disabled={!canProceed || saving}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>
@@ -535,13 +535,13 @@ function ComparablesPageContent() {
                 searchMeta.gapSeverity === 'severe' ? 'text-red-500' : 'text-amber-500'
               )} />
               <div className="flex-1">
-                <div className="font-mono text-sm text-white mb-1">
+                <div className="font-mono text-sm text-foreground mb-1">
                   {searchMeta.gapAnalysis.message}
                 </div>
                 {searchMeta.gapAnalysis.contributionPrompt && (
-                  <div className="font-mono text-xs text-zinc-400">
+                  <div className="font-mono text-xs text-muted-foreground">
                     {searchMeta.gapAnalysis.contributionPrompt.description}
-                    <span className="text-amber-400 ml-2">
+                    <span className="text-amber-600 dark:text-amber-400 ml-2">
                       +{searchMeta.gapAnalysis.contributionPrompt.rewardCredits} credits for contribution
                     </span>
                   </div>
@@ -549,7 +549,7 @@ function ComparablesPageContent() {
               </div>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white font-mono text-xs hover:bg-emerald-500"
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-foreground font-mono text-xs hover:bg-emerald-500"
               >
                 <Plus className="w-3 h-3" />
                 CONTRIBUTE
@@ -560,45 +560,45 @@ function ComparablesPageContent() {
 
         {/* Subject Property Summary */}
         {subjectProperty && (
-          <div className="bg-zinc-900/50 border border-zinc-800 p-6 mb-8">
+          <div className="bg-card/50 border border-border p-6 mb-8">
             <div className="flex items-center gap-3 mb-4">
               <Building2 className="w-5 h-5 text-amber-500" />
-              <h2 className="font-mono text-lg text-white">SUBJECT PROPERTY</h2>
+              <h2 className="font-mono text-lg text-foreground">SUBJECT PROPERTY</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <div className="font-mono text-sm text-white">{subjectProperty.address}</div>
-                <div className="font-mono text-xs text-zinc-500">
+                <div className="font-mono text-sm text-foreground">{subjectProperty.address}</div>
+                <div className="font-mono text-xs text-muted-foreground">
                   {subjectProperty.city}{subjectProperty.district ? `, ${subjectProperty.district}` : ''}, {subjectProperty.region}
                 </div>
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-1">
-                  <Ruler className="w-4 h-4 text-zinc-400" />
-                  <span className="font-mono text-zinc-300">{subjectProperty.gfa} sqm</span>
+                  <Ruler className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-mono text-muted-foreground">{subjectProperty.gfa} sqm</span>
                 </span>
                 {subjectProperty.bedrooms && (
                   <span className="flex items-center gap-1">
-                    <Bed className="w-4 h-4 text-zinc-400" />
-                    <span className="font-mono text-zinc-300">{subjectProperty.bedrooms}</span>
+                    <Bed className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-mono text-muted-foreground">{subjectProperty.bedrooms}</span>
                   </span>
                 )}
                 {subjectProperty.bathrooms && (
                   <span className="flex items-center gap-1">
-                    <Bath className="w-4 h-4 text-zinc-400" />
-                    <span className="font-mono text-zinc-300">{subjectProperty.bathrooms}</span>
+                    <Bath className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-mono text-muted-foreground">{subjectProperty.bathrooms}</span>
                   </span>
                 )}
               </div>
               <div>
                 {subjectProperty.year_built && (
                   <>
-                    <div className="font-mono text-sm text-zinc-300">
+                    <div className="font-mono text-sm text-muted-foreground">
                       {subjectProperty.year_built} • {getAge(subjectProperty.year_built)} years old
                     </div>
                     {subjectProperty.condition && (
-                      <div className="font-mono text-xs text-zinc-500">
+                      <div className="font-mono text-xs text-muted-foreground">
                         {subjectProperty.condition} condition
                       </div>
                     )}
@@ -608,7 +608,7 @@ function ComparablesPageContent() {
               <div className="flex gap-2 flex-wrap">
                 {subjectProperty.amenities?.slice(0, 3).map(amenity => (
                   <div key={amenity} className="p-1 bg-amber-500/20 rounded">
-                    <span className="text-[10px] font-mono text-amber-400">{amenity.toUpperCase()}</span>
+                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400">{amenity.toUpperCase()}</span>
                   </div>
                 ))}
               </div>
@@ -620,15 +620,15 @@ function ComparablesPageContent() {
           {/* Search Controls & Filters */}
           <div className="lg:col-span-1 space-y-6">
             {/* Search Controls */}
-            <div className="bg-zinc-900/50 border border-zinc-800 p-4">
+            <div className="bg-card/50 border border-border p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Search className="w-4 h-4 text-amber-500" />
-                <h3 className="font-mono text-sm text-white">SEARCH CONTROLS</h3>
+                <h3 className="font-mono text-sm text-foreground">SEARCH CONTROLS</h3>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 mb-1 block">MAX DISTANCE (KM)</label>
+                  <label className="font-mono text-[10px] text-muted-foreground mb-1 block">MAX DISTANCE (KM)</label>
                   <input
                     type="range"
                     min="1"
@@ -638,12 +638,12 @@ function ComparablesPageContent() {
                     onChange={(e) => setSearchFilters(prev => ({ ...prev, maxDistance: parseFloat(e.target.value) }))}
                     className="w-full accent-amber-500"
                   />
-                  <div className="font-mono text-xs text-amber-400 mt-1">{searchFilters.maxDistance} km</div>
+                  <div className="font-mono text-xs text-amber-600 dark:text-amber-400 mt-1">{searchFilters.maxDistance} km</div>
                 </div>
                 
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center justify-between w-full p-2 bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                  className="flex items-center justify-between w-full p-2 bg-muted hover:bg-zinc-700 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Filter className="w-4 h-4" />
@@ -653,59 +653,59 @@ function ComparablesPageContent() {
                 </button>
                 
                 {showFilters && (
-                  <div className="space-y-3 p-3 bg-zinc-800/50">
+                  <div className="space-y-3 p-3 bg-muted/50">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="font-mono text-[9px] text-zinc-500 mb-1 block">MIN PRICE</label>
+                        <label className="font-mono text-[9px] text-muted-foreground mb-1 block">MIN PRICE</label>
                         <input
                           type="number"
                           value={searchFilters.minPrice || ''}
                           onChange={(e) => setSearchFilters(prev => ({ ...prev, minPrice: parseInt(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2 py-1 bg-zinc-900 border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                          className="w-full px-2 py-1 bg-card border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                         />
                       </div>
                       <div>
-                        <label className="font-mono text-[9px] text-zinc-500 mb-1 block">MAX PRICE</label>
+                        <label className="font-mono text-[9px] text-muted-foreground mb-1 block">MAX PRICE</label>
                         <input
                           type="number"
                           value={searchFilters.maxPrice < 10000000 ? searchFilters.maxPrice : ''}
                           onChange={(e) => setSearchFilters(prev => ({ ...prev, maxPrice: parseInt(e.target.value) || 10000000 }))}
                           placeholder="10000000"
-                          className="w-full px-2 py-1 bg-zinc-900 border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                          className="w-full px-2 py-1 bg-card border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                         />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="font-mono text-[9px] text-zinc-500 mb-1 block">MIN SIZE (sqm)</label>
+                        <label className="font-mono text-[9px] text-muted-foreground mb-1 block">MIN SIZE (sqm)</label>
                         <input
                           type="number"
                           value={searchFilters.minGfa || ''}
                           onChange={(e) => setSearchFilters(prev => ({ ...prev, minGfa: parseInt(e.target.value) || 0 }))}
                           placeholder="0"
-                          className="w-full px-2 py-1 bg-zinc-900 border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                          className="w-full px-2 py-1 bg-card border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                         />
                       </div>
                       <div>
-                        <label className="font-mono text-[9px] text-zinc-500 mb-1 block">MAX SIZE (sqm)</label>
+                        <label className="font-mono text-[9px] text-muted-foreground mb-1 block">MAX SIZE (sqm)</label>
                         <input
                           type="number"
                           value={searchFilters.maxGfa < 2000 ? searchFilters.maxGfa : ''}
                           onChange={(e) => setSearchFilters(prev => ({ ...prev, maxGfa: parseInt(e.target.value) || 2000 }))}
                           placeholder="2000"
-                          className="w-full px-2 py-1 bg-zinc-900 border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                          className="w-full px-2 py-1 bg-card border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="font-mono text-[9px] text-zinc-500 mb-1 block">MAX AGE (months)</label>
+                      <label className="font-mono text-[9px] text-muted-foreground mb-1 block">MAX AGE (months)</label>
                       <select
                         value={searchFilters.maxAgeMonths}
                         onChange={(e) => setSearchFilters(prev => ({ ...prev, maxAgeMonths: parseInt(e.target.value) }))}
-                        className="w-full px-2 py-1 bg-zinc-900 border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                        className="w-full px-2 py-1 bg-card border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                       >
                         <option value={6}>6 months</option>
                         <option value={12}>12 months</option>
@@ -733,7 +733,7 @@ function ComparablesPageContent() {
             </div>
 
             {/* Add New Comparable */}
-            <div className="bg-zinc-900/50 border border-zinc-800 p-4">
+            <div className="bg-card/50 border border-border p-4">
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="flex items-center gap-2 w-full p-2 bg-emerald-600 hover:bg-emerald-500 transition-colors"
@@ -742,19 +742,19 @@ function ComparablesPageContent() {
                 <span className="font-mono text-sm">ADD NEW COMPARABLE</span>
               </button>
               
-              <p className="font-mono text-[10px] text-zinc-500 mt-2">
+              <p className="font-mono text-[10px] text-muted-foreground mt-2">
                 Know of a recent sale? Submit it to improve analysis accuracy.
               </p>
             </div>
 
             {/* Results Summary */}
-            <div className="bg-zinc-900/50 border border-zinc-800 p-4">
+            <div className="bg-card/50 border border-border p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Info className="w-4 h-4 text-blue-500" />
-                <h3 className="font-mono text-sm text-white">RESULTS</h3>
+                <h3 className="font-mono text-sm text-foreground">RESULTS</h3>
               </div>
-              <div className="font-mono text-lg text-amber-400">{searchResults.length}</div>
-              <div className="font-mono text-[10px] text-zinc-500">comparable properties shown</div>
+              <div className="font-mono text-lg text-amber-600 dark:text-amber-400">{searchResults.length}</div>
+              <div className="font-mono text-[10px] text-muted-foreground">comparable properties shown</div>
             </div>
           </div>
 
@@ -763,27 +763,27 @@ function ComparablesPageContent() {
             {/* Quick Stats from Backend */}
             {searchMeta?.aggregates && searchResults.length > 0 && (
               <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className="bg-zinc-900/50 border border-zinc-800 p-4">
-                  <div className="font-mono text-sm text-zinc-500">AVG PRICE</div>
-                  <div className="font-mono text-lg text-white">
+                <div className="bg-card/50 border border-border p-4">
+                  <div className="font-mono text-sm text-muted-foreground">AVG PRICE</div>
+                  <div className="font-mono text-lg text-foreground">
                     {formatCurrency(searchMeta.aggregates.avgPrice)}
                   </div>
                 </div>
-                <div className="bg-zinc-900/50 border border-zinc-800 p-4">
-                  <div className="font-mono text-sm text-zinc-500">AVG PRICE/SQM</div>
-                  <div className="font-mono text-lg text-white">
+                <div className="bg-card/50 border border-border p-4">
+                  <div className="font-mono text-sm text-muted-foreground">AVG PRICE/SQM</div>
+                  <div className="font-mono text-lg text-foreground">
                     {formatCurrency(searchMeta.aggregates.avgPricePerSqm)}
                   </div>
                 </div>
-                <div className="bg-zinc-900/50 border border-zinc-800 p-4">
-                  <div className="font-mono text-sm text-zinc-500">AVG DISTANCE</div>
-                  <div className="font-mono text-lg text-white">
+                <div className="bg-card/50 border border-border p-4">
+                  <div className="font-mono text-sm text-muted-foreground">AVG DISTANCE</div>
+                  <div className="font-mono text-lg text-foreground">
                     {searchMeta.aggregates.avgDistance}km
                   </div>
                 </div>
-                <div className="bg-zinc-900/50 border border-zinc-800 p-4">
-                  <div className="font-mono text-sm text-zinc-500">AVG SIMILARITY</div>
-                  <div className="font-mono text-lg text-white">
+                <div className="bg-card/50 border border-border p-4">
+                  <div className="font-mono text-sm text-muted-foreground">AVG SIMILARITY</div>
+                  <div className="font-mono text-lg text-foreground">
                     {searchMeta.aggregates.avgSimilarity}%
                   </div>
                 </div>
@@ -793,8 +793,8 @@ function ComparablesPageContent() {
             {/* Currency Conversion Info */}
             {searchMeta?.currencyConversion && searchMeta.currencyConversion.usdCount > 0 && (
               <div className="flex items-center gap-3 mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded">
-                <Info className="w-4 h-4 text-blue-400" />
-                <span className="font-mono text-[11px] text-blue-300">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="font-mono text-[11px] text-blue-600 dark:text-blue-300">
                   {searchMeta.currencyConversion.usdCount} USD listings converted to GHS @ {parseFloat(String(searchMeta.currencyConversion.fxRateUsed || '0')).toFixed(2)} rate
                 </span>
               </div>
@@ -807,10 +807,10 @@ function ComparablesPageContent() {
                   <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
                 </div>
               ) : searchResults.length === 0 ? (
-                <div className="col-span-2 text-center py-12 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-                  <Search className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-                  <div className="font-mono text-sm text-zinc-500 mb-1">No comparable properties found</div>
-                  <div className="font-mono text-[10px] text-zinc-600">
+                <div className="col-span-2 text-center py-12 bg-card/50 border border-border rounded-lg">
+                  <Search className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                  <div className="font-mono text-sm text-muted-foreground mb-1">No comparable properties found</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
                     Try adjusting your search filters or add a new comparable property
                   </div>
                 </div>
@@ -819,10 +819,10 @@ function ComparablesPageContent() {
                   <div
                     key={result.id}
                     className={cn(
-                      'bg-zinc-900/50 border p-4 cursor-pointer transition-all rounded-lg',
+                      'bg-card/50 border p-4 cursor-pointer transition-all rounded-lg',
                       selectedComparables.includes(result.id)
                         ? 'border-amber-500 bg-amber-500/5 shadow-lg shadow-amber-500/10'
-                        : 'border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/70'
+                        : 'border-border hover:border-border hover:bg-card/70'
                     )}
                     onClick={() => toggleComparable(result.id)}
                   >
@@ -830,32 +830,32 @@ function ComparablesPageContent() {
                       <div className="flex-1">
                         {/* Property Number Badge */}
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="flex items-center justify-center w-6 h-6 bg-amber-500/20 text-amber-400 font-mono text-xs rounded">
+                          <div className="flex items-center justify-center w-6 h-6 bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono text-xs rounded">
                             {index + 1}
                           </div>
-                          <div className="font-mono text-xs text-zinc-500">COMPARABLE PROPERTY</div>
+                          <div className="font-mono text-xs text-muted-foreground">COMPARABLE PROPERTY</div>
                         </div>
 
                         {/* Header */}
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <div className="font-mono text-sm text-white font-semibold">
+                            <div className="font-mono text-sm text-foreground font-semibold">
                               {result.address_street || result.title || 'Unknown Address'}
                             </div>
-                            <div className="font-mono text-xs text-zinc-500">
+                            <div className="font-mono text-xs text-muted-foreground">
                               {result.address_city || result.neighborhood}, {result.region}
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-mono text-lg text-amber-400 font-bold">
+                            <div className="font-mono text-lg text-amber-600 dark:text-amber-400 font-bold">
                               {formatCurrency(result.sale_price)}
                             </div>
                             {result.price_currency === 'USD' && result.price_original && (
-                              <div className="font-mono text-[10px] text-zinc-500">
+                              <div className="font-mono text-[10px] text-muted-foreground">
                                 (${result.price_original?.toLocaleString()} USD)
                               </div>
                             )}
-                            <div className="font-mono text-xs text-zinc-500">
+                            <div className="font-mono text-xs text-muted-foreground">
                               {result.gfa ? formatCurrency(result.sale_price / result.gfa) + '/sqm' : ''}
                             </div>
                           </div>
@@ -864,25 +864,25 @@ function ComparablesPageContent() {
                         {/* Details Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                           <div>
-                            <div className="font-mono text-[9px] text-zinc-500 mb-1">PHYSICAL</div>
+                            <div className="font-mono text-[9px] text-muted-foreground mb-1">PHYSICAL</div>
                             <div className="space-y-1">
                               {result.gfa && (
                                 <div className="flex items-center gap-1">
-                                  <Ruler className="w-3 h-3 text-zinc-400" />
-                                  <span className="font-mono text-xs text-zinc-300">{result.gfa} sqm</span>
+                                  <Ruler className="w-3 h-3 text-muted-foreground" />
+                                  <span className="font-mono text-xs text-muted-foreground">{result.gfa} sqm</span>
                                 </div>
                               )}
                               <div className="flex items-center gap-3">
                                 {result.bedrooms && (
                                   <span className="flex items-center gap-1">
-                                    <Bed className="w-3 h-3 text-zinc-400" />
-                                    <span className="font-mono text-xs text-zinc-300">{result.bedrooms}br</span>
+                                    <Bed className="w-3 h-3 text-muted-foreground" />
+                                    <span className="font-mono text-xs text-muted-foreground">{result.bedrooms}br</span>
                                   </span>
                                 )}
                                 {result.bathrooms && (
                                   <span className="flex items-center gap-1">
-                                    <Bath className="w-3 h-3 text-zinc-400" />
-                                    <span className="font-mono text-xs text-zinc-300">{result.bathrooms}ba</span>
+                                    <Bath className="w-3 h-3 text-muted-foreground" />
+                                    <span className="font-mono text-xs text-muted-foreground">{result.bathrooms}ba</span>
                                   </span>
                                 )}
                               </div>
@@ -890,36 +890,36 @@ function ComparablesPageContent() {
                           </div>
                           
                           <div>
-                            <div className="font-mono text-[9px] text-zinc-500 mb-1">TRANSACTION</div>
-                            <div className="font-mono text-xs text-zinc-300">
+                            <div className="font-mono text-[9px] text-muted-foreground mb-1">TRANSACTION</div>
+                            <div className="font-mono text-xs text-muted-foreground">
                               {result.sale_date ? new Date(result.sale_date).toLocaleDateString('en-GB') : 'N/A'}
                             </div>
                             <div className={cn(
                               'inline-block px-1.5 py-0.5 text-[8px] font-mono rounded',
                               result.data_source === 'contribution'
-                                ? 'bg-green-500/20 text-green-400'
-                                : 'bg-blue-500/20 text-blue-400'
+                                ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                                : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
                             )}>
                               {result.data_source === 'contribution' ? 'VERIFIED' : 'SALE'}
                             </div>
                           </div>
 
                           <div>
-                            <div className="font-mono text-[9px] text-zinc-500 mb-1">QUALITY</div>
-                            <div className="font-mono text-xs text-zinc-300">
+                            <div className="font-mono text-[9px] text-muted-foreground mb-1">QUALITY</div>
+                            <div className="font-mono text-xs text-muted-foreground">
                               {result.condition || 'good'}
                             </div>
                             {result.year_built && (
-                              <div className="font-mono text-[10px] text-zinc-500">
+                              <div className="font-mono text-[10px] text-muted-foreground">
                                 Built {result.year_built} ({getAge(result.year_built)}yr old)
                               </div>
                             )}
                           </div>
 
                           <div>
-                            <div className="font-mono text-[9px] text-zinc-500 mb-1">LOCATION</div>
-                            <div className="font-mono text-xs text-zinc-300">{result.distance_km.toFixed(1)}km away</div>
-                            <div className="font-mono text-[10px] text-zinc-500">
+                            <div className="font-mono text-[9px] text-muted-foreground mb-1">LOCATION</div>
+                            <div className="font-mono text-xs text-muted-foreground">{result.distance_km.toFixed(1)}km away</div>
+                            <div className="font-mono text-[10px] text-muted-foreground">
                               {result.similarity_score}% similar
                             </div>
                           </div>
@@ -930,7 +930,7 @@ function ComparablesPageContent() {
                           <div className="flex gap-1 flex-wrap">
                             {result.amenities.slice(0, 4).map((amenity, i) => (
                               <div key={i} className="px-1.5 py-0.5 bg-zinc-700/50 rounded">
-                                <span className="text-[8px] font-mono text-zinc-400">
+                                <span className="text-[8px] font-mono text-muted-foreground">
                                   {typeof amenity === 'string' ? amenity.toUpperCase() : ''}
                                 </span>
                               </div>
@@ -943,7 +943,7 @@ function ComparablesPageContent() {
                       <div className={cn(
                         'flex items-center justify-center w-8 h-8 border-2 rounded-full ml-4',
                         selectedComparables.includes(result.id)
-                          ? 'bg-amber-500 border-amber-500 text-white'
+                          ? 'bg-amber-500 border-amber-500 text-foreground'
                           : 'border-zinc-600 text-transparent'
                       )}>
                         <Check className="w-4 h-4" />
@@ -959,14 +959,14 @@ function ComparablesPageContent() {
 
       {/* Add New Comparable Modal */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-mono text-xl text-white">ADD NEW COMPARABLE</h2>
+                <h2 className="font-mono text-xl text-foreground">ADD NEW COMPARABLE</h2>
                 <button
                   onClick={() => setShowAddForm(false)}
-                  className="p-2 hover:bg-zinc-800 transition-colors"
+                  className="p-2 hover:bg-muted transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -980,17 +980,17 @@ function ComparablesPageContent() {
                 showLocationFields={true}
               />
 
-              <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-zinc-800">
+              <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-border">
                 <button
                   onClick={() => setShowAddForm(false)}
-                  className="px-6 py-3 bg-zinc-800 text-zinc-300 font-mono text-sm hover:text-white transition-colors"
+                  className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
                 >
                   CANCEL
                 </button>
                 <button
                   onClick={handleSubmitComparable}
                   disabled={submitting || !newComparable.address || !newComparable.city || !newComparable.sale_price}
-                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-mono text-sm font-bold hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-foreground font-mono text-sm font-bold hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
@@ -1016,10 +1016,10 @@ function ComparablesPageContent() {
 export default function ComparablesPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="flex items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-          <span className="font-mono text-sm text-zinc-400">Loading comparables...</span>
+          <span className="font-mono text-sm text-muted-foreground">Loading comparables...</span>
         </div>
       </div>
     }>

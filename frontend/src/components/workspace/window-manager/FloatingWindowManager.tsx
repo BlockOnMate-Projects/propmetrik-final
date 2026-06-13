@@ -29,7 +29,7 @@ interface ContactRailProps {
 
 function ContactRail({ contacts, activeConversationId, onSelectKobby, onSelectContact, isKobbyActive }: ContactRailProps) {
     return (
-        <div className="flex-shrink-0 w-14 bg-zinc-900/40 border-r border-zinc-800/50 flex flex-col items-center py-3 gap-1 overflow-y-auto">
+        <div className="flex-shrink-0 w-14 bg-card/40 border-r border-border/50 flex flex-col items-center py-3 gap-1 overflow-y-auto">
             {/* Kobby AI — pinned at top */}
             <button
                 onClick={onSelectKobby}
@@ -37,17 +37,17 @@ function ContactRail({ contacts, activeConversationId, onSelectKobby, onSelectCo
                     'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all group',
                     isKobbyActive
                         ? 'bg-violet-600 shadow-lg shadow-violet-600/30'
-                        : 'bg-zinc-800 hover:bg-violet-600/20'
+                        : 'bg-muted hover:bg-violet-600/20'
                 )}
                 title="Kobby AI"
             >
-                <Bot className={cn('w-5 h-5', isKobbyActive ? 'text-white' : 'text-violet-400')} />
+                <Bot className={cn('w-5 h-5', isKobbyActive ? 'text-foreground' : 'text-violet-600 dark:text-violet-400')} />
                 <Pin className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 text-amber-500" />
             </button>
 
             {/* Divider — only show if there are contacts */}
             {contacts.length > 0 && (
-                <div className="w-6 border-t border-zinc-700/50 my-1" />
+                <div className="w-6 border-t border-border/50 my-1" />
             )}
 
             {/* Conversation contacts — only people you've chatted with */}
@@ -63,19 +63,19 @@ function ContactRail({ contacts, activeConversationId, onSelectKobby, onSelectCo
                             'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all group',
                             isActive
                                 ? 'bg-emerald-600 shadow-lg shadow-emerald-600/20'
-                                : 'bg-zinc-800 hover:bg-zinc-700'
+                                : 'bg-muted hover:bg-zinc-700'
                         )}
                         title={contact.displayName}
                     >
                         <span className={cn(
                             'text-xs font-bold',
-                            isActive ? 'text-white' : 'text-zinc-300 group-hover:text-white'
+                            isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
                         )}>
                             {initial}
                         </span>
                         {/* Online indicator */}
                         <span className={cn(
-                            'absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-2 border-zinc-900',
+                            'absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-2 border-border',
                             contact.isOnline ? 'bg-emerald-500' : 'bg-zinc-600'
                         )} />
                     </button>
@@ -193,7 +193,7 @@ export function FloatingWindowManager() {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                        className="fixed top-0 right-0 z-[201] h-full w-full md:w-[480px] flex bg-zinc-950 border-l border-zinc-800 shadow-2xl shadow-black/50"
+                        className="fixed top-0 right-0 z-[201] h-full w-full md:w-[480px] flex bg-background border-l border-border shadow-2xl shadow-black/50"
                     >
                         {/* Left Contact Rail */}
                         <ContactRail
@@ -207,7 +207,7 @@ export function FloatingWindowManager() {
                         {/* Right Content Area */}
                         <div className="flex-1 flex flex-col min-w-0">
                             {/* Panel Header */}
-                            <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-zinc-900/60 border-b border-zinc-800">
+                            <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-card/60 border-b border-border">
                                 <div className="flex items-center gap-2.5">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                                     <span className="text-sm font-semibold text-zinc-100">
@@ -216,7 +216,7 @@ export function FloatingWindowManager() {
                                 </div>
                                 <button
                                     onClick={closePanel}
-                                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-zinc-200 transition-colors"
                                     aria-label="Close workspace"
                                 >
                                     <X className="w-4 h-4" />

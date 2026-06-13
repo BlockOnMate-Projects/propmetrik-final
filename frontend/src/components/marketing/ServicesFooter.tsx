@@ -51,7 +51,7 @@ const services = [
 
 export default function ServicesFooter() {
     return (
-        <section className="bg-zinc-950 border-t border-zinc-800 pt-24 pb-12">
+        <section className="bg-background border-t border-border pt-24 pb-12">
             <div className="container mx-auto px-4 md:px-6">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -69,7 +69,7 @@ export default function ServicesFooter() {
                         </h2>
                         <Link
                             href="/services"
-                            className="text-sm text-zinc-400 hover:text-amber-500 transition-colors inline-flex items-center gap-1 shrink-0"
+                            className="text-sm text-muted-foreground hover:text-amber-500 transition-colors inline-flex items-center gap-1 shrink-0"
                         >
                             View all services <ArrowRight className="w-4 h-4" />
                         </Link>
@@ -87,7 +87,7 @@ export default function ServicesFooter() {
                         >
                             <Link
                                 href={service.href}
-                                className="group block rounded-xl border border-zinc-800 bg-zinc-900/40 hover:border-amber-500/30 hover:bg-zinc-900/70 transition-all duration-300 overflow-hidden h-full"
+                                className="group block rounded-xl border border-border bg-card/40 hover:border-amber-500/30 hover:bg-card/70 transition-all duration-300 overflow-hidden h-full"
                             >
                                 {/* Visual */}
                                 <div className="h-48 overflow-hidden relative">
@@ -99,11 +99,11 @@ export default function ServicesFooter() {
 
                                 {/* Content */}
                                 <div className="p-6 pt-2">
-                                    <h3 className="text-lg font-bold text-white group-hover:text-amber-500 transition-colors mb-2 flex items-center gap-2">
+                                    <h3 className="text-lg font-bold text-foreground group-hover:text-amber-500 transition-colors mb-2 flex items-center gap-2">
                                         {service.title}
                                         <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                                     </h3>
-                                    <p className="text-sm text-zinc-400 leading-relaxed">
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
                                         {service.description}
                                     </p>
                                 </div>

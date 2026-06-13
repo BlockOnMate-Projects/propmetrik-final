@@ -143,7 +143,7 @@ export function HeroImageUpload({
         <span className="font-mono text-xs text-amber-500 tracking-wider">
           HERO IMAGE
         </span>
-        <span className="font-mono text-[10px] text-zinc-500">
+        <span className="font-mono text-[10px] text-muted-foreground">
           (max {maxSizeMB}MB, JPG/PNG/WebP)
         </span>
       </div>
@@ -161,7 +161,7 @@ export function HeroImageUpload({
       {previewUrl ? (
         // Preview mode
         <div className="relative group">
-          <div className="aspect-video bg-zinc-900 border border-zinc-700 overflow-hidden rounded">
+          <div className="aspect-video bg-card border border-border overflow-hidden rounded">
             <img
               src={previewUrl}
               alt="Hero preview"
@@ -170,13 +170,13 @@ export function HeroImageUpload({
           </div>
           
           {/* Overlay actions */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={openFileDialog}
-              className="border-zinc-600 bg-zinc-900/80 hover:bg-zinc-800"
+              className="border-zinc-600 bg-card/80 hover:bg-muted"
             >
               <Upload className="h-4 w-4 mr-1" />
               Replace
@@ -186,7 +186,7 @@ export function HeroImageUpload({
               variant="outline"
               size="sm"
               onClick={handleRemove}
-              className="border-red-900 bg-red-900/50 hover:bg-red-900/70 text-red-400"
+              className="border-red-900 bg-red-100 dark:bg-red-900/50 hover:bg-red-900/70 text-red-600 dark:text-red-400"
             >
               <X className="h-4 w-4 mr-1" />
               Remove
@@ -195,10 +195,10 @@ export function HeroImageUpload({
 
           {/* Loading overlay */}
           {isUploading && (
-            <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+            <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
-                <span className="font-mono text-xs text-zinc-300">Processing...</span>
+                <span className="font-mono text-xs text-muted-foreground">Processing...</span>
               </div>
             </div>
           )}
@@ -215,30 +215,30 @@ export function HeroImageUpload({
             "flex flex-col items-center justify-center gap-3",
             isDragOver
               ? "border-amber-500 bg-amber-500/10"
-              : "border-zinc-700 bg-zinc-900/50 hover:border-zinc-600 hover:bg-zinc-900"
+              : "border-border bg-card/50 hover:border-zinc-600 hover:bg-card"
           )}
         >
           {isUploading ? (
             <>
               <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-              <span className="font-mono text-xs text-zinc-400">Processing image...</span>
+              <span className="font-mono text-xs text-muted-foreground">Processing image...</span>
             </>
           ) : (
             <>
               <div className={cn(
                 "p-3 rounded-full",
-                isDragOver ? "bg-amber-500/20" : "bg-zinc-800"
+                isDragOver ? "bg-amber-500/20" : "bg-muted"
               )}>
                 <Upload className={cn(
                   "h-6 w-6",
-                  isDragOver ? "text-amber-500" : "text-zinc-500"
+                  isDragOver ? "text-amber-500" : "text-muted-foreground"
                 )} />
               </div>
               <div className="text-center">
-                <p className="font-mono text-xs text-zinc-300">
+                <p className="font-mono text-xs text-muted-foreground">
                   {isDragOver ? 'Drop image here' : 'Click or drag to upload'}
                 </p>
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                   Recommended: 1920x1080 or 16:9 aspect ratio
                 </p>
               </div>
@@ -249,7 +249,7 @@ export function HeroImageUpload({
 
       {/* Error messages */}
       {(uploadError || error) && (
-        <div className="flex items-center gap-2 text-red-400">
+        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <AlertCircle className="h-3 w-3 shrink-0" />
           <span className="font-mono text-[10px]">{uploadError || error}</span>
         </div>
@@ -260,12 +260,12 @@ export function HeroImageUpload({
         {['JPG', 'PNG', 'WebP'].map((format) => (
           <span
             key={format}
-            className="font-mono text-[9px] px-1.5 py-0.5 bg-zinc-800 text-zinc-500 rounded"
+            className="font-mono text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded"
           >
             {format}
           </span>
         ))}
-        <span className="font-mono text-[9px] px-1.5 py-0.5 bg-zinc-800 text-zinc-500 rounded">
+        <span className="font-mono text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
           Max {maxSizeMB}MB
         </span>
       </div>

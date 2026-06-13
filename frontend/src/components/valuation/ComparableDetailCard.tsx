@@ -157,11 +157,11 @@ interface ComparableDetailCardProps {
 
 function QualityBadge({ rating }: { rating?: string }) {
   const ratings: Record<string, { label: string; color: string; stars: number }> = {
-    luxury: { label: 'Luxury', color: 'text-purple-400 bg-purple-500/20', stars: 5 },
-    high: { label: 'High', color: 'text-blue-400 bg-blue-500/20', stars: 4 },
-    standard: { label: 'Standard', color: 'text-green-400 bg-green-500/20', stars: 3 },
-    basic: { label: 'Basic', color: 'text-yellow-400 bg-yellow-500/20', stars: 2 },
-    substandard: { label: 'Below', color: 'text-red-400 bg-red-500/20', stars: 1 },
+    luxury: { label: 'Luxury', color: 'text-purple-600 dark:text-purple-400 bg-purple-500/20', stars: 5 },
+    high: { label: 'High', color: 'text-blue-600 dark:text-blue-400 bg-blue-500/20', stars: 4 },
+    standard: { label: 'Standard', color: 'text-green-600 dark:text-green-400 bg-green-500/20', stars: 3 },
+    basic: { label: 'Basic', color: 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/20', stars: 2 },
+    substandard: { label: 'Below', color: 'text-red-600 dark:text-red-400 bg-red-500/20', stars: 1 },
   };
   
   const r = ratings[rating || 'standard'] || ratings.standard;
@@ -175,10 +175,10 @@ function QualityBadge({ rating }: { rating?: string }) {
 
 function ConditionBadge({ condition }: { condition?: string }) {
   const conditions: Record<string, { label: string; color: string }> = {
-    excellent: { label: 'Excellent', color: 'text-green-400' },
-    good: { label: 'Good', color: 'text-blue-400' },
-    fair: { label: 'Fair', color: 'text-yellow-400' },
-    poor: { label: 'Poor', color: 'text-red-400' },
+    excellent: { label: 'Excellent', color: 'text-green-600 dark:text-green-400' },
+    good: { label: 'Good', color: 'text-blue-600 dark:text-blue-400' },
+    fair: { label: 'Fair', color: 'text-yellow-600 dark:text-yellow-400' },
+    poor: { label: 'Poor', color: 'text-red-600 dark:text-red-400' },
   };
   
   const c = conditions[condition || 'good'] || conditions.good;
@@ -190,10 +190,10 @@ function ConditionBadge({ condition }: { condition?: string }) {
 
 function TenureBadge({ tenure }: { tenure?: string }) {
   const tenures: Record<string, { label: string; color: string }> = {
-    freehold: { label: 'Freehold', color: 'text-green-400' },
-    leasehold: { label: 'Leasehold', color: 'text-blue-400' },
-    stool_land: { label: 'Stool Land', color: 'text-amber-400' },
-    state_land: { label: 'State Land', color: 'text-purple-400' },
+    freehold: { label: 'Freehold', color: 'text-green-600 dark:text-green-400' },
+    leasehold: { label: 'Leasehold', color: 'text-blue-600 dark:text-blue-400' },
+    stool_land: { label: 'Stool Land', color: 'text-amber-600 dark:text-amber-400' },
+    state_land: { label: 'State Land', color: 'text-purple-600 dark:text-purple-400' },
   };
   
   const t = tenures[tenure || 'freehold'] || tenures.freehold;
@@ -205,19 +205,19 @@ function TenureBadge({ tenure }: { tenure?: string }) {
 
 function ViewQualityBadge({ view }: { view?: string }) {
   const views: Record<string, { label: string; icon: React.ReactNode }> = {
-    panoramic: { label: 'Panoramic', icon: <Star className="w-3 h-3 text-amber-400" /> },
-    ocean: { label: 'Ocean View', icon: <Eye className="w-3 h-3 text-blue-400" /> },
-    city: { label: 'City View', icon: <Building2 className="w-3 h-3 text-purple-400" /> },
-    garden: { label: 'Garden', icon: <Trees className="w-3 h-3 text-green-400" /> },
-    standard: { label: 'Standard', icon: <Eye className="w-3 h-3 text-zinc-400" /> },
-    limited: { label: 'Limited', icon: <Eye className="w-3 h-3 text-yellow-400" /> },
-    obstructed: { label: 'Obstructed', icon: <AlertTriangle className="w-3 h-3 text-red-400" /> },
+    panoramic: { label: 'Panoramic', icon: <Star className="w-3 h-3 text-amber-600 dark:text-amber-400" /> },
+    ocean: { label: 'Ocean View', icon: <Eye className="w-3 h-3 text-blue-600 dark:text-blue-400" /> },
+    city: { label: 'City View', icon: <Building2 className="w-3 h-3 text-purple-600 dark:text-purple-400" /> },
+    garden: { label: 'Garden', icon: <Trees className="w-3 h-3 text-green-600 dark:text-green-400" /> },
+    standard: { label: 'Standard', icon: <Eye className="w-3 h-3 text-muted-foreground" /> },
+    limited: { label: 'Limited', icon: <Eye className="w-3 h-3 text-yellow-600 dark:text-yellow-400" /> },
+    obstructed: { label: 'Obstructed', icon: <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" /> },
   };
   
   const v = views[view || 'standard'] || views.standard;
   
   return (
-    <span className="flex items-center gap-1 font-mono text-xs text-zinc-400">
+    <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
       {v.icon}
       {v.label}
     </span>
@@ -240,7 +240,7 @@ function AdjustmentInput({
   readOnly?: boolean;
 }) {
   const displayValue = value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1);
-  const color = value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-zinc-400';
+  const color = value > 0 ? 'text-green-600 dark:text-green-400' : value < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground';
   
   if (readOnly) {
     return (
@@ -260,11 +260,11 @@ function AdjustmentInput({
         max={max}
         step={0.5}
         className={cn(
-          'w-14 px-1 py-0.5 bg-black border border-zinc-700 font-mono text-[10px] text-center',
+          'w-14 px-1 py-0.5 bg-background border border-border font-mono text-[10px] text-center',
           color
         )}
       />
-      <span className="font-mono text-[10px] text-zinc-500">%</span>
+      <span className="font-mono text-[10px] text-muted-foreground">%</span>
     </div>
   );
 }
@@ -287,18 +287,18 @@ function StatRow({
   readOnly?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between py-1 border-b border-zinc-800/50 last:border-0">
+    <div className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
       <div className="flex items-center gap-2 flex-1">
-        <span className="text-zinc-500">{icon}</span>
-        <span className="font-mono text-[10px] text-zinc-400">{label}</span>
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
       </div>
       <div className="flex items-center gap-3">
         {subjectValue !== undefined && (
-          <span className="font-mono text-[10px] text-zinc-500 w-16 text-right">
+          <span className="font-mono text-[10px] text-muted-foreground w-16 text-right">
             Subj: {subjectValue}
           </span>
         )}
-        <span className="font-mono text-xs text-white w-20 text-right">{value}</span>
+        <span className="font-mono text-xs text-foreground w-20 text-right">{value}</span>
         {adjustment !== undefined && onAdjustmentChange && (
           <div className="w-20">
             <AdjustmentInput 
@@ -355,8 +355,8 @@ export function ComparableDetailCard({
   return (
     <div 
       className={cn(
-        'border bg-zinc-900/50 transition-all',
-        isSelected ? 'border-amber-500' : 'border-zinc-800',
+        'border bg-card/50 transition-all',
+        isSelected ? 'border-amber-500' : 'border-border',
         className
       )}
     >
@@ -364,7 +364,7 @@ export function ComparableDetailCard({
       <div 
         className={cn(
           'flex items-center justify-between px-3 py-2 cursor-pointer',
-          isSelected ? 'bg-amber-500/10' : 'bg-zinc-800/30'
+          isSelected ? 'bg-amber-500/10' : 'bg-muted/30'
         )}
         onClick={onSelect}
       >
@@ -376,29 +376,29 @@ export function ComparableDetailCard({
                 isSelected ? 'border-amber-500 bg-amber-500' : 'border-zinc-600'
               )}
             >
-              {isSelected && <Check className="w-3 h-3 text-white" />}
+              {isSelected && <Check className="w-3 h-3 text-foreground" />}
             </div>
           )}
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <MapPin className="w-3 h-3 text-zinc-500 flex-shrink-0" />
-              <span className="font-mono text-xs text-white truncate">
+              <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <span className="font-mono text-xs text-foreground truncate">
                 {comparable.full_address || comparable.address || 'Unknown Address'}
               </span>
               <QualityBadge rating={comparable.quality_rating} />
             </div>
             <div className="flex items-center gap-3 mt-1">
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {comparable.property_type} • {comparable.gfa} sqm
               </span>
               {comparable.distance_km !== undefined && (
-                <span className="font-mono text-[10px] text-zinc-500">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   {comparable.distance_km.toFixed(1)} km
                 </span>
               )}
               {comparable.similarity_score !== undefined && (
-                <span className="font-mono text-[10px] text-green-400">
+                <span className="font-mono text-[10px] text-green-600 dark:text-green-400">
                   {Math.round(comparable.similarity_score * 100)}% match
                 </span>
               )}
@@ -409,10 +409,10 @@ export function ComparableDetailCard({
         <div className="flex items-center gap-4">
           {/* Price Info */}
           <div className="text-right">
-            <div className="font-mono text-sm text-white">
+            <div className="font-mono text-sm text-foreground">
               ₵{comparable.sale_price.toLocaleString()}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500">
+            <div className="font-mono text-[10px] text-muted-foreground">
               ₵{Math.round(pricePerSqm).toLocaleString()}/sqm
             </div>
           </div>
@@ -421,12 +421,12 @@ export function ComparableDetailCard({
           <div className="text-right">
             <div className={cn(
               'font-mono text-sm font-bold',
-              totalAdjustment > 0 ? 'text-green-400' : 
-              totalAdjustment < 0 ? 'text-red-400' : 'text-zinc-400'
+              totalAdjustment > 0 ? 'text-green-600 dark:text-green-400' : 
+              totalAdjustment < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
             )}>
               {totalAdjustment > 0 ? '+' : ''}{totalAdjustment.toFixed(1)}%
             </div>
-            <div className="font-mono text-[10px] text-amber-400">
+            <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400">
               ₵{Math.round(adjustedPrice).toLocaleString()}
             </div>
           </div>
@@ -438,9 +438,9 @@ export function ComparableDetailCard({
               className="p-1 hover:bg-zinc-700 rounded transition-colors"
             >
               {expanded ? (
-                <ChevronUp className="w-4 h-4 text-zinc-400" />
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-zinc-400" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               )}
             </button>
             {onRemove && (
@@ -448,7 +448,7 @@ export function ComparableDetailCard({
                 onClick={(e) => { e.stopPropagation(); onRemove(); }}
                 className="p-1 hover:bg-red-900/50 rounded transition-colors"
               >
-                <X className="w-4 h-4 text-zinc-400 hover:text-red-400" />
+                <X className="w-4 h-4 text-muted-foreground hover:text-red-400" />
               </button>
             )}
           </div>
@@ -457,7 +457,7 @@ export function ComparableDetailCard({
       
       {/* Expanded Details */}
       {expanded && (
-        <div className="p-3 border-t border-zinc-800">
+        <div className="p-3 border-t border-border">
           <div className="grid grid-cols-3 gap-4">
             {/* Physical Characteristics */}
             <div className="space-y-1">
@@ -592,19 +592,19 @@ export function ComparableDetailCard({
               <div className="flex items-center gap-3 py-1">
                 <span className={cn(
                   'font-mono text-[10px] px-1.5 py-0.5 rounded',
-                  comparable.has_pool ? 'text-blue-400 bg-blue-500/20' : 'text-zinc-600 bg-zinc-800'
+                  comparable.has_pool ? 'text-blue-600 dark:text-blue-400 bg-blue-500/20' : 'text-muted-foreground bg-muted'
                 )}>
                   Pool
                 </span>
                 <span className={cn(
                   'font-mono text-[10px] px-1.5 py-0.5 rounded',
-                  comparable.has_garden ? 'text-green-400 bg-green-500/20' : 'text-zinc-600 bg-zinc-800'
+                  comparable.has_garden ? 'text-green-600 dark:text-green-400 bg-green-500/20' : 'text-muted-foreground bg-muted'
                 )}>
                   Garden
                 </span>
                 <span className={cn(
                   'font-mono text-[10px] px-1.5 py-0.5 rounded',
-                  comparable.has_security ? 'text-amber-400 bg-amber-500/20' : 'text-zinc-600 bg-zinc-800'
+                  comparable.has_security ? 'text-amber-600 dark:text-amber-400 bg-amber-500/20' : 'text-muted-foreground bg-muted'
                 )}>
                   Security
                 </span>
@@ -628,10 +628,10 @@ export function ComparableDetailCard({
               
               {comparable.tenure_type === 'leasehold' && comparable.lease_years_remaining && (
                 <div className="flex items-center justify-between py-1">
-                  <span className="font-mono text-[10px] text-zinc-400 pl-5">
+                  <span className="font-mono text-[10px] text-muted-foreground pl-5">
                     Lease Remaining
                   </span>
-                  <span className="font-mono text-xs text-white">
+                  <span className="font-mono text-xs text-foreground">
                     {comparable.lease_years_remaining} years
                   </span>
                 </div>
@@ -673,16 +673,16 @@ export function ComparableDetailCard({
               />
               
               {/* Transaction Type */}
-              <div className="mt-3 pt-2 border-t border-zinc-800">
+              <div className="mt-3 pt-2 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-zinc-400">Transaction</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">Transaction</span>
                   <span className={cn(
                     'font-mono text-[10px] px-1.5 py-0.5 rounded',
                     comparable.transaction_type === 'verified_sale' 
-                      ? 'text-green-400 bg-green-500/20' 
+                      ? 'text-green-600 dark:text-green-400 bg-green-500/20' 
                       : comparable.transaction_type === 'listing'
-                        ? 'text-yellow-400 bg-yellow-500/20'
-                        : 'text-blue-400 bg-blue-500/20'
+                        ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/20'
+                        : 'text-blue-600 dark:text-blue-400 bg-blue-500/20'
                   )}>
                     {comparable.transaction_type === 'verified_sale' 
                       ? 'Verified Sale' 
@@ -696,39 +696,39 @@ export function ComparableDetailCard({
           </div>
           
           {/* Adjustment Summary Footer */}
-          <div className="mt-4 pt-3 border-t border-zinc-800">
+          <div className="mt-4 pt-3 border-t border-border">
             <div className="grid grid-cols-5 gap-4 text-center">
               <div>
-                <div className="font-mono text-[10px] text-zinc-500">Original Price</div>
-                <div className="font-mono text-sm text-white">
+                <div className="font-mono text-[10px] text-muted-foreground">Original Price</div>
+                <div className="font-mono text-sm text-foreground">
                   ₵{comparable.sale_price.toLocaleString()}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[10px] text-zinc-500">Original ₵/sqm</div>
-                <div className="font-mono text-sm text-white">
+                <div className="font-mono text-[10px] text-muted-foreground">Original ₵/sqm</div>
+                <div className="font-mono text-sm text-foreground">
                   ₵{Math.round(pricePerSqm).toLocaleString()}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[10px] text-zinc-500">Total Adjustment</div>
+                <div className="font-mono text-[10px] text-muted-foreground">Total Adjustment</div>
                 <div className={cn(
                   'font-mono text-sm font-bold',
-                  totalAdjustment > 0 ? 'text-green-400' : 
-                  totalAdjustment < 0 ? 'text-red-400' : 'text-zinc-400'
+                  totalAdjustment > 0 ? 'text-green-600 dark:text-green-400' : 
+                  totalAdjustment < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
                 )}>
                   {totalAdjustment > 0 ? '+' : ''}{totalAdjustment.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[10px] text-zinc-500">Adjusted Price</div>
-                <div className="font-mono text-sm text-amber-400 font-bold">
+                <div className="font-mono text-[10px] text-muted-foreground">Adjusted Price</div>
+                <div className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold">
                   ₵{Math.round(adjustedPrice).toLocaleString()}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[10px] text-zinc-500">Adjusted ₵/sqm</div>
-                <div className="font-mono text-sm text-amber-400 font-bold">
+                <div className="font-mono text-[10px] text-muted-foreground">Adjusted ₵/sqm</div>
+                <div className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold">
                   ₵{Math.round(adjustedPricePerSqm).toLocaleString()}
                 </div>
               </div>

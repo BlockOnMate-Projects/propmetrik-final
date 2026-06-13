@@ -82,14 +82,14 @@ function Column<T extends KanbanItem>({
       <div className="flex items-center justify-between px-1 mb-2">
         <div className="flex items-center gap-2">
           <span className={cn('h-2.5 w-2.5 rounded-full', column.accent || 'bg-zinc-500')} />
-          <span className="text-xs font-mono uppercase tracking-wider text-zinc-300">{column.title}</span>
+          <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{column.title}</span>
         </div>
-        <span className="text-xs text-zinc-500 tabular-nums">{items.length}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
       </div>
       <div
         ref={setNodeRef}
         className={cn(
-          'flex-1 min-h-[120px] rounded-lg border border-zinc-800 bg-zinc-900/40 p-2 space-y-2 transition-colors',
+          'flex-1 min-h-[120px] rounded-lg border border-border bg-card/40 p-2 space-y-2 transition-colors',
           isOver && 'border-amber-600/60 bg-amber-950/10'
         )}
       >
@@ -101,7 +101,7 @@ function Column<T extends KanbanItem>({
           ))}
         </SortableContext>
         {items.length === 0 && (
-          <div className="text-center text-xs text-zinc-600 py-6">Drop here</div>
+          <div className="text-center text-xs text-muted-foreground py-6">Drop here</div>
         )}
       </div>
     </div>

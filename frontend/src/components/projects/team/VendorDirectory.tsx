@@ -105,7 +105,7 @@ const CATEGORY_CONFIG: Record<VendorCategory, { label: string; icon: React.Eleme
   equipment_rental: { label: 'Equipment Rental', icon: Building2, color: 'bg-green-100 text-green-800' },
   logistics: { label: 'Logistics', icon: ExternalLink, color: 'bg-orange-100 text-orange-800' },
   professional_services: { label: 'Professional Services', icon: Shield, color: 'bg-indigo-100 text-indigo-800' },
-  other: { label: 'Other', icon: Building2, color: 'bg-gray-100 text-gray-800' },
+  other: { label: 'Other', icon: Building2, color: 'bg-muted text-gray-800' },
 }
 
 // =====================================================
@@ -126,10 +126,10 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
   return (
     <div className="flex items-center gap-0.5">
       {[...Array(fullStars)].map((_, i) => (
-        <Star key={`full-${i}`} className={cn(sizeClasses[size], 'fill-amber-400 text-amber-400')} />
+        <Star key={`full-${i}`} className={cn(sizeClasses[size], 'fill-amber-400 text-amber-600 dark:text-amber-400')} />
       ))}
       {hasHalfStar && (
-        <StarHalf className={cn(sizeClasses[size], 'fill-amber-400 text-amber-400')} />
+        <StarHalf className={cn(sizeClasses[size], 'fill-amber-400 text-amber-600 dark:text-amber-400')} />
       )}
       {[...Array(emptyStars)].map((_, i) => (
         <Star key={`empty-${i}`} className={cn(sizeClasses[size], 'text-gray-300')} />
@@ -191,7 +191,7 @@ function ComplianceStatus({ vendor }: { vendor: Vendor }) {
 
   if (totalDocs === 0) {
     return (
-      <Badge variant="outline" className="text-gray-500">
+      <Badge variant="outline" className="text-muted-foreground">
         No documents
       </Badge>
     )
@@ -776,7 +776,7 @@ function VendorDetail({
                     <div className="flex items-center gap-3">
                       <FileCheck className={cn(
                         'h-5 w-5',
-                        doc.isVerified ? 'text-green-500' : 'text-gray-400'
+                        doc.isVerified ? 'text-green-500' : 'text-muted-foreground'
                       )} />
                       <div>
                         <p className="font-medium capitalize">

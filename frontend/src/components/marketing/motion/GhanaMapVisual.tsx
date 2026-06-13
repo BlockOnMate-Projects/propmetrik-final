@@ -31,7 +31,7 @@ export default function GhanaMapVisual() {
 
     return (
         <div className="relative w-full aspect-square max-w-xl mx-auto">
-            <div className="absolute top-2 right-2 z-20 text-[10px] font-mono uppercase tracking-wider text-zinc-500 border border-zinc-700 rounded px-2 py-0.5 bg-zinc-950/70">Illustrative</div>
+            <div className="absolute top-2 right-2 z-20 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border border-border rounded px-2 py-0.5 bg-background/70">Illustrative</div>
             {/* Ghana Map Outline (SVG) */}
             <svg
                 viewBox="0 0 400 500"
@@ -111,11 +111,11 @@ export default function GhanaMapVisual() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-zinc-900/90 backdrop-blur-sm border border-primary/30 rounded-lg px-6 py-3"
+                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-card/90 backdrop-blur-sm border border-primary/30 rounded-lg px-6 py-3"
             >
                 <div className="text-center">
-                    <div className="text-sm text-zinc-400 mb-1">Coverage Area</div>
-                    <div className="text-xl font-bold text-white">{ghanaLocations[activeLocation].name}</div>
+                    <div className="text-sm text-muted-foreground mb-1">Coverage Area</div>
+                    <div className="text-xl font-bold text-foreground">{ghanaLocations[activeLocation].name}</div>
                     <div className="text-sm text-primary">
                         {ghanaLocations[activeLocation].properties.toLocaleString()} properties
                     </div>

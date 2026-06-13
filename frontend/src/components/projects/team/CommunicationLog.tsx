@@ -108,10 +108,10 @@ const COMMUNICATION_TYPE_CONFIG: Record<CommunicationType, {
   meeting: { label: 'Meeting', icon: Users, color: 'bg-purple-100 text-purple-800' },
   video_call: { label: 'Video Call', icon: Video, color: 'bg-indigo-100 text-indigo-800' },
   site_visit: { label: 'Site Visit', icon: Building2, color: 'bg-amber-100 text-amber-800' },
-  letter: { label: 'Letter', icon: FileText, color: 'bg-gray-100 text-gray-800' },
+  letter: { label: 'Letter', icon: FileText, color: 'bg-muted text-gray-800' },
   sms: { label: 'SMS', icon: MessageCircle, color: 'bg-teal-100 text-teal-800' },
   whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: 'bg-emerald-100 text-emerald-800' },
-  other: { label: 'Other', icon: MessageSquare, color: 'bg-gray-100 text-gray-800' },
+  other: { label: 'Other', icon: MessageSquare, color: 'bg-muted text-gray-800' },
 }
 
 // =====================================================

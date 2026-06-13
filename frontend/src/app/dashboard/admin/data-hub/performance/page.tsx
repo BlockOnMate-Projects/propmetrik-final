@@ -100,11 +100,11 @@ export default function PerformancePage() {
     }, [resourceData])
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pb-10">
+        <div className="min-h-screen bg-background text-foreground p-4 pb-10">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="font-mono text-2xl text-amber-500 tracking-wider">PERFORMANCE METRICS DASHBOARD</h1>
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     REAL-TIME PERFORMANCE MONITORING • BOTTLENECK DETECTION • SLA TRACKING
                 </p>
             </div>
@@ -274,10 +274,10 @@ export default function PerformancePage() {
                 <TerminalPanel title="Resource Utilization">
                     <div className="space-y-4">
                         {resourceData.map((resource) => (
-                            <div key={resource.resource} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                            <div key={resource.resource} className="p-3 bg-muted/30 border border-border">
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-mono text-sm text-white">{resource.resource}</div>
-                                    <div className="font-mono text-xs text-zinc-400">
+                                    <div className="font-mono text-sm text-foreground">{resource.resource}</div>
+                                    <div className="font-mono text-xs text-muted-foreground">
                                         Current: {resource.current}% | Avg: {resource.average}% | Peak: {resource.peak}%
                                     </div>
                                 </div>
@@ -300,29 +300,29 @@ export default function PerformancePage() {
                         {bottlenecks.map((bottleneck, idx) => (
                             <div
                                 key={idx}
-                                className={`p-3 border ${bottleneck.severity === 'high' ? 'bg-red-900/20 border-red-500/30' :
-                                    bottleneck.severity === 'medium' ? 'bg-yellow-900/20 border-yellow-500/30' :
-                                        'bg-blue-900/20 border-blue-500/30'
+                                className={`p-3 border ${bottleneck.severity === 'high' ? 'bg-red-100 dark:bg-red-900/20 border-red-500/30' :
+                                    bottleneck.severity === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/20 border-yellow-500/30' :
+                                        'bg-blue-100 dark:bg-blue-900/20 border-blue-500/30'
                                     }`}
                             >
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <AlertTriangle className={`w-4 h-4 ${bottleneck.severity === 'high' ? 'text-red-400' :
-                                            bottleneck.severity === 'medium' ? 'text-yellow-400' : 'text-blue-400'
+                                        <AlertTriangle className={`w-4 h-4 ${bottleneck.severity === 'high' ? 'text-red-600 dark:text-red-400' :
+                                            bottleneck.severity === 'medium' ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'
                                             }`} />
-                                        <div className="font-mono text-sm text-white">{bottleneck.component}</div>
+                                        <div className="font-mono text-sm text-foreground">{bottleneck.component}</div>
                                     </div>
-                                    <span className={`px-2 py-1 font-mono text-[10px] uppercase ${bottleneck.severity === 'high' ? 'bg-red-900/30 text-red-400' :
-                                        bottleneck.severity === 'medium' ? 'bg-yellow-900/30 text-yellow-400' :
-                                            'bg-blue-900/30 text-blue-400'
+                                    <span className={`px-2 py-1 font-mono text-[10px] uppercase ${bottleneck.severity === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                                        bottleneck.severity === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' :
+                                            'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                                         }`}>
                                         {bottleneck.severity}
                                     </span>
                                 </div>
-                                <div className="font-mono text-[10px] text-zinc-400 mb-1">
+                                <div className="font-mono text-[10px] text-muted-foreground mb-1">
                                     Impact: {bottleneck.impact}
                                 </div>
-                                <div className="font-mono text-[10px] text-green-400">
+                                <div className="font-mono text-[10px] text-green-600 dark:text-green-400">
                                     → {bottleneck.recommendation}
                                 </div>
                             </div>
@@ -335,19 +335,19 @@ export default function PerformancePage() {
             <TerminalPanel title="SLA Compliance Tracking">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {slaMetrics.map((sla) => (
-                        <div key={sla.metric} className="p-4 bg-zinc-800/30 border border-zinc-800">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-2">{sla.metric}</div>
+                        <div key={sla.metric} className="p-4 bg-muted/30 border border-border">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-2">{sla.metric}</div>
                             <div className="flex items-baseline gap-2 mb-2">
-                                <div className={`font-mono text-2xl ${sla.status === 'met' ? 'text-green-400' :
-                                    sla.status === 'at-risk' ? 'text-yellow-400' : 'text-red-400'
+                                <div className={`font-mono text-2xl ${sla.status === 'met' ? 'text-green-600 dark:text-green-400' :
+                                    sla.status === 'at-risk' ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                                     }`}>
                                     {sla.actual}%
                                 </div>
-                                <div className="font-mono text-xs text-zinc-500">/ {sla.target}%</div>
+                                <div className="font-mono text-xs text-muted-foreground">/ {sla.target}%</div>
                             </div>
-                            <div className={`px-2 py-1 font-mono text-[10px] uppercase text-center ${sla.status === 'met' ? 'bg-green-900/30 text-green-400' :
-                                sla.status === 'at-risk' ? 'bg-yellow-900/30 text-yellow-400' :
-                                    'bg-red-900/30 text-red-400'
+                            <div className={`px-2 py-1 font-mono text-[10px] uppercase text-center ${sla.status === 'met' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                                sla.status === 'at-risk' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' :
+                                    'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                                 }`}>
                                 {sla.status.replace('-', ' ')}
                             </div>

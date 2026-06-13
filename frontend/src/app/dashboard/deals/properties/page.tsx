@@ -83,11 +83,11 @@ function PropertyCard({ property, onViewDeals }: {
     
     const statusColors: Record<string, string> = {
         'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
-        'active': 'bg-green-500/20 text-green-400 border-green-500/30',
-        'under_offer': 'bg-primary/20 text-amber-400 border-primary/30',
-        'sold': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-        'rented': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-        'withdrawn': 'bg-red-500/20 text-red-400 border-red-500/30',
+        'active': 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30',
+        'under_offer': 'bg-primary/20 text-amber-600 dark:text-amber-400 border-primary/30',
+        'sold': 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+        'rented': 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+        'withdrawn': 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
     }
 
     const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -433,19 +433,19 @@ export default function CRMPropertiesPage() {
                 <Card className="shadow-sm">
                     <CardContent className="p-4">
                         <div className="text-xs font-medium text-muted-foreground mb-1">Available</div>
-                        <div className="text-2xl font-bold text-green-400">{stats.available}</div>
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.available}</div>
                     </CardContent>
                 </Card>
                 <Card className="shadow-sm">
                     <CardContent className="p-4">
                         <div className="text-xs font-medium text-muted-foreground mb-1">Under Offer</div>
-                        <div className="text-2xl font-bold text-amber-400">{stats.under_offer}</div>
+                        <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.under_offer}</div>
                     </CardContent>
                 </Card>
                 <Card className="shadow-sm">
                     <CardContent className="p-4">
                         <div className="text-xs font-medium text-muted-foreground mb-1">With Active Deals</div>
-                        <div className="text-2xl font-bold text-blue-400">{stats.with_active_deals}</div>
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.with_active_deals}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -575,7 +575,7 @@ export default function CRMPropertiesPage() {
                 </div>
             ) : viewMode === 'list' && error ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                    <p className="text-sm text-red-400 mb-4">{error}</p>
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>
                     <Button 
                         onClick={loadProperties} 
                         variant="outline"

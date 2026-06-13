@@ -203,16 +203,16 @@ export default function SettingsPage() {
         label: string; value: string; onChange: (v: string) => void; type?: string; suffix?: string
     }) => (
         <div>
-            <label className="font-mono text-[10px] text-zinc-500 block mb-1">{label}</label>
+            <label className="font-mono text-[10px] text-muted-foreground block mb-1">{label}</label>
             <div className="relative">
                 <input
                     type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                    className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                 />
                 {suffix && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-zinc-500">{suffix}</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">{suffix}</span>
                 )}
             </div>
         </div>
@@ -223,41 +223,41 @@ export default function SettingsPage() {
     }) => (
         <div className="flex items-center justify-between py-2">
             <div>
-                <div className="font-mono text-xs text-white">{label}</div>
-                {description && <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{description}</div>}
+                <div className="font-mono text-xs text-foreground">{label}</div>
+                {description && <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{description}</div>}
             </div>
             <button
                 onClick={() => onChange(!checked)}
                 className={`w-10 h-5 rounded-full transition-colors relative ${checked ? 'bg-amber-500' : 'bg-zinc-700'
                     }`}
             >
-                <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${checked ? 'left-5' : 'left-0.5'
+                <div className={`w-4 h-4 rounded-full bg-card absolute top-0.5 transition-transform ${checked ? 'left-5' : 'left-0.5'
                     }`} />
             </button>
         </div>
     )
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pb-10">
+        <div className="min-h-screen bg-background text-foreground p-4 pb-10">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="font-mono text-xl text-white flex items-center gap-2">
+                    <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
                         <Settings className="w-5 h-5 text-amber-500" />
                         VALUATION SETTINGS
                     </h1>
-                    <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                    <p className="font-mono text-[10px] text-muted-foreground mt-1">
                         Organization configuration • Fee defaults • Report preferences
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
                     {saved && (
-                        <span className="flex items-center gap-1 font-mono text-[10px] text-emerald-400">
+                        <span className="flex items-center gap-1 font-mono text-[10px] text-emerald-600 dark:text-emerald-400">
                             <Check className="w-3 h-3" /> Settings saved
                         </span>
                     )}
                     <button
                         onClick={() => { setSettings(defaultSettings); localStorage.removeItem(SETTINGS_KEY) }}
-                        className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors"
                     >
                         <RotateCcw className="w-3 h-3" />
                         RESET
@@ -265,7 +265,7 @@ export default function SettingsPage() {
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                     >
                         {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                         {saving ? 'SAVING...' : 'SAVE CHANGES'}
@@ -285,7 +285,7 @@ export default function SettingsPage() {
                                     onClick={() => setActiveSection(s.id)}
                                     className={`w-full flex items-center gap-2 px-3 py-2 font-mono text-xs text-left transition-colors ${activeSection === s.id
                                             ? 'text-amber-500 bg-amber-500/10 border-l-2 border-amber-500'
-                                            : 'text-zinc-400 hover:text-white border-l-2 border-transparent'
+                                            : 'text-muted-foreground hover:text-foreground border-l-2 border-transparent'
                                         }`}
                                 >
                                     <Icon className="w-3.5 h-3.5" />
@@ -299,8 +299,8 @@ export default function SettingsPage() {
                 {/* Content */}
                 <div className="flex-1 max-w-2xl">
                     {activeSection === 'general' && (
-                        <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-4">
-                            <div className="font-mono text-sm text-white mb-4 flex items-center gap-2">
+                        <div className="bg-card border border-border p-6 space-y-4">
+                            <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
                                 <Building2 className="w-4 h-4 text-amber-500" />
                                 COMPANY INFORMATION
                             </div>
@@ -318,17 +318,17 @@ export default function SettingsPage() {
                     )}
 
                     {activeSection === 'fees' && (
-                        <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-4">
-                            <div className="font-mono text-sm text-white mb-4 flex items-center gap-2">
+                        <div className="bg-card border border-border p-6 space-y-4">
+                            <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
                                 <Banknote className="w-4 h-4 text-amber-500" />
                                 FEE & TAX CONFIGURATION
                             </div>
                             <div>
-                                <label className="font-mono text-[10px] text-zinc-500 block mb-1">DEFAULT FEE MODEL</label>
+                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">DEFAULT FEE MODEL</label>
                                 <select
                                     value={settings.defaultFeeModel}
                                     onChange={(e) => setSettings({ ...settings, defaultFeeModel: e.target.value })}
-                                    className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                                    className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                                 >
                                     <option value="percentage_of_value">Percentage of Value (GhIS)</option>
                                     <option value="man_day_rate">Man-Day Rate (MWH 2021)</option>
@@ -339,7 +339,7 @@ export default function SettingsPage() {
                                 <InputField label="PERCENTAGE RATE" value={settings.percentageRate} type="number" suffix="%" onChange={(v) => setSettings({ ...settings, percentageRate: v })} />
                                 <InputField label="MINIMUM FEE (GHS)" value={settings.minimumFee} type="number" onChange={(v) => setSettings({ ...settings, minimumFee: v })} />
                             </div>
-                            <div className="font-mono text-[10px] text-zinc-500 mt-4 mb-2">GHANA TAX RATES</div>
+                            <div className="font-mono text-[10px] text-muted-foreground mt-4 mb-2">GHANA TAX RATES</div>
                             <div className="grid grid-cols-2 gap-4">
                                 <InputField label="VAT" value={settings.vatRate} type="number" suffix="%" onChange={(v) => setSettings({ ...settings, vatRate: v })} />
                                 <InputField label="NHIL" value={settings.nhilRate} type="number" suffix="%" onChange={(v) => setSettings({ ...settings, nhilRate: v })} />
@@ -350,18 +350,18 @@ export default function SettingsPage() {
                     )}
 
                     {activeSection === 'reports' && (
-                        <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-4">
-                            <div className="font-mono text-sm text-white mb-4 flex items-center gap-2">
+                        <div className="bg-card border border-border p-6 space-y-4">
+                            <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-amber-500" />
                                 REPORT DEFAULTS
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="font-mono text-[10px] text-zinc-500 block mb-1">DEFAULT CURRENCY</label>
+                                    <label className="font-mono text-[10px] text-muted-foreground block mb-1">DEFAULT CURRENCY</label>
                                     <select
                                         value={settings.defaultCurrency}
                                         onChange={(e) => setSettings({ ...settings, defaultCurrency: e.target.value })}
-                                        className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50"
+                                        className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
                                     >
                                         <option value="GHS">GHS — Ghana Cedi</option>
                                         <option value="USD">USD — US Dollar</option>
@@ -369,7 +369,7 @@ export default function SettingsPage() {
                                 </div>
                                 <InputField label="AUTO-SAVE INTERVAL" value={settings.autoSaveInterval} type="number" suffix="min" onChange={(v) => setSettings({ ...settings, autoSaveInterval: v })} />
                             </div>
-                            <div className="border-t border-zinc-800 pt-4 space-y-2">
+                            <div className="border-t border-border pt-4 space-y-2">
                                 <Toggle label="Include photographs" description="Auto-include property photos in report" checked={settings.includePhotos} onChange={(v) => setSettings({ ...settings, includePhotos: v })} />
                                 <Toggle label="Include market data" description="Include market analysis section" checked={settings.includeMarketData} onChange={(v) => setSettings({ ...settings, includeMarketData: v })} />
                                 <Toggle label="Include comparables" description="Include comparable sales evidence" checked={settings.includeComps} onChange={(v) => setSettings({ ...settings, includeComps: v })} />
@@ -378,8 +378,8 @@ export default function SettingsPage() {
                     )}
 
                     {activeSection === 'notifications' && (
-                        <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-4">
-                            <div className="font-mono text-sm text-white mb-4 flex items-center gap-2">
+                        <div className="bg-card border border-border p-6 space-y-4">
+                            <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
                                 <Bell className="w-4 h-4 text-amber-500" />
                                 NOTIFICATION PREFERENCES
                             </div>
@@ -395,8 +395,8 @@ export default function SettingsPage() {
                     {/* ═══ BRANDING (Enterprise) ═══ */}
                     {activeSection === 'branding' && (
                         <div className="space-y-4">
-                            <div className="bg-zinc-900 border border-zinc-800 p-6 space-y-4">
-                                <div className="font-mono text-sm text-white mb-4 flex items-center gap-2">
+                            <div className="bg-card border border-border p-6 space-y-4">
+                                <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
                                     <Palette className="w-4 h-4 text-amber-500" />
                                     FIRM BRANDING & WHITE-LABEL
                                 </div>
@@ -405,34 +405,34 @@ export default function SettingsPage() {
                                         <InputField label="FIRM NAME" value={orgBranding.name || ''} onChange={(v) => setOrgBranding({ ...orgBranding, name: v })} />
                                         <div className="grid grid-cols-3 gap-4">
                                             <div>
-                                                <label className="font-mono text-[10px] text-zinc-500 block mb-1">PRIMARY COLOR</label>
+                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">PRIMARY COLOR</label>
                                                 <div className="flex items-center gap-2">
                                                     <input type="color" value={orgBranding.primary_color || '#f59e0b'} onChange={(e) => setOrgBranding({ ...orgBranding, primary_color: e.target.value })}
-                                                        className="w-8 h-8 border border-zinc-700 bg-transparent cursor-pointer" />
-                                                    <span className="font-mono text-xs text-zinc-400">{orgBranding.primary_color}</span>
+                                                        className="w-8 h-8 border border-border bg-transparent cursor-pointer" />
+                                                    <span className="font-mono text-xs text-muted-foreground">{orgBranding.primary_color}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[10px] text-zinc-500 block mb-1">SECONDARY COLOR</label>
+                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">SECONDARY COLOR</label>
                                                 <div className="flex items-center gap-2">
                                                     <input type="color" value={orgBranding.secondary_color || '#000000'} onChange={(e) => setOrgBranding({ ...orgBranding, secondary_color: e.target.value })}
-                                                        className="w-8 h-8 border border-zinc-700 bg-transparent cursor-pointer" />
-                                                    <span className="font-mono text-xs text-zinc-400">{orgBranding.secondary_color}</span>
+                                                        className="w-8 h-8 border border-border bg-transparent cursor-pointer" />
+                                                    <span className="font-mono text-xs text-muted-foreground">{orgBranding.secondary_color}</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[10px] text-zinc-500 block mb-1">ACCENT COLOR</label>
+                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">ACCENT COLOR</label>
                                                 <div className="flex items-center gap-2">
                                                     <input type="color" value={orgBranding.accent_color || '#f59e0b'} onChange={(e) => setOrgBranding({ ...orgBranding, accent_color: e.target.value })}
-                                                        className="w-8 h-8 border border-zinc-700 bg-transparent cursor-pointer" />
-                                                    <span className="font-mono text-xs text-zinc-400">{orgBranding.accent_color}</span>
+                                                        className="w-8 h-8 border border-border bg-transparent cursor-pointer" />
+                                                    <span className="font-mono text-xs text-muted-foreground">{orgBranding.accent_color}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <InputField label="FONT FAMILY" value={orgBranding.font_family || 'Inter'} onChange={(v) => setOrgBranding({ ...orgBranding, font_family: v })} />
 
-                                        <div className="border-t border-zinc-800 pt-4 mt-4">
-                                            <div className="font-mono text-[10px] text-zinc-500 mb-3">PROFESSIONAL CREDENTIALS</div>
+                                        <div className="border-t border-border pt-4 mt-4">
+                                            <div className="font-mono text-[10px] text-muted-foreground mb-3">PROFESSIONAL CREDENTIALS</div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <InputField label="PROFESSIONAL BODY" value={orgBranding.professional_body || ''} onChange={(v) => setOrgBranding({ ...orgBranding, professional_body: v })} />
                                                 <InputField label="LICENSE NUMBER" value={orgBranding.license_number || ''} onChange={(v) => setOrgBranding({ ...orgBranding, license_number: v })} />
@@ -443,8 +443,8 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="border-t border-zinc-800 pt-4 mt-4">
-                                            <div className="font-mono text-[10px] text-zinc-500 mb-3">OFFICE ADDRESS</div>
+                                        <div className="border-t border-border pt-4 mt-4">
+                                            <div className="font-mono text-[10px] text-muted-foreground mb-3">OFFICE ADDRESS</div>
                                             <InputField label="ADDRESS" value={orgBranding.address_line1 || ''} onChange={(v) => setOrgBranding({ ...orgBranding, address_line1: v })} />
                                             <div className="grid grid-cols-3 gap-4 mt-4">
                                                 <InputField label="CITY" value={orgBranding.city || ''} onChange={(v) => setOrgBranding({ ...orgBranding, city: v })} />
@@ -454,7 +454,7 @@ export default function SettingsPage() {
                                         </div>
 
                                         <button onClick={saveBranding} disabled={saving}
-                                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
+                                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
                                             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                             {saving ? 'SAVING...' : 'SAVE BRANDING'}
                                         </button>
@@ -462,22 +462,22 @@ export default function SettingsPage() {
                                 ) : (
                                     <div className="flex items-center justify-center py-8">
                                         <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
-                                        <span className="font-mono text-xs text-zinc-500 ml-2">Loading branding...</span>
+                                        <span className="font-mono text-xs text-muted-foreground ml-2">Loading branding...</span>
                                     </div>
                                 )}
                             </div>
 
                             {/* Preview */}
                             {orgBranding && (
-                                <div className="bg-zinc-900 border border-zinc-800 p-6">
-                                    <div className="font-mono text-[10px] text-zinc-500 mb-3">REPORT HEADER PREVIEW</div>
-                                    <div className="border border-zinc-700 p-4 bg-white text-white">
+                                <div className="bg-card border border-border p-6">
+                                    <div className="font-mono text-[10px] text-muted-foreground mb-3">REPORT HEADER PREVIEW</div>
+                                    <div className="border border-border p-4 bg-card text-foreground">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <div className="text-lg font-bold" style={{ color: orgBranding.primary_color }}>{orgBranding.name || 'Your Firm'}</div>
-                                                <div className="text-xs text-gray-500">{orgBranding.professional_body} • License: {orgBranding.license_number}</div>
+                                                <div className="text-xs text-muted-foreground">{orgBranding.professional_body} • License: {orgBranding.license_number}</div>
                                             </div>
-                                            <div className="text-right text-xs text-gray-500">
+                                            <div className="text-right text-xs text-muted-foreground">
                                                 <div>{orgBranding.address_line1}</div>
                                                 <div>{orgBranding.city}, {orgBranding.region}</div>
                                                 <div>{orgBranding.phone}</div>
@@ -492,59 +492,59 @@ export default function SettingsPage() {
                     {/* ═══ APPROVAL CHAINS (Enterprise) ═══ */}
                     {activeSection === 'approvals' && (
                         <div className="space-y-4">
-                            <div className="bg-zinc-900 border border-zinc-800 p-6">
+                            <div className="bg-card border border-border p-6">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="font-mono text-sm text-white flex items-center gap-2">
+                                    <div className="font-mono text-sm text-foreground flex items-center gap-2">
                                         <GitBranch className="w-4 h-4 text-amber-500" />
                                         APPROVAL CHAINS
                                     </div>
                                     <button onClick={() => setShowNewChain(true)}
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white font-mono text-[10px] font-bold hover:bg-amber-400">
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-foreground font-mono text-[10px] font-bold hover:bg-amber-400">
                                         <Plus className="w-3 h-3" /> NEW CHAIN
                                     </button>
                                 </div>
 
-                                <p className="font-mono text-[10px] text-zinc-500 mb-4">
+                                <p className="font-mono text-[10px] text-muted-foreground mb-4">
                                     Configure multi-level approval workflows for valuation reports. Each chain defines the sequence of roles that must approve before a report is finalized.
                                 </p>
 
                                 {approvalChains.length === 0 ? (
-                                    <div className="text-center py-8 border border-dashed border-zinc-700">
-                                        <GitBranch className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                                        <p className="font-mono text-xs text-zinc-500">No approval chains configured</p>
-                                        <p className="font-mono text-[10px] text-zinc-600 mt-1">Create one to require multi-level sign-off on reports</p>
+                                    <div className="text-center py-8 border border-dashed border-border">
+                                        <GitBranch className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                                        <p className="font-mono text-xs text-muted-foreground">No approval chains configured</p>
+                                        <p className="font-mono text-[10px] text-muted-foreground mt-1">Create one to require multi-level sign-off on reports</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
                                         {approvalChains.map(chain => (
-                                            <div key={chain.id} className="border border-zinc-700 bg-black">
+                                            <div key={chain.id} className="border border-border bg-background">
                                                 <button
                                                     onClick={() => setChainExpanded(chainExpanded === chain.id ? null : chain.id)}
-                                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-800/50"
+                                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50"
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <div className={`w-2 h-2 rounded-full ${chain.is_active ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
-                                                        <span className="font-mono text-xs text-white">{chain.name}</span>
-                                                        <span className="font-mono text-[10px] text-zinc-500">{chain.steps?.length || 0} steps</span>
+                                                        <span className="font-mono text-xs text-foreground">{chain.name}</span>
+                                                        <span className="font-mono text-[10px] text-muted-foreground">{chain.steps?.length || 0} steps</span>
                                                     </div>
-                                                    {chainExpanded === chain.id ? <ChevronUp className="w-3 h-3 text-zinc-500" /> : <ChevronDown className="w-3 h-3 text-zinc-500" />}
+                                                    {chainExpanded === chain.id ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                                                 </button>
                                                 {chainExpanded === chain.id && (
-                                                    <div className="px-4 pb-4 border-t border-zinc-800">
-                                                        {chain.description && <p className="font-mono text-[10px] text-zinc-500 mt-2 mb-3">{chain.description}</p>}
+                                                    <div className="px-4 pb-4 border-t border-border">
+                                                        {chain.description && <p className="font-mono text-[10px] text-muted-foreground mt-2 mb-3">{chain.description}</p>}
                                                         <div className="space-y-2">
                                                             {(chain.steps || []).map((step, i) => (
                                                                 <div key={step.id} className="flex items-center gap-3">
                                                                     <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-500 font-mono text-[10px] flex items-center justify-center font-bold">{i + 1}</div>
                                                                     <div>
-                                                                        <div className="font-mono text-xs text-white">{step.name}</div>
-                                                                        <div className="font-mono text-[10px] text-zinc-500">Required: {step.required_role.replace(/_/g, ' ')} • {step.min_approvers} approver(s)</div>
+                                                                        <div className="font-mono text-xs text-foreground">{step.name}</div>
+                                                                        <div className="font-mono text-[10px] text-muted-foreground">Required: {step.required_role.replace(/_/g, ' ')} • {step.min_approvers} approver(s)</div>
                                                                     </div>
                                                                 </div>
                                                             ))}
                                                         </div>
                                                         <button onClick={() => deleteChain(chain.id)}
-                                                            className="mt-3 flex items-center gap-1 px-2 py-1 text-red-400 hover:text-red-300 font-mono text-[10px]">
+                                                            className="mt-3 flex items-center gap-1 px-2 py-1 text-red-600 dark:text-red-400 hover:text-red-300 font-mono text-[10px]">
                                                             <Trash2 className="w-3 h-3" /> DELETE CHAIN
                                                         </button>
                                                     </div>
@@ -560,14 +560,14 @@ export default function SettingsPage() {
                                         <div className="font-mono text-[10px] text-amber-500">CREATE APPROVAL CHAIN</div>
                                         <InputField label="CHAIN NAME" value={newChain.name} onChange={(v) => setNewChain({ ...newChain, name: v })} />
                                         <InputField label="DESCRIPTION" value={newChain.description} onChange={(v) => setNewChain({ ...newChain, description: v })} />
-                                        <div className="font-mono text-[10px] text-zinc-500 mt-2">STEPS</div>
+                                        <div className="font-mono text-[10px] text-muted-foreground mt-2">STEPS</div>
                                         {newChain.steps.map((step, i) => (
                                             <div key={i} className="flex items-center gap-2">
                                                 <span className="font-mono text-[10px] text-amber-500 w-4">{i + 1}.</span>
                                                 <input value={step.name} onChange={(e) => { const s = [...newChain.steps]; s[i] = { ...s[i], name: e.target.value }; setNewChain({ ...newChain, steps: s }) }}
-                                                    placeholder="Step name" className="flex-1 px-2 py-1 bg-black border border-zinc-700 text-white font-mono text-xs" />
+                                                    placeholder="Step name" className="flex-1 px-2 py-1 bg-background border border-border text-foreground font-mono text-xs" />
                                                 <select value={step.required_role} onChange={(e) => { const s = [...newChain.steps]; s[i] = { ...s[i], required_role: e.target.value }; setNewChain({ ...newChain, steps: s }) }}
-                                                    className="px-2 py-1 bg-black border border-zinc-700 text-white font-mono text-xs">
+                                                    className="px-2 py-1 bg-background border border-border text-foreground font-mono text-xs">
                                                     <option value="senior_valuer">Senior Valuer</option>
                                                     <option value="manager">Manager</option>
                                                     <option value="firm_principal">Firm Principal</option>
@@ -576,15 +576,15 @@ export default function SettingsPage() {
                                                 </select>
                                                 {newChain.steps.length > 1 && (
                                                     <button onClick={() => setNewChain({ ...newChain, steps: newChain.steps.filter((_, j) => j !== i) })}
-                                                        className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>
+                                                        className="text-red-600 dark:text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>
                                                 )}
                                             </div>
                                         ))}
                                         <button onClick={() => setNewChain({ ...newChain, steps: [...newChain.steps, { step_order: newChain.steps.length + 1, name: '', required_role: 'manager', min_approvers: 1 }] })}
                                             className="font-mono text-[10px] text-amber-500 hover:text-amber-400 flex items-center gap-1"><Plus className="w-3 h-3" /> ADD STEP</button>
                                         <div className="flex gap-2 mt-2">
-                                            <button onClick={createChain} className="px-3 py-1.5 bg-amber-500 text-white font-mono text-[10px] font-bold hover:bg-amber-400">CREATE</button>
-                                            <button onClick={() => setShowNewChain(false)} className="px-3 py-1.5 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white">CANCEL</button>
+                                            <button onClick={createChain} className="px-3 py-1.5 bg-amber-500 text-foreground font-mono text-[10px] font-bold hover:bg-amber-400">CREATE</button>
+                                            <button onClick={() => setShowNewChain(false)} className="px-3 py-1.5 bg-muted text-muted-foreground font-mono text-[10px] hover:text-foreground">CANCEL</button>
                                         </div>
                                     </div>
                                 )}
@@ -595,21 +595,21 @@ export default function SettingsPage() {
                     {/* ═══ API KEYS (Enterprise) ═══ */}
                     {activeSection === 'api-keys' && (
                         <div className="space-y-4">
-                            <div className="bg-zinc-900 border border-zinc-800 p-6">
-                                <div className="font-mono text-sm text-white mb-4 flex items-center gap-2">
+                            <div className="bg-card border border-border p-6">
+                                <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
                                     <Key className="w-4 h-4 text-amber-500" />
                                     API KEY MANAGEMENT
                                 </div>
-                                <p className="font-mono text-[10px] text-zinc-500 mb-4">
+                                <p className="font-mono text-[10px] text-muted-foreground mb-4">
                                     Create API keys for programmatic access to your organization&apos;s valuation data. Keys are shown once on creation — store them securely.
                                 </p>
 
                                 {/* Create key */}
                                 <div className="flex gap-2 mb-4">
                                     <input value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="Key name (e.g. Production API)"
-                                        className="flex-1 px-3 py-2 bg-black border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50" />
+                                        className="flex-1 px-3 py-2 bg-background border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50" />
                                     <button onClick={createKey} disabled={!newKeyName.trim()}
-                                        className="flex items-center gap-1 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50">
+                                        className="flex items-center gap-1 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50">
                                         <Plus className="w-3 h-3" /> GENERATE
                                     </button>
                                 </div>
@@ -618,25 +618,25 @@ export default function SettingsPage() {
                                 {newKeyVisible && (
                                     <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <AlertTriangle className="w-3 h-3 text-emerald-400" />
-                                            <span className="font-mono text-[10px] text-emerald-400 font-bold">KEY CREATED — COPY NOW (shown once)</span>
+                                            <AlertTriangle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                            <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">KEY CREATED — COPY NOW (shown once)</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <code className="flex-1 font-mono text-xs text-white bg-black px-2 py-1 break-all">{newKeyVisible}</code>
+                                            <code className="flex-1 font-mono text-xs text-foreground bg-background px-2 py-1 break-all">{newKeyVisible}</code>
                                             <button onClick={() => { navigator.clipboard.writeText(newKeyVisible); }}
-                                                className="px-2 py-1 bg-zinc-800 text-zinc-400 hover:text-white"><Copy className="w-3 h-3" /></button>
+                                                className="px-2 py-1 bg-muted text-muted-foreground hover:text-foreground"><Copy className="w-3 h-3" /></button>
                                         </div>
-                                        <button onClick={() => setNewKeyVisible(null)} className="font-mono text-[10px] text-zinc-500 hover:text-zinc-300 mt-2">Dismiss</button>
+                                        <button onClick={() => setNewKeyVisible(null)} className="font-mono text-[10px] text-muted-foreground hover:text-muted-foreground mt-2">Dismiss</button>
                                     </div>
                                 )}
 
                                 {/* Key list */}
                                 <div className="space-y-2">
                                     {apiKeys.map(key => (
-                                        <div key={key.id} className={`flex items-center justify-between px-4 py-3 border ${key.is_active ? 'border-zinc-700 bg-black' : 'border-zinc-800 bg-zinc-900/50 opacity-60'}`}>
+                                        <div key={key.id} className={`flex items-center justify-between px-4 py-3 border ${key.is_active ? 'border-border bg-background' : 'border-border bg-card/50 opacity-60'}`}>
                                             <div>
-                                                <div className="font-mono text-xs text-white">{key.name}</div>
-                                                <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
+                                                <div className="font-mono text-xs text-foreground">{key.name}</div>
+                                                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
                                                     {key.key_prefix}••• • {key.scopes?.join(', ')} • {key.usage_count || 0} requests
                                                     {key.last_used_at && ` • Last used ${new Date(key.last_used_at).toLocaleDateString('en-GB')}`}
                                                 </div>
@@ -645,18 +645,18 @@ export default function SettingsPage() {
                                                 {key.is_active ? (
                                                     <>
                                                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                                                        <button onClick={() => revokeKey(key.id)} className="px-2 py-1 text-red-400 hover:text-red-300 font-mono text-[10px]">REVOKE</button>
+                                                        <button onClick={() => revokeKey(key.id)} className="px-2 py-1 text-red-600 dark:text-red-400 hover:text-red-300 font-mono text-[10px]">REVOKE</button>
                                                     </>
                                                 ) : (
-                                                    <span className="font-mono text-[10px] text-zinc-500">REVOKED</span>
+                                                    <span className="font-mono text-[10px] text-muted-foreground">REVOKED</span>
                                                 )}
                                             </div>
                                         </div>
                                     ))}
                                     {apiKeys.length === 0 && (
-                                        <div className="text-center py-8 border border-dashed border-zinc-700">
-                                            <Key className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                                            <p className="font-mono text-xs text-zinc-500">No API keys created yet</p>
+                                        <div className="text-center py-8 border border-dashed border-border">
+                                            <Key className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                                            <p className="font-mono text-xs text-muted-foreground">No API keys created yet</p>
                                         </div>
                                     )}
                                 </div>

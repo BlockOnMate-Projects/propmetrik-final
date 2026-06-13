@@ -59,7 +59,7 @@ export default function MaintenanceListPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-gray-800';
       case 'assigned':
         return 'bg-yellow-100 text-yellow-800';
       case 'in_progress':
@@ -69,7 +69,7 @@ export default function MaintenanceListPage() {
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-gray-800';
     }
   };
 
@@ -84,13 +84,13 @@ export default function MaintenanceListPage() {
       case 'low':
         return 'text-green-600';
       default:
-        return 'text-gray-600';
+        return 'text-muted-foreground';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -98,7 +98,7 @@ export default function MaintenanceListPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <Link href="/tenant/dashboard" className="text-blue-600 hover:underline">
@@ -110,13 +110,13 @@ export default function MaintenanceListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-card shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Link href="/tenant/dashboard" className="text-gray-500 hover:text-gray-700">
+              <Link href="/tenant/dashboard" className="text-muted-foreground hover:text-gray-700">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -125,7 +125,7 @@ export default function MaintenanceListPage() {
             </div>
             <Link
               href="/tenant/maintenance/new"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -152,8 +152,8 @@ export default function MaintenanceListPage() {
                 key={option.value}
                 onClick={() => setFilter(option.value)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === option.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                    ? 'bg-blue-600 text-foreground'
+                    : 'bg-card text-gray-700 hover:bg-muted'
                   }`}
               >
                 {option.label}
@@ -164,32 +164,32 @@ export default function MaintenanceListPage() {
 
         {/* Request List */}
         {filteredRequests.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-card rounded-lg shadow p-12 text-center">
+            <svg className="w-16 h-16 mx-auto text-muted-foreground mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No maintenance requests</h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               {filter === 'all'
                 ? "You haven't submitted any maintenance requests yet."
                 : `No requests matching "${filter}" status.`}
             </p>
             <Link
               href="/tenant/maintenance/new"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700"
             >
               Submit a Request
             </Link>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-card rounded-lg shadow overflow-hidden">
             <ul className="divide-y divide-gray-200">
               {filteredRequests.map((request) => (
                 <li key={request.id}>
                   <Link
                     href={`/maintenance/${request.id}`}
-                    className="block hover:bg-gray-50 transition-colors"
+                    className="block hover:bg-muted transition-colors"
                   >
                     <div className="px-6 py-4">
                       <div className="flex items-center justify-between">
@@ -203,24 +203,24 @@ export default function MaintenanceListPage() {
                             </span>
                           </div>
                           <div className="mt-1 flex items-center gap-4">
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               {request.category}
                             </span>
                             <span className={`text-sm font-medium ${getPriorityColor(request.priority || '')}`}>
                               {request.priority} priority
                             </span>
-                            <span className="text-sm text-gray-400">
+                            <span className="text-sm text-muted-foreground">
                               {new Date(request.createdAt || request.created_at).toLocaleDateString('en-GB')}
                             </span>
                           </div>
                           {request.description && (
-                            <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                            <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
                               {request.description}
                             </p>
                           )}
                         </div>
                         <div className="ml-4 flex-shrink-0">
-                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
@@ -235,27 +235,27 @@ export default function MaintenanceListPage() {
 
         {/* Summary Stats */}
         <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow p-4 text-center">
+          <div className="bg-card rounded-lg shadow p-4 text-center">
             <p className="text-2xl font-bold text-gray-900">{requests.length}</p>
-            <p className="text-sm text-gray-500">Total Requests</p>
+            <p className="text-sm text-muted-foreground">Total Requests</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
+          <div className="bg-card rounded-lg shadow p-4 text-center">
             <p className="text-2xl font-bold text-yellow-600">
               {requests.filter(r => r.status === 'open').length}
             </p>
-            <p className="text-sm text-gray-500">Pending</p>
+            <p className="text-sm text-muted-foreground">Pending</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
+          <div className="bg-card rounded-lg shadow p-4 text-center">
             <p className="text-2xl font-bold text-blue-600">
               {requests.filter(r => r.status === 'in_progress').length}
             </p>
-            <p className="text-sm text-gray-500">In Progress</p>
+            <p className="text-sm text-muted-foreground">In Progress</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
+          <div className="bg-card rounded-lg shadow p-4 text-center">
             <p className="text-2xl font-bold text-green-600">
               {requests.filter(r => r.status === 'completed').length}
             </p>
-            <p className="text-sm text-gray-500">Completed</p>
+            <p className="text-sm text-muted-foreground">Completed</p>
           </div>
         </div>
       </main>

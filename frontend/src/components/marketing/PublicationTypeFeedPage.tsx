@@ -54,32 +54,32 @@ export default function PublicationTypeFeedPage({
   }, [publicationType, product, edition]);
 
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <div className="container mx-auto px-4 md:px-6">
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">{title}</h1>
-        <p className="text-zinc-400 text-lg mb-10">{subtitle}</p>
+        <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">{title}</h1>
+        <p className="text-muted-foreground text-lg mb-10">{subtitle}</p>
 
         {loading ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 animate-pulse">
-                <div className="h-4 w-32 bg-zinc-800 rounded mb-2" />
-                <div className="h-6 w-3/4 bg-zinc-800 rounded" />
+              <div key={i} className="bg-card border border-border rounded-lg p-6 animate-pulse">
+                <div className="h-4 w-32 bg-muted rounded mb-2" />
+                <div className="h-6 w-3/4 bg-muted rounded" />
               </div>
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-10 text-center text-zinc-500">
+          <div className="bg-card border border-border rounded-lg p-10 text-center text-muted-foreground">
             No publications available in this category yet.
           </div>
         ) : (
           <div className="space-y-4">
             {items.map((item) => (
               <Link key={item.id} href={`/insights/${item.slug}`}>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors">
-                  <div className="text-xs text-zinc-500 mb-2">{formatDate(item.published_at)}</div>
-                  <h2 className="text-xl font-bold text-white mb-1">{item.title}</h2>
-                  {item.excerpt && <p className="text-zinc-400 text-sm line-clamp-2">{item.excerpt}</p>}
+                <div className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
+                  <div className="text-xs text-muted-foreground mb-2">{formatDate(item.published_at)}</div>
+                  <h2 className="text-xl font-bold text-foreground mb-1">{item.title}</h2>
+                  {item.excerpt && <p className="text-muted-foreground text-sm line-clamp-2">{item.excerpt}</p>}
                 </div>
               </Link>
             ))}

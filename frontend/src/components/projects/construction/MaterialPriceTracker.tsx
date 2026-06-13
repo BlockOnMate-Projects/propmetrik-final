@@ -72,32 +72,32 @@ export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: Materi
   }, [filterRegion, filterCategory])
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800 h-full">
+    <Card className="bg-card border-border h-full">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-500" />
             <div>
-              <CardTitle className="text-white text-lg">Market Rates</CardTitle>
-              <CardDescription className="text-zinc-500 text-xs">
+              <CardTitle className="text-foreground text-lg">Market Rates</CardTitle>
+              <CardDescription className="text-muted-foreground text-xs">
                  Live from Data Hub
               </CardDescription>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={fetchPrices} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 text-zinc-400 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
           <div className="flex-1">
-            <Label className="text-zinc-400 font-mono text-[10px] uppercase mb-1 block">Region</Label>
+            <Label className="text-muted-foreground font-mono text-[10px] uppercase mb-1 block">Region</Label>
             <Select
               value={filterRegion}
               onValueChange={setFilterRegion}
             >
-              <SelectTrigger className="h-8 bg-zinc-800 border-zinc-700 font-mono text-xs">
+              <SelectTrigger className="h-8 bg-muted border-border font-mono text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -109,12 +109,12 @@ export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: Materi
             </Select>
           </div>
           <div className="flex-1">
-            <Label className="text-zinc-400 font-mono text-[10px] uppercase mb-1 block">Material</Label>
+            <Label className="text-muted-foreground font-mono text-[10px] uppercase mb-1 block">Material</Label>
             <Select
               value={filterCategory}
               onValueChange={setFilterCategory}
             >
-              <SelectTrigger className="h-8 bg-zinc-800 border-zinc-700 font-mono text-xs">
+              <SelectTrigger className="h-8 bg-muted border-border font-mono text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -130,44 +130,44 @@ export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: Materi
           </div>
         </div>
 
-        <div className="rounded-md border border-zinc-800 overflow-hidden">
+        <div className="rounded-md border border-border overflow-hidden">
           <Table>
-            <TableHeader className="bg-zinc-800/50">
-              <TableRow className="border-zinc-800 hover:bg-zinc-800/50">
-                <TableHead className="text-zinc-400 font-mono text-xs h-8">Item</TableHead>
-                <TableHead className="text-zinc-400 font-mono text-xs text-right h-8">Price</TableHead>
-                <TableHead className="text-zinc-400 font-mono text-xs text-right h-8">Source</TableHead>
+            <TableHeader className="bg-muted/50">
+              <TableRow className="border-border hover:bg-muted/50">
+                <TableHead className="text-muted-foreground font-mono text-xs h-8">Item</TableHead>
+                <TableHead className="text-muted-foreground font-mono text-xs text-right h-8">Price</TableHead>
+                <TableHead className="text-muted-foreground font-mono text-xs text-right h-8">Source</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading && data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-zinc-500 text-xs">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground text-xs">
                     Loading market data...
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-zinc-500 text-xs">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground text-xs">
                     No data available for this selection
                   </TableCell>
                 </TableRow>
               ) : (
                 data.map((item) => (
-                  <TableRow key={item.id} className="border-zinc-800 hover:bg-zinc-800/30">
-                    <TableCell className="font-mono text-xs text-zinc-300">
+                  <TableRow key={item.id} className="border-border hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       <div className="font-semibold text-zinc-200">{item.material_name}</div>
-                      <div className="text-[10px] text-zinc-500 truncate max-w-[120px]">
+                      <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                         {item.specification || item.vendorName || 'Standard Spec'}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-right text-emerald-400 font-medium">
+                    <TableCell className="font-mono text-xs text-right text-emerald-600 dark:text-emerald-400 font-medium">
                       {item.unitPrice ? formatCurrency(item.unitPrice, item.currency || 'GHS') : 'N/A'}
-                      <span className="text-zinc-600 text-[10px] ml-1">/{item.uom}</span>
+                      <span className="text-muted-foreground text-[10px] ml-1">/{item.uom}</span>
                     </TableCell>
-                    <TableCell className="font-mono text-[10px] text-right text-zinc-500">
+                    <TableCell className="font-mono text-[10px] text-right text-muted-foreground">
                       {item.source || 'Scraper'}
-                      <div className="text-zinc-600">
+                      <div className="text-muted-foreground">
                         {item.effectiveDate ? new Date(item.effectiveDate).toLocaleDateString('en-GB') : 'Recent'}
                       </div>
                     </TableCell>

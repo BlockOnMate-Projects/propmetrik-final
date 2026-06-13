@@ -143,7 +143,7 @@ export default function SpidersPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base font-medium flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-blue-400 animate-pulse" />
+                  <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-pulse" />
                   Running Spiders ({runningCount})
                 </CardTitle>
               </CardHeader>
@@ -154,7 +154,7 @@ export default function SpidersPage() {
                     <div key={spider.id} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Bug className="h-4 w-4 text-blue-400" />
+                          <Bug className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           <span className="font-medium">{spider.name}</span>
                           <Badge variant="outline" className="text-xs">
                             {spider.domain}
@@ -242,8 +242,8 @@ export default function SpidersPage() {
                       <TableCell>
                         <span className={cn(
                           'font-mono text-sm',
-                          spider.errorRate > 0.1 ? 'text-red-400' :
-                            spider.errorRate > 0.05 ? 'text-yellow-400' : 'text-green-400'
+                          spider.errorRate > 0.1 ? 'text-red-600 dark:text-red-400' :
+                            spider.errorRate > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
                         )}>
                           {(spider.errorRate * 100).toFixed(1)}%
                         </span>
@@ -336,7 +336,7 @@ export default function SpidersPage() {
                     ))}
                   {spiders.filter((s) => s.status === 'failed' || s.errorRate > 0.1).length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-400" />
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
                       <p className="text-sm">All spiders healthy</p>
                     </div>
                   )}

@@ -127,8 +127,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -160,10 +160,10 @@ function formatLabel(s: string): string {
 function ComplianceBadge({ rate }: { rate: number }) {
   const color =
     rate >= 90
-      ? 'text-green-400 bg-green-500/10 border-green-500/20'
+      ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
       : rate >= 70
-        ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-        : 'text-red-400 bg-red-500/10 border-red-500/20'
+        ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
+        : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20'
   return (
     <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded', color)}>
       {rate.toFixed(0)}%
@@ -173,16 +173,16 @@ function ComplianceBadge({ rate }: { rate: number }) {
 
 function AnalysisTypeBadge({ type }: { type: string }) {
   const colors: Record<string, string> = {
-    single_variable: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    two_variable: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-    tornado: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-    monte_carlo: 'text-green-400 bg-green-500/10 border-green-500/20',
+    single_variable: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20',
+    two_variable: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20',
+    tornado: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20',
+    monte_carlo: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
   }
   return (
     <span
       className={cn(
         'px-1.5 py-0.5 font-mono text-[9px] border rounded',
-        colors[type] || 'text-zinc-400 border-zinc-700',
+        colors[type] || 'text-muted-foreground border-border',
       )}
     >
       {formatLabel(type)}
@@ -222,7 +222,7 @@ function SensitivitySection() {
       <div className="animate-pulse space-y-3">
         <div className="grid grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div key={i} className="h-20 bg-muted/50 rounded border border-border" />
           ))}
         </div>
       </div>
@@ -236,29 +236,29 @@ function SensitivitySection() {
         <Panel title="TOTAL ANALYSES">
           <div className="text-center">
             <Activity className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-            <div className="font-mono text-2xl text-white">{summary?.total_analyses ?? 0}</div>
+            <div className="font-mono text-2xl text-foreground">{summary?.total_analyses ?? 0}</div>
           </div>
         </Panel>
         <Panel title="AVG RANGE ±%">
           <div className="text-center">
-            <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-orange-400" />
-            <div className="font-mono text-2xl text-white">
+            <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-orange-600 dark:text-orange-400" />
+            <div className="font-mono text-2xl text-foreground">
               {summary ? `±${summary.overall_avg_range_pct.toFixed(1)}%` : '—'}
             </div>
           </div>
         </Panel>
         <Panel title="AVG VaR (5%)">
           <div className="text-center">
-            <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-red-400" />
-            <div className="font-mono text-2xl text-white">
+            <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-red-600 dark:text-red-400" />
+            <div className="font-mono text-2xl text-foreground">
               {summary ? formatCurrency(summary.avg_var_5pct) : '—'}
             </div>
           </div>
         </Panel>
         <Panel title="ANALYSIS TYPES">
           <div className="text-center">
-            <Layers className="w-4 h-4 mx-auto mb-1 text-blue-400" />
-            <div className="font-mono text-2xl text-white">{summary?.by_type?.length ?? 0}</div>
+            <Layers className="w-4 h-4 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+            <div className="font-mono text-2xl text-foreground">{summary?.by_type?.length ?? 0}</div>
           </div>
         </Panel>
       </div>
@@ -269,7 +269,7 @@ function SensitivitySection() {
           <div className="overflow-x-auto">
             <table className="w-full font-mono text-[10px]">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500">
+                <tr className="border-b border-border text-muted-foreground">
                   <th className="text-left py-1 pr-4">TYPE</th>
                   <th className="text-right py-1 px-2">COUNT</th>
                   <th className="text-right py-1 px-2">AVG RANGE ±%</th>
@@ -282,27 +282,27 @@ function SensitivitySection() {
                   .map((t) => {
                     const maxC = Math.max(...summary.by_type.map((x) => x.count), 1)
                     return (
-                      <tr key={t.analysis_type} className="border-b border-zinc-800/50">
+                      <tr key={t.analysis_type} className="border-b border-border/50">
                         <td className="py-1.5 pr-4">
                           <AnalysisTypeBadge type={t.analysis_type} />
                         </td>
-                        <td className="text-right py-1.5 px-2 text-zinc-300">{t.count}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{t.count}</td>
                         <td className="text-right py-1.5 px-2">
                           <span
                             className={cn(
                               'font-mono text-[9px]',
                               t.avg_range_pct < 15
-                                ? 'text-green-400'
+                                ? 'text-green-600 dark:text-green-400'
                                 : t.avg_range_pct < 30
-                                  ? 'text-amber-400'
-                                  : 'text-red-400',
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-red-600 dark:text-red-400',
                             )}
                           >
                             ±{t.avg_range_pct.toFixed(1)}%
                           </span>
                         </td>
                         <td className="py-1.5 px-4 w-40">
-                          <div className="h-2.5 bg-zinc-800 rounded-sm overflow-hidden">
+                          <div className="h-2.5 bg-muted rounded-sm overflow-hidden">
                             <div
                               className="h-full bg-amber-500/60 rounded-sm"
                               style={{ width: `${(t.count / maxC) * 100}%` }}
@@ -327,12 +327,12 @@ function SensitivitySection() {
             onChange={(e) => setLookupId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
             placeholder="Enter valuation ID..."
-            className="flex-1 bg-zinc-900 border border-zinc-700 text-zinc-300 font-mono text-[10px] px-3 py-1.5 focus:border-amber-500/50 outline-none placeholder:text-zinc-600"
+            className="flex-1 bg-card border border-border text-muted-foreground font-mono text-[10px] px-3 py-1.5 focus:border-amber-500/50 outline-none placeholder:text-muted-foreground"
           />
           <button
             onClick={handleLookup}
             disabled={lookupLoading || !lookupId.trim()}
-            className="flex items-center gap-1 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Search className="w-3 h-3" />
             LOOKUP
@@ -340,7 +340,7 @@ function SensitivitySection() {
         </div>
 
         {lookupLoading && (
-          <div className="animate-pulse h-16 bg-zinc-800/30 rounded" />
+          <div className="animate-pulse h-16 bg-muted/30 rounded" />
         )}
 
         {lookupResults !== null && !lookupLoading && (
@@ -354,12 +354,12 @@ function SensitivitySection() {
                 return (
                   <div
                     key={sa.id}
-                    className="border border-zinc-800 bg-zinc-800/20 p-2"
+                    className="border border-border bg-muted/20 p-2"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <AnalysisTypeBadge type={sa.analysis_type} />
-                        <span className="font-mono text-[9px] text-zinc-400">
+                        <span className="font-mono text-[9px] text-muted-foreground">
                           {formatLabel(sa.valuation_method)}
                         </span>
                       </div>
@@ -367,8 +367,8 @@ function SensitivitySection() {
                         className={cn(
                           'font-mono text-[9px] px-1.5 py-0.5 border rounded',
                           sa.status === 'completed'
-                            ? 'text-green-400 border-green-500/20'
-                            : 'text-zinc-400 border-zinc-700',
+                            ? 'text-green-600 dark:text-green-400 border-green-500/20'
+                            : 'text-muted-foreground border-border',
                         )}
                       >
                         {sa.status.toUpperCase()}
@@ -377,12 +377,12 @@ function SensitivitySection() {
 
                     {/* Tornado-style bar */}
                     <div className="mb-2">
-                      <div className="flex items-center justify-between font-mono text-[8px] text-zinc-500 mb-0.5">
+                      <div className="flex items-center justify-between font-mono text-[8px] text-muted-foreground mb-0.5">
                         <span>WORST: {formatCurrency(sa.worst_case_value)}</span>
                         <span>BASE: {formatCurrency(sa.base_case_value)}</span>
                         <span>BEST: {formatCurrency(sa.best_case_value)}</span>
                       </div>
-                      <div className="relative h-5 bg-zinc-800 rounded-sm overflow-hidden">
+                      <div className="relative h-5 bg-muted rounded-sm overflow-hidden">
                         {/* Range from worst to best relative to a full span */}
                         {sa.best_case_value > 0 && (
                           <>
@@ -404,7 +404,7 @@ function SensitivitySection() {
                             />
                             {/* Base case marker */}
                             <div
-                              className="absolute top-0 h-full w-0.5 bg-white"
+                              className="absolute top-0 h-full w-0.5 bg-card"
                               style={{ left: `${((sa.base_case_value / sa.best_case_value) * 100).toFixed(1)}%` }}
                             />
                           </>
@@ -412,7 +412,7 @@ function SensitivitySection() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 font-mono text-[8px] text-zinc-500">
+                    <div className="flex items-center gap-3 font-mono text-[8px] text-muted-foreground">
                       <span>Range: ±{rangePct}%</span>
                       {sa.value_at_risk_5pct && <span>VaR 5%: {formatCurrency(sa.value_at_risk_5pct)}</span>}
                     </div>
@@ -421,7 +421,7 @@ function SensitivitySection() {
               })}
             </div>
           ) : (
-            <div className="h-12 flex items-center justify-center font-mono text-[10px] text-zinc-600">
+            <div className="h-12 flex items-center justify-center font-mono text-[10px] text-muted-foreground">
               No sensitivity analyses found for this valuation
             </div>
           )
@@ -462,10 +462,10 @@ function FloorPlanSection() {
       <div className="animate-pulse space-y-3">
         <div className="grid grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div key={i} className="h-20 bg-muted/50 rounded border border-border" />
           ))}
         </div>
-        <div className="h-48 bg-zinc-800/50 rounded border border-zinc-800" />
+        <div className="h-48 bg-muted/50 rounded border border-border" />
       </div>
     )
   }
@@ -477,44 +477,44 @@ function FloorPlanSection() {
         <Panel title="TOTAL PLANS">
           <div className="text-center">
             <Home className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-            <div className="font-mono text-2xl text-white">{summary?.total_plans ?? 0}</div>
-            <div className="font-mono text-[9px] text-zinc-500">{summary?.total_rooms ?? 0} rooms</div>
+            <div className="font-mono text-2xl text-foreground">{summary?.total_plans ?? 0}</div>
+            <div className="font-mono text-[9px] text-muted-foreground">{summary?.total_rooms ?? 0} rooms</div>
           </div>
         </Panel>
         <Panel title="AVG GFA">
           <div className="text-center">
-            <Ruler className="w-4 h-4 mx-auto mb-1 text-blue-400" />
-            <div className="font-mono text-2xl text-white">
+            <Ruler className="w-4 h-4 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+            <div className="font-mono text-2xl text-foreground">
               {summary ? `${summary.avg_gfa.toFixed(0)}m²` : '—'}
             </div>
-            <div className="font-mono text-[9px] text-zinc-500">
+            <div className="font-mono text-[9px] text-muted-foreground">
               Med: {summary ? `${summary.median_gfa.toFixed(0)}m²` : '—'}
             </div>
           </div>
         </Panel>
         <Panel title="AVG NIA">
           <div className="text-center">
-            <Layers className="w-4 h-4 mx-auto mb-1 text-purple-400" />
-            <div className="font-mono text-2xl text-white">
+            <Layers className="w-4 h-4 mx-auto mb-1 text-purple-600 dark:text-purple-400" />
+            <div className="font-mono text-2xl text-foreground">
               {summary ? `${summary.avg_nia.toFixed(0)}m²` : '—'}
             </div>
           </div>
         </Panel>
         <Panel title="EFFICIENCY">
           <div className="text-center">
-            <BarChart3 className="w-4 h-4 mx-auto mb-1 text-green-400" />
-            <div className="font-mono text-2xl text-white">
+            <BarChart3 className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
+            <div className="font-mono text-2xl text-foreground">
               {summary ? `${(summary.avg_efficiency_ratio * 100).toFixed(1)}%` : '—'}
             </div>
           </div>
         </Panel>
         <Panel title="CODE COMPLIANCE">
           <div className="text-center">
-            <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-green-400" />
-            <div className="font-mono text-2xl text-white">
+            <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
+            <div className="font-mono text-2xl text-foreground">
               {summary ? `${summary.compliance_rate.toFixed(0)}%` : '—'}
             </div>
-            <div className="font-mono text-[9px] text-zinc-500">Ghana Building Code</div>
+            <div className="font-mono text-[9px] text-muted-foreground">Ghana Building Code</div>
           </div>
         </Panel>
       </div>
@@ -528,15 +528,15 @@ function FloorPlanSection() {
                 const maxPct = Math.max(...distribution.map((x) => x.pct), 1)
                 return (
                   <div key={b.bucket} className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] text-zinc-400 w-16">{b.bucket}</span>
-                    <div className="flex-1 h-3 bg-zinc-800 rounded-sm overflow-hidden">
+                    <span className="font-mono text-[9px] text-muted-foreground w-16">{b.bucket}</span>
+                    <div className="flex-1 h-3 bg-muted rounded-sm overflow-hidden">
                       <div
                         className="h-full bg-blue-500/60 rounded-sm"
                         style={{ width: `${(b.pct / maxPct) * 100}%` }}
                       />
                     </div>
-                    <span className="font-mono text-[9px] text-zinc-300 w-8 text-right">{b.count}</span>
-                    <span className="font-mono text-[8px] text-zinc-500 w-10 text-right">
+                    <span className="font-mono text-[9px] text-muted-foreground w-8 text-right">{b.count}</span>
+                    <span className="font-mono text-[8px] text-muted-foreground w-10 text-right">
                       {b.pct.toFixed(1)}%
                     </span>
                   </div>
@@ -544,7 +544,7 @@ function FloorPlanSection() {
               })}
             </div>
           ) : (
-            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-zinc-600">
+            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-muted-foreground">
               No distribution data
             </div>
           )}
@@ -556,7 +556,7 @@ function FloorPlanSection() {
             <div className="overflow-x-auto">
               <table className="w-full font-mono text-[10px]">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500">
+                  <tr className="border-b border-border text-muted-foreground">
                     <th className="text-left py-1 pr-4">REGION</th>
                     <th className="text-right py-1 px-2">PLANS</th>
                     <th className="text-right py-1 px-2">AVG GFA</th>
@@ -569,12 +569,12 @@ function FloorPlanSection() {
                   {regional
                     .sort((a, b) => b.plan_count - a.plan_count)
                     .map((r) => (
-                      <tr key={r.region} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                        <td className="py-1.5 pr-4 text-zinc-300">{formatRegion(r.region)}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-300">{r.plan_count}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-400">{r.avg_gfa.toFixed(0)}m²</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-400">{r.avg_nia.toFixed(0)}m²</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-400">
+                      <tr key={r.region} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                        <td className="py-1.5 pr-4 text-muted-foreground">{formatRegion(r.region)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.plan_count}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.avg_gfa.toFixed(0)}m²</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.avg_nia.toFixed(0)}m²</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">
                           {(r.avg_efficiency_ratio * 100).toFixed(1)}%
                         </td>
                         <td className="text-right py-1.5 px-2">
@@ -586,7 +586,7 @@ function FloorPlanSection() {
               </table>
             </div>
           ) : (
-            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-zinc-600">
+            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-muted-foreground">
               No regional data
             </div>
           )}
@@ -601,7 +601,7 @@ function FloorPlanSection() {
             <div className="overflow-x-auto">
               <table className="w-full font-mono text-[10px]">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-500">
+                  <tr className="border-b border-border text-muted-foreground">
                     <th className="text-left py-1 pr-4">ROOM TYPE</th>
                     <th className="text-right py-1 px-2">COUNT</th>
                     <th className="text-right py-1 px-2">AVG m²</th>
@@ -616,14 +616,14 @@ function FloorPlanSection() {
                   {rooms
                     .sort((a, b) => b.count - a.count)
                     .map((r) => (
-                      <tr key={r.room_type} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                        <td className="py-1.5 pr-4 text-zinc-300">{formatLabel(r.room_type)}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-400">{r.count}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-300">{r.avg_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-500">{r.min_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-500">{r.max_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-400">{r.median_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-zinc-500">
+                      <tr key={r.room_type} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                        <td className="py-1.5 pr-4 text-muted-foreground">{formatLabel(r.room_type)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.count}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.avg_area.toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.min_area.toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.max_area.toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.median_area.toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">
                           {r.min_standard_area != null ? r.min_standard_area.toFixed(1) : '—'}
                         </td>
                         <td className="text-right py-1.5 px-2">
@@ -635,7 +635,7 @@ function FloorPlanSection() {
               </table>
             </div>
           ) : (
-            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-zinc-600">
+            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-muted-foreground">
               No room data available
             </div>
           )}
@@ -648,19 +648,19 @@ function FloorPlanSection() {
               {violations
                 .sort((a, b) => b.violation_pct - a.violation_pct)
                 .map((v) => (
-                  <div key={v.room_type} className="border-b border-zinc-800/50 pb-2 last:border-0">
+                  <div key={v.room_type} className="border-b border-border/50 pb-2 last:border-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-[10px] text-zinc-300">{formatLabel(v.room_type)}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">{formatLabel(v.room_type)}</span>
                       <span
                         className={cn(
                           'font-mono text-[9px]',
-                          v.violation_pct > 20 ? 'text-red-400' : v.violation_pct > 10 ? 'text-amber-400' : 'text-green-400',
+                          v.violation_pct > 20 ? 'text-red-600 dark:text-red-400' : v.violation_pct > 10 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
                         )}
                       >
                         {v.violation_pct.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="h-2 bg-zinc-800 rounded-sm overflow-hidden">
+                    <div className="h-2 bg-muted rounded-sm overflow-hidden">
                       <div
                         className={cn(
                           'h-full rounded-sm',
@@ -669,14 +669,14 @@ function FloorPlanSection() {
                         style={{ width: `${Math.min(v.violation_pct, 100)}%` }}
                       />
                     </div>
-                    <div className="font-mono text-[8px] text-zinc-600 mt-0.5">
+                    <div className="font-mono text-[8px] text-muted-foreground mt-0.5">
                       {v.violation_count} of {v.total_count} below code minimum
                     </div>
                   </div>
                 ))}
             </div>
           ) : (
-            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-zinc-600">
+            <div className="h-32 flex items-center justify-center font-mono text-[10px] text-muted-foreground">
               <div className="text-center">
                 <CheckCircle className="w-5 h-5 text-green-500 mx-auto mb-1" />
                 <span>No violations found</span>
@@ -699,24 +699,24 @@ export default function SensitivityPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('sensitivity')
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link
               href="/dashboard/analytics/valuations"
-              className="font-mono text-[10px] text-zinc-500 hover:text-amber-500 transition-colors flex items-center gap-0.5"
+              className="font-mono text-[10px] text-muted-foreground hover:text-amber-500 transition-colors flex items-center gap-0.5"
             >
               <ChevronLeft className="w-3 h-3" />
               VALUATIONS
             </Link>
           </div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <Activity className="w-5 h-5 text-amber-500" />
             SENSITIVITY & FLOOR PLANS
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             Sensitivity Analysis & Floor Plan Analytics — Sections 3.5, 3.6
           </p>
         </div>
@@ -730,7 +730,7 @@ export default function SensitivityPage() {
             'flex items-center gap-1 px-3 py-1.5 font-mono text-[10px] border transition-colors',
             activeTab === 'sensitivity'
               ? 'text-amber-500 border-amber-500/50 bg-amber-500/10'
-              : 'text-zinc-500 border-zinc-700 hover:text-zinc-300 hover:border-zinc-600',
+              : 'text-muted-foreground border-border hover:text-muted-foreground hover:border-zinc-600',
           )}
         >
           <Activity className="w-3 h-3" />
@@ -742,7 +742,7 @@ export default function SensitivityPage() {
             'flex items-center gap-1 px-3 py-1.5 font-mono text-[10px] border transition-colors',
             activeTab === 'floor-plans'
               ? 'text-amber-500 border-amber-500/50 bg-amber-500/10'
-              : 'text-zinc-500 border-zinc-700 hover:text-zinc-300 hover:border-zinc-600',
+              : 'text-muted-foreground border-border hover:text-muted-foreground hover:border-zinc-600',
           )}
         >
           <Ruler className="w-3 h-3" />

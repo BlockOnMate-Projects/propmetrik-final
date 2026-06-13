@@ -105,8 +105,8 @@ function StatCard({
   };
   
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-      <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+    <div className="bg-card border border-border rounded-lg p-4">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
         <Icon className="w-4 h-4" />
         {label}
       </div>
@@ -114,7 +114,7 @@ function StatCard({
         {value}
       </div>
       {subValue && (
-        <div className="text-zinc-500 text-xs mt-1">{subValue}</div>
+        <div className="text-muted-foreground text-xs mt-1">{subValue}</div>
       )}
     </div>
   );
@@ -143,16 +143,16 @@ function formatDate(date: Date | string | undefined): string {
 // Status badge
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { label: string; className: string }> = {
-    pending: { label: 'Pending', className: 'bg-yellow-900/50 text-yellow-400' },
-    active: { label: 'Active', className: 'bg-green-900/50 text-green-400' },
-    completed: { label: 'Completed', className: 'bg-blue-900/50 text-blue-400' },
-    on_hold: { label: 'On Hold', className: 'bg-zinc-700 text-zinc-300' },
-    open: { label: 'Open', className: 'bg-red-900/50 text-red-400' },
-    in_progress: { label: 'In Progress', className: 'bg-amber-900/50 text-amber-400' },
-    verified: { label: 'Verified', className: 'bg-emerald-900/50 text-emerald-400' },
+    pending: { label: 'Pending', className: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400' },
+    active: { label: 'Active', className: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400' },
+    completed: { label: 'Completed', className: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' },
+    on_hold: { label: 'On Hold', className: 'bg-zinc-700 text-muted-foreground' },
+    open: { label: 'Open', className: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' },
+    in_progress: { label: 'In Progress', className: 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400' },
+    verified: { label: 'Verified', className: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400' },
   };
   
-  const config = configs[status] || { label: status, className: 'bg-zinc-700 text-zinc-300' };
+  const config = configs[status] || { label: status, className: 'bg-zinc-700 text-muted-foreground' };
   
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
@@ -171,7 +171,7 @@ function PriorityBadge({ priority }: { priority: string }) {
   };
   
   return (
-    <span className={`text-xs font-medium ${colors[priority] || 'text-zinc-400'}`}>
+    <span className={`text-xs font-medium ${colors[priority] || 'text-muted-foreground'}`}>
       {priority.toUpperCase()}
     </span>
   );
@@ -183,28 +183,28 @@ function AssignmentCard({ assignment }: { assignment: ContractorAssignment }) {
   const remaining = assignment.contract_amount - assignment.amount_paid;
   
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-amber-500/50 transition-colors">
+    <div className="bg-card border border-border rounded-lg p-4 hover:border-amber-500/50 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="text-white font-medium">{assignment.project_name}</h3>
+          <h3 className="text-foreground font-medium">{assignment.project_name}</h3>
           {assignment.phase_name && (
-            <p className="text-zinc-400 text-sm">{assignment.phase_name}</p>
+            <p className="text-muted-foreground text-sm">{assignment.phase_name}</p>
           )}
         </div>
         <StatusBadge status={assignment.status} />
       </div>
       
-      <p className="text-zinc-300 text-sm mb-4 line-clamp-2">
+      <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
         {assignment.scope_of_work}
       </p>
       
       {/* Progress Bar */}
       <div className="mb-4">
-        <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
           <span>Progress</span>
           <span className="text-amber-500">{progress}%</span>
         </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-amber-500 transition-all"
             style={{ width: `${progress}%` }}
@@ -215,21 +215,21 @@ function AssignmentCard({ assignment }: { assignment: ContractorAssignment }) {
       {/* Financial Summary */}
       <div className="grid grid-cols-3 gap-2 text-sm">
         <div>
-          <span className="text-zinc-500 text-xs">Contract</span>
-          <div className="text-white font-medium">{formatCurrency(assignment.contract_amount)}</div>
+          <span className="text-muted-foreground text-xs">Contract</span>
+          <div className="text-foreground font-medium">{formatCurrency(assignment.contract_amount)}</div>
         </div>
         <div>
-          <span className="text-zinc-500 text-xs">Billed</span>
-          <div className="text-blue-400 font-medium">{formatCurrency(assignment.amount_billed)}</div>
+          <span className="text-muted-foreground text-xs">Billed</span>
+          <div className="text-blue-600 dark:text-blue-400 font-medium">{formatCurrency(assignment.amount_billed)}</div>
         </div>
         <div>
-          <span className="text-zinc-500 text-xs">Paid</span>
-          <div className="text-green-400 font-medium">{formatCurrency(assignment.amount_paid)}</div>
+          <span className="text-muted-foreground text-xs">Paid</span>
+          <div className="text-green-600 dark:text-green-400 font-medium">{formatCurrency(assignment.amount_paid)}</div>
         </div>
       </div>
       
       {/* Dates */}
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800 text-xs text-zinc-400">
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <Calendar className="w-3 h-3" />
           {formatDate(assignment.start_date)} - {formatDate(assignment.end_date)}
@@ -251,23 +251,23 @@ function PunchItemCard({
   onComplete: (id: string) => void;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+    <div className="bg-card border border-border rounded-lg p-4">
       <div className="flex items-start justify-between mb-2">
         <div>
-          <span className="text-zinc-400 text-xs">{item.project_name} • {item.unit_number}</span>
-          <h4 className="text-white font-medium">{item.title}</h4>
+          <span className="text-muted-foreground text-xs">{item.project_name} • {item.unit_number}</span>
+          <h4 className="text-foreground font-medium">{item.title}</h4>
         </div>
         <PriorityBadge priority={item.priority} />
       </div>
       
-      <p className="text-zinc-400 text-sm mb-3">{item.location}</p>
+      <p className="text-muted-foreground text-sm mb-3">{item.location}</p>
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <StatusBadge status={item.status} />
           {item.due_date && (
             <span className={`text-xs flex items-center gap-1 ${
-              new Date(item.due_date) < new Date() ? 'text-red-400' : 'text-zinc-400'
+              new Date(item.due_date) < new Date() ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
             }`}>
               <Clock className="w-3 h-3" />
               Due {formatDate(item.due_date)}
@@ -278,7 +278,7 @@ function PunchItemCard({
         {item.status !== 'completed' && item.status !== 'verified' && (
           <button
             onClick={() => onComplete(item.id)}
-            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-500 flex items-center gap-1"
+            className="px-3 py-1 bg-green-600 text-foreground rounded text-xs hover:bg-green-500 flex items-center gap-1"
           >
             <CheckCircle className="w-3 h-3" />
             Complete
@@ -465,7 +465,7 @@ export default function ContractorPortalPage() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500" />
       </div>
     );
@@ -473,8 +473,8 @@ export default function ContractorPortalPage() {
   
   if (!data) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-400">Failed to load contractor data</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Failed to load contractor data</p>
       </div>
     );
   }
@@ -482,27 +482,27 @@ export default function ContractorPortalPage() {
   const { contractor, stats, assignments, punchItems, recentActivity } = data;
   
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-zinc-900 border-b border-zinc-800">
+      <header className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
-              <HardHat className="w-6 h-6 text-white" />
+              <HardHat className="w-6 h-6 text-foreground" />
             </div>
             <div>
-              <h1 className="text-white font-bold">Contractor Portal</h1>
-              <p className="text-zinc-400 text-sm">{contractor.business_name}</p>
+              <h1 className="text-foreground font-bold">Contractor Portal</h1>
+              <p className="text-muted-foreground text-sm">{contractor.business_name}</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg">
+            <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">
               <MessageSquare className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2 text-sm">
-              <User className="w-4 h-4 text-zinc-400" />
-              <span className="text-white">{contractor.contact_name}</span>
+              <User className="w-4 h-4 text-muted-foreground" />
+              <span className="text-foreground">{contractor.contact_name}</span>
             </div>
           </div>
         </div>
@@ -550,7 +550,7 @@ export default function ContractorPortalPage() {
         </div>
         
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-zinc-800">
+        <div className="flex gap-2 border-b border-border">
           {[
             { key: 'overview', label: 'Overview', icon: TrendingUp },
             { key: 'assignments', label: 'Assignments', icon: Briefcase },
@@ -562,7 +562,7 @@ export default function ContractorPortalPage() {
               className={`px-4 py-2 flex items-center gap-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 activeTab === key
                   ? 'border-amber-500 text-amber-500'
-                  : 'border-transparent text-zinc-400 hover:text-white'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -576,7 +576,7 @@ export default function ContractorPortalPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Active Assignments */}
             <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-white font-bold flex items-center gap-2">
+              <h2 className="text-foreground font-bold flex items-center gap-2">
                 <Hammer className="w-5 h-5" />
                 Active Assignments
               </h2>
@@ -591,12 +591,12 @@ export default function ContractorPortalPage() {
             
             {/* Recent Activity */}
             <div className="space-y-4">
-              <h2 className="text-white font-bold">Recent Activity</h2>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg divide-y divide-zinc-800">
+              <h2 className="text-foreground font-bold">Recent Activity</h2>
+              <div className="bg-card border border-border rounded-lg divide-y divide-border">
                 {recentActivity.map((activity, index) => (
                   <div key={index} className="p-4">
-                    <p className="text-white text-sm">{activity.description}</p>
-                    <div className="flex items-center justify-between mt-2 text-xs text-zinc-400">
+                    <p className="text-foreground text-sm">{activity.description}</p>
+                    <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                       <span>{activity.project_name}</span>
                       <span>{formatDate(activity.date)}</span>
                     </div>
@@ -605,28 +605,28 @@ export default function ContractorPortalPage() {
               </div>
               
               {/* Quick Actions */}
-              <h2 className="text-white font-bold pt-4">Quick Actions</h2>
+              <h2 className="text-foreground font-bold pt-4">Quick Actions</h2>
               <div className="space-y-2">
-                <button className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-left hover:border-amber-500/50 transition-colors flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-white">
+                <button className="w-full px-4 py-3 bg-card border border-border rounded-lg text-left hover:border-amber-500/50 transition-colors flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-foreground">
                     <Upload className="w-4 h-4" />
                     Submit Invoice
                   </span>
-                  <ChevronRight className="w-4 h-4 text-zinc-400" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
-                <button className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-left hover:border-amber-500/50 transition-colors flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-white">
+                <button className="w-full px-4 py-3 bg-card border border-border rounded-lg text-left hover:border-amber-500/50 transition-colors flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-foreground">
                     <TrendingUp className="w-4 h-4" />
                     Update Progress
                   </span>
-                  <ChevronRight className="w-4 h-4 text-zinc-400" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
-                <button className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-left hover:border-amber-500/50 transition-colors flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-white">
+                <button className="w-full px-4 py-3 bg-card border border-border rounded-lg text-left hover:border-amber-500/50 transition-colors flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-foreground">
                     <Image className="w-4 h-4" />
                     Upload Photos
                   </span>
-                  <ChevronRight className="w-4 h-4 text-zinc-400" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             </div>
@@ -646,12 +646,12 @@ export default function ContractorPortalPage() {
         {activeTab === 'punch-list' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-bold">Assigned Punch Items</h2>
+              <h2 className="text-foreground font-bold">Assigned Punch Items</h2>
               <div className="flex gap-2">
                 {['all', 'open', 'in_progress', 'completed'].map(filter => (
                   <button
                     key={filter}
-                    className="px-3 py-1 rounded-full text-sm bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    className="px-3 py-1 rounded-full text-sm bg-muted text-muted-foreground hover:bg-zinc-700"
                   >
                     {filter.replace('_', ' ').charAt(0).toUpperCase() + filter.slice(1).replace('_', ' ')}
                   </button>

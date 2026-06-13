@@ -106,7 +106,7 @@ export default function DripCampaignsPage() {
             variant="ghost"
             size="sm"
             onClick={() => setSelectedCampaignId(null)}
-            className="text-zinc-400 hover:text-zinc-200"
+            className="text-muted-foreground hover:text-zinc-200"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
@@ -114,7 +114,7 @@ export default function DripCampaignsPage() {
           <div className="flex-1">
             <h1 className="text-xl font-bold text-zinc-100 font-mono">{selectedCampaign.name}</h1>
             {selectedCampaign.description && (
-              <p className="text-sm text-zinc-500 mt-1">{selectedCampaign.description}</p>
+              <p className="text-sm text-muted-foreground mt-1">{selectedCampaign.description}</p>
             )}
           </div>
           <Badge variant={selectedCampaign.is_active ? 'default' : 'secondary'}>
@@ -136,29 +136,29 @@ export default function DripCampaignsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-3">
               <Mail className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs text-zinc-500 uppercase">Steps</p>
+                <p className="text-xs text-muted-foreground uppercase">Steps</p>
                 <p className="text-lg font-bold text-zinc-100">{selectedCampaign.steps?.length || 0}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-3">
               <Users className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-xs text-zinc-500 uppercase">Enrolled</p>
+                <p className="text-xs text-muted-foreground uppercase">Enrolled</p>
                 <p className="text-lg font-bold text-zinc-100">{selectedCampaign.enrollment_count}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-3">
               <Clock className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-xs text-zinc-500 uppercase">Trigger</p>
+                <p className="text-xs text-muted-foreground uppercase">Trigger</p>
                 <p className="text-lg font-bold text-zinc-100 capitalize">{selectedCampaign.trigger_type}</p>
               </div>
             </CardContent>
@@ -166,9 +166,9 @@ export default function DripCampaignsPage() {
         </div>
 
         {/* Email Sequence Timeline */}
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-mono text-zinc-300">Email Sequence</CardTitle>
+            <CardTitle className="text-sm font-mono text-muted-foreground">Email Sequence</CardTitle>
             <Button size="sm" onClick={() => setShowStepDialog(true)}>
               <Plus className="h-3 w-3 mr-1" /> Add Step
             </Button>
@@ -177,7 +177,7 @@ export default function DripCampaignsPage() {
             {selectedCampaign.steps && selectedCampaign.steps.length > 0 ? (
               <div className="space-y-3">
                 {selectedCampaign.steps.map((step, idx) => (
-                  <div key={step.id} className="flex items-start gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                  <div key={step.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
                     <div className="flex flex-col items-center">
                       <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 text-xs font-bold">
                         {idx + 1}
@@ -193,12 +193,12 @@ export default function DripCampaignsPage() {
                           Day {step.delay_days}
                         </Badge>
                       </div>
-                      <p className="text-xs text-zinc-500 line-clamp-2">{step.body}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{step.body}</p>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-zinc-500 hover:text-red-400"
+                      className="text-muted-foreground hover:text-red-400"
                       onClick={() => deleteStepMutation.mutate({ campaignId: selectedCampaignId, stepId: step.id })}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -207,7 +207,7 @@ export default function DripCampaignsPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-zinc-500">
+              <div className="text-center py-8 text-muted-foreground">
                 <Send className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No email steps yet. Add your first step to build the sequence.</p>
               </div>
@@ -217,17 +217,17 @@ export default function DripCampaignsPage() {
 
         {/* Enrollments */}
         {enrollments && enrollments.length > 0 && (
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-sm font-mono text-zinc-300">Enrolled Contacts</CardTitle>
+              <CardTitle className="text-sm font-mono text-muted-foreground">Enrolled Contacts</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {enrollments.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between p-2 bg-zinc-800/30 rounded">
+                  <div key={e.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
                     <div>
                       <span className="text-sm text-zinc-200">{e.first_name} {e.last_name}</span>
-                      {e.email && <span className="text-xs text-zinc-500 ml-2">{e.email}</span>}
+                      {e.email && <span className="text-xs text-muted-foreground ml-2">{e.email}</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-[10px]">Step {e.current_step}</Badge>
@@ -244,41 +244,41 @@ export default function DripCampaignsPage() {
 
         {/* Add Step Dialog */}
         <Dialog open={showStepDialog} onOpenChange={setShowStepDialog}>
-          <DialogContent className="bg-zinc-900 border-zinc-700">
+          <DialogContent className="bg-card border-border">
             <DialogHeader>
               <DialogTitle className="text-zinc-100">Add Email Step</DialogTitle>
-              <DialogDescription className="text-zinc-400">
+              <DialogDescription className="text-muted-foreground">
                 Add a new email to the drip sequence
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label className="text-zinc-300">Delay (days after previous)</Label>
+                <Label className="text-muted-foreground">Delay (days after previous)</Label>
                 <Input
                   type="number"
                   min={0}
                   value={newStep.delay_days}
                   onChange={(e) => setNewStep(s => ({ ...s, delay_days: parseInt(e.target.value) || 1 }))}
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
               <div>
-                <Label className="text-zinc-300">Subject Line</Label>
+                <Label className="text-muted-foreground">Subject Line</Label>
                 <Input
                   value={newStep.subject}
                   onChange={(e) => setNewStep(s => ({ ...s, subject: e.target.value }))}
                   placeholder="e.g., Welcome to our property listings"
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
               <div>
-                <Label className="text-zinc-300">Email Body</Label>
+                <Label className="text-muted-foreground">Email Body</Label>
                 <Textarea
                   value={newStep.body}
                   onChange={(e) => setNewStep(s => ({ ...s, body: e.target.value }))}
                   placeholder="Write your email content..."
                   rows={6}
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function DripCampaignsPage() {
             <Mail className="h-5 w-5 text-amber-500" />
             Drip Campaigns
           </h1>
-          <p className="text-sm text-zinc-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Automated email sequences to nurture leads and contacts
           </p>
         </div>
@@ -317,15 +317,15 @@ export default function DripCampaignsPage() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-zinc-800/50 rounded-lg animate-pulse" />
+            <div key={i} className="h-20 bg-muted/50 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : !campaigns || campaigns.length === 0 ? (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Mail className="h-12 w-12 text-zinc-600 mb-3" />
-            <h3 className="text-lg font-medium text-zinc-300 mb-1">No campaigns yet</h3>
-            <p className="text-sm text-zinc-500 mb-4">Create your first drip campaign to start nurturing leads automatically.</p>
+            <Mail className="h-12 w-12 text-muted-foreground mb-3" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-1">No campaigns yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">Create your first drip campaign to start nurturing leads automatically.</p>
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Create Campaign
@@ -337,12 +337,12 @@ export default function DripCampaignsPage() {
           {campaigns.map((campaign) => (
             <Card
               key={campaign.id}
-              className="bg-zinc-900 border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer"
+              className="bg-card border-border hover:border-zinc-600 transition-colors cursor-pointer"
               onClick={() => setSelectedCampaignId(campaign.id)}
             >
               <CardContent className="p-4 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  campaign.is_active ? 'bg-green-500/20 text-green-400' : 'bg-zinc-800 text-zinc-500'
+                  campaign.is_active ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-muted text-muted-foreground'
                 }`}>
                   <Mail className="h-5 w-5" />
                 </div>
@@ -354,10 +354,10 @@ export default function DripCampaignsPage() {
                     </Badge>
                   </div>
                   {campaign.description && (
-                    <p className="text-xs text-zinc-500 truncate mt-0.5">{campaign.description}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{campaign.description}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-zinc-500">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Mail className="h-3 w-3" />
                     {campaign.step_count ?? 0} steps
@@ -375,7 +375,7 @@ export default function DripCampaignsPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-zinc-500 hover:text-amber-400"
+                    className="text-muted-foreground hover:text-amber-400"
                     onClick={(e) => { e.stopPropagation(); handleToggleActive(campaign); }}
                     disabled={updateMutation.isPending}
                   >
@@ -384,12 +384,12 @@ export default function DripCampaignsPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-zinc-500 hover:text-red-400"
+                    className="text-muted-foreground hover:text-red-400"
                     onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(campaign.id); }}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
-                  <ChevronRight className="h-4 w-4 text-zinc-600" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardContent>
             </Card>
@@ -399,40 +399,40 @@ export default function DripCampaignsPage() {
 
       {/* Create Campaign Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-700">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-zinc-100">Create Drip Campaign</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground">
               Set up an automated email sequence for lead nurturing
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-zinc-300">Campaign Name</Label>
+              <Label className="text-muted-foreground">Campaign Name</Label>
               <Input
                 value={newCampaign.name}
                 onChange={(e) => setNewCampaign(s => ({ ...s, name: e.target.value }))}
                 placeholder="e.g., New Lead Welcome Sequence"
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
               />
             </div>
             <div>
-              <Label className="text-zinc-300">Description</Label>
+              <Label className="text-muted-foreground">Description</Label>
               <Textarea
                 value={newCampaign.description}
                 onChange={(e) => setNewCampaign(s => ({ ...s, description: e.target.value }))}
                 placeholder="What is this campaign about?"
                 rows={3}
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
               />
             </div>
             <div>
-              <Label className="text-zinc-300">Trigger Type</Label>
+              <Label className="text-muted-foreground">Trigger Type</Label>
               <Select
                 value={newCampaign.trigger_type}
                 onValueChange={(v) => setNewCampaign(s => ({ ...s, trigger_type: v }))}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -455,10 +455,10 @@ export default function DripCampaignsPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!showDeleteDialog} onOpenChange={() => setShowDeleteDialog(null)}>
-        <DialogContent className="bg-zinc-900 border-zinc-700">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-zinc-100">Delete Campaign</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete this campaign? This action cannot be undone.
               All enrolled contacts will be removed from the sequence.
             </DialogDescription>

@@ -12,17 +12,17 @@ const requests = [
 ];
 
 const priorityColors: Record<string, { dot: string; text: string }> = {
-    urgent: { dot: 'bg-red-500', text: 'text-red-400' },
-    high: { dot: 'bg-amber-500', text: 'text-amber-400' },
-    medium: { dot: 'bg-blue-500', text: 'text-blue-400' },
-    low: { dot: 'bg-zinc-500', text: 'text-zinc-400' },
+    urgent: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+    high: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+    medium: { dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
+    low: { dot: 'bg-zinc-500', text: 'text-muted-foreground' },
 };
 
 const statusLabels: Record<string, { label: string; color: string }> = {
-    assigned: { label: 'Assigned', color: 'text-amber-400 bg-amber-500/10' },
-    'in-progress': { label: 'In Progress', color: 'text-blue-400 bg-blue-500/10' },
-    scheduled: { label: 'Scheduled', color: 'text-zinc-400 bg-zinc-500/10' },
-    dispatched: { label: 'Dispatched', color: 'text-emerald-400 bg-emerald-500/10' },
+    assigned: { label: 'Assigned', color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10' },
+    'in-progress': { label: 'In Progress', color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10' },
+    scheduled: { label: 'Scheduled', color: 'text-muted-foreground bg-zinc-500/10' },
+    dispatched: { label: 'Dispatched', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' },
 };
 
 export default function MaintenanceTrackerVisual() {
@@ -36,22 +36,22 @@ export default function MaintenanceTrackerVisual() {
     }, []);
 
     return (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="bg-background border border-border rounded-xl overflow-hidden">
             {/* Header */}
-            <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+            <div className="px-5 py-3 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-xs font-mono text-zinc-400">Maintenance Queue</span>
+                    <span className="text-xs font-mono text-muted-foreground">Maintenance Queue</span>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-600">
-                    <span className="text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5">Illustrative</span>
-                    <span className="text-red-400">2 urgent</span>
+                <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+                    <span className="text-muted-foreground border border-border rounded px-1.5 py-0.5">Illustrative</span>
+                    <span className="text-red-600 dark:text-red-400">2 urgent</span>
                     <span>{requests.length} open</span>
                 </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-3 px-5 py-3 border-b border-zinc-800">
+            <div className="grid grid-cols-4 gap-3 px-5 py-3 border-b border-border">
                 {[
                     { label: 'Avg Response', value: '2.4h' },
                     { label: 'Resolved Today', value: '7' },
@@ -59,14 +59,14 @@ export default function MaintenanceTrackerVisual() {
                     { label: 'Satisfaction', value: '4.6★' },
                 ].map((s) => (
                     <div key={s.label} className="text-center">
-                        <div className="text-sm font-bold text-white">{s.value}</div>
-                        <div className="text-[9px] text-zinc-500 uppercase tracking-wider">{s.label}</div>
+                        <div className="text-sm font-bold text-foreground">{s.value}</div>
+                        <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
                     </div>
                 ))}
             </div>
 
             {/* Requests */}
-            <div className="divide-y divide-zinc-800/50">
+            <div className="divide-y divide-border/50">
                 {requests.map((req, i) => {
                     const pc = priorityColors[req.priority];
                     const sc = statusLabels[req.status];
@@ -79,14 +79,14 @@ export default function MaintenanceTrackerVisual() {
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
                                     <div className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} />
-                                    <span className="text-xs font-mono text-zinc-500">{req.id}</span>
-                                    <span className="text-sm font-medium text-white">{req.issue}</span>
+                                    <span className="text-xs font-mono text-muted-foreground">{req.id}</span>
+                                    <span className="text-sm font-medium text-foreground">{req.issue}</span>
                                 </div>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${sc.color}`}>
                                     {sc.label}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-3 text-[10px] text-zinc-500 pl-4">
+                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground pl-4">
                                 <span>{req.tenant} · Unit {req.unit}</span>
                                 <span className={pc.text}>{req.priority}</span>
                                 <span>{req.age} ago</span>
@@ -97,7 +97,7 @@ export default function MaintenanceTrackerVisual() {
             </div>
 
             {/* Activity Feed */}
-            <div className="px-5 py-3 border-t border-zinc-800">
+            <div className="px-5 py-3 border-t border-border">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={highlightIdx}
@@ -105,9 +105,9 @@ export default function MaintenanceTrackerVisual() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="text-[11px] text-zinc-500 font-mono"
+                        className="text-[11px] text-muted-foreground font-mono"
                     >
-                        <span className="text-amber-400">▸</span>{' '}
+                        <span className="text-amber-600 dark:text-amber-400">▸</span>{' '}
                         Vendor dispatched to Unit {requests[highlightIdx].unit} for &quot;{requests[highlightIdx].issue}&quot;
                     </motion.div>
                 </AnimatePresence>

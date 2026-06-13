@@ -59,27 +59,27 @@ import {
 // =====================================================
 
 const statusConfig: Record<SubmittalStatus, { bg: string; text: string; label: string; icon: React.ElementType }> = {
-  draft: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'Draft', icon: FileText },
-  pending_review: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'Pending Review', icon: Clock },
-  under_review: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'Under Review', icon: FileCheck2 },
-  approved: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Approved', icon: CheckCircle2 },
-  approved_as_noted: { bg: 'bg-teal-900/50', text: 'text-teal-400', label: 'Approved as Noted', icon: CheckCircle2 },
-  revise_resubmit: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'Revise & Resubmit', icon: RotateCcw },
-  rejected: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Rejected', icon: XCircle },
-  void: { bg: 'bg-zinc-800/50', text: 'text-zinc-500', label: 'Void', icon: XCircle },
+  draft: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground', label: 'Draft', icon: FileText },
+  pending_review: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400', label: 'Pending Review', icon: Clock },
+  under_review: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'Under Review', icon: FileCheck2 },
+  approved: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'Approved', icon: CheckCircle2 },
+  approved_as_noted: { bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-600 dark:text-teal-400', label: 'Approved as Noted', icon: CheckCircle2 },
+  revise_resubmit: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-600 dark:text-orange-400', label: 'Revise & Resubmit', icon: RotateCcw },
+  rejected: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'Rejected', icon: XCircle },
+  void: { bg: 'bg-muted/50', text: 'text-muted-foreground', label: 'Void', icon: XCircle },
 }
 
 const typeConfig: Record<SubmittalType, { label: string; color: string }> = {
-  shop_drawing: { label: 'Shop Drawing', color: 'text-blue-400' },
-  product_data: { label: 'Product Data', color: 'text-purple-400' },
-  sample: { label: 'Sample', color: 'text-amber-400' },
-  mock_up: { label: 'Mock-up', color: 'text-orange-400' },
-  design_data: { label: 'Design Data', color: 'text-cyan-400' },
-  test_report: { label: 'Test Report', color: 'text-green-400' },
-  certificate: { label: 'Certificate', color: 'text-emerald-400' },
-  warranty: { label: 'Warranty', color: 'text-teal-400' },
-  operation_manual: { label: 'O&M Manual', color: 'text-indigo-400' },
-  other: { label: 'Other', color: 'text-zinc-400' },
+  shop_drawing: { label: 'Shop Drawing', color: 'text-blue-600 dark:text-blue-400' },
+  product_data: { label: 'Product Data', color: 'text-purple-600 dark:text-purple-400' },
+  sample: { label: 'Sample', color: 'text-amber-600 dark:text-amber-400' },
+  mock_up: { label: 'Mock-up', color: 'text-orange-600 dark:text-orange-400' },
+  design_data: { label: 'Design Data', color: 'text-cyan-600 dark:text-cyan-400' },
+  test_report: { label: 'Test Report', color: 'text-green-600 dark:text-green-400' },
+  certificate: { label: 'Certificate', color: 'text-emerald-600 dark:text-emerald-400' },
+  warranty: { label: 'Warranty', color: 'text-teal-600 dark:text-teal-400' },
+  operation_manual: { label: 'O&M Manual', color: 'text-indigo-600 dark:text-indigo-400' },
+  other: { label: 'Other', color: 'text-muted-foreground' },
 }
 
 // =====================================================
@@ -211,14 +211,14 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
       </div>
       
       {/* Filters */}
-      <div className="flex items-center gap-4 pb-4 border-b border-zinc-800">
+      <div className="flex items-center gap-4 pb-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-zinc-500" />
-          <span className="font-mono text-xs text-zinc-500">Filters:</span>
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="font-mono text-xs text-muted-foreground">Filters:</span>
         </div>
         
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SubmittalStatus | 'all')}>
-          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-zinc-900 border-zinc-700">
+          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-card border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -230,7 +230,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
         </Select>
         
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as SubmittalType | 'all')}>
-          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-zinc-900 border-zinc-700">
+          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-card border-border">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -244,18 +244,18 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
       
       {/* Error Message */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-4 text-center">
-          <AlertTriangle className="h-6 w-6 text-red-400 mx-auto mb-2" />
-          <p className="font-mono text-sm text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-4 text-center">
+          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+          <p className="font-mono text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
       
       {/* Submittals List */}
       {submittals.length === 0 ? (
-        <div className="text-center py-12 border border-zinc-800 bg-zinc-900/50">
+        <div className="text-center py-12 border border-border bg-card/50">
           <FileCheck2 className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-          <h3 className="font-mono text-sm text-white mb-2">No Submittals Found</h3>
-          <p className="font-mono text-xs text-zinc-500">
+          <h3 className="font-mono text-sm text-foreground mb-2">No Submittals Found</h3>
+          <p className="font-mono text-xs text-muted-foreground">
             Submittals from the project manager will appear here
           </p>
         </div>
@@ -272,7 +272,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
             return (
               <div 
                 key={submittal.id}
-                className="border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors"
+                className="border border-border bg-card/50 hover:border-border transition-colors"
               >
                 {/* Header */}
                 <div 
@@ -295,20 +295,20 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                         {type.label}
                       </span>
                       {submittal.revision_number > 1 && (
-                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-700/50 text-zinc-400">
+                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-700/50 text-muted-foreground">
                           Rev {submittal.revision_number}
                         </Badge>
                       )}
                       {submittal.is_overdue && (
-                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-red-900/50 text-red-400">
+                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400">
                           Overdue
                         </Badge>
                       )}
                     </div>
-                    <h4 className="font-mono text-sm text-white line-clamp-1">
+                    <h4 className="font-mono text-sm text-foreground line-clamp-1">
                       {submittal.title}
                     </h4>
-                    <p className="font-mono text-xs text-zinc-500 mt-1">
+                    <p className="font-mono text-xs text-muted-foreground mt-1">
                       From: {submittal.submitted_by_name || 'Project Manager'} • 
                       {submittal.spec_section && ` Spec: ${submittal.spec_section} •`}
                       {submittal.due_date && ` Due: ${new Date(submittal.due_date).toLocaleDateString('en-GB')}`}
@@ -319,7 +319,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                     {canReview && (
                       <Button
                         size="sm"
-                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground"
                         onClick={(e) => {
                           e.stopPropagation()
                           openReviewDialog(submittal)
@@ -330,23 +330,23 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                       </Button>
                     )}
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-zinc-500" />
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
                 </div>
                 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-800 p-4 space-y-4">
+                  <div className="border-t border-border p-4 space-y-4">
                     {/* Description */}
                     {submittal.description && (
                       <div>
-                        <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                        <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                           Description
                         </h5>
-                        <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                        <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                           {submittal.description}
                         </p>
                       </div>
@@ -355,7 +355,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                     {/* Attachments */}
                     {submittal.attachments && submittal.attachments.length > 0 && (
                       <div>
-                        <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                        <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                           Attachments
                         </h5>
                         <div className="flex flex-wrap gap-2">
@@ -365,10 +365,10 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                               href={att.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors"
+                              className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border hover:border-amber-500/50 transition-colors"
                             >
-                              <Paperclip className="h-3 w-3 text-zinc-500" />
-                              <span className="font-mono text-xs text-zinc-300">{att.filename}</span>
+                              <Paperclip className="h-3 w-3 text-muted-foreground" />
+                              <span className="font-mono text-xs text-muted-foreground">{att.filename}</span>
                               <Download className="h-3 w-3 text-amber-500" />
                             </a>
                           ))}
@@ -381,26 +381,26 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                       <div className={cn(
                         "p-4 border",
                         submittal.status === 'approved' || submittal.status === 'approved_as_noted'
-                          ? "bg-green-900/20 border-green-800/50"
+                          ? "bg-green-100 dark:bg-green-900/20 border-green-800/50"
                           : submittal.status === 'rejected'
-                          ? "bg-red-900/20 border-red-800/50"
-                          : "bg-orange-900/20 border-orange-800/50"
+                          ? "bg-red-100 dark:bg-red-900/20 border-red-800/50"
+                          : "bg-orange-100 dark:bg-orange-900/20 border-orange-800/50"
                       )}>
                         <h5 className={cn(
                           "font-mono text-[10px] uppercase tracking-wider mb-2",
                           submittal.status === 'approved' || submittal.status === 'approved_as_noted'
-                            ? "text-green-400"
+                            ? "text-green-600 dark:text-green-400"
                             : submittal.status === 'rejected'
-                            ? "text-red-400"
-                            : "text-orange-400"
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-orange-600 dark:text-orange-400"
                         )}>
                           Review Comments from {submittal.reviewer_name || 'Reviewer'}
                         </h5>
-                        <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                        <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                           {submittal.review_comments}
                         </p>
                         {submittal.reviewed_at && (
-                          <p className="font-mono text-[10px] text-zinc-500 mt-2">
+                          <p className="font-mono text-[10px] text-muted-foreground mt-2">
                             Reviewed on {new Date(submittal.reviewed_at).toLocaleDateString('en-GB')}
                           </p>
                         )}
@@ -416,35 +416,35 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
       
       {/* Review Dialog */}
       <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-2xl">
+        <DialogContent className="bg-card border-border max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-mono text-white">
+            <DialogTitle className="font-mono text-foreground">
               Review Submittal
             </DialogTitle>
-            <DialogDescription className="font-mono text-zinc-400">
+            <DialogDescription className="font-mono text-muted-foreground">
               {reviewSubmittal?.submittal_number}: {reviewSubmittal?.title}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             {/* Submittal Info */}
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4">
+            <div className="bg-muted/50 border border-border p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-500">Type</span>
-                  <p className="font-mono text-sm text-white">
+                  <span className="font-mono text-[10px] text-muted-foreground">Type</span>
+                  <p className="font-mono text-sm text-foreground">
                     {reviewSubmittal?.type && typeConfig[reviewSubmittal.type]?.label}
                   </p>
                 </div>
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-500">Spec Section</span>
-                  <p className="font-mono text-sm text-white">
+                  <span className="font-mono text-[10px] text-muted-foreground">Spec Section</span>
+                  <p className="font-mono text-sm text-foreground">
                     {reviewSubmittal?.spec_section || 'N/A'}
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <span className="font-mono text-[10px] text-zinc-500">Description</span>
-                  <p className="font-mono text-sm text-zinc-300">
+                  <span className="font-mono text-[10px] text-muted-foreground">Description</span>
+                  <p className="font-mono text-sm text-muted-foreground">
                     {reviewSubmittal?.description || 'No description provided'}
                   </p>
                 </div>
@@ -453,15 +453,15 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
             
             {/* Decision */}
             <div>
-              <label className="font-mono text-xs text-zinc-400 mb-2 block">
+              <label className="font-mono text-xs text-muted-foreground mb-2 block">
                 Decision *
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: 'approved', label: 'Approved', icon: CheckCircle2, color: 'border-green-500 text-green-400' },
-                  { value: 'approved_as_noted', label: 'Approved as Noted', icon: CheckCircle2, color: 'border-teal-500 text-teal-400' },
-                  { value: 'revise_resubmit', label: 'Revise & Resubmit', icon: RotateCcw, color: 'border-orange-500 text-orange-400' },
-                  { value: 'rejected', label: 'Rejected', icon: XCircle, color: 'border-red-500 text-red-400' },
+                  { value: 'approved', label: 'Approved', icon: CheckCircle2, color: 'border-green-500 text-green-600 dark:text-green-400' },
+                  { value: 'approved_as_noted', label: 'Approved as Noted', icon: CheckCircle2, color: 'border-teal-500 text-teal-600 dark:text-teal-400' },
+                  { value: 'revise_resubmit', label: 'Revise & Resubmit', icon: RotateCcw, color: 'border-orange-500 text-orange-600 dark:text-orange-400' },
+                  { value: 'rejected', label: 'Rejected', icon: XCircle, color: 'border-red-500 text-red-600 dark:text-red-400' },
                 ].map((option) => {
                   const Icon = option.icon
                   return (
@@ -472,7 +472,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                         "flex items-center gap-2 p-3 border-2 transition-all",
                         reviewDecision === option.value
                           ? option.color
-                          : "border-zinc-700 text-zinc-400 hover:border-zinc-600"
+                          : "border-border text-muted-foreground hover:border-zinc-600"
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -485,7 +485,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
             
             {/* Comments */}
             <div>
-              <label className="font-mono text-xs text-zinc-400 mb-2 block">
+              <label className="font-mono text-xs text-muted-foreground mb-2 block">
                 Review Comments {reviewDecision !== 'approved' ? '*' : '(Optional)'}
               </label>
               <Textarea
@@ -498,7 +498,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                     ? "Explain the reason for rejection..."
                     : "Add any notes or comments..."
                 }
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm min-h-[100px]"
+                className="bg-muted border-border font-mono text-sm min-h-[100px]"
               />
             </div>
           </div>
@@ -525,7 +525,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                   : reviewDecision === 'rejected'
                   ? "bg-red-600 hover:bg-red-700"
                   : "bg-orange-600 hover:bg-orange-700",
-                "text-white"
+                "text-foreground"
               )}
             >
               {isSubmitting ? (
@@ -561,16 +561,16 @@ function StatCard({
   color?: 'zinc' | 'blue' | 'amber' | 'red' | 'green'
 }) {
   const colorClasses = {
-    zinc: 'text-white',
-    blue: 'text-blue-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-    green: 'text-green-400',
+    zinc: 'text-foreground',
+    blue: 'text-blue-600 dark:text-blue-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    red: 'text-red-600 dark:text-red-400',
+    green: 'text-green-600 dark:text-green-400',
   }
   
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
+    <div className="border border-border bg-card/50 p-4">
+      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
         {label}
       </div>
       <div className={cn("font-mono text-2xl", colorClasses[color])}>

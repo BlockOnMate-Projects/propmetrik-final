@@ -90,21 +90,21 @@ interface ConstructionCostPanelProps {
 function TrendIndicator({ change }: { change: number }) {
   if (change > 0) {
     return (
-      <span className="flex items-center gap-1 text-red-400 font-mono text-[10px]">
+      <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-mono text-[10px]">
         <TrendingUp className="w-3 h-3" />
         +{change.toFixed(1)}%
       </span>
     );
   } else if (change < 0) {
     return (
-      <span className="flex items-center gap-1 text-green-400 font-mono text-[10px]">
+      <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-mono text-[10px]">
         <TrendingDown className="w-3 h-3" />
         {change.toFixed(1)}%
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-1 text-zinc-400 font-mono text-[10px]">
+    <span className="flex items-center gap-1 text-muted-foreground font-mono text-[10px]">
       <Minus className="w-3 h-3" />
       0.0%
     </span>
@@ -135,19 +135,19 @@ function CostTierCard({
   return (
     <div className={cn(
       'p-3 border transition-all',
-      isSelected ? tierColors[tier] : 'border-zinc-800 bg-zinc-800/30',
+      isSelected ? tierColors[tier] : 'border-border bg-muted/30',
       isSelected && 'ring-1 ring-offset-1 ring-offset-black'
     )}>
-      <div className="font-mono text-[10px] text-zinc-500 uppercase mb-1">
+      <div className="font-mono text-[10px] text-muted-foreground uppercase mb-1">
         {tier}
       </div>
-      <div className="font-mono text-lg text-white font-bold">
+      <div className="font-mono text-lg text-foreground font-bold">
         ₵{adjustedCost.toLocaleString()}
       </div>
-      <div className="font-mono text-[9px] text-zinc-500">
+      <div className="font-mono text-[9px] text-muted-foreground">
         per sqm (adjusted)
       </div>
-      <div className="font-mono text-[9px] text-zinc-600 mt-1">
+      <div className="font-mono text-[9px] text-muted-foreground mt-1">
         Base: ₵{cost.toLocaleString()}/sqm
       </div>
     </div>
@@ -164,10 +164,10 @@ function MaterialIndexRow({
   change: number;
 }) {
   return (
-    <div className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0">
-      <span className="font-mono text-[10px] text-zinc-400 capitalize">{name}</span>
+    <div className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
+      <span className="font-mono text-[10px] text-muted-foreground capitalize">{name}</span>
       <div className="flex items-center gap-3">
-        <span className="font-mono text-xs text-white">{index.toFixed(1)}</span>
+        <span className="font-mono text-xs text-foreground">{index.toFixed(1)}</span>
         <TrendIndicator change={change} />
       </div>
     </div>
@@ -342,7 +342,7 @@ export function ConstructionCostPanel({
       >
         <div className="flex items-center justify-center py-8">
           <RefreshCw className="w-5 h-5 text-amber-500 animate-spin" />
-          <span className="ml-2 font-mono text-xs text-zinc-500">Loading cost data from Data Hub...</span>
+          <span className="ml-2 font-mono text-xs text-muted-foreground">Loading cost data from Data Hub...</span>
         </div>
       </TerminalPanel>
     );
@@ -366,15 +366,15 @@ export function ConstructionCostPanel({
         <div className="flex flex-col items-center justify-center py-8 gap-4">
           <AlertTriangle className="w-8 h-8 text-red-500" />
           <div className="text-center">
-            <div className="font-mono text-xs text-red-400 mb-2">Failed to load construction costs</div>
-            <div className="font-mono text-[10px] text-zinc-500 max-w-md">{error}</div>
+            <div className="font-mono text-xs text-red-600 dark:text-red-400 mb-2">Failed to load construction costs</div>
+            <div className="font-mono text-[10px] text-muted-foreground max-w-md">{error}</div>
           </div>
           <button
             onClick={handleRetry}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-zinc-700 border border-border rounded transition-colors"
           >
             <RefreshCw className="w-3 h-3 text-amber-500" />
-            <span className="font-mono text-xs text-zinc-300">Retry</span>
+            <span className="font-mono text-xs text-muted-foreground">Retry</span>
           </button>
         </div>
       </TerminalPanel>
@@ -394,9 +394,9 @@ export function ConstructionCostPanel({
             className="p-1 hover:bg-zinc-700 rounded transition-colors"
           >
             {collapsed ? (
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             ) : (
-              <ChevronUp className="w-3 h-3 text-zinc-400" />
+              <ChevronUp className="w-3 h-3 text-muted-foreground" />
             )}
           </button>
         </div>
@@ -406,14 +406,14 @@ export function ConstructionCostPanel({
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">STANDARD:</span>
-              <span className="font-mono text-sm text-white">
+              <span className="font-mono text-[10px] text-muted-foreground">STANDARD:</span>
+              <span className="font-mono text-sm text-foreground">
                 ₵{Math.round((data?.base_costs.standard || 5500) * (data?.location_factor || 1)).toLocaleString()}/sqm
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">INDEX:</span>
-              <span className="font-mono text-sm text-white">{data?.construction_cost_index?.toFixed(1)}</span>
+              <span className="font-mono text-[10px] text-muted-foreground">INDEX:</span>
+              <span className="font-mono text-sm text-foreground">{data?.construction_cost_index?.toFixed(1)}</span>
               <TrendIndicator change={data?.index_change_yoy || 0} />
             </div>
           </div>
@@ -424,21 +424,21 @@ export function ConstructionCostPanel({
           <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30">
             <div>
               <div className="font-mono text-[10px] text-amber-500 uppercase">Construction Cost Index</div>
-              <div className="font-mono text-2xl text-white font-bold">
+              <div className="font-mono text-2xl text-foreground font-bold">
                 {data?.construction_cost_index?.toFixed(1)}
               </div>
-              <div className="font-mono text-[9px] text-zinc-500">
+              <div className="font-mono text-[9px] text-muted-foreground">
                 Base: {data?.index_base_year} = 100
               </div>
             </div>
             <div className="text-right">
               <TrendIndicator change={data?.index_change_yoy || 0} />
-              <div className="font-mono text-[9px] text-zinc-500 mt-1">Year-over-year</div>
+              <div className="font-mono text-[9px] text-muted-foreground mt-1">Year-over-year</div>
             </div>
           </div>
 
           {/* Base Costs by Quality Tier */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -458,17 +458,17 @@ export function ConstructionCostPanel({
               ))}
             </div>
 
-            <div className="mt-3 flex items-center gap-2 p-2 bg-zinc-800/30">
+            <div className="mt-3 flex items-center gap-2 p-2 bg-muted/30">
               <MapPin className="w-3 h-3 text-amber-500" />
-              <span className="font-mono text-[10px] text-zinc-400">
-                Location Factor: <span className="text-white font-bold">{data?.location_factor?.toFixed(2)}</span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                Location Factor: <span className="text-foreground font-bold">{data?.location_factor?.toFixed(2)}</span>
                 {' '}({data?.region_name} adjustment applied)
               </span>
             </div>
           </div>
 
           {/* Material Indices */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Layers className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -489,7 +489,7 @@ export function ConstructionCostPanel({
           </div>
 
           {/* Labor Costs */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Hammer className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -498,18 +498,18 @@ export function ConstructionCostPanel({
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-2 bg-zinc-800/30">
-                <div className="font-mono text-[10px] text-zinc-500">Skilled Labor</div>
-                <div className="font-mono text-lg text-white">₵{data?.labor_costs.skilled_daily}</div>
-                <div className="font-mono text-[9px] text-zinc-500">per day</div>
+              <div className="text-center p-2 bg-muted/30">
+                <div className="font-mono text-[10px] text-muted-foreground">Skilled Labor</div>
+                <div className="font-mono text-lg text-foreground">₵{data?.labor_costs.skilled_daily}</div>
+                <div className="font-mono text-[9px] text-muted-foreground">per day</div>
               </div>
-              <div className="text-center p-2 bg-zinc-800/30">
-                <div className="font-mono text-[10px] text-zinc-500">Unskilled Labor</div>
-                <div className="font-mono text-lg text-white">₵{data?.labor_costs.unskilled_daily}</div>
-                <div className="font-mono text-[9px] text-zinc-500">per day</div>
+              <div className="text-center p-2 bg-muted/30">
+                <div className="font-mono text-[10px] text-muted-foreground">Unskilled Labor</div>
+                <div className="font-mono text-lg text-foreground">₵{data?.labor_costs.unskilled_daily}</div>
+                <div className="font-mono text-[9px] text-muted-foreground">per day</div>
               </div>
-              <div className="text-center p-2 bg-zinc-800/30">
-                <div className="font-mono text-[10px] text-zinc-500">YoY Change</div>
+              <div className="text-center p-2 bg-muted/30">
+                <div className="font-mono text-[10px] text-muted-foreground">YoY Change</div>
                 <TrendIndicator change={data?.labor_costs.change_yoy || 0} />
               </div>
             </div>
@@ -520,7 +520,7 @@ export function ConstructionCostPanel({
             <div className="p-2 bg-yellow-500/10 border border-yellow-500/30">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-                <span className="font-mono text-[10px] text-yellow-400">
+                <span className="font-mono text-[10px] text-yellow-600 dark:text-yellow-400">
                   High construction cost inflation detected ({data?.index_change_yoy?.toFixed(1)}% YoY).
                   Consider applying an inflation adjustment to historical cost data.
                 </span>
@@ -529,11 +529,11 @@ export function ConstructionCostPanel({
           )}
 
           {/* Source Info */}
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
-            <span className="font-mono text-[9px] text-zinc-500">
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="font-mono text-[9px] text-muted-foreground">
               Source: {data?.source}
             </span>
-            <span className="font-mono text-[9px] text-zinc-500">
+            <span className="font-mono text-[9px] text-muted-foreground">
               Effective: {data ? formatDate(data.effective_date) : '—'}
             </span>
           </div>

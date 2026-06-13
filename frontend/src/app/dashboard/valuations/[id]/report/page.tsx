@@ -215,9 +215,9 @@ export default function ReportPage() {
   // Loading state
   if (pageState === 'loading') {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="font-mono text-sm text-zinc-400">Loading valuation report...</span>
+        <span className="font-mono text-sm text-muted-foreground">Loading valuation report...</span>
       </div>
     )
   }
@@ -225,10 +225,10 @@ export default function ReportPage() {
   // Generating state
   if (pageState === 'generating') {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="font-mono text-sm text-zinc-400">Generating report document...</span>
-        <span className="font-mono text-xs text-zinc-500">This may take a few moments</span>
+        <span className="font-mono text-sm text-muted-foreground">Generating report document...</span>
+        <span className="font-mono text-xs text-muted-foreground">This may take a few moments</span>
       </div>
     )
   }
@@ -236,25 +236,25 @@ export default function ReportPage() {
   // Error state
   if (pageState === 'error' || !report) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="max-w-2xl mx-auto mt-20">
-          <div className="border border-red-500/50 bg-red-900/10 p-6">
+          <div className="border border-red-500/50 bg-red-100 dark:bg-red-900/10 p-6">
             <div className="flex items-start gap-4">
-              <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
+              <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
               <div>
-                <h2 className="font-mono text-lg text-red-400 mb-2">Error Loading Report</h2>
-                <p className="font-mono text-sm text-zinc-400 mb-4">{error || 'Unknown error occurred'}</p>
+                <h2 className="font-mono text-lg text-red-600 dark:text-red-400 mb-2">Error Loading Report</h2>
+                <p className="font-mono text-sm text-muted-foreground mb-4">{error || 'Unknown error occurred'}</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-zinc-800 text-white font-mono text-xs hover:bg-zinc-700 transition-colors"
+                    className="px-4 py-2 bg-muted text-foreground font-mono text-xs hover:bg-zinc-700 transition-colors"
                   >
                     <RefreshCw className="w-3 h-3 inline mr-2" />
                     Retry
                   </button>
                   <Link
                     href={`/dashboard/valuations/${valuationId}`}
-                    className="px-4 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+                    className="px-4 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors"
                   >
                     Back to Valuation
                   </Link>
@@ -274,29 +274,29 @@ export default function ReportPage() {
   })
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}/reconciliation`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-amber-500" />
-              <h1 className="font-mono text-lg text-white">Valuation Report</h1>
+              <h1 className="font-mono text-lg text-foreground">Valuation Report</h1>
               <span className={`px-2 py-0.5 font-mono text-[10px] uppercase ${
-                report.status === 'draft' ? 'bg-zinc-700 text-zinc-300' :
-                report.status === 'approved' ? 'bg-green-900/50 text-green-400' :
-                'bg-amber-900/50 text-amber-400'
+                report.status === 'draft' ? 'bg-zinc-700 text-muted-foreground' :
+                report.status === 'approved' ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400' :
+                'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400'
               }`}>
                 {report.status}
               </span>
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               {valuation?.property?.address || 'Property Address'}
             </p>
           </div>
@@ -304,11 +304,11 @@ export default function ReportPage() {
 
         <div className="flex items-center gap-3">
           {/* Mode toggle */}
-          <div className="flex border border-zinc-700">
+          <div className="flex border border-border">
             <button
               onClick={() => setReadOnly(true)}
               className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${
-                readOnly ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+                readOnly ? 'bg-zinc-700 text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Eye className="w-3 h-3" />
@@ -317,7 +317,7 @@ export default function ReportPage() {
             <button
               onClick={() => setReadOnly(false)}
               className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${
-                !readOnly ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+                !readOnly ? 'bg-zinc-700 text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Edit3 className="w-3 h-3" />
@@ -329,7 +329,7 @@ export default function ReportPage() {
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
-            className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {regenerating ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -342,7 +342,7 @@ export default function ReportPage() {
           {/* Download */}
           <button
             onClick={handleDownload}
-            className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors"
           >
             <Download className="w-3 h-3" />
             Download
@@ -353,7 +353,7 @@ export default function ReportPage() {
             <button
               onClick={handleOpenApproval}
               disabled={preparingApproval}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs font-bold hover:bg-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-foreground font-mono text-xs font-bold hover:bg-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {preparingApproval ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -368,13 +368,13 @@ export default function ReportPage() {
 
       {/* Success banner */}
       {successMessage && (
-        <div className="mx-4 mt-4 p-3 border border-green-500/50 bg-green-900/10">
+        <div className="mx-4 mt-4 p-3 border border-green-500/50 bg-green-100 dark:bg-green-900/10">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-400" />
-            <span className="font-mono text-xs text-green-400">{successMessage}</span>
+            <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+            <span className="font-mono text-xs text-green-600 dark:text-green-400">{successMessage}</span>
             <button
               onClick={() => setSuccessMessage(null)}
-              className="ml-auto text-green-400 hover:text-green-300"
+              className="ml-auto text-green-600 dark:text-green-400 hover:text-green-300"
             >
               ×
             </button>
@@ -384,13 +384,13 @@ export default function ReportPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="mx-4 mt-4 p-3 border border-red-500/50 bg-red-900/10">
+        <div className="mx-4 mt-4 p-3 border border-red-500/50 bg-red-100 dark:bg-red-900/10">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-400" />
-            <span className="font-mono text-xs text-red-400">{error}</span>
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <span className="font-mono text-xs text-red-600 dark:text-red-400">{error}</span>
             <button
               onClick={() => setError(null)}
-              className="ml-auto text-red-400 hover:text-red-300"
+              className="ml-auto text-red-600 dark:text-red-400 hover:text-red-300"
             >
               ×
             </button>

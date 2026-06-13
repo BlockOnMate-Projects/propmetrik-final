@@ -129,7 +129,7 @@ export default function PricingPage() {
     };
 
     return (
-        <main className="min-h-screen bg-black text-white">
+        <main className="min-h-screen bg-background text-foreground">
             <div className="max-w-7xl mx-auto px-6 py-24">
                 {/* Hero */}
                 <motion.div
@@ -140,9 +140,9 @@ export default function PricingPage() {
                     <h1 className="text-5xl md:text-6xl font-bold mb-4 font-mono">
                         Simple, transparent <span className="text-amber-500">pricing</span>
                     </h1>
-                    <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-8">
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">
                         From independent agents to enterprise institutions — choose the plan that fits your scale.
-                        Start with a 14-day free trial on any plan.
+                        Get full access the moment you subscribe.
                     </p>
 
                     {/* Billing Toggle */}
@@ -151,8 +151,8 @@ export default function PricingPage() {
                             onClick={() => setBilling('monthly')}
                             className={`px-4 py-2 rounded-lg text-sm font-mono transition-colors ${
                                 billing === 'monthly'
-                                    ? 'bg-amber-500 text-white'
-                                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                    ? 'bg-amber-500 text-foreground'
+                                    : 'bg-muted text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             Monthly
@@ -161,12 +161,12 @@ export default function PricingPage() {
                             onClick={() => setBilling('annual')}
                             className={`px-4 py-2 rounded-lg text-sm font-mono transition-colors relative ${
                                 billing === 'annual'
-                                    ? 'bg-amber-500 text-white'
-                                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                    ? 'bg-amber-500 text-foreground'
+                                    : 'bg-muted text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             Annual
-                            <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            <span className="absolute -top-3 -right-3 bg-green-500 text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                 Save 17%
                             </span>
                         </button>
@@ -180,8 +180,8 @@ export default function PricingPage() {
                                 onClick={() => setSegment(s)}
                                 className={`px-3 py-1.5 rounded text-xs font-mono uppercase tracking-wider transition-colors ${
                                     segment === s
-                                        ? 'bg-zinc-700 text-white border border-zinc-600'
-                                        : 'text-zinc-500 hover:text-zinc-300'
+                                        ? 'bg-zinc-700 text-foreground border border-zinc-600'
+                                        : 'text-muted-foreground hover:text-muted-foreground'
                                 }`}
                             >
                                 {s === 'all' ? 'All Plans' : s === 'b2c' ? 'Individual' : 'Business'}
@@ -202,7 +202,7 @@ export default function PricingPage() {
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-mono transition-all ${
                                     isActive
                                         ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-                                        : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                                        : 'bg-card text-muted-foreground border border-border hover:border-border hover:text-muted-foreground'
                                 }`}
                             >
                                 <span>{meta.label}</span>
@@ -216,7 +216,7 @@ export default function PricingPage() {
                     key={category}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-center text-zinc-500 text-sm mb-10 max-w-xl mx-auto"
+                    className="text-center text-muted-foreground text-sm mb-10 max-w-xl mx-auto"
                 >
                     {CATEGORY_META[category].description}
                 </motion.p>
@@ -233,11 +233,11 @@ export default function PricingPage() {
                     >
                         {loading ? (
                             Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="rounded-2xl bg-zinc-900/50 border border-zinc-800 p-6 animate-pulse h-96" />
+                                <div key={i} className="rounded-2xl bg-card/50 border border-border p-6 animate-pulse h-96" />
                             ))
                         ) : error || filteredPlans.length === 0 ? (
                             <div className="col-span-3 text-center py-16">
-                                <p className="text-zinc-400 font-mono">Unable to load pricing. Please try again later.</p>
+                                <p className="text-muted-foreground font-mono">Unable to load pricing. Please try again later.</p>
                             </div>
                         ) : filteredPlans.map((plan, idx) => {
                             const price = getPrice(plan);
@@ -253,13 +253,13 @@ export default function PricingPage() {
                                     className={`relative rounded-2xl p-6 flex flex-col ${
                                         isHighlighted
                                             ? 'bg-gradient-to-b from-amber-500/10 to-zinc-900 border-2 border-amber-500/40 shadow-lg shadow-amber-500/5'
-                                            : 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700'
+                                            : 'bg-card border border-border hover:border-border'
                                     }`}
                                 >
                                     {/* Popular badge */}
                                     {isHighlighted && (
                                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                            <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full font-mono">
+                                            <span className="bg-amber-500 text-foreground text-xs font-bold px-3 py-1 rounded-full font-mono">
                                                 MOST POPULAR
                                             </span>
                                         </div>
@@ -269,37 +269,37 @@ export default function PricingPage() {
                                     <div className="flex items-center justify-between mb-4">
                                         <span className={`text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded ${
                                             plan.segment === 'b2c'
-                                                ? 'bg-blue-500/10 text-blue-400'
+                                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                                                 : plan.segment === 'b2b'
-                                                ? 'bg-purple-500/10 text-purple-400'
-                                                : 'bg-zinc-800 text-zinc-500'
+                                                ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                                                : 'bg-muted text-muted-foreground'
                                         }`}>
                                             {plan.segment === 'b2c' ? 'Individual' : plan.segment === 'b2b' ? 'Business' : 'Any'}
                                         </span>
                                         {plan.tier === 'enterprise' && (
-                                            <span className="text-[10px] font-mono text-zinc-600">Custom pricing available</span>
+                                            <span className="text-[10px] font-mono text-muted-foreground">Custom pricing available</span>
                                         )}
                                     </div>
 
                                     {/* Plan name & target */}
                                     <h3 className="text-xl font-bold font-mono mb-1">{plan.name}</h3>
-                                    <p className="text-zinc-500 text-sm mb-4">{plan.target_audience}</p>
+                                    <p className="text-muted-foreground text-sm mb-4">{plan.target_audience}</p>
 
                                     {/* Price */}
                                     <div className="mb-6">
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-3xl font-bold font-mono text-white">
+                                            <span className="text-3xl font-bold font-mono text-foreground">
                                                 GHS {price.toLocaleString()}
                                             </span>
-                                            <span className="text-zinc-500 text-sm">/month</span>
+                                            <span className="text-muted-foreground text-sm">/month</span>
                                         </div>
                                         {billing === 'annual' && savings > 0 && (
-                                            <p className="text-green-400 text-xs mt-1 font-mono">
+                                            <p className="text-green-600 dark:text-green-400 text-xs mt-1 font-mono">
                                                 Save {savings}% with annual billing — GHS {plan.price_annual_ghs?.toLocaleString()}/yr
                                             </p>
                                         )}
                                         {billing === 'monthly' && plan.price_annual_ghs && (
-                                            <p className="text-zinc-600 text-xs mt-1">
+                                            <p className="text-muted-foreground text-xs mt-1">
                                                 or GHS {Math.round(plan.price_annual_ghs / 12).toLocaleString()}/mo billed annually
                                             </p>
                                         )}
@@ -312,7 +312,7 @@ export default function PricingPage() {
                                                 <svg className="w-4 h-4 mt-0.5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                                <span className="text-zinc-300">{feature}</span>
+                                                <span className="text-muted-foreground">{feature}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -321,27 +321,27 @@ export default function PricingPage() {
                                     {(plan.max_users || plan.max_properties || plan.max_api_calls_monthly || plan.max_projects) && (
                                         <div className="flex flex-wrap gap-2 mb-4">
                                             {plan.max_users && (
-                                                <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                                                <span className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">
                                                     {plan.max_users} users
                                                 </span>
                                             )}
                                             {plan.max_properties && (
-                                                <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                                                <span className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">
                                                     {plan.max_properties} properties
                                                 </span>
                                             )}
                                             {plan.max_api_calls_monthly && (
-                                                <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                                                <span className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">
                                                     {(plan.max_api_calls_monthly / 1000).toFixed(0)}k API calls
                                                 </span>
                                             )}
                                             {plan.max_valuations_monthly && (
-                                                <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                                                <span className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">
                                                     {plan.max_valuations_monthly} valuations/mo
                                                 </span>
                                             )}
                                             {plan.max_projects && (
-                                                <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                                                <span className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">
                                                     {plan.max_projects} projects
                                                 </span>
                                             )}
@@ -353,8 +353,8 @@ export default function PricingPage() {
                                         href={`/signup?plan=${plan.slug}&category=${plan.category}&billing=${billing}`}
                                         className={`block text-center py-3 px-6 rounded-xl font-mono text-sm font-bold transition-all ${
                                             isHighlighted
-                                                ? 'bg-amber-500 text-white hover:bg-amber-400'
-                                                : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700'
+                                                ? 'bg-amber-500 text-foreground hover:bg-amber-400'
+                                                : 'bg-muted text-foreground hover:bg-zinc-700 border border-border'
                                         }`}
                                     >
                                         {plan.cta_text}
@@ -372,11 +372,11 @@ export default function PricingPage() {
                         animate={{ opacity: 1 }}
                         className="mt-20 text-center"
                     >
-                        <div className="border-t border-zinc-800 pt-16">
+                        <div className="border-t border-border pt-16">
                             <h3 className="text-2xl font-bold mb-3 font-mono">
                                 Prefer à la carte? <span className="text-amber-500">Mix & match modules.</span>
                             </h3>
-                            <p className="text-zinc-500 max-w-2xl mx-auto mb-8">
+                            <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
                                 Subscribe to the Full Platform or add individual modules to any plan.
                                 Available as standalone subscriptions or add-ons to your base plan.
                             </p>
@@ -391,12 +391,12 @@ export default function PricingPage() {
                                     <button
                                         key={mod.cat}
                                         onClick={() => setCategory(mod.cat)}
-                                        className="bg-zinc-900 border border-zinc-800 hover:border-amber-500/30 rounded-xl p-4 text-left transition-all group"
+                                        className="bg-card border border-border hover:border-amber-500/30 rounded-xl p-4 text-left transition-all group"
                                     >
                                         <p className="font-mono text-sm font-bold group-hover:text-amber-500 transition-colors">
                                             {mod.label}
                                         </p>
-                                        <p className="text-zinc-600 text-xs mt-1">
+                                        <p className="text-muted-foreground text-xs mt-1">
                                             From GHS {mod.from}/mo
                                         </p>
                                     </button>
@@ -412,44 +412,44 @@ export default function PricingPage() {
                     animate={{ opacity: 1 }}
                     className="mt-20"
                 >
-                    <div className="border-t border-zinc-800 pt-16">
+                    <div className="border-t border-border pt-16">
                         <h3 className="text-2xl font-bold text-center mb-10 font-mono">
                             Compare {CATEGORY_META[category].label} Plans
                         </h3>
                         <div className="overflow-x-auto">
                             <table className="w-full max-w-4xl mx-auto text-sm">
                                 <thead>
-                                    <tr className="border-b border-zinc-800">
-                                        <th className="text-left py-3 px-4 text-zinc-500 font-mono">Feature</th>
+                                    <tr className="border-b border-border">
+                                        <th className="text-left py-3 px-4 text-muted-foreground font-mono">Feature</th>
                                         {filteredPlans.map(plan => (
-                                            <th key={plan.slug} className="text-center py-3 px-4 font-mono text-white">
+                                            <th key={plan.slug} className="text-center py-3 px-4 font-mono text-foreground">
                                                 {plan.name}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="border-b border-zinc-900">
-                                        <td className="py-2.5 px-4 text-zinc-400">Monthly Price</td>
+                                    <tr className="border-b border-border">
+                                        <td className="py-2.5 px-4 text-muted-foreground">Monthly Price</td>
                                         {filteredPlans.map(plan => (
                                             <td key={plan.slug} className="text-center py-2.5 px-4 font-mono text-amber-500">
                                                 GHS {plan.price_monthly_ghs.toLocaleString()}
                                             </td>
                                         ))}
                                     </tr>
-                                    <tr className="border-b border-zinc-900">
-                                        <td className="py-2.5 px-4 text-zinc-400">Target</td>
+                                    <tr className="border-b border-border">
+                                        <td className="py-2.5 px-4 text-muted-foreground">Target</td>
                                         {filteredPlans.map(plan => (
-                                            <td key={plan.slug} className="text-center py-2.5 px-4 text-zinc-300 text-xs">
+                                            <td key={plan.slug} className="text-center py-2.5 px-4 text-muted-foreground text-xs">
                                                 {plan.target_audience}
                                             </td>
                                         ))}
                                     </tr>
                                     {filteredPlans.some(p => p.max_users !== undefined) && (
-                                        <tr className="border-b border-zinc-900">
-                                            <td className="py-2.5 px-4 text-zinc-400">User Seats</td>
+                                        <tr className="border-b border-border">
+                                            <td className="py-2.5 px-4 text-muted-foreground">User Seats</td>
                                             {filteredPlans.map(plan => (
-                                                <td key={plan.slug} className="text-center py-2.5 px-4 text-zinc-300">
+                                                <td key={plan.slug} className="text-center py-2.5 px-4 text-muted-foreground">
                                                     {plan.max_users ? plan.max_users : 'Unlimited'}
                                                 </td>
                                             ))}
@@ -458,8 +458,8 @@ export default function PricingPage() {
                                     {(() => {
                                         const allFeatures = [...new Set(filteredPlans.flatMap(p => p.features))];
                                         return allFeatures.slice(0, 8).map(feature => (
-                                            <tr key={feature} className="border-b border-zinc-900">
-                                                <td className="py-2 px-4 text-zinc-400 text-xs">{feature}</td>
+                                            <tr key={feature} className="border-b border-border">
+                                                <td className="py-2 px-4 text-muted-foreground text-xs">{feature}</td>
                                                 {filteredPlans.map(plan => (
                                                     <td key={plan.slug} className="text-center py-2 px-4">
                                                         {plan.features.includes(feature) ? (
@@ -481,14 +481,14 @@ export default function PricingPage() {
                 </motion.div>
 
                 {/* Custom / Enterprise CTA */}
-                <div className="mt-24 text-center border-t border-zinc-800 pt-16">
+                <div className="mt-24 text-center border-t border-border pt-16">
                     <h3 className="text-2xl font-bold mb-3 font-mono">Need a custom solution?</h3>
-                    <p className="text-zinc-500 max-w-2xl mx-auto mb-4">
+                    <p className="text-muted-foreground max-w-2xl mx-auto mb-4">
                         For government agencies, international entities, and institutions requiring
                         custom integrations, regional rollouts, or volume licensing.
                     </p>
-                    <p className="text-zinc-600 text-sm mb-8">
-                        All plans include a 14-day free trial • No credit card required • Cancel anytime
+                    <p className="text-muted-foreground text-sm mb-8">
+                        Full access from day one • Secure Paystack checkout • Cancel anytime
                     </p>
                     <div className="flex items-center justify-center gap-4">
                         <Link
@@ -500,9 +500,9 @@ export default function PricingPage() {
                         <span className="text-zinc-700">|</span>
                         <Link
                             href="/signup"
-                            className="bg-amber-500 text-white px-6 py-2.5 rounded-xl font-mono font-bold text-sm hover:bg-amber-400 transition-colors"
+                            className="bg-amber-500 text-foreground px-6 py-2.5 rounded-xl font-mono font-bold text-sm hover:bg-amber-400 transition-colors"
                         >
-                            Start Free Trial
+                            Get Started
                         </Link>
                     </div>
                 </div>

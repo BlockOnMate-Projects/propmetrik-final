@@ -68,19 +68,19 @@ import { Pagination } from '@/components/ui/pagination-controls';
 
 // Status configuration
 const statusConfig: Record<RfiStatus, { label: string; bg: string; text: string }> = {
-  draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-zinc-400' },
-  open: { label: 'Open', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  pending_response: { label: 'Pending', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
-  answered: { label: 'Answered', bg: 'bg-green-500/20', text: 'text-green-400' },
-  closed: { label: 'Closed', bg: 'bg-zinc-600/20', text: 'text-zinc-500' },
-  void: { label: 'Void', bg: 'bg-red-500/20', text: 'text-red-400' },
+  draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-muted-foreground' },
+  open: { label: 'Open', bg: 'bg-blue-500/20', text: 'text-blue-600 dark:text-blue-400' },
+  pending_response: { label: 'Pending', bg: 'bg-yellow-500/20', text: 'text-yellow-600 dark:text-yellow-400' },
+  answered: { label: 'Answered', bg: 'bg-green-500/20', text: 'text-green-600 dark:text-green-400' },
+  closed: { label: 'Closed', bg: 'bg-zinc-600/20', text: 'text-muted-foreground' },
+  void: { label: 'Void', bg: 'bg-red-500/20', text: 'text-red-600 dark:text-red-400' },
 };
 
 const priorityConfig: Record<RfiPriority, { label: string; bg: string; text: string }> = {
-  low: { label: 'Low', bg: 'bg-zinc-500/20', text: 'text-zinc-400' },
-  normal: { label: 'Normal', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  high: { label: 'High', bg: 'bg-orange-500/20', text: 'text-orange-400' },
-  critical: { label: 'Critical', bg: 'bg-red-500/20', text: 'text-red-400' },
+  low: { label: 'Low', bg: 'bg-zinc-500/20', text: 'text-muted-foreground' },
+  normal: { label: 'Normal', bg: 'bg-blue-500/20', text: 'text-blue-600 dark:text-blue-400' },
+  high: { label: 'High', bg: 'bg-orange-500/20', text: 'text-orange-600 dark:text-orange-400' },
+  critical: { label: 'Critical', bg: 'bg-red-500/20', text: 'text-red-600 dark:text-red-400' },
 };
 
 const categoryLabels: Record<RfiCategory, string> = {
@@ -279,7 +279,7 @@ export default function RFIsPage() {
           {projectId && (
             <Link 
               href={`/dashboard/projects/projects/${projectId}`}
-              className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-300 text-sm mb-2 transition-colors"
+              className="inline-flex items-center gap-1 text-muted-foreground hover:text-muted-foreground text-sm mb-2 transition-colors"
             >
               <ArrowLeft className="h-3 w-3" />
               Back to Project
@@ -290,13 +290,13 @@ export default function RFIsPage() {
               <FileQuestion className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">RFI Management</h1>
-              <p className="text-zinc-400 text-sm">Track and manage Requests for Information</p>
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">RFI Management</h1>
+              <p className="text-muted-foreground text-sm">Track and manage Requests for Information</p>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={fetchData}>
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -311,21 +311,21 @@ export default function RFIsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {/* Notification Banner for RFIs with Client Responses */}
         {answeredCount > 0 && (
-          <div className="col-span-full flex items-center gap-3 p-4 bg-green-900/20 border border-green-700/50 rounded-lg mb-2">
+          <div className="col-span-full flex items-center gap-3 p-4 bg-green-100 dark:bg-green-900/20 border border-green-700/50 rounded-lg mb-2">
             <div className="flex-shrink-0 h-10 w-10 bg-green-600 rounded-full flex items-center justify-center">
-              <FileQuestion className="h-5 w-5 text-white" />
+              <FileQuestion className="h-5 w-5 text-foreground" />
             </div>
             <div className="flex-1">
-              <h4 className="font-mono text-sm text-green-400 font-medium">
+              <h4 className="font-mono text-sm text-green-600 dark:text-green-400 font-medium">
                 {answeredCount} RFI{answeredCount > 1 ? 's' : ''} Received Responses
               </h4>
-              <p className="font-mono text-xs text-zinc-400 mt-0.5">
+              <p className="font-mono text-xs text-muted-foreground mt-0.5">
                 Clients have responded to your requests. Review and close when resolved.
               </p>
             </div>
             <Button
               size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs"
+              className="bg-green-600 hover:bg-green-700 text-foreground font-mono text-xs"
               onClick={() => setActiveTab('answered')}
             >
               Review Responses
@@ -333,34 +333,34 @@ export default function RFIsPage() {
           </div>
         )}
         
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Total RFIs</p>
-            <p className="text-2xl font-bold text-white mt-1">{rfis.length}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Total RFIs</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{rfis.length}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Pending Response</p>
-            <p className="text-2xl font-bold text-yellow-400 mt-1">{stats?.pending_response || 0}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Pending Response</p>
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats?.pending_response || 0}</p>
           </CardContent>
         </Card>
-        <Card className={`bg-zinc-900 border-zinc-800 ${overdueCount > 0 ? 'border-red-500/50' : ''}`}>
+        <Card className={`bg-card border-border ${overdueCount > 0 ? 'border-red-500/50' : ''}`}>
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Overdue</p>
-            <p className={`text-2xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-400' : 'text-white'}`}>{overdueCount}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Overdue</p>
+            <p className={`text-2xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>{overdueCount}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Answered</p>
-            <p className="text-2xl font-bold text-green-400 mt-1">{answeredCount}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Answered</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{answeredCount}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Avg Response</p>
-            <p className="text-2xl font-bold text-white mt-1">{stats?.avg_response_days?.toFixed(1) || '0'} days</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Avg Response</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{stats?.avg_response_days?.toFixed(1) || '0'} days</p>
           </CardContent>
         </Card>
       </div>
@@ -368,16 +368,16 @@ export default function RFIsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search RFIs by number, subject, or question..." 
             value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500"
+            className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as RfiStatus | 'all')}>
-          <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-800">
+          <SelectTrigger className="w-[160px] bg-card border-border">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -388,7 +388,7 @@ export default function RFIsPage() {
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as RfiPriority | 'all')}>
-          <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-800">
+          <SelectTrigger className="w-[160px] bg-card border-border">
             <SelectValue placeholder="All Priorities" />
           </SelectTrigger>
           <SelectContent>
@@ -402,11 +402,11 @@ export default function RFIsPage() {
 
       {/* Tabs and Table */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-zinc-800 border-zinc-700">
+        <TabsList className="bg-muted border-border">
           <TabsTrigger value="all">All ({rfis.length})</TabsTrigger>
           <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
           <TabsTrigger value="open">Open ({openCount})</TabsTrigger>
-          <TabsTrigger value="overdue" className={overdueCount > 0 ? 'text-red-400' : ''}>
+          <TabsTrigger value="overdue" className={overdueCount > 0 ? 'text-red-600 dark:text-red-400' : ''}>
             Overdue ({overdueCount})
           </TabsTrigger>
           <TabsTrigger value="answered">Answered ({answeredCount})</TabsTrigger>
@@ -419,11 +419,11 @@ export default function RFIsPage() {
               <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
             </div>
           ) : filteredRfis.length === 0 ? (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
-                <FileQuestion className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">No RFIs Found</h3>
-                <p className="text-zinc-400 text-sm mb-4">
+                <FileQuestion className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No RFIs Found</h3>
+                <p className="text-muted-foreground text-sm mb-4">
                   {activeTab === 'all' ? 'Create your first RFI to get started' : 'No RFIs match the current filter'}
                 </p>
                 <Button onClick={() => setShowCreateDialog(true)} className="bg-amber-600 hover:bg-amber-700">
@@ -432,19 +432,19 @@ export default function RFIsPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-zinc-800 hover:bg-transparent">
-                      <TableHead className="text-zinc-400">RFI #</TableHead>
-                      <TableHead className="text-zinc-400">Subject</TableHead>
-                      <TableHead className="text-zinc-400">Category</TableHead>
-                      <TableHead className="text-zinc-400">Priority</TableHead>
-                      <TableHead className="text-zinc-400">Status</TableHead>
-                      <TableHead className="text-zinc-400">Ball in Court</TableHead>
-                      <TableHead className="text-zinc-400">Due Date</TableHead>
-                      <TableHead className="text-zinc-400">Submitted</TableHead>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">RFI #</TableHead>
+                      <TableHead className="text-muted-foreground">Subject</TableHead>
+                      <TableHead className="text-muted-foreground">Category</TableHead>
+                      <TableHead className="text-muted-foreground">Priority</TableHead>
+                      <TableHead className="text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-muted-foreground">Ball in Court</TableHead>
+                      <TableHead className="text-muted-foreground">Due Date</TableHead>
+                      <TableHead className="text-muted-foreground">Submitted</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -452,26 +452,26 @@ export default function RFIsPage() {
                       const status = statusConfig[rfi.status] || statusConfig.open;
                       const priority = priorityConfig[rfi.priority] || priorityConfig.normal;
                       return (
-                        <TableRow key={rfi.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => handleViewRfi(rfi)}>
+                        <TableRow key={rfi.id} className="border-border hover:bg-muted/50 cursor-pointer" onClick={() => handleViewRfi(rfi)}>
                           <TableCell className="font-mono text-amber-500">{rfi.rfi_number}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-white truncate max-w-[200px]">{rfi.subject}</span>
-                              {rfi.is_overdue && <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0" />}
+                              <span className="font-medium text-foreground truncate max-w-[200px]">{rfi.subject}</span>
+                              {rfi.is_overdue && <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />}
                             </div>
                           </TableCell>
-                          <TableCell className="text-zinc-300 text-sm">{categoryLabels[rfi.category] || rfi.category}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{categoryLabels[rfi.category] || rfi.category}</TableCell>
                           <TableCell><Badge className={`${priority.bg} ${priority.text} border-0`}>{priority.label}</Badge></TableCell>
                           <TableCell><Badge className={`${status.bg} ${status.text} border-0`}>{status.label}</Badge></TableCell>
                           <TableCell className="text-sm">
                             {rfi.ball_in_court_name ? (
-                              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 text-amber-300 px-2 py-0.5 text-xs">
+                              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-300 px-2 py-0.5 text-xs">
                                 {rfi.ball_in_court_name}
                               </span>
-                            ) : <span className="text-zinc-600">—</span>}
+                            ) : <span className="text-muted-foreground">—</span>}
                           </TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{formatDate(rfi.due_date)}</TableCell>
-                          <TableCell className="text-zinc-500 text-sm">{rfi.created_at ? formatDistanceToNow(new Date(rfi.created_at), { addSuffix: true }) : '—'}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{formatDate(rfi.due_date)}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{rfi.created_at ? formatDistanceToNow(new Date(rfi.created_at), { addSuffix: true }) : '—'}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -487,39 +487,39 @@ export default function RFIsPage() {
 
       {/* Create RFI Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">Create New RFI</DialogTitle>
-            <DialogDescription className="text-zinc-400">Submit a new Request for Information</DialogDescription>
+            <DialogTitle className="text-foreground">Create New RFI</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Submit a new Request for Information</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Subject *</Label>
-              <Input placeholder="Brief description of the RFI" value={formData.subject || ''} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Subject *</Label>
+              <Input placeholder="Brief description of the RFI" value={formData.subject || ''} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className="bg-muted border-border" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Category</Label>
+                <Label className="text-muted-foreground">Category</Label>
                 <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v as RfiCategory })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{Object.entries(categoryLabels).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Priority</Label>
+                <Label className="text-muted-foreground">Priority</Label>
                 <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as RfiPriority })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{Object.entries(priorityConfig).map(([value, config]) => (<SelectItem key={value} value={value}>{config.label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Due Date</Label>
-              <Input type="date" value={formData.due_date || ''} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Due Date</Label>
+              <Input type="date" value={formData.due_date || ''} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} className="bg-muted border-border" />
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Question / Description *</Label>
-              <Textarea placeholder="Detailed description of the information needed..." value={formData.question || ''} onChange={(e) => setFormData({ ...formData, question: e.target.value })} className="bg-zinc-800 border-zinc-700 min-h-[120px]" />
+              <Label className="text-muted-foreground">Question / Description *</Label>
+              <Textarea placeholder="Detailed description of the information needed..." value={formData.question || ''} onChange={(e) => setFormData({ ...formData, question: e.target.value })} className="bg-muted border-border min-h-[120px]" />
             </div>
             <div className="flex items-center gap-2 py-2">
               <input 
@@ -527,15 +527,15 @@ export default function RFIsPage() {
                 id="submit-immediately"
                 checked={formData.submit_immediately || false}
                 onChange={(e) => setFormData({ ...formData, submit_immediately: e.target.checked })}
-                className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500"
+                className="h-4 w-4 rounded border-zinc-600 bg-muted text-amber-500 focus:ring-amber-500"
               />
-              <Label htmlFor="submit-immediately" className="text-zinc-300 text-sm cursor-pointer">
+              <Label htmlFor="submit-immediately" className="text-muted-foreground text-sm cursor-pointer">
                 Submit immediately (make available for client response)
               </Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-zinc-700">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-border">Cancel</Button>
             <Button onClick={handleCreateRfi} disabled={creating} className="bg-amber-600 hover:bg-amber-700">
               {creating ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>) : (<><Send className="h-4 w-4 mr-2" />{formData.submit_immediately ? 'Create & Submit RFI' : 'Create RFI'}</>)}
             </Button>
@@ -545,9 +545,9 @@ export default function RFIsPage() {
 
       {/* RFI Detail Sheet */}
       <Sheet open={showDetailSheet} onOpenChange={setShowDetailSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle className="text-white flex items-center gap-2">
+            <SheetTitle className="text-foreground flex items-center gap-2">
               <span className="font-mono text-amber-500">{selectedRfi?.rfi_number}</span>
               {selectedRfi && (<Badge className={`${statusConfig[selectedRfi.status].bg} ${statusConfig[selectedRfi.status].text} border-0`}>{statusConfig[selectedRfi.status].label}</Badge>)}
             </SheetTitle>
@@ -555,54 +555,54 @@ export default function RFIsPage() {
           {selectedRfi && (
             <div className="mt-6 space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-white mb-2">{selectedRfi.subject}</h3>
-                <div className="flex flex-wrap gap-2 text-sm text-zinc-400">
+                <h3 className="text-lg font-medium text-foreground mb-2">{selectedRfi.subject}</h3>
+                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                   <span>{categoryLabels[selectedRfi.category]}</span>
                   <span>•</span>
                   <Badge className={`${priorityConfig[selectedRfi.priority].bg} ${priorityConfig[selectedRfi.priority].text} border-0`}>{priorityConfig[selectedRfi.priority].label}</Badge>
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-800">
-                  <h4 className="text-sm font-medium text-zinc-400 mb-2">Question</h4>
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Question</h4>
                   <p className="text-zinc-200 text-sm whitespace-pre-wrap">{selectedRfi.question}</p>
                 </div>
                 {selectedRfi.response && (
                   <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                    <h4 className="text-sm font-medium text-green-400 mb-2">Response</h4>
+                    <h4 className="text-sm font-medium text-green-600 dark:text-green-400 mb-2">Response</h4>
                     <p className="text-zinc-200 text-sm whitespace-pre-wrap">{selectedRfi.response}</p>
-                    {selectedRfi.responded_by_name && (<p className="text-xs text-zinc-500 mt-2">Responded by {selectedRfi.responded_by_name} on {formatDate(selectedRfi.responded_at)}</p>)}
+                    {selectedRfi.responded_by_name && (<p className="text-xs text-muted-foreground mt-2">Responded by {selectedRfi.responded_by_name} on {formatDate(selectedRfi.responded_at)}</p>)}
                   </div>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1"><p className="text-zinc-500">Submitted By</p><p className="text-zinc-200">{selectedRfi.submitted_by_name || '—'}</p></div>
-                <div className="space-y-1"><p className="text-zinc-500">Assigned To</p><p className="text-zinc-200">{selectedRfi.assigned_to_name || '—'}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Submitted By</p><p className="text-zinc-200">{selectedRfi.submitted_by_name || '—'}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Assigned To</p><p className="text-zinc-200">{selectedRfi.assigned_to_name || '—'}</p></div>
                 <div className="space-y-1">
-                  <p className="text-zinc-500">Due Date</p>
-                  <p className={`${selectedRfi.is_overdue ? 'text-red-400' : 'text-zinc-200'}`}>
+                  <p className="text-muted-foreground">Due Date</p>
+                  <p className={`${selectedRfi.is_overdue ? 'text-red-600 dark:text-red-400' : 'text-zinc-200'}`}>
                     {formatDate(selectedRfi.due_date)}
                     {selectedRfi.is_overdue && selectedRfi.days_overdue && (<span className="ml-2 text-xs">({selectedRfi.days_overdue} days overdue)</span>)}
                   </p>
                 </div>
-                <div className="space-y-1"><p className="text-zinc-500">Created</p><p className="text-zinc-200">{formatDate(selectedRfi.created_at)}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Created</p><p className="text-zinc-200">{formatDate(selectedRfi.created_at)}</p></div>
               </div>
               {(selectedRfi.cost_impact || selectedRfi.schedule_impact_days) && (
                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <h4 className="text-sm font-medium text-amber-400 mb-2">Impact Assessment</h4>
+                  <h4 className="text-sm font-medium text-amber-600 dark:text-amber-400 mb-2">Impact Assessment</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {selectedRfi.cost_impact !== undefined && (<div><p className="text-zinc-500">Cost Impact</p><p className="text-zinc-200 font-medium">${selectedRfi.cost_impact.toLocaleString()}</p></div>)}
-                    {selectedRfi.schedule_impact_days !== undefined && (<div><p className="text-zinc-500">Schedule Impact</p><p className="text-zinc-200 font-medium">{selectedRfi.schedule_impact_days} days</p></div>)}
+                    {selectedRfi.cost_impact !== undefined && (<div><p className="text-muted-foreground">Cost Impact</p><p className="text-zinc-200 font-medium">${selectedRfi.cost_impact.toLocaleString()}</p></div>)}
+                    {selectedRfi.schedule_impact_days !== undefined && (<div><p className="text-muted-foreground">Schedule Impact</p><p className="text-zinc-200 font-medium">{selectedRfi.schedule_impact_days} days</p></div>)}
                   </div>
                 </div>
               )}
               
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-zinc-800">
+              <div className="flex gap-3 pt-4 border-t border-border">
                 {selectedRfi.status === 'draft' && (
                   <Button
                     onClick={() => handleSubmitRfi(selectedRfi)}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-mono"
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-foreground font-mono"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Submit RFI
@@ -620,7 +620,7 @@ export default function RFIsPage() {
                         toast.error('Failed to close RFI');
                       }
                     }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-mono"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-foreground font-mono"
                   >
                     Close RFI
                   </Button>

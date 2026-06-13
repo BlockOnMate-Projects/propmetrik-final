@@ -240,10 +240,10 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       className={`p-1.5 rounded transition-colors ${isActive
-        ? 'bg-amber-600 text-white'
+        ? 'bg-amber-600 text-foreground'
         : disabled
-          ? 'text-gray-500 cursor-not-allowed'
-          : 'text-gray-300 hover:bg-gray-600 hover:text-white'
+          ? 'text-muted-foreground cursor-not-allowed'
+          : 'text-gray-300 hover:bg-gray-600 hover:text-foreground'
         } ${className}`}
     >
       {children}
@@ -282,7 +282,7 @@ function Ruler({
           style={{ left: `${i * inchWidth}px` }}
         >
           <div className="w-px h-3 bg-gray-600" />
-          <span className="text-[9px] text-gray-500 mt-0.5">{i}</span>
+          <span className="text-[9px] text-muted-foreground mt-0.5">{i}</span>
         </div>
       )
       // Half-inch marks
@@ -323,7 +323,7 @@ function Ruler({
   return (
     <div
       ref={rulerRef}
-      className="h-6 bg-gray-100 border-b border-gray-300 relative overflow-hidden"
+      className="h-6 bg-muted border-b border-gray-300 relative overflow-hidden"
       style={{ width: `${scaledWidth}px` }}
     >
       {/* Margin indicators */}
@@ -366,17 +366,17 @@ function FindReplaceDialog({
   if (!state.isOpen) return null
 
   return (
-    <div className="absolute top-12 right-4 z-50 bg-white border border-gray-300 rounded-lg shadow-xl p-4 w-80">
+    <div className="absolute top-12 right-4 z-50 bg-card border border-gray-300 rounded-lg shadow-xl p-4 w-80">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-gray-800">Find & Replace</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground">
           <X className="w-4 h-4" />
         </button>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">Find</label>
+          <label className="text-xs text-muted-foreground mb-1 block">Find</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -386,25 +386,25 @@ function FindReplaceDialog({
               placeholder="Search text..."
               className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
             />
-            <button onClick={onSearch} className="px-2 py-1 bg-amber-500 text-white rounded text-sm hover:bg-amber-600">
+            <button onClick={onSearch} className="px-2 py-1 bg-amber-500 text-foreground rounded text-sm hover:bg-amber-600">
               <Search className="w-4 h-4" />
             </button>
           </div>
           {state.matchCount > 0 && (
             <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {state.currentMatch} of {state.matchCount} matches
               </span>
               <div className="flex gap-1">
-                <button onClick={onPrevious} className="px-2 py-0.5 text-xs bg-gray-100 rounded hover:bg-gray-200">←</button>
-                <button onClick={onNext} className="px-2 py-0.5 text-xs bg-gray-100 rounded hover:bg-gray-200">→</button>
+                <button onClick={onPrevious} className="px-2 py-0.5 text-xs bg-muted rounded hover:bg-gray-200">←</button>
+                <button onClick={onNext} className="px-2 py-0.5 text-xs bg-muted rounded hover:bg-gray-200">→</button>
               </div>
             </div>
           )}
         </div>
 
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">Replace with</label>
+          <label className="text-xs text-muted-foreground mb-1 block">Replace with</label>
           <input
             type="text"
             value={state.replaceTerm}
@@ -415,7 +415,7 @@ function FindReplaceDialog({
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1 text-xs text-gray-600">
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={state.matchCase}
@@ -429,13 +429,13 @@ function FindReplaceDialog({
         <div className="flex gap-2">
           <button
             onClick={onReplace}
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-muted"
           >
             Replace
           </button>
           <button
             onClick={onReplaceAll}
-            className="flex-1 px-3 py-1.5 text-sm bg-amber-500 text-white rounded hover:bg-amber-600"
+            className="flex-1 px-3 py-1.5 text-sm bg-amber-500 text-foreground rounded hover:bg-amber-600"
           >
             Replace All
           </button>
@@ -466,13 +466,13 @@ function PageSettingsDialog({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+    <div className="fixed inset-0 bg-background/50 flex items-center justify-center z-50">
+      <div className="bg-card rounded-lg shadow-xl p-6 w-96">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Page Settings</h3>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">Page Size</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Page Size</label>
             <select
               value={localSettings.size}
               onChange={(e) => setLocalSettings({ ...localSettings, size: e.target.value as any })}
@@ -485,13 +485,13 @@ function PageSettingsDialog({
           </div>
 
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">Orientation</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Orientation</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setLocalSettings({ ...localSettings, orientation: 'portrait' })}
                 className={`flex-1 py-2 px-4 rounded border ${localSettings.orientation === 'portrait'
                   ? 'border-amber-500 bg-amber-50 text-amber-700'
-                  : 'border-gray-300 hover:bg-gray-50'
+                  : 'border-gray-300 hover:bg-muted'
                   }`}
               >
                 Portrait
@@ -500,7 +500,7 @@ function PageSettingsDialog({
                 onClick={() => setLocalSettings({ ...localSettings, orientation: 'landscape' })}
                 className={`flex-1 py-2 px-4 rounded border ${localSettings.orientation === 'landscape'
                   ? 'border-amber-500 bg-amber-50 text-amber-700'
-                  : 'border-gray-300 hover:bg-gray-50'
+                  : 'border-gray-300 hover:bg-muted'
                   }`}
               >
                 Landscape
@@ -509,10 +509,10 @@ function PageSettingsDialog({
           </div>
 
           <div>
-            <label className="text-sm text-gray-600 mb-2 block">Margins (inches)</label>
+            <label className="text-sm text-muted-foreground mb-2 block">Margins (inches)</label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-500">Top</label>
+                <label className="text-xs text-muted-foreground">Top</label>
                 <input
                   type="number"
                   step="0.1"
@@ -523,7 +523,7 @@ function PageSettingsDialog({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500">Bottom</label>
+                <label className="text-xs text-muted-foreground">Bottom</label>
                 <input
                   type="number"
                   step="0.1"
@@ -534,7 +534,7 @@ function PageSettingsDialog({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500">Left</label>
+                <label className="text-xs text-muted-foreground">Left</label>
                 <input
                   type="number"
                   step="0.1"
@@ -545,7 +545,7 @@ function PageSettingsDialog({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500">Right</label>
+                <label className="text-xs text-muted-foreground">Right</label>
                 <input
                   type="number"
                   step="0.1"
@@ -562,7 +562,7 @@ function PageSettingsDialog({
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-muted"
           >
             Cancel
           </button>
@@ -571,7 +571,7 @@ function PageSettingsDialog({
               onApply(localSettings)
               onClose()
             }}
-            className="flex-1 px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600"
+            className="flex-1 px-4 py-2 bg-amber-500 text-foreground rounded hover:bg-amber-600"
           >
             Apply
           </button>
@@ -592,9 +592,9 @@ function WordCount({ content }: { content: string }) {
   }, [content])
 
   return (
-    <div className="flex items-center gap-3 text-xs text-gray-400">
+    <div className="flex items-center gap-3 text-xs text-muted-foreground">
       <span>{stats.words} words</span>
-      <span className="text-gray-500">|</span>
+      <span className="text-muted-foreground">|</span>
       <span>{stats.characters} characters</span>
     </div>
   )
@@ -701,7 +701,7 @@ function PagedSection({
         {/* Page footer */}
         {showPageNumbers && (
           <div className="flex-shrink-0 pt-4 mt-auto text-center border-t border-gray-100">
-            <span className="text-xs text-gray-400 font-mono">
+            <span className="text-xs text-muted-foreground font-mono">
               Page {sectionIndex + 1} of {totalSections}
             </span>
           </div>
@@ -828,7 +828,7 @@ export function ReportEditor({
       }),
       TableRow,
       TableHeader.configure({
-        HTMLAttributes: { class: 'border border-gray-400 bg-gray-100 p-2 text-left font-semibold' },
+        HTMLAttributes: { class: 'border border-gray-400 bg-muted p-2 text-left font-semibold' },
       }),
       TableCell.configure({
         HTMLAttributes: { class: 'border border-gray-300 p-2' },
@@ -1174,26 +1174,26 @@ export function ReportEditor({
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-100">
+      <div className="h-full flex items-center justify-center bg-muted">
         <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />
-        <span className="ml-3 text-sm text-gray-600">Loading report content...</span>
+        <span className="ml-3 text-sm text-muted-foreground">Loading report content...</span>
       </div>
     )
   }
 
   if (loadError) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-gray-100 p-8">
+      <div className="h-full flex flex-col items-center justify-center bg-muted p-8">
         <div className="text-red-500 mb-4">
           <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
         <h3 className="text-lg font-semibold text-gray-800 mb-2">Failed to load report content</h3>
-        <p className="text-sm text-gray-600 mb-4 text-center max-w-md">{loadError}</p>
+        <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">{loadError}</p>
         <button
           onClick={() => loadContent(false)}
-          className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-amber-500 text-foreground rounded hover:bg-amber-600 transition-colors flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
           Retry
@@ -1238,11 +1238,11 @@ export function ReportEditor({
         {/* Primary Toolbar Row */}
         <div className="px-3 py-2 flex items-center gap-1 flex-wrap border-b border-gray-700">
           {/* Font Family */}
-          <div className="flex items-center gap-1 pr-2 border-r border-gray-200">
+          <div className="flex items-center gap-1 pr-2 border-r border-border">
             <select
               onChange={(e) => setFontFamily(e.target.value)}
               disabled={readOnly}
-              className={`h-8 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-white min-w-[120px] ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`h-8 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-foreground min-w-[120px] ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Font Family"
             >
               {FONT_FAMILIES.map(font => (
@@ -1258,7 +1258,7 @@ export function ReportEditor({
             <select
               onChange={(e) => setFontSizeHandler(e.target.value)}
               disabled={readOnly}
-              className={`h-8 w-16 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-white ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`h-8 w-16 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-foreground ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Font Size"
               defaultValue="12px"
             >
@@ -1317,7 +1317,7 @@ export function ReportEditor({
                 else editor?.chain().focus().toggleHeading({ level: parseInt(val) as 1 | 2 | 3 | 4 }).run()
               }}
               disabled={readOnly}
-              className={`h-8 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-white ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`h-8 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-foreground ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <option value="0">Normal</option>
               <option value="1">Heading 1</option>
@@ -1332,7 +1332,7 @@ export function ReportEditor({
             <select
               onChange={(e) => setLineSpacing(e.target.value)}
               disabled={readOnly}
-              className={`h-8 w-16 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-white ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`h-8 w-16 px-2 text-sm border border-gray-600 rounded bg-gray-700 text-foreground ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="Line Spacing"
               defaultValue="1.5"
             >
@@ -1389,7 +1389,7 @@ export function ReportEditor({
             <button
               onClick={() => !readOnly && setShowInsertMenu(!showInsertMenu)}
               disabled={readOnly}
-              className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded border border-gray-600 ${readOnly ? 'text-gray-500 cursor-not-allowed' : 'text-gray-200 hover:bg-gray-600'
+              className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded border border-gray-600 ${readOnly ? 'text-muted-foreground cursor-not-allowed' : 'text-gray-200 hover:bg-gray-600'
                 }`}
             >
               <Plus className="w-4 h-4" />
@@ -1460,13 +1460,13 @@ export function ReportEditor({
           {/* Save Controls */}
           <div className="flex items-center gap-2 ml-auto">
             {lastSaved && (
-              <span className="text-xs text-gray-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-green-400" />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
                 Saved {lastSaved.toLocaleTimeString()}
               </span>
             )}
             {hasUnsavedChanges && (
-              <span className="text-xs text-amber-400 font-medium">Unsaved changes</span>
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Unsaved changes</span>
             )}
             <button
               onClick={() => loadContent(true)}
@@ -1480,8 +1480,8 @@ export function ReportEditor({
               onClick={handleSave}
               disabled={saving || !hasUnsavedChanges}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border transition-colors ${hasUnsavedChanges
-                ? 'bg-amber-500 text-white hover:bg-amber-600 border-amber-600'
-                : 'bg-gray-700 text-gray-500 border-gray-600'
+                ? 'bg-amber-500 text-foreground hover:bg-amber-600 border-amber-600'
+                : 'bg-gray-700 text-muted-foreground border-gray-600'
                 }`}
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -1511,7 +1511,7 @@ export function ReportEditor({
             <select
               value={zoom}
               onChange={(e) => setZoom(parseInt(e.target.value))}
-              className="h-7 px-1 text-xs border border-gray-600 rounded bg-gray-700 text-white"
+              className="h-7 px-1 text-xs border border-gray-600 rounded bg-gray-700 text-foreground"
             >
               {ZOOM_LEVELS.map(level => (
                 <option key={level} value={level}>{level}%</option>
@@ -1612,7 +1612,7 @@ export function ReportEditor({
         {/* Section Navigation Sidebar - Sticky */}
         <div className="w-56 bg-gray-800 border-r border-gray-700 overflow-y-auto shadow-sm flex-shrink-0 sticky left-0 top-0 h-full">
           <div className="p-3 border-b border-gray-700 bg-gray-900 sticky top-0 z-10">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sections</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sections</h3>
           </div>
           <div className="py-1">
             {sections.sort((a, b) => a.order - b.order).map((section) => (
@@ -1620,11 +1620,11 @@ export function ReportEditor({
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
                 className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-l-4 ${activeSection === section.id
-                  ? 'bg-amber-900/50 text-amber-400 border-l-amber-500 font-medium'
+                  ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-l-amber-500 font-medium'
                   : 'text-gray-300 hover:bg-gray-700 border-l-transparent'
                   }`}
               >
-                <span className="text-xs text-gray-500 mr-2">{section.order}.</span>
+                <span className="text-xs text-muted-foreground mr-2">{section.order}.</span>
                 {section.title}
               </button>
             ))}

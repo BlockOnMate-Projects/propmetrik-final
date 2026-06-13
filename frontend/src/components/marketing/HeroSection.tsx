@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export default function HeroSection() {
     return (
-        <section className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-zinc-950 text-white">
+        <section className="relative h-screen w-full overflow-hidden flex items-center justify-center dark bg-background text-foreground">
             {/* Background with abstract motion */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 to-zinc-950/50 z-10" />
@@ -30,7 +30,7 @@ export default function HeroSection() {
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className="max-w-4xl"
                 >
-                    <div className="inline-block px-3 py-1 mb-6 border border-zinc-700 rounded-full text-xs font-medium tracking-wider uppercase bg-zinc-900/50 backdrop-blur-sm">
+                    <div className="inline-block px-3 py-1 mb-6 border border-border rounded-full text-xs font-medium tracking-wider uppercase bg-card/50 backdrop-blur-sm">
                         Market Intelligence Platform
                     </div>
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 leading-tight">
@@ -39,7 +39,7 @@ export default function HeroSection() {
                             REDEFINED.
                         </span>
                     </h1>
-                    <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mb-10 leading-relaxed font-light">
+                    <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed font-light">
                         PROPMETRIK delivers confident valuations, verified data, and institutional-grade analytics for the Ghanaian market.
                     </p>
 
@@ -48,7 +48,7 @@ export default function HeroSection() {
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="bg-white text-zinc-950 px-8 py-4 text-sm font-bold tracking-widest uppercase hover:bg-zinc-200 transition-colors"
+                                className="bg-foreground text-background px-8 py-4 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-colors"
                             >
                                 Explore Data Hub
                             </motion.button>
@@ -57,7 +57,7 @@ export default function HeroSection() {
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="bg-transparent border border-zinc-700 text-white px-8 py-4 text-sm font-bold tracking-widest uppercase hover:bg-zinc-900 transition-colors"
+                                className="bg-transparent border border-border text-foreground px-8 py-4 text-sm font-bold tracking-widest uppercase hover:bg-card transition-colors"
                             >
                                 Request Demo
                             </motion.button>
@@ -67,8 +67,8 @@ export default function HeroSection() {
             </div>
 
             {/* Decorative clean lines */}
-            <div className="absolute bottom-0 left-0 w-full h-px bg-zinc-800" />
-            <div className="absolute bottom-0 right-10 w-px h-32 bg-zinc-800" />
+            <div className="absolute bottom-0 left-0 w-full h-px bg-muted" />
+            <div className="absolute bottom-0 right-10 w-px h-32 bg-muted" />
         </section>
     );
 }

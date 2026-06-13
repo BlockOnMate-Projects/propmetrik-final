@@ -161,7 +161,7 @@ You also have the right to lodge a complaint with the Data Protection Commission
     ];
 
     return (
-        <main className="pt-32 pb-24 bg-zinc-950 text-white">
+        <main className="pt-32 pb-24 bg-background text-foreground">
             <div className="container mx-auto px-4 md:px-6 max-w-4xl">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -174,7 +174,7 @@ You also have the right to lodge a complaint with the Data Protection Commission
                     </div>
 
                     <h1 className="text-4xl md:text-6xl font-bold mb-4">Privacy Policy</h1>
-                    <p className="text-zinc-400 mb-12">Last updated: {lastUpdated}</p>
+                    <p className="text-muted-foreground mb-12">Last updated: {lastUpdated}</p>
 
                     <div className="prose prose-invert prose-lg max-w-none">
                         {sections.map((section, index) => (
@@ -186,18 +186,18 @@ You also have the right to lodge a complaint with the Data Protection Commission
                                 transition={{ delay: index * 0.1 }}
                                 className="mb-12"
                             >
-                                <h2 className="text-2xl font-bold text-white mb-4">{section.title}</h2>
+                                <h2 className="text-2xl font-bold text-foreground mb-4">{section.title}</h2>
 
                                 {section.content && (
-                                    <p className="text-zinc-300 leading-relaxed whitespace-pre-line mb-6">
+                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-line mb-6">
                                         {section.content}
                                     </p>
                                 )}
 
                                 {section.subsections && section.subsections.map((subsection, subIndex) => (
                                     <div key={subIndex} className="mb-6">
-                                        <h3 className="text-xl font-bold text-white mb-3">{subsection.subtitle}</h3>
-                                        <p className="text-zinc-300 leading-relaxed whitespace-pre-line">
+                                        <h3 className="text-xl font-bold text-foreground mb-3">{subsection.subtitle}</h3>
+                                        <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
                                             {subsection.content}
                                         </p>
                                     </div>
@@ -207,24 +207,24 @@ You also have the right to lodge a complaint with the Data Protection Commission
                     </div>
 
                     {/* Footer Navigation */}
-                    <div className="mt-16 pt-8 border-t border-zinc-800">
+                    <div className="mt-16 pt-8 border-t border-border">
                         <div className="grid md:grid-cols-2 gap-4">
                             <Link href="/terms">
                                 <motion.div
                                     whileHover={{ x: 5 }}
-                                    className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                                    className="p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
                                 >
-                                    <div className="text-sm text-zinc-500 mb-1">Next</div>
-                                    <div className="font-bold text-white">Terms of Service →</div>
+                                    <div className="text-sm text-muted-foreground mb-1">Next</div>
+                                    <div className="font-bold text-foreground">Terms of Service →</div>
                                 </motion.div>
                             </Link>
                             <Link href="/cookies">
                                 <motion.div
                                     whileHover={{ x: 5 }}
-                                    className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                                    className="p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
                                 >
-                                    <div className="text-sm text-zinc-500 mb-1">Related</div>
-                                    <div className="font-bold text-white">Cookie Policy →</div>
+                                    <div className="text-sm text-muted-foreground mb-1">Related</div>
+                                    <div className="font-bold text-foreground">Cookie Policy →</div>
                                 </motion.div>
                             </Link>
                         </div>

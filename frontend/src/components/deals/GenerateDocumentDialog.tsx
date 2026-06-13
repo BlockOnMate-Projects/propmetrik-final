@@ -49,13 +49,13 @@ interface GenerateDocumentDialogProps {
 
 const getCategoryColor = (category: DocumentTemplateCategory) => {
     switch (category) {
-        case 'offer_letter': return 'bg-blue-900/50 text-blue-400 border-blue-800'
-        case 'agreement': return 'bg-amber-900/50 text-amber-400 border-amber-800'
-        case 'contract': return 'bg-green-900/50 text-green-400 border-green-800'
-        case 'receipt': return 'bg-purple-900/50 text-purple-400 border-purple-800'
-        case 'disclosure': return 'bg-red-900/50 text-red-400 border-red-800'
-        case 'commission': return 'bg-cyan-900/50 text-cyan-400 border-cyan-800'
-        default: return 'bg-zinc-800/50 text-zinc-400 border-zinc-700'
+        case 'offer_letter': return 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800'
+        case 'agreement': return 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800'
+        case 'contract': return 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800'
+        case 'receipt': return 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-800'
+        case 'disclosure': return 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-800'
+        case 'commission': return 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-400 border-cyan-800'
+        default: return 'bg-muted/50 text-muted-foreground border-border'
     }
 }
 
@@ -161,29 +161,29 @@ export function GenerateDocumentDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogContent className="bg-card border-border max-w-4xl max-h-[85vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="text-white flex items-center gap-2">
+                    <DialogTitle className="text-foreground flex items-center gap-2">
                         <FileText className="h-5 w-5 text-amber-500" />
                         Generate Document
                     </DialogTitle>
-                    <DialogDescription className="text-zinc-500">
+                    <DialogDescription className="text-muted-foreground">
                         Select a template to generate a document for "{dealTitle}"
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs defaultValue="select" className="flex-1 flex flex-col min-h-0">
-                    <TabsList className="bg-zinc-800 border border-zinc-700">
+                    <TabsList className="bg-muted border border-border">
                         <TabsTrigger 
                             value="select" 
-                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-white"
+                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-foreground"
                         >
                             SELECT TEMPLATE
                         </TabsTrigger>
                         <TabsTrigger 
                             value="preview" 
                             disabled={!selectedTemplate}
-                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-white"
+                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-foreground"
                         >
                             PREVIEW
                         </TabsTrigger>
@@ -193,12 +193,12 @@ export function GenerateDocumentDialog({
                         <div className="space-y-4 h-full flex flex-col">
                             {/* Search */}
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search templates..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 bg-zinc-800 border-zinc-700 text-white"
+                                    className="pl-10 bg-muted border-border text-foreground"
                                 />
                             </div>
 
@@ -211,13 +211,13 @@ export function GenerateDocumentDialog({
                                 ) : Object.keys(groupedTemplates).length === 0 ? (
                                     <div className="text-center py-12">
                                         <FileText className="h-12 w-12 text-zinc-700 mx-auto mb-3" />
-                                        <p className="text-zinc-500 text-sm">No templates found</p>
+                                        <p className="text-muted-foreground text-sm">No templates found</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
                                         {Object.entries(groupedTemplates).map(([category, categoryTemplates]) => (
                                             <div key={category}>
-                                                <h4 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                                                <h4 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                                                     {category.replace('_', ' ')}
                                                 </h4>
                                                 <div className="space-y-2">
@@ -229,20 +229,20 @@ export function GenerateDocumentDialog({
                                                                 'p-3 border rounded-lg cursor-pointer transition-all',
                                                                 selectedTemplate?.id === template.id
                                                                     ? 'border-amber-500 bg-amber-500/10'
-                                                                    : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
+                                                                    : 'border-border bg-muted/50 hover:border-zinc-600'
                                                             )}
                                                         >
                                                             <div className="flex items-start justify-between">
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2 mb-1">
-                                                                        <span className="font-mono text-sm text-white">
+                                                                        <span className="font-mono text-sm text-foreground">
                                                                             {template.name}
                                                                         </span>
                                                                         {selectedTemplate?.id === template.id && (
                                                                             <Check className="h-4 w-4 text-amber-500" />
                                                                         )}
                                                                     </div>
-                                                                    <p className="font-mono text-[11px] text-zinc-500 line-clamp-1">
+                                                                    <p className="font-mono text-[11px] text-muted-foreground line-clamp-1">
                                                                         {template.description || 'No description'}
                                                                     </p>
                                                                 </div>
@@ -292,7 +292,7 @@ export function GenerateDocumentDialog({
                                 <Button
                                     onClick={handlePreview}
                                     disabled={isPreviewing}
-                                    className="bg-zinc-800 text-white hover:bg-zinc-700"
+                                    className="bg-muted text-foreground hover:bg-zinc-700"
                                 >
                                     {isPreviewing ? (
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -303,7 +303,7 @@ export function GenerateDocumentDialog({
                                 </Button>
                             </div>
                         ) : (
-                            <ScrollArea className="flex-1 bg-white rounded-lg">
+                            <ScrollArea className="flex-1 bg-card rounded-lg">
                                 <div 
                                     dangerouslySetInnerHTML={{ __html: previewHtml }}
                                     className="p-8 prose prose-sm max-w-none"
@@ -318,28 +318,28 @@ export function GenerateDocumentDialog({
                     <div className={cn(
                         'p-3 rounded-lg flex items-center gap-2',
                         generationResult.success 
-                            ? 'bg-green-900/30 border border-green-800' 
-                            : 'bg-red-900/30 border border-red-800'
+                            ? 'bg-green-100 dark:bg-green-900/30 border border-green-800' 
+                            : 'bg-red-100 dark:bg-red-900/30 border border-red-800'
                     )}>
                         {generationResult.success ? (
-                            <Check className="h-4 w-4 text-green-400" />
+                            <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
                         ) : (
-                            <AlertCircle className="h-4 w-4 text-red-400" />
+                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                         )}
                         <span className={cn(
                             'font-mono text-xs',
-                            generationResult.success ? 'text-green-400' : 'text-red-400'
+                            generationResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                         )}>
                             {generationResult.message}
                         </span>
                     </div>
                 )}
 
-                <DialogFooter className="border-t border-zinc-800 pt-4">
+                <DialogFooter className="border-t border-border pt-4">
                     <Button 
                         variant="outline" 
                         onClick={handleClose}
-                        className="border-zinc-700 text-zinc-300"
+                        className="border-border text-muted-foreground"
                     >
                         {generationResult?.success ? 'Close' : 'Cancel'}
                     </Button>
@@ -347,7 +347,7 @@ export function GenerateDocumentDialog({
                         <Button 
                             onClick={handleGenerate}
                             disabled={!selectedTemplate || isGenerating}
-                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            className="bg-amber-600 hover:bg-amber-700 text-foreground"
                         >
                             {isGenerating ? (
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -143,9 +143,9 @@ interface DepreciationBreakdownPanelProps {
 function ConfidenceIndicator({ confidence }: { confidence: number }) {
   const level = confidence >= 0.8 ? 'high' : confidence >= 0.6 ? 'medium' : 'low';
   const colors = {
-    high: 'text-green-400 bg-green-400/10 border-green-500/30',
-    medium: 'text-yellow-400 bg-yellow-400/10 border-yellow-500/30',
-    low: 'text-red-400 bg-red-400/10 border-red-500/30',
+    high: 'text-green-600 dark:text-green-400 bg-green-400/10 border-green-500/30',
+    medium: 'text-yellow-600 dark:text-yellow-400 bg-yellow-400/10 border-yellow-500/30',
+    low: 'text-red-600 dark:text-red-400 bg-red-400/10 border-red-500/30',
   };
   
   return (
@@ -178,12 +178,12 @@ function RateDisplay({
   
   return (
     <div className={cn('p-3 border rounded-lg', colorClasses[color])}>
-      <div className="text-[10px] text-zinc-400 uppercase mb-1">{label}</div>
-      <div className="text-2xl font-mono font-bold text-white">
+      <div className="text-[10px] text-muted-foreground uppercase mb-1">{label}</div>
+      <div className="text-2xl font-mono font-bold text-foreground">
         {(rate * 100).toFixed(1)}%
       </div>
       {amount !== undefined && (
-        <div className="text-sm font-mono text-zinc-400 mt-1">
+        <div className="text-sm font-mono text-muted-foreground mt-1">
           ₵{amount.toLocaleString()}
         </div>
       )}
@@ -194,9 +194,9 @@ function RateDisplay({
 function InputsUsedRow({ label, value }: { label: string; value: string | number | undefined }) {
   if (value === undefined || value === null) return null;
   return (
-    <div className="flex justify-between text-xs py-1 border-b border-zinc-800 last:border-0">
-      <span className="text-zinc-500">{label}</span>
-      <span className="text-zinc-300 font-mono">{value}</span>
+    <div className="flex justify-between text-xs py-1 border-b border-border last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground font-mono">{value}</span>
     </div>
   );
 }
@@ -209,34 +209,34 @@ function DetectedItemRow({
   index: number;
 }) {
   const typeColors = {
-    'deficiency_curable': 'text-yellow-400',
-    'deficiency_incurable': 'text-orange-400',
-    'superadequacy': 'text-purple-400',
-    'outdated_design': 'text-blue-400',
+    'deficiency_curable': 'text-yellow-600 dark:text-yellow-400',
+    'deficiency_incurable': 'text-orange-600 dark:text-orange-400',
+    'superadequacy': 'text-purple-600 dark:text-purple-400',
+    'outdated_design': 'text-blue-600 dark:text-blue-400',
   };
   
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-zinc-800 last:border-0">
-      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-400">
+    <div className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground">
         {index + 1}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm text-white">{item.description}</span>
+          <span className="text-sm text-foreground">{item.description}</span>
           <span className={cn(
             'px-1.5 py-0.5 text-[9px] rounded uppercase font-mono',
-            item.curable ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+            item.curable ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-red-500/20 text-red-600 dark:text-red-400'
           )}>
             {item.curable ? 'Curable' : 'Incurable'}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-zinc-500">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className={cn('font-mono', typeColors[item.type])}>
             {(item.rate * 100).toFixed(1)}%
           </span>
           <span>Range: {(item.rate_range[0] * 100).toFixed(1)}-{(item.rate_range[1] * 100).toFixed(1)}%</span>
         </div>
-        <div className="text-[10px] text-zinc-600 mt-1 italic">
+        <div className="text-[10px] text-muted-foreground mt-1 italic">
           {item.detection_logic}
         </div>
       </div>
@@ -250,14 +250,14 @@ function ExternalFactorRow({
   factor: ExternalObsolescenceData['factors_detected'][0];
 }) {
   const categoryColors = {
-    'environmental': 'bg-red-500/20 text-red-400',
-    'locational': 'bg-yellow-500/20 text-yellow-400',
-    'economic': 'bg-blue-500/20 text-blue-400',
-    'regulatory': 'bg-purple-500/20 text-purple-400',
+    'environmental': 'bg-red-500/20 text-red-600 dark:text-red-400',
+    'locational': 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400',
+    'economic': 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    'regulatory': 'bg-purple-500/20 text-purple-600 dark:text-purple-400',
   };
   
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-zinc-800 last:border-0">
+    <div className="flex items-start gap-3 py-2 border-b border-border last:border-0">
       <span className={cn(
         'px-1.5 py-0.5 text-[9px] rounded uppercase font-mono flex-shrink-0',
         categoryColors[factor.category]
@@ -265,9 +265,9 @@ function ExternalFactorRow({
         {factor.category}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-white mb-1">{factor.description}</div>
-        <div className="flex items-center gap-4 text-xs text-zinc-500">
-          <span className="font-mono text-orange-400">
+        <div className="text-sm text-foreground mb-1">{factor.description}</div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="font-mono text-orange-600 dark:text-orange-400">
             {(factor.rate * 100).toFixed(1)}%
           </span>
           <span>Threshold: {factor.threshold_used}</span>
@@ -298,89 +298,89 @@ function PhysicalDepreciationSection({
   const amount = rcn * data.depreciation_rate;
   
   return (
-    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-900 transition-colors"
+        className="w-full flex items-center justify-between p-4 bg-card/50 hover:bg-card transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-            <Building2 className="w-4 h-4 text-blue-400" />
+            <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="text-left">
-            <div className="text-sm font-medium text-white">Physical Depreciation</div>
-            <div className="text-xs text-zinc-500">Modified Age-Life Method</div>
+            <div className="text-sm font-medium text-foreground">Physical Depreciation</div>
+            <div className="text-xs text-muted-foreground">Modified Age-Life Method</div>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-lg font-mono font-bold text-blue-400">
+            <div className="text-lg font-mono font-bold text-blue-600 dark:text-blue-400">
               {(data.depreciation_rate * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-zinc-500 font-mono">
+            <div className="text-xs text-muted-foreground font-mono">
               ₵{amount.toLocaleString()}
             </div>
           </div>
           <ConfidenceIndicator confidence={data.confidence} />
           {expanded ? (
-            <ChevronUp className="w-5 h-5 text-zinc-500" />
+            <ChevronUp className="w-5 h-5 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-500" />
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           )}
         </div>
       </button>
       
       {/* Expanded Content */}
       {expanded && (
-        <div className="p-4 border-t border-zinc-800 bg-zinc-950/50">
+        <div className="p-4 border-t border-border bg-background/50">
           {/* Key Metrics */}
           <div className="grid grid-cols-4 gap-4 mb-4">
-            <div className="p-3 bg-zinc-900 rounded border border-zinc-800">
-              <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-1">
+            <div className="p-3 bg-card rounded border border-border">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
                 <Calendar className="w-3 h-3" />
                 Actual Age
               </div>
-              <div className="text-xl font-mono text-white">
-                {data.actual_age} <span className="text-xs text-zinc-500">years</span>
+              <div className="text-xl font-mono text-foreground">
+                {data.actual_age} <span className="text-xs text-muted-foreground">years</span>
               </div>
             </div>
-            <div className="p-3 bg-zinc-900 rounded border border-zinc-800">
-              <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-1">
+            <div className="p-3 bg-card rounded border border-border">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
                 <Clock className="w-3 h-3" />
                 Effective Age
               </div>
-              <div className="text-xl font-mono text-white">
-                {data.effective_age.toFixed(1)} <span className="text-xs text-zinc-500">years</span>
+              <div className="text-xl font-mono text-foreground">
+                {data.effective_age.toFixed(1)} <span className="text-xs text-muted-foreground">years</span>
               </div>
             </div>
-            <div className="p-3 bg-zinc-900 rounded border border-zinc-800">
-              <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-1">
+            <div className="p-3 bg-card rounded border border-border">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
                 <TrendingDown className="w-3 h-3" />
                 Economic Life
               </div>
-              <div className="text-xl font-mono text-white">
-                {data.economic_life} <span className="text-xs text-zinc-500">years</span>
+              <div className="text-xl font-mono text-foreground">
+                {data.economic_life} <span className="text-xs text-muted-foreground">years</span>
               </div>
             </div>
-            <div className="p-3 bg-zinc-900 rounded border border-zinc-800">
-              <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-1">
+            <div className="p-3 bg-card rounded border border-border">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
                 <Shield className="w-3 h-3" />
                 Remaining Life
               </div>
-              <div className="text-xl font-mono text-white">
-                {data.remaining_life.toFixed(1)} <span className="text-xs text-zinc-500">years</span>
+              <div className="text-xl font-mono text-foreground">
+                {data.remaining_life.toFixed(1)} <span className="text-xs text-muted-foreground">years</span>
               </div>
             </div>
           </div>
           
           {/* Inputs Used */}
           <div className="mb-4">
-            <div className="text-xs text-zinc-400 mb-2 flex items-center gap-1">
+            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
               <Info className="w-3 h-3" />
               Inputs Used
             </div>
-            <div className="bg-zinc-900 rounded border border-zinc-800 p-3">
+            <div className="bg-card rounded border border-border p-3">
               <InputsUsedRow label="Year Built" value={data.inputs_used.year_built} />
               <InputsUsedRow label="Condition" value={data.inputs_used.condition} />
               <InputsUsedRow label="Condition Factor" value={data.inputs_used.condition_factor?.toFixed(2)} />
@@ -397,11 +397,11 @@ function PhysicalDepreciationSection({
           {/* Notes */}
           {data.notes.length > 0 && (
             <div className="mb-4">
-              <div className="text-xs text-zinc-400 mb-2">Notes</div>
+              <div className="text-xs text-muted-foreground mb-2">Notes</div>
               <div className="space-y-1">
                 {data.notes.map((note, i) => (
-                  <div key={i} className="text-xs text-zinc-500 flex items-start gap-2">
-                    <span className="text-zinc-600">•</span>
+                  <div key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                    <span className="text-muted-foreground">•</span>
                     {note}
                   </div>
                 ))}
@@ -414,20 +414,20 @@ function PhysicalDepreciationSection({
             <div className="flex items-center gap-2">
               {data.auto_calculated ? (
                 <>
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-xs text-green-400">Auto-calculated</span>
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-xs text-green-600 dark:text-green-400">Auto-calculated</span>
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                  <span className="text-xs text-yellow-400">Manual calculation required</span>
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                  <span className="text-xs text-yellow-600 dark:text-yellow-400">Manual calculation required</span>
                 </>
               )}
             </div>
             {onOverrideClick && (
               <button
                 onClick={onOverrideClick}
-                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300 flex items-center gap-1"
               >
                 <Wrench className="w-3 h-3" />
                 Override
@@ -456,73 +456,73 @@ function FunctionalObsolescenceSection({
   const amount = rcn * data.depreciation_rate;
   
   return (
-    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-900 transition-colors"
+        className="w-full flex items-center justify-between p-4 bg-card/50 hover:bg-card transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-            <Settings2 className="w-4 h-4 text-orange-400" />
+            <Settings2 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
           </div>
           <div className="text-left">
-            <div className="text-sm font-medium text-white">Functional Obsolescence</div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-sm font-medium text-foreground">Functional Obsolescence</div>
+            <div className="text-xs text-muted-foreground">
               {data.total_items} items detected
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-lg font-mono font-bold text-orange-400">
+            <div className="text-lg font-mono font-bold text-orange-600 dark:text-orange-400">
               {(data.depreciation_rate * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-zinc-500 font-mono">
+            <div className="text-xs text-muted-foreground font-mono">
               ₵{amount.toLocaleString()}
             </div>
           </div>
           <ConfidenceIndicator confidence={data.confidence} />
           {data.requires_review && (
-            <AlertCircle className="w-4 h-4 text-yellow-400" />
+            <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
           )}
           {expanded ? (
-            <ChevronUp className="w-5 h-5 text-zinc-500" />
+            <ChevronUp className="w-5 h-5 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-500" />
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           )}
         </div>
       </button>
       
       {/* Expanded Content */}
       {expanded && (
-        <div className="p-4 border-t border-zinc-800 bg-zinc-950/50">
+        <div className="p-4 border-t border-border bg-background/50">
           {/* Curable vs Incurable */}
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="p-3 bg-zinc-900 rounded border border-green-500/30">
-              <div className="text-[10px] text-green-400 mb-1">CURABLE</div>
-              <div className="text-xl font-mono text-white">
+            <div className="p-3 bg-card rounded border border-green-500/30">
+              <div className="text-[10px] text-green-600 dark:text-green-400 mb-1">CURABLE</div>
+              <div className="text-xl font-mono text-foreground">
                 {(data.curable_rate * 100).toFixed(1)}%
               </div>
-              <div className="text-xs text-zinc-500">Can be fixed by owner</div>
+              <div className="text-xs text-muted-foreground">Can be fixed by owner</div>
             </div>
-            <div className="p-3 bg-zinc-900 rounded border border-red-500/30">
-              <div className="text-[10px] text-red-400 mb-1">INCURABLE</div>
-              <div className="text-xl font-mono text-white">
+            <div className="p-3 bg-card rounded border border-red-500/30">
+              <div className="text-[10px] text-red-600 dark:text-red-400 mb-1">INCURABLE</div>
+              <div className="text-xl font-mono text-foreground">
                 {(data.incurable_rate * 100).toFixed(1)}%
               </div>
-              <div className="text-xs text-zinc-500">Cannot be economically fixed</div>
+              <div className="text-xs text-muted-foreground">Cannot be economically fixed</div>
             </div>
           </div>
           
           {/* Detected Items */}
           {data.items_detected.length > 0 && (
             <div className="mb-4">
-              <div className="text-xs text-zinc-400 mb-2 flex items-center gap-1">
+              <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 Detected Issues
               </div>
-              <div className="bg-zinc-900 rounded border border-zinc-800 p-3">
+              <div className="bg-card rounded border border-border p-3">
                 {data.items_detected.map((item, i) => (
                   <DetectedItemRow key={item.item_key} item={item} index={i} />
                 ))}
@@ -532,7 +532,7 @@ function FunctionalObsolescenceSection({
           
           {data.items_detected.length === 0 && (
             <div className="mb-4 p-4 bg-green-500/10 border border-green-500/30 rounded">
-              <div className="flex items-center gap-2 text-green-400">
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                 <CheckCircle className="w-4 h-4" />
                 <span className="text-sm">No functional obsolescence detected</span>
               </div>
@@ -542,11 +542,11 @@ function FunctionalObsolescenceSection({
           {/* Notes */}
           {data.notes.length > 0 && (
             <div className="mb-4">
-              <div className="text-xs text-zinc-400 mb-2">Notes</div>
+              <div className="text-xs text-muted-foreground mb-2">Notes</div>
               <div className="space-y-1">
                 {data.notes.map((note, i) => (
-                  <div key={i} className="text-xs text-zinc-500 flex items-start gap-2">
-                    <span className="text-zinc-600">•</span>
+                  <div key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                    <span className="text-muted-foreground">•</span>
                     {note}
                   </div>
                 ))}
@@ -559,20 +559,20 @@ function FunctionalObsolescenceSection({
             <div className="flex items-center gap-2">
               {data.auto_calculated ? (
                 <>
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-xs text-green-400">Auto-detected</span>
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-xs text-green-600 dark:text-green-400">Auto-detected</span>
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                  <span className="text-xs text-yellow-400">Manual review needed</span>
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                  <span className="text-xs text-yellow-600 dark:text-yellow-400">Manual review needed</span>
                 </>
               )}
             </div>
             {onOverrideClick && (
               <button
                 onClick={onOverrideClick}
-                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300 flex items-center gap-1"
               >
                 <Wrench className="w-3 h-3" />
                 Override
@@ -601,47 +601,47 @@ function ExternalObsolescenceSection({
   const amount = rcn * data.depreciation_rate;
   
   return (
-    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-900 transition-colors"
+        className="w-full flex items-center justify-between p-4 bg-card/50 hover:bg-card transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-            <MapPin className="w-4 h-4 text-purple-400" />
+            <MapPin className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
           <div className="text-left">
-            <div className="text-sm font-medium text-white">External Obsolescence</div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-sm font-medium text-foreground">External Obsolescence</div>
+            <div className="text-xs text-muted-foreground">
               {data.total_factors} factors from {data.data_sources_used.length} sources
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-lg font-mono font-bold text-purple-400">
+            <div className="text-lg font-mono font-bold text-purple-600 dark:text-purple-400">
               {(data.depreciation_rate * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-zinc-500 font-mono">
+            <div className="text-xs text-muted-foreground font-mono">
               ₵{amount.toLocaleString()}
             </div>
           </div>
           <ConfidenceIndicator confidence={data.confidence} />
           {data.requires_review && (
-            <AlertCircle className="w-4 h-4 text-yellow-400" />
+            <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
           )}
           {expanded ? (
-            <ChevronUp className="w-5 h-5 text-zinc-500" />
+            <ChevronUp className="w-5 h-5 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-500" />
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           )}
         </div>
       </button>
       
       {/* Expanded Content */}
       {expanded && (
-        <div className="p-4 border-t border-zinc-800 bg-zinc-950/50">
+        <div className="p-4 border-t border-border bg-background/50">
           {/* Category Breakdown */}
           <div className="grid grid-cols-4 gap-2 mb-4">
             {Object.entries(data.category_breakdown).map(([category, rate]) => {
@@ -656,8 +656,8 @@ function ExternalObsolescenceSection({
                   key={category} 
                   className={cn('p-2 rounded border text-center', categoryColors[category])}
                 >
-                  <div className="text-[9px] text-zinc-400 uppercase mb-1">{category}</div>
-                  <div className="text-sm font-mono text-white font-bold">
+                  <div className="text-[9px] text-muted-foreground uppercase mb-1">{category}</div>
+                  <div className="text-sm font-mono text-foreground font-bold">
                     {((rate as number) * 100).toFixed(1)}%
                   </div>
                 </div>
@@ -668,11 +668,11 @@ function ExternalObsolescenceSection({
           {/* Detected Factors */}
           {data.factors_detected.length > 0 && (
             <div className="mb-4">
-              <div className="text-xs text-zinc-400 mb-2 flex items-center gap-1">
+              <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 Detected Factors
               </div>
-              <div className="bg-zinc-900 rounded border border-zinc-800 p-3">
+              <div className="bg-card rounded border border-border p-3">
                 {data.factors_detected.map((factor) => (
                   <ExternalFactorRow key={factor.factor_key} factor={factor} />
                 ))}
@@ -682,11 +682,11 @@ function ExternalObsolescenceSection({
           
           {data.factors_detected.length === 0 && (
             <div className="mb-4 p-4 bg-green-500/10 border border-green-500/30 rounded">
-              <div className="flex items-center gap-2 text-green-400">
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                 <CheckCircle className="w-4 h-4" />
                 <span className="text-sm">No external obsolescence factors detected</span>
               </div>
-              <div className="text-xs text-zinc-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Based on available location and market data
               </div>
             </div>
@@ -695,12 +695,12 @@ function ExternalObsolescenceSection({
           {/* Data Sources */}
           {data.data_sources_used.length > 0 && (
             <div className="mb-4">
-              <div className="text-xs text-zinc-400 mb-2">Data Sources</div>
+              <div className="text-xs text-muted-foreground mb-2">Data Sources</div>
               <div className="flex flex-wrap gap-2">
                 {data.data_sources_used.map((source) => (
                   <span 
                     key={source}
-                    className="px-2 py-1 text-[10px] bg-zinc-800 text-zinc-400 rounded font-mono"
+                    className="px-2 py-1 text-[10px] bg-muted text-muted-foreground rounded font-mono"
                   >
                     {source}
                   </span>
@@ -712,11 +712,11 @@ function ExternalObsolescenceSection({
           {/* Notes */}
           {data.notes.length > 0 && (
             <div className="mb-4">
-              <div className="text-xs text-zinc-400 mb-2">Notes</div>
+              <div className="text-xs text-muted-foreground mb-2">Notes</div>
               <div className="space-y-1">
                 {data.notes.map((note, i) => (
-                  <div key={i} className="text-xs text-zinc-500 flex items-start gap-2">
-                    <span className="text-zinc-600">•</span>
+                  <div key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                    <span className="text-muted-foreground">•</span>
                     {note}
                   </div>
                 ))}
@@ -729,20 +729,20 @@ function ExternalObsolescenceSection({
             <div className="flex items-center gap-2">
               {data.auto_calculated ? (
                 <>
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-xs text-green-400">Auto-calculated</span>
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-xs text-green-600 dark:text-green-400">Auto-calculated</span>
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                  <span className="text-xs text-yellow-400">Insufficient data</span>
+                  <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                  <span className="text-xs text-yellow-600 dark:text-yellow-400">Insufficient data</span>
                 </>
               )}
             </div>
             {onOverrideClick && (
               <button
                 onClick={onOverrideClick}
-                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-300 flex items-center gap-1"
               >
                 <Wrench className="w-3 h-3" />
                 Override
@@ -784,37 +784,37 @@ export function DepreciationBreakdownPanel({
   const depreciatedValue = data.rcn - totalDepreciation;
   
   return (
-    <div className={cn('bg-black border border-zinc-800 rounded-lg', className)}>
+    <div className={cn('bg-background border border-border rounded-lg', className)}>
       {/* Panel Header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between p-4 border-b border-zinc-800"
+        className="w-full flex items-center justify-between p-4 border-b border-border"
       >
         <div className="flex items-center gap-3">
-          <TrendingDown className="w-5 h-5 text-zinc-400" />
+          <TrendingDown className="w-5 h-5 text-muted-foreground" />
           <div className="text-left">
-            <div className="text-sm font-medium text-white">Depreciation Analysis</div>
-            <div className="text-xs text-zinc-500">RICS/GhIS Compliant Calculations</div>
+            <div className="text-sm font-medium text-foreground">Depreciation Analysis</div>
+            <div className="text-xs text-muted-foreground">RICS/GhIS Compliant Calculations</div>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-xl font-mono font-bold text-red-400">
+            <div className="text-xl font-mono font-bold text-red-600 dark:text-red-400">
               -{(data.total.rate * 100).toFixed(1)}%
             </div>
-            <div className="text-xs text-zinc-500 font-mono">
+            <div className="text-xs text-muted-foreground font-mono">
               ₵{totalDepreciation.toLocaleString()} total
             </div>
           </div>
           {data.total.was_capped && (
-            <span className="px-2 py-1 text-[10px] bg-yellow-500/20 text-yellow-400 rounded font-mono">
+            <span className="px-2 py-1 text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded font-mono">
               CAPPED
             </span>
           )}
           {collapsed ? (
-            <ChevronDown className="w-5 h-5 text-zinc-500" />
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           ) : (
-            <ChevronUp className="w-5 h-5 text-zinc-500" />
+            <ChevronUp className="w-5 h-5 text-muted-foreground" />
           )}
         </div>
       </button>
@@ -842,32 +842,32 @@ export function DepreciationBreakdownPanel({
               color="purple"
             />
             <div className="p-3 border rounded-lg border-green-500 bg-green-500/10">
-              <div className="text-[10px] text-zinc-400 uppercase mb-1">Depreciated Value</div>
-              <div className="text-2xl font-mono font-bold text-green-400">
+              <div className="text-[10px] text-muted-foreground uppercase mb-1">Depreciated Value</div>
+              <div className="text-2xl font-mono font-bold text-green-600 dark:text-green-400">
                 ₵{depreciatedValue.toLocaleString()}
               </div>
-              <div className="text-xs text-zinc-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 RCN - Depreciation
               </div>
             </div>
           </div>
           
           {/* RCN Reference */}
-          <div className="flex items-center justify-between px-3 py-2 bg-zinc-900 rounded border border-zinc-800">
-            <span className="text-xs text-zinc-500">Replacement Cost New (RCN)</span>
-            <span className="text-sm font-mono text-white">₵{data.rcn.toLocaleString()}</span>
+          <div className="flex items-center justify-between px-3 py-2 bg-card rounded border border-border">
+            <span className="text-xs text-muted-foreground">Replacement Cost New (RCN)</span>
+            <span className="text-sm font-mono text-foreground">₵{data.rcn.toLocaleString()}</span>
           </div>
           
           {/* Methodology Notes */}
           {data.reconciliation.methodology_notes.length > 0 && (
             <div className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded">
-              <div className="flex items-center gap-2 text-xs text-blue-400 mb-1">
+              <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 mb-1">
                 <HelpCircle className="w-3 h-3" />
                 Methodology Notes
               </div>
               <div className="space-y-1">
                 {data.reconciliation.methodology_notes.map((note, i) => (
-                  <div key={i} className="text-xs text-zinc-400">{note}</div>
+                  <div key={i} className="text-xs text-muted-foreground">{note}</div>
                 ))}
               </div>
             </div>
@@ -901,11 +901,11 @@ export function DepreciationBreakdownPanel({
           </div>
           
           {/* Overall Confidence */}
-          <div className="flex items-center justify-between p-3 bg-zinc-900 rounded border border-zinc-800">
+          <div className="flex items-center justify-between p-3 bg-card rounded border border-border">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-500">Overall Calculation Confidence</span>
+              <span className="text-xs text-muted-foreground">Overall Calculation Confidence</span>
               {data.reconciliation.requires_review && (
-                <span className="px-2 py-0.5 text-[9px] bg-yellow-500/20 text-yellow-400 rounded">
+                <span className="px-2 py-0.5 text-[9px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded">
                   Review Recommended
                 </span>
               )}

@@ -162,7 +162,7 @@ export function VersionHistory({
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="h-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"
+                className="h-16 bg-muted dark:bg-gray-800 rounded animate-pulse"
               />
             ))}
           </div>
@@ -227,9 +227,9 @@ export function VersionHistory({
               <div className="border rounded-lg overflow-hidden">
                 <div
                   className={cn(
-                    'flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                    'flex items-center justify-between p-3 cursor-pointer hover:bg-muted dark:hover:bg-gray-800/50',
                     expandedVersions.has(currentVersion.version_number) &&
-                      'bg-gray-50 dark:bg-gray-800/50'
+                      'bg-muted dark:bg-gray-800/50'
                   )}
                   onClick={() => handleToggleExpand(currentVersion.version_number)}
                 >
@@ -246,7 +246,7 @@ export function VersionHistory({
                           Current
                         </Badge>
                       </div>
-                      <div className="text-sm text-gray-500 flex items-center gap-2">
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
                         <Clock className="h-3 w-3" />
                         {format(new Date(currentVersion.created_at), 'MMM d, yyyy HH:mm')}
                       </div>
@@ -290,25 +290,25 @@ export function VersionHistory({
                       </Tooltip>
                     </TooltipProvider>
                     {expandedVersions.has(currentVersion.version_number) ? (
-                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
                 </div>
 
                 {/* Expanded details */}
                 {expandedVersions.has(currentVersion.version_number) && (
-                  <div className="border-t p-3 bg-gray-50 dark:bg-gray-800/30 space-y-2">
+                  <div className="border-t p-3 bg-muted dark:bg-gray-800/30 space-y-2">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-500">File Size:</span>
+                        <span className="text-muted-foreground">File Size:</span>
                         <span className="ml-2 font-medium">
                           {formatFileSize(currentVersion.file_size)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-500">Uploaded by:</span>
+                        <span className="text-muted-foreground">Uploaded by:</span>
                         <span className="ml-2 font-medium flex items-center gap-1 inline-flex">
                           <User className="h-3 w-3" />
                           {currentVersion.created_by_name || 'Unknown'}
@@ -317,7 +317,7 @@ export function VersionHistory({
                     </div>
                     {currentVersion.change_notes && (
                       <div className="text-sm">
-                        <span className="text-gray-500">Change Notes:</span>
+                        <span className="text-muted-foreground">Change Notes:</span>
                         <p className="mt-1 text-gray-700 dark:text-gray-300">
                           {currentVersion.change_notes}
                         </p>
@@ -332,20 +332,20 @@ export function VersionHistory({
             {olderVersions.length > 0 && (
               <>
                 <Separator className="my-4" />
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Previous Versions</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">Previous Versions</h4>
                 {olderVersions.map((version: DocumentVersion) => (
                   <div key={version.id} className="border rounded-lg overflow-hidden">
                     <div
                       className={cn(
-                        'flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                        'flex items-center justify-between p-3 cursor-pointer hover:bg-muted dark:hover:bg-gray-800/50',
                         expandedVersions.has(version.version_number) &&
-                          'bg-gray-50 dark:bg-gray-800/50'
+                          'bg-muted dark:bg-gray-800/50'
                       )}
                       onClick={() => handleToggleExpand(version.version_number)}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-gray-500" />
+                        <div className="h-10 w-10 rounded-full bg-muted dark:bg-gray-800 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export function VersionHistory({
                               Version {version.version_number}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-500 flex items-center gap-2">
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
                             <Clock className="h-3 w-3" />
                             {format(new Date(version.created_at), 'MMM d, yyyy HH:mm')}
                           </div>
@@ -415,25 +415,25 @@ export function VersionHistory({
                           </Tooltip>
                         </TooltipProvider>
                         {expandedVersions.has(version.version_number) ? (
-                          <ChevronUp className="h-4 w-4 text-gray-400" />
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
                     </div>
 
                     {/* Expanded details */}
                     {expandedVersions.has(version.version_number) && (
-                      <div className="border-t p-3 bg-gray-50 dark:bg-gray-800/30 space-y-2">
+                      <div className="border-t p-3 bg-muted dark:bg-gray-800/30 space-y-2">
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="text-gray-500">File Size:</span>
+                            <span className="text-muted-foreground">File Size:</span>
                             <span className="ml-2 font-medium">
                               {formatFileSize(version.file_size)}
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Uploaded by:</span>
+                            <span className="text-muted-foreground">Uploaded by:</span>
                             <span className="ml-2 font-medium flex items-center gap-1 inline-flex">
                               <User className="h-3 w-3" />
                               {version.created_by_name || 'Unknown'}
@@ -442,7 +442,7 @@ export function VersionHistory({
                         </div>
                         {version.change_notes && (
                           <div className="text-sm">
-                            <span className="text-gray-500">Change Notes:</span>
+                            <span className="text-muted-foreground">Change Notes:</span>
                             <p className="mt-1 text-gray-700 dark:text-gray-300">
                               {version.change_notes}
                             </p>
@@ -457,8 +457,8 @@ export function VersionHistory({
 
             {/* Empty state */}
             {(!versions || versions.length === 0) && (
-              <div className="text-center py-8 text-gray-500">
-                <History className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                 <p>No version history available</p>
               </div>
             )}

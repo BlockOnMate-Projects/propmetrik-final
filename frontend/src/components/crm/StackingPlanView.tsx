@@ -134,7 +134,7 @@ function FloorRow({
             {/* Floor header */}
             <button
                 onClick={() => setExpanded(!expanded)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/40 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
             >
                 <div className="flex items-center gap-3">
                     {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}

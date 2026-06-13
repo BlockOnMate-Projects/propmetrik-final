@@ -208,7 +208,7 @@ export function DocumentPreview({
       return (
         <div className="flex flex-col items-center justify-center h-full">
           <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-500">Loading preview...</p>
+          <p className="text-muted-foreground">Loading preview...</p>
         </div>
       );
     }
@@ -228,11 +228,11 @@ export function DocumentPreview({
     if (!isPreviewable) {
       return (
         <div className="flex flex-col items-center justify-center h-full text-center">
-          <FileIcon className="h-20 w-20 text-gray-400 mb-4" />
+          <FileIcon className="h-20 w-20 text-muted-foreground mb-4" />
           <p className="text-gray-700 dark:text-gray-300 font-medium mb-2">
             Preview not available
           </p>
-          <p className="text-gray-500 text-sm mb-4">
+          <p className="text-muted-foreground text-sm mb-4">
             This file type cannot be previewed in the browser.
           </p>
           <Button onClick={handleDownload}>
@@ -292,7 +292,7 @@ export function DocumentPreview({
       case 'audio':
         return (
           <div className="flex flex-col items-center justify-center h-full p-4">
-            <FileAudio className="h-24 w-24 text-gray-400 mb-6" />
+            <FileAudio className="h-24 w-24 text-muted-foreground mb-6" />
             {previewUrl && (
               <audio src={previewUrl} controls className="w-full max-w-md">
                 Your browser does not support the audio tag.
@@ -305,7 +305,7 @@ export function DocumentPreview({
         return (
           <div className="h-full w-full overflow-auto p-4">
             <pre
-              className="text-sm font-mono whitespace-pre-wrap bg-gray-50 dark:bg-gray-900 p-4 rounded-lg"
+              className="text-sm font-mono whitespace-pre-wrap bg-muted dark:bg-gray-900 p-4 rounded-lg"
               style={{ fontSize: `${zoom}%` }}
             >
               {textContent}
@@ -327,7 +327,7 @@ export function DocumentPreview({
         <DialogHeader className="p-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <FileIcon className="h-6 w-6 text-gray-500 flex-shrink-0" />
+              <FileIcon className="h-6 w-6 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <DialogTitle className="truncate">
                   {document.name}
@@ -337,11 +337,11 @@ export function DocumentPreview({
                   <Badge variant="outline" className="text-xs">
                     v{versionNumber}
                   </Badge>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {formatFileSize(version?.file_size || document.file_size)}
                   </span>
-                  <span className="text-xs text-gray-500">•</span>
-                  <span className="text-xs text-gray-500">{mimeType}</span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-muted-foreground">{mimeType}</span>
                 </div>
               </div>
             </div>
@@ -367,7 +367,7 @@ export function DocumentPreview({
                       <TooltipContent>Zoom Out</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <span className="text-xs text-gray-500 w-12 text-center">{zoom}%</span>
+                  <span className="text-xs text-muted-foreground w-12 text-center">{zoom}%</span>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -458,7 +458,7 @@ export function DocumentPreview({
         </DialogHeader>
 
         {/* Preview Content */}
-        <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
+        <div className="flex-1 overflow-hidden bg-muted dark:bg-gray-900">
           {renderPreview()}
         </div>
       </DialogContent>

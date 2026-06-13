@@ -12,8 +12,8 @@ export default function ContactPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="max-w-4xl mx-auto text-center mb-10 sm:mb-16"
                 >
-                    <h1 className="text-3xl sm:text-5xl font-bold tracking-tighter mb-4 sm:mb-6 text-white">Get in Touch</h1>
-                    <p className="text-base sm:text-xl text-zinc-400">
+                    <h1 className="text-3xl sm:text-5xl font-bold tracking-tighter mb-4 sm:mb-6 text-foreground">Get in Touch</h1>
+                    <p className="text-base sm:text-xl text-muted-foreground">
                         Ready to modernize your real estate operations? We&apos;re here to help.
                     </p>
                 </motion.div>
@@ -23,8 +23,8 @@ export default function ContactPage() {
                         <div className="flex items-start gap-4">
                             <MapPin className="w-6 h-6 text-amber-500 mt-1 flex-shrink-0" />
                             <div>
-                                <h3 className="font-bold text-lg text-white">Headquarters</h3>
-                                <p className="text-zinc-400">
+                                <h3 className="font-bold text-lg text-foreground">Headquarters</h3>
+                                <p className="text-muted-foreground">
                                     123 Independence Avenue<br />
                                     Ridge, Accra<br />
                                     Ghana
@@ -34,39 +34,39 @@ export default function ContactPage() {
                         <div className="flex items-start gap-4">
                             <Phone className="w-6 h-6 text-amber-500 mt-1 flex-shrink-0" />
                             <div>
-                                <h3 className="font-bold text-lg text-white">Phone</h3>
-                                <p className="text-zinc-400">+233 (0) 30 200 0000</p>
+                                <h3 className="font-bold text-lg text-foreground">Phone</h3>
+                                <p className="text-muted-foreground">+233 (0) 30 200 0000</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <Mail className="w-6 h-6 text-amber-500 mt-1 flex-shrink-0" />
                             <div>
-                                <h3 className="font-bold text-lg text-white">Email</h3>
-                                <p className="text-zinc-400">hello@propmetrik.com</p>
+                                <h3 className="font-bold text-lg text-foreground">Email</h3>
+                                <p className="text-muted-foreground">hello@propmetrik.com</p>
                             </div>
                         </div>
                     </div>
 
-                    <form className="space-y-5 sm:space-y-6 bg-zinc-900 p-6 sm:p-8 rounded-xl border border-zinc-800">
+                    <form className="space-y-5 sm:space-y-6 bg-card p-6 sm:p-8 rounded-xl border border-border">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-zinc-300">First Name</label>
-                                <input type="text" className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
+                                <label className="text-sm font-medium text-muted-foreground">First Name</label>
+                                <input type="text" className="w-full bg-muted border border-border rounded-md px-3 py-2.5 text-foreground placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-zinc-300">Last Name</label>
-                                <input type="text" className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
+                                <label className="text-sm font-medium text-muted-foreground">Last Name</label>
+                                <input type="text" className="w-full bg-muted border border-border rounded-md px-3 py-2.5 text-foreground placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-300">Email</label>
-                            <input type="email" className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2.5 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
+                            <label className="text-sm font-medium text-muted-foreground">Email</label>
+                            <input type="email" className="w-full bg-muted border border-border rounded-md px-3 py-2.5 text-foreground placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-300">Message</label>
-                            <textarea className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2.5 min-h-[120px] text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
+                            <label className="text-sm font-medium text-muted-foreground">Message</label>
+                            <textarea className="w-full bg-muted border border-border rounded-md px-3 py-2.5 min-h-[120px] text-foreground placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors" />
                         </div>
-                        <button className="w-full bg-amber-600 text-white font-bold py-3 rounded-md hover:bg-amber-700 transition-colors uppercase tracking-widest text-sm">
+                        <button className="w-full bg-amber-600 text-foreground font-bold py-3 rounded-md hover:bg-amber-700 transition-colors uppercase tracking-widest text-sm">
                             Send Message
                         </button>
                     </form>

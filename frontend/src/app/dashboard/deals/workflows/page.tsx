@@ -237,8 +237,8 @@ export default function WorkflowsPage() {
                   <p className="text-xs font-medium text-muted-foreground">Total Workflows</p>
                   <p className="text-2xl font-bold text-foreground">{stats.total_workflows}</p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-blue-400" />
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
@@ -249,10 +249,10 @@ export default function WorkflowsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold text-green-400">{stats.active_workflows}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.active_workflows}</p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-green-900/30 flex items-center justify-center">
-                  <Play className="w-5 h-5 text-green-400" />
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Play className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
@@ -265,8 +265,8 @@ export default function WorkflowsPage() {
                   <p className="text-xs font-medium text-muted-foreground">Executions Today</p>
                   <p className="text-2xl font-bold text-foreground">{stats.executions_today}</p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-purple-900/30 flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardContent>
@@ -281,8 +281,8 @@ export default function WorkflowsPage() {
                     {stats.success_rate ? `${(stats.success_rate * 100).toFixed(1)}%` : 'N/A'}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-amber-900/30 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-amber-400" />
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </CardContent>
@@ -350,7 +350,7 @@ export default function WorkflowsPage() {
                       onClick={() => toggleWorkflow(workflow)}
                       className={`p-2 rounded-full transition-colors ${
                         workflow.is_active
-                          ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-900/50'
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
@@ -386,11 +386,11 @@ export default function WorkflowsPage() {
                         <Activity className="w-4 h-4" />
                         <span className="font-medium">{workflow.total_executions}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-green-400">
+                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
                         <CheckCircle className="w-4 h-4" />
                         <span className="font-medium">{workflow.successful_executions}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-red-400">
+                      <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
                         <XCircle className="w-4 h-4" />
                         <span className="font-medium">{workflow.failed_executions}</span>
                       </div>

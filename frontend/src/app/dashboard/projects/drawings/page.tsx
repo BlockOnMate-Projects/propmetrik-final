@@ -33,21 +33,21 @@ interface Revision {
 interface Project { id: string; name: string; }
 
 const disciplineColors: Record<string, string> = {
-  architectural: 'bg-blue-900/50 text-blue-400 border-blue-800',
-  structural: 'bg-orange-900/50 text-orange-400 border-orange-800',
-  mechanical: 'bg-green-900/50 text-green-400 border-green-800',
-  electrical: 'bg-yellow-900/50 text-yellow-400 border-yellow-800',
-  plumbing: 'bg-cyan-900/50 text-cyan-400 border-cyan-800',
-  civil: 'bg-purple-900/50 text-purple-400 border-purple-800',
-  landscape: 'bg-emerald-900/50 text-emerald-400 border-emerald-800',
+  architectural: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800',
+  structural: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 border-orange-800',
+  mechanical: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800',
+  electrical: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border-yellow-800',
+  plumbing: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-400 border-cyan-800',
+  civil: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-800',
+  landscape: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 border-emerald-800',
 };
 const statusColors: Record<string, string> = {
-  draft: 'bg-zinc-800 text-zinc-400 border-zinc-700',
-  in_review: 'bg-amber-900/50 text-amber-400 border-amber-800',
-  approved: 'bg-green-900/50 text-green-400 border-green-800',
-  superseded: 'bg-red-900/50 text-red-400 border-red-800',
-  issued: 'bg-blue-900/50 text-blue-400 border-blue-800',
-  reviewed: 'bg-purple-900/50 text-purple-400 border-purple-800',
+  draft: 'bg-muted text-muted-foreground border-border',
+  in_review: 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800',
+  approved: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800',
+  superseded: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-800',
+  issued: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800',
+  reviewed: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-800',
 };
 
 export default function DrawingsPage() {
@@ -203,11 +203,11 @@ export default function DrawingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">Drawing Management</h1>
-          <p className="text-zinc-500 text-sm mt-1">Manage architectural, structural, and engineering drawings with version control</p>
+          <h1 className="text-xl font-bold text-foreground">Drawing Management</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage architectural, structural, and engineering drawings with version control</p>
         </div>
         <Select value={selectedProject} onValueChange={setSelectedProject}>
-          <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800 text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
+          <SelectTrigger className="w-[200px] bg-card border-border text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
             {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -216,69 +216,69 @@ export default function DrawingsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Total Drawings</p>
-          <p className="text-2xl font-bold text-white">{stats.total}</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Total Drawings</p>
+          <p className="text-2xl font-bold text-foreground">{stats.total}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Approved</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Approved</p>
           <p className="text-2xl font-bold text-green-500">{stats.approved}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">In Review</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">In Review</p>
           <p className="text-2xl font-bold text-amber-500">{stats.inReview}</p>
         </CardContent></Card>
-        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-3">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase">Disciplines</p>
+        <Card className="bg-card/80 border-border"><CardContent className="p-3">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase">Disciplines</p>
           <p className="text-2xl font-bold text-blue-500">{stats.disciplines}</p>
         </CardContent></Card>
       </div>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-          <Input placeholder="Search drawings..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 w-[250px] bg-zinc-900 border-zinc-800" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search drawings..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 w-[250px] bg-card border-border" />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportDrawings} disabled={selectedProject === 'all'} title={selectedProject === 'all' ? 'Pick a specific project to export' : 'Export drawings (CSV)'}><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
+          <Button variant="outline" size="sm" className="border-border" onClick={exportDrawings} disabled={selectedProject === 'all'} title={selectedProject === 'all' ? 'Pick a specific project to export' : 'Export drawings (CSV)'}><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
           <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => { setForm({}); setDrawingFile(null); setShowCreate(true); }}><Plus className="h-3.5 w-3.5 mr-1.5" />New Drawing</Button>
         </div>
       </div>
 
       {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-amber-500" /></div> : (
-        <Card className="bg-zinc-900/80 border-zinc-800">
+        <Card className="bg-card/80 border-border">
           <Table>
-            <TableHeader><TableRow className="border-zinc-800 hover:bg-transparent">
-              <TableHead className="text-zinc-500 font-mono text-[10px]">NUMBER</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">TITLE</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">DISCIPLINE</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">REV</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">PROJECT</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">STATUS</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">SUBMITTED</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">REVIEWED</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">REVISIONS</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">ACTIONS</TableHead>
+            <TableHeader><TableRow className="border-border hover:bg-transparent">
+              <TableHead className="text-muted-foreground font-mono text-[10px]">NUMBER</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">TITLE</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">DISCIPLINE</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">REV</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">PROJECT</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">STATUS</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">SUBMITTED</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">REVIEWED</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">REVISIONS</TableHead>
+              <TableHead className="text-muted-foreground font-mono text-[10px]">ACTIONS</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {drawings.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-zinc-500 py-8">No drawings found. Create one to get started.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No drawings found. Create one to get started.</TableCell></TableRow>
               ) : drawings.map(d => (
-                <TableRow key={d.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => viewDrawing(d.id, d.project_id)}>
+                <TableRow key={d.id} className="border-border hover:bg-muted/50 cursor-pointer" onClick={() => viewDrawing(d.id, d.project_id)}>
                   <TableCell className="font-mono text-xs text-amber-500">{d.drawing_number}</TableCell>
-                  <TableCell className="text-sm text-white max-w-[200px] truncate">{d.title}</TableCell>
-                  <TableCell><Badge variant="outline" className={disciplineColors[d.discipline] || 'border-zinc-700'}>{d.discipline}</Badge></TableCell>
-                  <TableCell className="font-mono text-xs text-white">{d.current_revision}</TableCell>
-                  <TableCell className="text-xs text-zinc-400 max-w-[140px] truncate">{d.project_name || '—'}</TableCell>
-                  <TableCell><Badge variant="outline" className={statusColors[d.status] || 'border-zinc-700'}>{d.status.replace('_', ' ')}</Badge></TableCell>
-                  <TableCell className="text-xs text-zinc-400">{d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-GB') : '—'}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{d.reviewed_at ? new Date(d.reviewed_at).toLocaleDateString('en-GB') : '—'}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{d.revision_count || 0}</TableCell>
+                  <TableCell className="text-sm text-foreground max-w-[200px] truncate">{d.title}</TableCell>
+                  <TableCell><Badge variant="outline" className={disciplineColors[d.discipline] || 'border-border'}>{d.discipline}</Badge></TableCell>
+                  <TableCell className="font-mono text-xs text-foreground">{d.current_revision}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">{d.project_name || '—'}</TableCell>
+                  <TableCell><Badge variant="outline" className={statusColors[d.status] || 'border-border'}>{d.status.replace('_', ' ')}</Badge></TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-GB') : '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{d.reviewed_at ? new Date(d.reviewed_at).toLocaleDateString('en-GB') : '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{d.revision_count || 0}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="View" onClick={(e) => { e.stopPropagation(); viewDrawing(d.id, d.project_id); }}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="Download" onClick={(e) => { e.stopPropagation(); previewFile(d.id, d.project_id); }}><Download className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" title="Delete" onClick={(e) => { e.stopPropagation(); deleteDrawing(d.id, d.project_id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="View" onClick={(e) => { e.stopPropagation(); viewDrawing(d.id, d.project_id); }}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" title="Download" onClick={(e) => { e.stopPropagation(); previewFile(d.id, d.project_id); }}><Download className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-600 dark:text-red-400 hover:text-red-300" title="Delete" onClick={(e) => { e.stopPropagation(); deleteDrawing(d.id, d.project_id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -290,46 +290,46 @@ export default function DrawingsPage() {
 
       {/* Create Drawing Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-lg">
+        <DialogContent className="bg-card border-border text-foreground max-w-lg">
           <DialogHeader><DialogTitle>Create Drawing</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label className="text-zinc-400 text-xs">Assign to Project *</Label>
+              <Label className="text-muted-foreground text-xs">Assign to Project *</Label>
               <Select value={createProject} onValueChange={setCreateProject}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select project" /></SelectTrigger>
+                <SelectTrigger className="bg-muted border-border"><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-zinc-400 text-xs">Drawing Number *</Label><Input value={form.drawing_number || ''} onChange={(e) => setForm({ ...form, drawing_number: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="A-101" /></div>
-              <div><Label className="text-zinc-400 text-xs">Discipline</Label>
+              <div><Label className="text-muted-foreground text-xs">Drawing Number *</Label><Input value={form.drawing_number || ''} onChange={(e) => setForm({ ...form, drawing_number: e.target.value })} className="bg-muted border-border" placeholder="A-101" /></div>
+              <div><Label className="text-muted-foreground text-xs">Discipline</Label>
                 <Select value={form.discipline || 'architectural'} onValueChange={(v) => setForm({ ...form, discipline: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['architectural','structural','mechanical','electrical','plumbing','civil','landscape'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select></div>
             </div>
-            <div><Label className="text-zinc-400 text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
-            <div><Label className="text-zinc-400 text-xs">Description</Label><Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-zinc-800 border-zinc-700" rows={2} /></div>
+            <div><Label className="text-muted-foreground text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-muted border-border" /></div>
+            <div><Label className="text-muted-foreground text-xs">Description</Label><Textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} className="bg-muted border-border" rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-zinc-400 text-xs">Sheet Size</Label>
+              <div><Label className="text-muted-foreground text-xs">Sheet Size</Label>
                 <Select value={form.sheet_size || 'A1'} onValueChange={(v) => setForm({ ...form, sheet_size: v })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{['A0','A1','A2','A3','A4','ARCH D','ARCH E'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label className="text-zinc-400 text-xs">Scale</Label><Input value={form.scale || ''} onChange={(e) => setForm({ ...form, scale: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="1:100" /></div>
+              <div><Label className="text-muted-foreground text-xs">Scale</Label><Input value={form.scale || ''} onChange={(e) => setForm({ ...form, scale: e.target.value })} className="bg-muted border-border" placeholder="1:100" /></div>
             </div>
             <div>
-              <Label className="text-zinc-400 text-xs">Drawing File</Label>
-              <label className="flex items-center gap-2 mt-1 p-3 rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50 cursor-pointer hover:border-amber-600/50 transition-colors">
-                <Upload className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm text-zinc-400 truncate">{drawingFile ? drawingFile.name : 'Click to upload drawing file (PDF, DWG, DXF...)'}</span>
+              <Label className="text-muted-foreground text-xs">Drawing File</Label>
+              <label className="flex items-center gap-2 mt-1 p-3 rounded-lg border border-dashed border-border bg-muted/50 cursor-pointer hover:border-amber-600/50 transition-colors">
+                <Upload className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground truncate">{drawingFile ? drawingFile.name : 'Click to upload drawing file (PDF, DWG, DXF...)'}</span>
                 <input type="file" className="hidden" accept=".pdf,.dwg,.dxf,.dwf,.rvt,.ifc,.png,.jpg,.jpeg,.tif,.tiff" onChange={(e) => setDrawingFile(e.target.files?.[0] || null)} />
               </label>
-              {drawingFile && <p className="text-[10px] text-zinc-500 mt-1">{(drawingFile.size / 1024 / 1024).toFixed(1)} MB — will be uploaded as Rev A</p>}
+              {drawingFile && <p className="text-[10px] text-muted-foreground mt-1">{(drawingFile.size / 1024 / 1024).toFixed(1)} MB — will be uploaded as Rev A</p>}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)} className="border-zinc-700" disabled={creating}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreate(false)} className="border-border" disabled={creating}>Cancel</Button>
             <Button onClick={createDrawing} className="bg-amber-600 hover:bg-amber-700" disabled={creating || !form.title || !form.drawing_number || !createProject}>
               {creating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Creating…</> : 'Create'}
             </Button>
@@ -339,7 +339,7 @@ export default function DrawingsPage() {
 
       {/* Drawing Detail Dialog */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[80vh] overflow-y-auto">
           {selectedDrawing && (<>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -349,24 +349,24 @@ export default function DrawingsPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="flex gap-2 flex-wrap">
-                <Badge variant="outline" className={disciplineColors[selectedDrawing.discipline] || 'border-zinc-700'}>{selectedDrawing.discipline}</Badge>
-                <Badge variant="outline" className={statusColors[selectedDrawing.status] || 'border-zinc-700'}>{selectedDrawing.status}</Badge>
-                <Badge variant="outline" className="border-zinc-700">Rev {selectedDrawing.current_revision}</Badge>
-                <Badge variant="outline" className="border-zinc-700">{selectedDrawing.sheet_size}</Badge>
-                {selectedDrawing.scale && <Badge variant="outline" className="border-zinc-700">{selectedDrawing.scale}</Badge>}
+                <Badge variant="outline" className={disciplineColors[selectedDrawing.discipline] || 'border-border'}>{selectedDrawing.discipline}</Badge>
+                <Badge variant="outline" className={statusColors[selectedDrawing.status] || 'border-border'}>{selectedDrawing.status}</Badge>
+                <Badge variant="outline" className="border-border">Rev {selectedDrawing.current_revision}</Badge>
+                <Badge variant="outline" className="border-border">{selectedDrawing.sheet_size}</Badge>
+                {selectedDrawing.scale && <Badge variant="outline" className="border-border">{selectedDrawing.scale}</Badge>}
               </div>
-              {selectedDrawing.description && <p className="text-sm text-zinc-400">{selectedDrawing.description}</p>}
+              {selectedDrawing.description && <p className="text-sm text-muted-foreground">{selectedDrawing.description}</p>}
 
               <div className="flex justify-end">
-                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => deleteDrawing(selectedDrawing.id, selectedDrawing.project_id)}><Trash2 className="h-3 w-3 mr-1" />Delete Drawing</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600 dark:text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => deleteDrawing(selectedDrawing.id, selectedDrawing.project_id)}><Trash2 className="h-3 w-3 mr-1" />Delete Drawing</Button>
               </div>
 
               {/* Revisions */}
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">Revisions ({selectedDrawing.revisions?.length || 0})</h3>
+                <h3 className="text-sm font-semibold text-foreground">Revisions ({selectedDrawing.revisions?.length || 0})</h3>
                 <div className="flex gap-2">
                   {(selectedDrawing.revisions?.length || 0) >= 2 && (
-                    <Button size="sm" variant="outline" className="border-zinc-700 h-7 text-xs" onClick={() => { setCompareRevs({ a: selectedDrawing.revisions![selectedDrawing.revisions!.length - 1]?.id, b: selectedDrawing.revisions![0]?.id }); setShowCompare(true); }}>
+                    <Button size="sm" variant="outline" className="border-border h-7 text-xs" onClick={() => { setCompareRevs({ a: selectedDrawing.revisions![selectedDrawing.revisions!.length - 1]?.id, b: selectedDrawing.revisions![0]?.id }); setShowCompare(true); }}>
                       <GitCompare className="h-3 w-3 mr-1" />Compare
                     </Button>
                   )}
@@ -377,32 +377,32 @@ export default function DrawingsPage() {
               </div>
               <div className="space-y-2">
                 {(selectedDrawing.revisions || []).map((rev: Revision) => (
-                  <div key={rev.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div key={rev.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
                     <div className="flex items-center gap-3">
                       <div className="font-mono text-sm text-amber-500 font-bold">Rev {rev.revision_number}</div>
-                      <div className="text-xs text-zinc-400">{rev.change_description || 'No description'}</div>
-                      <Badge variant="outline" className={statusColors[rev.status] || 'border-zinc-700'} >{rev.status}</Badge>
+                      <div className="text-xs text-muted-foreground">{rev.change_description || 'No description'}</div>
+                      <Badge variant="outline" className={statusColors[rev.status] || 'border-border'} >{rev.status}</Badge>
                     </div>
                     <div className="flex items-center gap-1">
                       {rev.file_url && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-400" onClick={() => previewFile(selectedDrawing.id, selectedDrawing.project_id)} title="Preview file">
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => previewFile(selectedDrawing.id, selectedDrawing.project_id)} title="Preview file">
                           <Eye className="h-3 w-3 mr-1" />Preview
                         </Button>
                       )}
                       {rev.file_url && (
                         <a href={rev.file_url} download={rev.file_name || 'drawing'} onClick={(e) => e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-400" title="Download file">
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" title="Download file">
                             <Download className="h-3 w-3" />
                           </Button>
                         </a>
                       )}
-                      {rev.status === 'draft' && <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-400" onClick={() => reviewRevision(rev.id, 'review')}>Review</Button>}
-                      {rev.status === 'reviewed' && <Button size="sm" variant="ghost" className="h-7 text-xs text-green-400" onClick={() => reviewRevision(rev.id, 'approve')}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>}
-                      <span className="text-[10px] text-zinc-500">{new Date(rev.created_at).toLocaleDateString('en-GB')}</span>
+                      {rev.status === 'draft' && <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-600 dark:text-blue-400" onClick={() => reviewRevision(rev.id, 'review')}>Review</Button>}
+                      {rev.status === 'reviewed' && <Button size="sm" variant="ghost" className="h-7 text-xs text-green-600 dark:text-green-400" onClick={() => reviewRevision(rev.id, 'approve')}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>}
+                      <span className="text-[10px] text-muted-foreground">{new Date(rev.created_at).toLocaleDateString('en-GB')}</span>
                     </div>
                   </div>
                 ))}
-                {(selectedDrawing.revisions || []).length === 0 && <p className="text-zinc-500 text-sm text-center py-4">No revisions yet</p>}
+                {(selectedDrawing.revisions || []).length === 0 && <p className="text-muted-foreground text-sm text-center py-4">No revisions yet</p>}
               </div>
             </div>
           </>)}
@@ -411,23 +411,23 @@ export default function DrawingsPage() {
 
       {/* Add Revision Dialog */}
       <Dialog open={showAddRevision} onOpenChange={setShowAddRevision}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-md">
+        <DialogContent className="bg-card border-border text-foreground max-w-md">
           <DialogHeader><DialogTitle>Add Revision</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label className="text-zinc-400 text-xs">Revision Number *</Label><Input value={form.revision_number || ''} onChange={(e) => setForm({ ...form, revision_number: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="B" /></div>
+            <div><Label className="text-muted-foreground text-xs">Revision Number *</Label><Input value={form.revision_number || ''} onChange={(e) => setForm({ ...form, revision_number: e.target.value })} className="bg-muted border-border" placeholder="B" /></div>
             <div>
-              <Label className="text-zinc-400 text-xs">Drawing File</Label>
-              <label className="flex items-center gap-2 mt-1 p-3 rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50 cursor-pointer hover:border-amber-600/50 transition-colors">
-                <Upload className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm text-zinc-400 truncate">{revisionFile ? revisionFile.name : 'Click to upload revised drawing file'}</span>
+              <Label className="text-muted-foreground text-xs">Drawing File</Label>
+              <label className="flex items-center gap-2 mt-1 p-3 rounded-lg border border-dashed border-border bg-muted/50 cursor-pointer hover:border-amber-600/50 transition-colors">
+                <Upload className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground truncate">{revisionFile ? revisionFile.name : 'Click to upload revised drawing file'}</span>
                 <input type="file" className="hidden" accept=".pdf,.dwg,.dxf,.dwf,.rvt,.ifc,.png,.jpg,.jpeg,.tif,.tiff" onChange={(e) => setRevisionFile(e.target.files?.[0] || null)} />
               </label>
-              {revisionFile && <p className="text-[10px] text-zinc-500 mt-1">{(revisionFile.size / 1024 / 1024).toFixed(1)} MB</p>}
+              {revisionFile && <p className="text-[10px] text-muted-foreground mt-1">{(revisionFile.size / 1024 / 1024).toFixed(1)} MB</p>}
             </div>
-            <div><Label className="text-zinc-400 text-xs">Change Description</Label><Textarea value={form.change_description || ''} onChange={(e) => setForm({ ...form, change_description: e.target.value })} className="bg-zinc-800 border-zinc-700" rows={3} /></div>
+            <div><Label className="text-muted-foreground text-xs">Change Description</Label><Textarea value={form.change_description || ''} onChange={(e) => setForm({ ...form, change_description: e.target.value })} className="bg-muted border-border" rows={3} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddRevision(false)} className="border-zinc-700">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowAddRevision(false)} className="border-border">Cancel</Button>
             <Button onClick={addRevision} className="bg-amber-600 hover:bg-amber-700" disabled={!form.revision_number}>Add Revision</Button>
           </DialogFooter>
         </DialogContent>
@@ -435,19 +435,19 @@ export default function DrawingsPage() {
 
       {/* Compare Revisions Dialog */}
       <Dialog open={showCompare} onOpenChange={setShowCompare}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-2xl">
+        <DialogContent className="bg-card border-border text-foreground max-w-2xl">
           <DialogHeader><DialogTitle><GitCompare className="h-4 w-4 inline mr-2" />Version Comparison</DialogTitle></DialogHeader>
           {selectedDrawing && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><Label className="text-zinc-400 text-xs">Revision A (older)</Label>
+                <div><Label className="text-muted-foreground text-xs">Revision A (older)</Label>
                   <Select value={compareRevs.a} onValueChange={(v) => setCompareRevs({ ...compareRevs, a: v })}>
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select revision" /></SelectTrigger>
+                    <SelectTrigger className="bg-muted border-border"><SelectValue placeholder="Select revision" /></SelectTrigger>
                     <SelectContent>{(selectedDrawing.revisions || []).map(r => <SelectItem key={r.id} value={r.id}>Rev {r.revision_number}</SelectItem>)}</SelectContent>
                   </Select></div>
-                <div><Label className="text-zinc-400 text-xs">Revision B (newer)</Label>
+                <div><Label className="text-muted-foreground text-xs">Revision B (newer)</Label>
                   <Select value={compareRevs.b} onValueChange={(v) => setCompareRevs({ ...compareRevs, b: v })}>
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select revision" /></SelectTrigger>
+                    <SelectTrigger className="bg-muted border-border"><SelectValue placeholder="Select revision" /></SelectTrigger>
                     <SelectContent>{(selectedDrawing.revisions || []).map(r => <SelectItem key={r.id} value={r.id}>Rev {r.revision_number}</SelectItem>)}</SelectContent>
                   </Select></div>
               </div>
@@ -456,12 +456,12 @@ export default function DrawingsPage() {
                   {[compareRevs.a, compareRevs.b].map(revId => {
                     const rev = (selectedDrawing.revisions || []).find((r: Revision) => r.id === revId);
                     return rev ? (
-                      <Card key={revId} className="bg-zinc-800 border-zinc-700 p-4">
+                      <Card key={revId} className="bg-muted border-border p-4">
                         <p className="font-mono text-amber-500 font-bold mb-2">Rev {rev.revision_number}</p>
-                        <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">Status:</span> {rev.status}</p>
-                        <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">Date:</span> {new Date(rev.created_at).toLocaleDateString('en-GB')}</p>
-                        <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">File:</span> {rev.file_name || 'N/A'}</p>
-                        <p className="text-xs text-zinc-400"><span className="text-zinc-500">Changes:</span> {rev.change_description || 'No description'}</p>
+                        <p className="text-xs text-muted-foreground mb-1"><span className="text-muted-foreground">Status:</span> {rev.status}</p>
+                        <p className="text-xs text-muted-foreground mb-1"><span className="text-muted-foreground">Date:</span> {new Date(rev.created_at).toLocaleDateString('en-GB')}</p>
+                        <p className="text-xs text-muted-foreground mb-1"><span className="text-muted-foreground">File:</span> {rev.file_name || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground"><span className="text-muted-foreground">Changes:</span> {rev.change_description || 'No description'}</p>
                       </Card>
                     ) : null;
                   })}

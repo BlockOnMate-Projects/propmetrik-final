@@ -97,8 +97,8 @@ function Panel({ title, children, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
       </div>
       <div className="p-4">{children}</div>
@@ -117,12 +117,12 @@ function FormField({ label, required, error, children }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="font-mono text-xs text-zinc-400">
+      <Label className="font-mono text-xs text-muted-foreground">
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-red-600 dark:text-red-400 ml-1">*</span>}
       </Label>
       {children}
-      {error && <p className="font-mono text-[10px] text-red-400">{error}</p>}
+      {error && <p className="font-mono text-[10px] text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }
@@ -299,19 +299,19 @@ export default function EditProjectPage() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     )
   }
   
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       {/* Header */}
       <div className="mb-6">
         <Link 
           href={`/dashboard/projects/${projectId}`}
-          className="flex items-center gap-2 font-mono text-[10px] text-zinc-500 hover:text-amber-500 mb-4"
+          className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground hover:text-amber-500 mb-4"
         >
           <ArrowLeft className="h-3 w-3" />
           Back to Project
@@ -319,7 +319,7 @@ export default function EditProjectPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-mono text-xl tracking-tight">EDIT PROJECT</h1>
-            <p className="font-mono text-[10px] text-zinc-500 mt-1">
+            <p className="font-mono text-[10px] text-muted-foreground mt-1">
               Update project details and settings
             </p>
           </div>
@@ -327,15 +327,15 @@ export default function EditProjectPage() {
           <div className="flex items-center gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="font-mono text-xs text-red-400 border-red-800 hover:bg-red-900/20">
+                <Button variant="outline" className="font-mono text-xs text-red-600 dark:text-red-400 border-red-800 hover:bg-red-900/20">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+              <AlertDialogContent className="bg-card border-border">
                 <AlertDialogHeader>
                   <AlertDialogTitle className="font-mono">Delete Project?</AlertDialogTitle>
-                  <AlertDialogDescription className="font-mono text-xs text-zinc-400">
+                  <AlertDialogDescription className="font-mono text-xs text-muted-foreground">
                     This action cannot be undone. This will permanently delete the project
                     and all associated data including phases, units, and documents.
                   </AlertDialogDescription>
@@ -357,7 +357,7 @@ export default function EditProjectPage() {
             <Button 
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Save Changes
@@ -368,8 +368,8 @@ export default function EditProjectPage() {
       
       {/* Error Message */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-3 mb-6">
-          <p className="font-mono text-xs text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-3 mb-6">
+          <p className="font-mono text-xs text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
       
@@ -383,7 +383,7 @@ export default function EditProjectPage() {
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Project name"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -392,7 +392,7 @@ export default function EditProjectPage() {
                 value={formData.status} 
                 onValueChange={(v) => handleChange('status', v)}
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                <SelectTrigger className="bg-card border-border font-mono text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -408,7 +408,7 @@ export default function EditProjectPage() {
                 value={formData.project_manager_id || 'unassigned'}
                 onValueChange={(v) => handleChange('project_manager_id', v === 'unassigned' ? '' : v)}
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                <SelectTrigger className="bg-card border-border font-mono text-sm">
                   <SelectValue placeholder="Select project manager" />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,7 +429,7 @@ export default function EditProjectPage() {
                 value={formData.project_type} 
                 onValueChange={(v) => handleChange('project_type', v)}
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                <SelectTrigger className="bg-card border-border font-mono text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -446,7 +446,7 @@ export default function EditProjectPage() {
                 value={formData.total_units}
                 onChange={(e) => handleChange('total_units', e.target.value)}
                 placeholder="e.g., 50"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -456,7 +456,7 @@ export default function EditProjectPage() {
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
                   placeholder="Project description..."
-                  className="bg-zinc-900 border-zinc-800 font-mono text-sm min-h-[80px]"
+                  className="bg-card border-border font-mono text-sm min-h-[80px]"
                 />
               </FormField>
             </div>
@@ -472,7 +472,7 @@ export default function EditProjectPage() {
                   value={formData.developer_name}
                   onChange={(e) => handleChange('developer_name', e.target.value)}
                   placeholder="Full name or company name"
-                  className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                  className="bg-card border-border font-mono text-sm"
                 />
               </FormField>
             </div>
@@ -481,7 +481,7 @@ export default function EditProjectPage() {
                 value={formData.developer_contact}
                 onChange={(e) => handleChange('developer_contact', e.target.value)}
                 placeholder="+233 XX XXX XXXX"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             <FormField label="Email">
@@ -490,7 +490,7 @@ export default function EditProjectPage() {
                 value={formData.developer_email}
                 onChange={(e) => handleChange('developer_email', e.target.value)}
                 placeholder="owner@example.com"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
           </div>
@@ -505,7 +505,7 @@ export default function EditProjectPage() {
                   value={formData.address_line1}
                   onChange={(e) => handleChange('address_line1', e.target.value)}
                   placeholder="Street address"
-                  className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                  className="bg-card border-border font-mono text-sm"
                 />
               </FormField>
             </div>
@@ -515,7 +515,7 @@ export default function EditProjectPage() {
                 value={formData.city}
                 onChange={(e) => handleChange('city', e.target.value)}
                 placeholder="e.g., Accra"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -524,7 +524,7 @@ export default function EditProjectPage() {
                 value={formData.region} 
                 onValueChange={(v) => handleChange('region', v)}
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                <SelectTrigger className="bg-card border-border font-mono text-sm">
                   <SelectValue placeholder="Select region" />
                 </SelectTrigger>
                 <SelectContent>
@@ -541,7 +541,7 @@ export default function EditProjectPage() {
                 value={formData.land_size_sqm}
                 onChange={(e) => handleChange('land_size_sqm', e.target.value)}
                 placeholder="e.g., 5000"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -551,7 +551,7 @@ export default function EditProjectPage() {
                 value={formData.total_built_area_sqm}
                 onChange={(e) => handleChange('total_built_area_sqm', e.target.value)}
                 placeholder="e.g., 15000"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
           </div>
@@ -565,7 +565,7 @@ export default function EditProjectPage() {
                 type="date"
                 value={formData.planned_start_date}
                 onChange={(e) => handleChange('planned_start_date', e.target.value)}
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -574,7 +574,7 @@ export default function EditProjectPage() {
                 type="date"
                 value={formData.planned_completion_date}
                 onChange={(e) => handleChange('planned_completion_date', e.target.value)}
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -584,7 +584,7 @@ export default function EditProjectPage() {
                 value={formData.total_budget}
                 onChange={(e) => handleChange('total_budget', e.target.value)}
                 placeholder="e.g., 5000000"
-                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                className="bg-card border-border font-mono text-sm"
               />
             </FormField>
             
@@ -593,7 +593,7 @@ export default function EditProjectPage() {
                 value={formData.currency} 
                 onValueChange={(v) => handleChange('currency', v)}
               >
-                <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                <SelectTrigger className="bg-card border-border font-mono text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -40,7 +40,7 @@ export function PMTopNav() {
         : navigation
 
     return (
-        <div className="w-full bg-black border-b border-zinc-800">
+        <div className="w-full bg-background border-b border-border">
             <div className="flex items-center h-10 px-4 gap-1 overflow-x-auto">
                 {visibleNavItems.map((item) => {
                     // Check for active state
@@ -55,11 +55,11 @@ export function PMTopNav() {
                             className={cn(
                                 'flex items-center px-4 py-1.5 text-[11px] font-mono font-medium transition-all min-w-max',
                                 isActive
-                                    ? 'bg-amber-500 text-white font-bold'
+                                    ? 'bg-amber-500 text-foreground font-bold'
                                     : 'text-amber-500/70 hover:text-amber-500 hover:bg-amber-950/30'
                             )}
                         >
-                            <span className={cn("mr-2 opacity-50", isActive ? "text-white" : "text-amber-600")}>
+                            <span className={cn("mr-2 opacity-50", isActive ? "text-foreground" : "text-amber-600")}>
                                 {item.key}
                             </span>
                             {item.name}

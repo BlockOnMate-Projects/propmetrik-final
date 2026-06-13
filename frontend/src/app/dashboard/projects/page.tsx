@@ -40,15 +40,15 @@ import { formatCurrency } from '@/lib/utils'
 // STATUS BADGE COMPONENT
 // =====================================================
 const statusColors: Record<ProjectStatus, { bg: string; border: string; text: string; label: string }> = {
-  planning: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', label: 'Planning' },
-  pre_sales: { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400', label: 'Pre-Sales' },
-  under_construction: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400', label: 'Under Construction' },
-  nearing_completion: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400', label: 'Near Completion' },
+  planning: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-600 dark:text-blue-400', label: 'Planning' },
+  pre_sales: { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-600 dark:text-purple-400', label: 'Pre-Sales' },
+  under_construction: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-600 dark:text-amber-400', label: 'Under Construction' },
+  nearing_completion: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-600 dark:text-orange-400', label: 'Near Completion' },
   completed: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500', label: 'Completed' },
   sold_out: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500', label: 'Sold Out' },
-  on_hold: { bg: 'bg-zinc-800/50', border: 'border-zinc-700/50', text: 'text-zinc-400', label: 'On Hold' },
+  on_hold: { bg: 'bg-muted/50', border: 'border-border/50', text: 'text-muted-foreground', label: 'On Hold' },
   cancelled: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500', label: 'Cancelled' },
-  archived: { bg: 'bg-zinc-800/80', border: 'border-zinc-700/80', text: 'text-zinc-500', label: 'Archived' },
+  archived: { bg: 'bg-muted/80', border: 'border-border/80', text: 'text-muted-foreground', label: 'Archived' },
 }
 
 const typeIcons: Record<ProjectType, React.ElementType> = {
@@ -80,8 +80,8 @@ function Panel({ title, children, className, action }: {
   action?: React.ReactNode;
 }) {
   return (
-    <div className={cn('border border-zinc-800/50 bg-zinc-950/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-xl', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border/50 bg-background/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-xl', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {action}
       </div>
@@ -101,18 +101,18 @@ function StatCard({ label, value, subValue, icon: Icon, trend }: {
   trend?: 'up' | 'down' | 'neutral';
 }) {
   return (
-    <div className="border border-zinc-800/50 bg-zinc-950/50 p-4 rounded-xl shadow-lg backdrop-blur-sm hover:border-zinc-700 transition-colors">
+    <div className="border border-border/50 bg-background/50 p-4 rounded-xl shadow-lg backdrop-blur-sm hover:border-border transition-colors">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">{label}</span>
-        <Icon className="h-4 w-4 text-zinc-600" />
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="font-mono text-xl text-white">{value}</div>
+      <div className="font-mono text-xl text-foreground">{value}</div>
       {subValue && (
         <div className={cn(
           "font-mono text-[10px] mt-1",
-          trend === 'up' && "text-green-400",
-          trend === 'down' && "text-red-400",
-          (!trend || trend === 'neutral') && "text-zinc-500"
+          trend === 'up' && "text-green-600 dark:text-green-400",
+          trend === 'down' && "text-red-600 dark:text-red-400",
+          (!trend || trend === 'neutral') && "text-muted-foreground"
         )}>
           {subValue}
         </div>
@@ -132,9 +132,9 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
 
   return (
     <Link href={`/dashboard/projects/${project.id}`}>
-      <div className="bg-zinc-950/50 border border-zinc-800/50 rounded-xl hover:border-blue-500/50 hover:shadow-2xl transition-all duration-300 cursor-pointer group h-full overflow-hidden flex flex-col">
+      <div className="bg-background/50 border border-border/50 rounded-xl hover:border-blue-500/50 hover:shadow-2xl transition-all duration-300 cursor-pointer group h-full overflow-hidden flex flex-col">
         {/* Hero Image or Placeholder */}
-        <div className="h-40 bg-zinc-900 relative overflow-hidden shrink-0">
+        <div className="h-40 bg-card relative overflow-hidden shrink-0">
           {(project.cover_image_url || project.hero_image_url) ? (
             <img
               src={project.cover_image_url || project.hero_image_url}
@@ -149,7 +149,7 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
           <div className="absolute top-2 left-2">
             <StatusBadge status={project.status} />
           </div>
-          <div className="absolute top-3 right-3 font-mono font-medium tracking-widest text-[10px] text-zinc-300 bg-zinc-950/80 px-2.5 py-1 rounded-md border border-zinc-800/80 backdrop-blur-md">
+          <div className="absolute top-3 right-3 font-mono font-medium tracking-widest text-[10px] text-muted-foreground bg-background/80 px-2.5 py-1 rounded-md border border-border/80 backdrop-blur-md">
             {project.project_number}
           </div>
         </div>
@@ -157,17 +157,17 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
         <div className="p-3">
           {/* Title & Type */}
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-sans font-semibold text-base text-white group-hover:text-blue-400 transition-colors line-clamp-1">
+            <h3 className="font-sans font-semibold text-base text-foreground group-hover:text-blue-400 transition-colors line-clamp-1">
               {project.project_name || project.name}
             </h3>
-            <TypeIcon className="h-4 w-4 text-zinc-500 flex-shrink-0" />
+            <TypeIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </div>
 
           {/* Location */}
           {(project.city || project.region) && (
             <div className="flex items-center gap-1.5 mb-3">
-              <MapPin className="h-3 w-3 text-zinc-500" />
-              <span className="font-mono text-[10px] text-zinc-400">
+              <MapPin className="h-3 w-3 text-muted-foreground" />
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {[project.city, project.region].filter(Boolean).join(', ')}
               </span>
             </div>
@@ -178,10 +178,10 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
             {/* Construction Progress */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-[9px] text-zinc-500">CONSTRUCTION</span>
-                <span className="font-mono text-[9px] text-zinc-400">{project.construction_progress || 0}%</span>
+                <span className="font-mono text-[9px] text-muted-foreground">CONSTRUCTION</span>
+                <span className="font-mono text-[9px] text-muted-foreground">{project.construction_progress || 0}%</span>
               </div>
-              <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-amber-500 transition-all duration-300"
                   style={{ width: `${project.construction_progress || 0}%` }}
@@ -193,12 +193,12 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
             {project.total_units && project.total_units > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-[9px] text-zinc-500">SALES</span>
-                  <span className="font-mono text-[9px] text-zinc-400">
+                  <span className="font-mono text-[9px] text-muted-foreground">SALES</span>
+                  <span className="font-mono text-[9px] text-muted-foreground">
                     {project.units_sold || 0}/{project.total_units} ({salesProgress}%)
                   </span>
                 </div>
-                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-green-500 transition-all duration-300"
                     style={{ width: `${salesProgress}%` }}
@@ -209,16 +209,16 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
           </div>
 
           {/* Footer Stats */}
-          <div className="flex items-center justify-between pt-3 mt-auto border-t border-zinc-800/50">
+          <div className="flex items-center justify-between pt-3 mt-auto border-t border-border/50">
             <div>
               {project.total_budget && (
-                <span className="font-mono font-semibold text-sm text-emerald-400 tracking-tight">
+                <span className="font-mono font-semibold text-sm text-emerald-600 dark:text-emerald-400 tracking-tight">
                   {formatCurrency(project.total_budget, project.currency || 'GHS')}
                 </span>
               )}
             </div>
             {project.planned_end_date && (
-              <span className="font-mono text-[10px] text-zinc-500 flex items-center gap-1">
+              <span className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
                 {new Date(project.planned_end_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
               </span>
@@ -241,17 +241,17 @@ function ProjectTableRow({ project }: { project: DevelopmentProject }) {
 
   return (
     <tr
-      className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors cursor-pointer group"
+      className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors cursor-pointer group"
       onClick={() => window.location.href = `/dashboard/projects/${project.id}`}
     >
       <td className="py-4 px-4 text-emerald-500 font-mono tracking-wider text-xs">{project.project_number}</td>
       <td className="py-4 px-4">
         <div className="flex items-center gap-2">
-          <TypeIcon className="h-4 w-4 text-zinc-500 group-hover:text-blue-400 transition-colors" />
-          <span className="font-sans font-medium text-sm text-white group-hover:text-blue-400 transition-colors">{project.project_name}</span>
+          <TypeIcon className="h-4 w-4 text-muted-foreground group-hover:text-blue-400 transition-colors" />
+          <span className="font-sans font-medium text-sm text-foreground group-hover:text-blue-400 transition-colors">{project.project_name}</span>
         </div>
       </td>
-      <td className="py-4 px-4 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+      <td className="py-4 px-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
         {[project.city, project.region].filter(Boolean).join(', ') || '—'}
       </td>
       <td className="py-4 px-4">
@@ -259,27 +259,27 @@ function ProjectTableRow({ project }: { project: DevelopmentProject }) {
       </td>
       <td className="py-4 px-4">
         <div className="flex items-center gap-2">
-          <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-500 rounded-full"
               style={{ width: `${project.construction_progress || 0}%` }}
             />
           </div>
-          <span className="font-mono text-[10px] text-zinc-400">{project.construction_progress || 0}%</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{project.construction_progress || 0}%</span>
         </div>
       </td>
       <td className="py-4 px-4">
         {project.total_units ? (
-          <span className="font-mono text-xs text-zinc-300">
+          <span className="font-mono text-xs text-muted-foreground">
             {project.units_sold || 0}/{project.total_units}
-            <span className="text-zinc-500 ml-1">({salesProgress}%)</span>
+            <span className="text-muted-foreground ml-1">({salesProgress}%)</span>
           </span>
-        ) : <span className="text-zinc-600">—</span>}
+        ) : <span className="text-muted-foreground">—</span>}
       </td>
-      <td className="py-4 px-4 text-right font-mono font-medium text-xs text-emerald-400">
-        {project.total_budget ? formatCurrency(project.total_budget, project.currency || 'GHS') : <span className="text-zinc-600">—</span>}
+      <td className="py-4 px-4 text-right font-mono font-medium text-xs text-emerald-600 dark:text-emerald-400">
+        {project.total_budget ? formatCurrency(project.total_budget, project.currency || 'GHS') : <span className="text-muted-foreground">—</span>}
       </td>
-      <td className="py-4 px-4 text-right font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+      <td className="py-4 px-4 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
         {project.planned_end_date
           ? new Date(project.planned_end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
           : '—'
@@ -338,20 +338,20 @@ export default function ProjectsPage() {
   const filteredProjects = projects
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="font-sans text-2xl font-semibold tracking-tight text-white mb-1">Projects</h1>
-            <p className="font-sans text-sm text-zinc-400 font-medium tracking-wide">
+            <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground mb-1">Projects</h1>
+            <p className="font-sans text-sm text-muted-foreground font-medium tracking-wide">
               Manage development projects, track construction progress, and monitor sales
             </p>
           </div>
-          <RealtimeStatus showLabel className="hidden sm:flex bg-zinc-900/50 border border-zinc-800 rounded-full px-3 py-1" />
+          <RealtimeStatus showLabel className="hidden sm:flex bg-card/50 border border-border rounded-full px-3 py-1" />
         </div>
         <Link href="/dashboard/projects/create">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-sans font-medium text-sm shadow-lg shadow-blue-500/20 transition-all">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-foreground font-sans font-medium text-sm shadow-lg shadow-blue-500/20 transition-all">
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
@@ -402,17 +402,17 @@ export default function ProjectsPage() {
       {/* Filters & View Toggle */}
       <div className="flex items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search projects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 bg-zinc-900 border-zinc-800 font-mono text-xs h-9"
+            className="pl-10 bg-card border-border font-mono text-xs h-9"
           />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-800 font-mono text-xs h-9">
+          <SelectTrigger className="w-[160px] bg-card border-border font-mono text-xs h-9">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -428,7 +428,7 @@ export default function ProjectsPage() {
         </Select>
 
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-800 font-mono text-xs h-9">
+          <SelectTrigger className="w-[160px] bg-card border-border font-mono text-xs h-9">
             <SelectValue placeholder="All Types" />
           </SelectTrigger>
           <SelectContent>
@@ -441,12 +441,12 @@ export default function ProjectsPage() {
           </SelectContent>
         </Select>
 
-        <div className="flex border border-zinc-800 rounded">
+        <div className="flex border border-border rounded">
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
               'p-2 transition-colors rounded-l-md',
-              viewMode === 'grid' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-muted-foreground'
             )}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -455,7 +455,7 @@ export default function ProjectsPage() {
             onClick={() => setViewMode('list')}
             className={cn(
               'p-2 transition-colors rounded-r-md',
-              viewMode === 'list' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-muted-foreground'
             )}
           >
             <List className="h-4 w-4" />
@@ -465,8 +465,8 @@ export default function ProjectsPage() {
 
       {/* Error State */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-4 mb-6">
-          <p className="font-mono text-xs text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-4 mb-6">
+          <p className="font-mono text-xs text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -479,12 +479,12 @@ export default function ProjectsPage() {
 
       {/* Empty State */}
       {!isLoading && !error && filteredProjects.length === 0 && (
-        <div className="border border-zinc-800/50 bg-zinc-950/50 rounded-xl p-16 text-center max-w-2xl mx-auto mt-12 backdrop-blur-sm">
-          <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-zinc-800 shadow-inner">
-            <Building2 className="h-8 w-8 text-zinc-600" />
+        <div className="border border-border/50 bg-background/50 rounded-xl p-16 text-center max-w-2xl mx-auto mt-12 backdrop-blur-sm">
+          <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mx-auto mb-6 border border-border shadow-inner">
+            <Building2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="font-sans text-lg font-medium text-white mb-2">No projects found</h3>
-          <p className="font-sans text-sm text-zinc-500 mb-8 max-w-md mx-auto">
+          <h3 className="font-sans text-lg font-medium text-foreground mb-2">No projects found</h3>
+          <p className="font-sans text-sm text-muted-foreground mb-8 max-w-md mx-auto">
             {search || statusFilter !== 'all' || typeFilter !== 'all'
               ? 'Try adjusting your filters or search terms to see more results.'
               : 'Create your first development project to start tracking progress, budgets, and sales.'
@@ -492,7 +492,7 @@ export default function ProjectsPage() {
           </p>
           {!search && statusFilter === 'all' && typeFilter === 'all' && (
             <Link href="/dashboard/projects/create">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white font-sans font-medium text-sm shadow-lg shadow-blue-500/20">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-foreground font-sans font-medium text-sm shadow-lg shadow-blue-500/20">
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Project
               </Button>
@@ -512,11 +512,11 @@ export default function ProjectsPage() {
 
       {/* List View */}
       {!isLoading && !error && viewMode === 'list' && filteredProjects.length > 0 && (
-        <Panel title="PROJECTS" className="border-zinc-800/50 rounded-xl overflow-hidden bg-zinc-950/50 backdrop-blur-sm shadow-xl">
+        <Panel title="PROJECTS" className="border-border/50 rounded-xl overflow-hidden bg-background/50 backdrop-blur-sm shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-[11px] font-sans font-medium uppercase tracking-widest text-zinc-500 border-b border-zinc-800/50 bg-zinc-900/30">
+                <tr className="text-[11px] font-sans font-medium uppercase tracking-widest text-muted-foreground border-b border-border/50 bg-card/30">
                   <th className="text-left py-3 px-4 w-28">Project #</th>
                   <th className="text-left py-3 px-4">Name</th>
                   <th className="text-left py-3 px-4 w-40">Location</th>

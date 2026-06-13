@@ -102,18 +102,18 @@ export default function QualityPage() {
 
     const getSeverityColor = (severity: string) => {
         switch (severity) {
-            case 'critical': return 'text-red-400 bg-red-900/20 border-red-500/30'
-            case 'warning': return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30'
-            default: return 'text-zinc-400 bg-zinc-800/20 border-zinc-700/30'
+            case 'critical': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border-red-500/30'
+            case 'warning': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 border-yellow-500/30'
+            default: return 'text-muted-foreground bg-muted/20 border-border/30'
         }
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pb-10">
+        <div className="min-h-screen bg-background text-foreground p-4 pb-10">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA QUALITY COMMAND CENTER</h1>
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     COMPREHENSIVE QUALITY MONITORING • AUTOMATED VALIDATION • ANOMALY DETECTION
                 </p>
             </div>
@@ -172,24 +172,24 @@ export default function QualityPage() {
                 <TerminalPanel title="Validation Rules Status">
                     <div className="space-y-3">
                         {validationResults.length === 0 && (
-                            <div className="text-zinc-500 text-sm p-4">All validation rules passed</div>
+                            <div className="text-muted-foreground text-sm p-4">All validation rules passed</div>
                         )}
                         {validationResults.map((rule) => (
-                            <div key={rule.ruleId} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                            <div key={rule.ruleId} className="p-3 bg-muted/30 border border-border">
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-mono text-sm text-white">{rule.name}</div>
-                                    <div className={`font-mono text-xs ${rule.status === 'passed' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                    <div className="font-mono text-sm text-foreground">{rule.name}</div>
+                                    <div className={`font-mono text-xs ${rule.status === 'passed' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
                                         {rule.status.toUpperCase()}
                                     </div>
                                 </div>
-                                <div className="font-mono text-[10px] text-zinc-500 mb-2">{rule.description}</div>
+                                <div className="font-mono text-[10px] text-muted-foreground mb-2">{rule.description}</div>
                                 <div className="flex items-center gap-4 font-mono text-[10px]">
                                     <div className="flex items-center gap-1">
                                         {rule.status === 'passed'
-                                            ? <CheckCircle className="w-3 h-3 text-green-400" />
-                                            : <XCircle className="w-3 h-3 text-red-400" />
+                                            ? <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                            : <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
                                         }
-                                        <span className="text-zinc-400">
+                                        <span className="text-muted-foreground">
                                             {rule.affectedCount > 0
                                                 ? `${rule.affectedCount.toLocaleString()} affected records`
                                                 : 'No issues found'
@@ -197,9 +197,9 @@ export default function QualityPage() {
                                         </span>
                                     </div>
                                     <span className={`px-1.5 py-0.5 text-[9px] border ${
-                                        rule.impact === 'Critical' ? 'border-red-800 text-red-400 bg-red-900/20' :
-                                        rule.impact === 'High' ? 'border-orange-800 text-orange-400 bg-orange-900/20' :
-                                        'border-zinc-700 text-zinc-400 bg-zinc-800/20'
+                                        rule.impact === 'Critical' ? 'border-red-800 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20' :
+                                        rule.impact === 'High' ? 'border-orange-800 text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/20' :
+                                        'border-border text-muted-foreground bg-muted/20'
                                     }`}>{rule.impact}</span>
                                 </div>
                                 <div className="mt-2 h-1 bg-zinc-700 overflow-hidden">
@@ -217,11 +217,11 @@ export default function QualityPage() {
                 <TerminalPanel title="Field-Level Completeness Analysis">
                     <div className="space-y-2">
                         {fieldCompleteness.map((field) => (
-                            <div key={field.field} className="flex items-center justify-between p-2 bg-zinc-800/30 border border-zinc-800">
+                            <div key={field.field} className="flex items-center justify-between p-2 bg-muted/30 border border-border">
                                 <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs text-white">{field.field}</span>
+                                    <span className="font-mono text-xs text-foreground">{field.field}</span>
                                     {field.required && (
-                                        <span className="px-1 py-0.5 bg-red-900/30 border border-red-500/30 font-mono text-[9px] text-red-400">
+                                        <span className="px-1 py-0.5 bg-red-100 dark:bg-red-900/30 border border-red-500/30 font-mono text-[9px] text-red-600 dark:text-red-400">
                                             REQUIRED
                                         </span>
                                     )}
@@ -236,7 +236,7 @@ export default function QualityPage() {
                                             style={{ width: `${Math.min(100, field.completeness)}%` }}
                                         />
                                     </div>
-                                    <span className="font-mono text-[10px] text-zinc-400 w-10 text-right">
+                                    <span className="font-mono text-[10px] text-muted-foreground w-10 text-right">
                                         {field.completeness}%
                                     </span>
                                 </div>
@@ -251,27 +251,27 @@ export default function QualityPage() {
                 <TerminalPanel title="Anomaly Detection & Alerts">
                     <div className="space-y-2">
                         {anomalies.length === 0 && (
-                            <div className="text-zinc-500 text-sm p-4">No active anomalies detected</div>
+                            <div className="text-muted-foreground text-sm p-4">No active anomalies detected</div>
                         )}
                         {anomalies.map((anomaly: any) => (
                             <div key={anomaly.id} className={`p-3 border ${getSeverityColor(anomaly.severity)}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <AlertTriangle className={`w-4 h-4 ${anomaly.severity === 'critical' ? 'text-red-400' : 'text-yellow-400'}`} />
+                                        <AlertTriangle className={`w-4 h-4 ${anomaly.severity === 'critical' ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
                                         <div>
-                                            <div className="font-mono text-sm text-white">{anomaly.issue}</div>
-                                            <div className="font-mono text-[10px] text-zinc-400">
+                                            <div className="font-mono text-sm text-foreground">{anomaly.issue}</div>
+                                            <div className="font-mono text-[10px] text-muted-foreground">
                                                 {anomaly.title
                                                     ? `${(anomaly.title as string).slice(0, 60)}${(anomaly.title as string).length > 60 ? '...' : ''}`
                                                     : 'Untitled property'
                                                 }
                                                 {anomaly.price != null && (
-                                                    <span className="ml-2 text-amber-400">
+                                                    <span className="ml-2 text-amber-600 dark:text-amber-400">
                                                         GHS {formatNumber(anomaly.price)}
                                                     </span>
                                                 )}
                                                 {anomaly.city && (
-                                                    <span className="ml-2 text-zinc-500">• {anomaly.city}</span>
+                                                    <span className="ml-2 text-muted-foreground">• {anomaly.city}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -281,7 +281,7 @@ export default function QualityPage() {
                                             {anomaly.severity}
                                         </span>
                                         {anomaly.qualityScore != null && (
-                                            <span className="px-2 py-1 bg-zinc-800 font-mono text-[10px] text-zinc-400">
+                                            <span className="px-2 py-1 bg-muted font-mono text-[10px] text-muted-foreground">
                                                 Q:{Math.round(anomaly.qualityScore)}%
                                             </span>
                                         )}
@@ -297,9 +297,9 @@ export default function QualityPage() {
             <TerminalPanel title="Data Profiling Statistics">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {dataProfiles.map((profile: any) => (
-                        <div key={profile.dataset} className="p-3 bg-zinc-800/30 border border-zinc-800">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-1">{profile.dataset}</div>
-                            <div className="font-mono text-2xl text-white mb-1">
+                        <div key={profile.dataset} className="p-3 bg-muted/30 border border-border">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-1">{profile.dataset}</div>
+                            <div className="font-mono text-2xl text-foreground mb-1">
                                 {profile.rowCount.toLocaleString()}
                             </div>
                             <div className="flex items-center gap-2">
@@ -309,7 +309,7 @@ export default function QualityPage() {
                                         style={{ width: `${Math.min(100, profile.completeness)}%` }}
                                     />
                                 </div>
-                                <span className="font-mono text-[10px] text-zinc-400">{profile.completeness}% complete</span>
+                                <span className="font-mono text-[10px] text-muted-foreground">{profile.completeness}% complete</span>
                             </div>
                         </div>
                     ))}

@@ -13,7 +13,7 @@ export default function DealWorkflow() {
                 {['Lead', 'Offer', 'Closing'].map((step, i) => (
                     <div key={i} className="flex flex-col items-center gap-4 relative">
                         <motion.div
-                            className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${i === 2 ? 'border-primary bg-primary/20 text-primary' : 'border-zinc-700 bg-zinc-900 text-zinc-500'
+                            className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${i === 2 ? 'border-primary bg-primary/20 text-primary' : 'border-border bg-card text-muted-foreground'
                                 }`}
                             animate={i < 2 ? {
                                 borderColor: ['#3f3f46', '#f59e0b', '#3f3f46']
@@ -27,7 +27,7 @@ export default function DealWorkflow() {
                 ))}
 
                 {/* Connecting Line */}
-                <div className="absolute top-8 left-8 right-8 h-[2px] bg-zinc-800 -z-10">
+                <div className="absolute top-8 left-8 right-8 h-[2px] bg-muted -z-10">
                     <motion.div
                         className="h-full bg-primary"
                         initial={{ width: '0%' }}
@@ -38,7 +38,7 @@ export default function DealWorkflow() {
 
                 {/* Moving Document Icon */}
                 <motion.div
-                    className="absolute top-4 w-8 h-10 bg-white rounded shadow-lg flex flex-col gap-1 p-1"
+                    className="absolute top-4 w-8 h-10 bg-card rounded shadow-lg flex flex-col gap-1 p-1"
                     initial={{ left: '0%' }}
                     animate={{ left: '100%', opacity: [1, 1, 0] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "linear" }}

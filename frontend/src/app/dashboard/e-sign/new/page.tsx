@@ -803,7 +803,7 @@ function PrepareStep({
         <CardContent className="space-y-4">
           {/* Current user is always a signer */}
           <div className="flex gap-3 items-center p-3 border rounded-lg bg-primary/5 border-primary/20">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white shrink-0" style={{ backgroundColor: RECIPIENT_COLORS[0] }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-foreground shrink-0" style={{ backgroundColor: RECIPIENT_COLORS[0] }}>
               1
             </div>
             <div className="flex-1 flex items-center gap-3">
@@ -843,7 +843,7 @@ function PrepareStep({
               </div>
               {recipients.filter((r: Recipient) => r.id !== "self-signer").map((r: Recipient, i: number) => (
                 <div key={r.id} className="flex gap-3 items-start p-3 border rounded-lg">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white shrink-0" style={{ backgroundColor: r.color }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-foreground shrink-0" style={{ backgroundColor: r.color }}>
                     {i + 2}
                   </div>
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -977,7 +977,7 @@ function SelfSignCompleteStep({
 
         {/* PDF Preview */}
         <div className="flex-1 bg-muted/50 overflow-auto flex items-start justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-3xl" style={{ height: "calc(100vh - 280px)" }}>
+          <div className="bg-card rounded-lg shadow-lg overflow-hidden w-full max-w-3xl" style={{ height: "calc(100vh - 280px)" }}>
             <iframe
               ref={iframeRef}
               src={`${signedPdfUrl}#toolbar=1&navpanes=0`}

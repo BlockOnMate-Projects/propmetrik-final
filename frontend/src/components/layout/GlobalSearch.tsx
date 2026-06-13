@@ -241,7 +241,7 @@ export function GlobalSearch() {
                     value={`contact-${c.id}-${c.first_name} ${c.last_name}`}
                     onSelect={() => navigate(`/dashboard/deals/contacts/${c.id}`)}
                   >
-                    <UserCircle className="mr-2 h-4 w-4 text-purple-400" />
+                    <UserCircle className="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
                     <div className="flex flex-col flex-1 min-w-0">
                       <span className="text-sm truncate">{c.first_name} {c.last_name}</span>
                       <span className="text-xs text-muted-foreground">{c.email || c.phone_primary || 'No info'}</span>
@@ -260,7 +260,7 @@ export function GlobalSearch() {
                     value={`company-${c.id}-${c.company_name}`}
                     onSelect={() => navigate(`/dashboard/deals/companies/${c.id}`)}
                   >
-                    <Building2 className="mr-2 h-4 w-4 text-blue-400" />
+                    <Building2 className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <div className="flex flex-col flex-1 min-w-0">
                       <span className="text-sm truncate">{c.company_name}</span>
                       <span className="text-xs text-muted-foreground">{c.company_type} • {c.city || '—'}</span>

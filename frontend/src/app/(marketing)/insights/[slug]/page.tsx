@@ -41,25 +41,25 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const PRODUCT_COLORS: Record<string, string> = {
-  outlook: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  snapshot: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  policy_paper: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  podcast: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-  press_release: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  outlook: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  snapshot: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  policy_paper: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+  podcast: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20',
+  press_release: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20',
 };
 
 /** @deprecated */
 const TYPE_COLORS: Record<string, string> = {
-  market_flash: 'bg-red-500/10 text-red-400 border-red-500/20',
-  data_brief: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  marketbeat: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  research_report: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  special_report: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  annual_flagship: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20',
-  policy_paper: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  podcast: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-  index_update: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
-  press_release: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  market_flash: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+  data_brief: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  marketbeat: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  research_report: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+  special_report: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  annual_flagship: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-300 border-yellow-500/20',
+  policy_paper: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+  podcast: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20',
+  index_update: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
+  press_release: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20',
 };
 
 function formatDate(dateStr: string | null): string {
@@ -112,7 +112,7 @@ function InterleavedContent({
             );
           }
           if (block.type === 'heading') {
-            return <h2 key={i} className="text-2xl font-bold text-white mt-10 mb-4">{block.content}</h2>;
+            return <h2 key={i} className="text-2xl font-bold text-foreground mt-10 mb-4">{block.content}</h2>;
           }
           if (block.type === 'text') {
             return <div key={i} dangerouslySetInnerHTML={{ __html: block.content }} />;
@@ -120,13 +120,13 @@ function InterleavedContent({
           if (block.type === 'callout') {
             return (
               <div key={i} className="bg-primary/5 border-l-4 border-primary p-4 my-6">
-                <p className="text-zinc-300">{block.content}</p>
+                <p className="text-muted-foreground">{block.content}</p>
               </div>
             );
           }
           if (block.type === 'quote') {
             return (
-              <blockquote key={i} className="border-l-4 border-zinc-700 pl-4 italic text-zinc-400 my-6">
+              <blockquote key={i} className="border-l-4 border-border pl-4 italic text-muted-foreground my-6">
                 {block.content}
               </blockquote>
             );
@@ -148,7 +148,7 @@ function InterleavedContent({
 
     textBlocks.forEach((block: any, i: number) => {
       if (block.type === 'heading') {
-        elements.push(<h2 key={`t-${i}`} className="text-2xl font-bold text-white mt-10 mb-4">{block.content}</h2>);
+        elements.push(<h2 key={`t-${i}`} className="text-2xl font-bold text-foreground mt-10 mb-4">{block.content}</h2>);
       } else {
         elements.push(<div key={`t-${i}`} dangerouslySetInnerHTML={{ __html: block.content }} />);
       }
@@ -251,7 +251,7 @@ function InterleavedContent({
 
   // ── Fallback: excerpt only ──
   if (excerpt) {
-    return <p className="text-zinc-300 leading-relaxed">{excerpt}</p>;
+    return <p className="text-muted-foreground leading-relaxed">{excerpt}</p>;
   }
 
   return null;
@@ -275,15 +275,15 @@ export default function PublicationPage() {
 
   if (loading) {
     return (
-      <main className="pt-32 pb-24 bg-zinc-950">
+      <main className="pt-32 pb-24 bg-background">
         <div className="container mx-auto px-4 md:px-6 max-w-4xl">
           <div className="animate-pulse space-y-6">
-            <div className="h-6 w-32 bg-zinc-800 rounded" />
-            <div className="h-12 w-3/4 bg-zinc-800 rounded" />
-            <div className="h-4 w-1/3 bg-zinc-800 rounded" />
+            <div className="h-6 w-32 bg-muted rounded" />
+            <div className="h-12 w-3/4 bg-muted rounded" />
+            <div className="h-4 w-1/3 bg-muted rounded" />
             <div className="space-y-3 mt-8">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-4 bg-zinc-800 rounded" style={{ width: `${85 + Math.random() * 15}%` }} />
+                <div key={i} className="h-4 bg-muted rounded" style={{ width: `${85 + Math.random() * 15}%` }} />
               ))}
             </div>
           </div>
@@ -294,11 +294,11 @@ export default function PublicationPage() {
 
   if (error || !publication) {
     return (
-      <main className="pt-32 pb-24 bg-zinc-950">
+      <main className="pt-32 pb-24 bg-background">
         <div className="container mx-auto px-4 md:px-6 max-w-4xl text-center py-20">
           <div className="text-6xl mb-4">📄</div>
-          <h1 className="text-3xl font-bold text-white mb-4">Publication Not Found</h1>
-          <p className="text-zinc-400 mb-8">{error || 'This publication does not exist or has not been published yet.'}</p>
+          <h1 className="text-3xl font-bold text-foreground mb-4">Publication Not Found</h1>
+          <p className="text-muted-foreground mb-8">{error || 'This publication does not exist or has not been published yet.'}</p>
           <Link
             href="/insights"
             className="px-6 py-3 bg-primary text-zinc-950 font-bold rounded-lg hover:bg-primary/90 transition-colors inline-block"
@@ -318,7 +318,7 @@ export default function PublicationPage() {
       : []);
 
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <article className="container mx-auto px-4 md:px-6 max-w-4xl">
         {/* Header */}
         <motion.header
@@ -329,40 +329,40 @@ export default function PublicationPage() {
           {/* Back link */}
           <Link
             href="/insights"
-            className="text-sm text-zinc-500 hover:text-primary transition-colors mb-6 inline-block"
+            className="text-sm text-muted-foreground hover:text-primary transition-colors mb-6 inline-block"
           >
             ← Back to Research
           </Link>
 
           {/* Product badge + edition + date */}
           <div className="flex items-center gap-3 mb-4">
-            <span className={`px-3 py-1 text-xs font-bold rounded border ${PRODUCT_COLORS[publication.product] || TYPE_COLORS[publication.type] || 'bg-zinc-800 text-zinc-400'}`}>
+            <span className={`px-3 py-1 text-xs font-bold rounded border ${PRODUCT_COLORS[publication.product] || TYPE_COLORS[publication.type] || 'bg-muted text-muted-foreground'}`}>
               {PRODUCT_LABELS[publication.product] || TYPE_LABELS[publication.type] || publication.type}
             </span>
             {publication.edition && EDITION_LABELS[publication.edition] && (
-              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border border-zinc-700 rounded">
+              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border border-border rounded">
                 {EDITION_LABELS[publication.edition]}
               </span>
             )}
-            <span className="text-sm text-zinc-500">
+            <span className="text-sm text-muted-foreground">
               {formatDate(publication.published_at)}
             </span>
             {publication.reading_time_minutes > 0 && (
               <>
                 <span className="text-zinc-700">·</span>
-                <span className="text-sm text-zinc-500">{publication.reading_time_minutes} min read</span>
+                <span className="text-sm text-muted-foreground">{publication.reading_time_minutes} min read</span>
               </>
             )}
 
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
             {publication.title}
           </h1>
 
           {publication.subtitle && (
-            <p className="text-xl text-zinc-400">{publication.subtitle}</p>
+            <p className="text-xl text-muted-foreground">{publication.subtitle}</p>
           )}
 
           {/* Author */}
@@ -372,9 +372,9 @@ export default function PublicationPage() {
                 {publication.author_name.charAt(0)}
               </div>
               <div>
-                <div className="text-white font-medium">{publication.author_name}</div>
+                <div className="text-foreground font-medium">{publication.author_name}</div>
                 {publication.author_title && (
-                  <div className="text-sm text-zinc-500">{publication.author_title}</div>
+                  <div className="text-sm text-muted-foreground">{publication.author_title}</div>
                 )}
               </div>
             </div>
@@ -384,20 +384,20 @@ export default function PublicationPage() {
           <div className="mt-6 flex flex-wrap gap-2">
             {publication.sectors.map(s => (
               <Link key={s} href={`/insights?sector=${s}`}>
-                <span className="px-3 py-1 bg-zinc-900 text-zinc-400 text-xs rounded hover:text-primary transition-colors capitalize">
+                <span className="px-3 py-1 bg-card text-muted-foreground text-xs rounded hover:text-primary transition-colors capitalize">
                   {s.replace(/_/g, ' ')}
                 </span>
               </Link>
             ))}
             {publication.topics.map(t => (
               <Link key={t} href={`/insights?topic=${t}`}>
-                <span className="px-3 py-1 bg-zinc-900 text-zinc-400 text-xs rounded hover:text-primary transition-colors capitalize">
+                <span className="px-3 py-1 bg-card text-muted-foreground text-xs rounded hover:text-primary transition-colors capitalize">
                   {t.replace(/_/g, ' ')}
                 </span>
               </Link>
             ))}
             {publication.regions.map(r => (
-              <span key={r} className="px-3 py-1 bg-zinc-900 text-zinc-400 text-xs rounded capitalize">
+              <span key={r} className="px-3 py-1 bg-card text-muted-foreground text-xs rounded capitalize">
                 {r.replace(/_/g, ' ')}
               </span>
             ))}
@@ -410,12 +410,12 @@ export default function PublicationPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-12 bg-zinc-900 border border-zinc-800 rounded-lg p-6"
+            className="mb-12 bg-card border border-border rounded-lg p-6"
           >
             <h2 className="text-lg font-bold text-primary mb-4">Key Findings</h2>
             <ul className="space-y-2">
               {keyFindings.map((finding: string, i: number) => (
-                <li key={i} className="flex items-start gap-3 text-zinc-300">
+                <li key={i} className="flex items-start gap-3 text-muted-foreground">
                   <span className="text-primary font-bold mt-0.5">→</span>
                   <span>{finding}</span>
                 </li>
@@ -431,12 +431,12 @@ export default function PublicationPage() {
           transition={{ delay: 0.2 }}
           className="prose prose-invert prose-lg max-w-none
             prose-headings:text-primary prose-headings:font-bold prose-headings:mt-10 prose-headings:mb-4
-            prose-h2:text-2xl prose-h2:border-b prose-h2:border-zinc-800 prose-h2:pb-3
-            prose-p:text-zinc-300 prose-p:leading-relaxed prose-p:mb-4
+            prose-h2:text-2xl prose-h2:border-b prose-h2:border-border prose-h2:pb-3
+            prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:mb-4
             prose-strong:text-zinc-100
-            prose-em:text-zinc-400
+            prose-em:text-muted-foreground
             prose-ul:my-4 prose-ul:space-y-1
-            prose-li:text-zinc-300 prose-li:marker:text-primary
+            prose-li:text-muted-foreground prose-li:marker:text-primary
             prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
         >
           <InterleavedContent
@@ -452,10 +452,10 @@ export default function PublicationPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-16 pt-8 border-t border-zinc-800"
+          className="mt-16 pt-8 border-t border-border"
         >
-          <p className="text-xs text-zinc-600 leading-relaxed">
-            <strong className="text-zinc-500">Disclaimer:</strong> This publication is provided for informational
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-muted-foreground">Disclaimer:</strong> This publication is provided for informational
             purposes only and does not constitute investment advice. PROPMETRIK makes no representations or
             warranties regarding the accuracy or completeness of the information. Past performance is not
             indicative of future results. © {new Date().getFullYear()} PROPMETRIK Research.
@@ -464,7 +464,7 @@ export default function PublicationPage() {
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <Link
               href="/insights"
-              className="px-6 py-3 bg-zinc-900 border border-zinc-800 text-white font-medium rounded-lg hover:border-primary hover:text-primary transition-colors text-center"
+              className="px-6 py-3 bg-card border border-border text-foreground font-medium rounded-lg hover:border-primary hover:text-primary transition-colors text-center"
             >
               Browse More Research
             </Link>

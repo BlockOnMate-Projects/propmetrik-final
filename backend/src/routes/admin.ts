@@ -21,6 +21,145 @@ function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => P
 }
 
 // ============================================================================
+// PLATFORM BILLING & REVENUE
+// Unified view of platform money: subscription revenue + per-payment platform
+// fees. Ledger amounts are pesewas (÷100 → GHS); invoice totals are GHS already.
+// ============================================================================
+
+// period → safe SQL interval (whitelist; never interpolate user input directly)
+function periodInterval(p?: string): string {
+    switch ((p || '30d').toLowerCase()) {
+        case '7d': return '7 days';
+        case '90d': return '90 days';
+        case '12m': case '1y': return '12 months';
+        case 'all': return '100 years';
+        default: return '30 days';
+    }
+}
+
+/**
+ * GET /billing/summary?period=30d
+ * Headline platform-revenue numbers.
+ */
+router.get('/billing/summary', asyncHandler(async (req: Request, res: Response) => {
+    const interval = periodInterval(req.query.period as string);
+    const [subRev, ledger, activeSubs, pending, overdue, mrr] = await Promise.all([
+        pool.query(`SELECT COALESCE(SUM(total),0)::numeric AS v FROM invoices WHERE status='paid' AND paid_at >= NOW() - INTERVAL '${interval}'`),
+        pool.query(`SELECT COALESCE(SUM(service_fee),0)::bigint AS fees, COALESCE(SUM(gross_amount),0)::bigint AS gross, COUNT(*)::int AS txns FROM payment_transactions WHERE status='success' AND created_at >= NOW() - INTERVAL '${interval}'`),
+        pool.query(`SELECT COUNT(*)::int AS v FROM subscriptions WHERE status='active'`),
+        pool.query(`SELECT COUNT(*)::int AS v FROM invoices WHERE status='pending'`),
+        pool.query(`SELECT COUNT(*)::int AS v FROM invoices WHERE status='overdue' OR (status='pending' AND due_date < NOW())`),
+        pool.query(`SELECT COALESCE(SUM(CASE WHEN s.billing_interval='annual' THEN COALESCE(sp.price_annual_ghs, sp.price_monthly_ghs*12)/12 ELSE sp.price_monthly_ghs END * s.quantity),0)::numeric AS v FROM subscriptions s JOIN subscription_plans sp ON sp.id=s.plan_id WHERE s.status='active'`),
+    ]);
+
+    const subscriptionRevenue = Number(subRev.rows[0].v);
+    const platformFees = Number(ledger.rows[0].fees) / 100;
+    const grossVolume = Number(ledger.rows[0].gross) / 100;
+    const mrrVal = Number(mrr.rows[0].v);
+
+    res.json({ data: {
+        // Total platform revenue = subscription sales + fees kept on user payments
+        total_revenue: subscriptionRevenue + platformFees,
+        subscription_revenue: subscriptionRevenue,
+        platform_fees: platformFees,
+        gross_volume: grossVolume,
+        transactions: ledger.rows[0].txns,
+        mrr: mrrVal,
+        arr: mrrVal * 12,
+        active_subscriptions: activeSubs.rows[0].v,
+        pending_invoices: pending.rows[0].v,
+        overdue_invoices: overdue.rows[0].v,
+        currency: 'GHS',
+    }});
+}));
+
+/**
+ * GET /billing/revenue?period=30d
+ * Revenue split by source and by payment type.
+ */
+router.get('/billing/revenue', asyncHandler(async (req: Request, res: Response) => {
+    const interval = periodInterval(req.query.period as string);
+    const [byType, subRev] = await Promise.all([
+        pool.query(`SELECT payment_type, COUNT(*)::int AS count, COALESCE(SUM(gross_amount),0)::bigint AS gross_pesewas, COALESCE(SUM(service_fee),0)::bigint AS fees_pesewas FROM payment_transactions WHERE status='success' AND created_at >= NOW() - INTERVAL '${interval}' GROUP BY payment_type ORDER BY gross_pesewas DESC`),
+        pool.query(`SELECT COALESCE(SUM(total),0)::numeric AS v FROM invoices WHERE status='paid' AND paid_at >= NOW() - INTERVAL '${interval}'`),
+    ]);
+    const fees = byType.rows.reduce((s: number, r: any) => s + Number(r.fees_pesewas), 0) / 100;
+    const subscriptionRevenue = Number(subRev.rows[0].v);
+    res.json({ data: {
+        by_source: [
+            { source: 'subscriptions', amount: subscriptionRevenue },
+            { source: 'platform_fees', amount: fees },
+        ],
+        by_type: byType.rows.map((r: any) => ({
+            payment_type: r.payment_type,
+            count: r.count,
+            gross: Number(r.gross_pesewas) / 100,
+            fees: Number(r.fees_pesewas) / 100,
+        })),
+        currency: 'GHS',
+    }});
+}));
+
+/**
+ * GET /billing/transactions?limit=50&type=
+ * Unified ledger of all payments (rent, deal, project, subscription).
+ */
+router.get('/billing/transactions', asyncHandler(async (req: Request, res: Response) => {
+    const limit = Math.min(parseInt((req.query.limit as string) || '50', 10), 200);
+    const type = req.query.type as string | undefined;
+    const params: any[] = [];
+    let where = 'WHERE 1=1';
+    if (type) { params.push(type); where += ` AND payment_type = $${params.length}`; }
+    params.push(limit);
+    const { rows } = await pool.query(
+        `SELECT id, reference, payment_type, payer_email, gross_amount, service_fee, currency, status, channel, created_at, metadata
+         FROM payment_transactions ${where} ORDER BY created_at DESC LIMIT $${params.length}`,
+        params
+    );
+    res.json({ data: rows.map((r: any) => ({
+        id: r.id,
+        reference: r.reference,
+        payment_type: r.payment_type,
+        payer_email: r.payer_email,
+        channel: r.channel,
+        status: r.status,
+        gross: Number(r.gross_amount) / 100,
+        fee: Number(r.service_fee) / 100,
+        currency: r.currency || 'GHS',
+        created_at: r.created_at,
+        label: r.metadata?.plan_name || r.metadata?.plan_slug || null,
+    })) });
+}));
+
+/**
+ * GET /billing/invoices?limit=20
+ * Recent subscription invoices with org/user name.
+ */
+router.get('/billing/invoices', asyncHandler(async (req: Request, res: Response) => {
+    const limit = Math.min(parseInt((req.query.limit as string) || '20', 10), 100);
+    const { rows } = await pool.query(
+        `SELECT i.id, i.invoice_number, i.total AS amount, i.currency, i.status, i.due_date, i.created_at, i.paid_at,
+                COALESCE(o.name, NULLIF(TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')), ''), u.email, '—') AS organization_name
+         FROM invoices i
+         LEFT JOIN organizations o ON o.id = i.organization_id
+         LEFT JOIN users u ON u.id = i.user_id
+         ORDER BY i.created_at DESC LIMIT $1`,
+        [limit]
+    );
+    res.json({ data: rows.map((r: any) => ({
+        id: r.id,
+        invoice_number: r.invoice_number,
+        organization_name: r.organization_name,
+        amount: Number(r.amount),
+        currency: r.currency || 'GHS',
+        status: r.status,
+        due_date: r.due_date,
+        created_at: r.created_at,
+        paid_at: r.paid_at,
+    })) });
+}));
+
+// ============================================================================
 // FEE CONFIGURATIONS
 // ============================================================================
 

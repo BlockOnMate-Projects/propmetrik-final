@@ -51,8 +51,8 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
     deal_close: { icon: <Target className="w-3 h-3" />, color: 'bg-primary text-primary-foreground', label: 'Deal Close' },
-    task_due: { icon: <CheckSquare className="w-3 h-3" />, color: 'bg-info text-white', label: 'Task Due' },
-    task_overdue: { icon: <Clock className="w-3 h-3" />, color: 'bg-destructive text-white', label: 'Overdue Task' },
+    task_due: { icon: <CheckSquare className="w-3 h-3" />, color: 'bg-info text-foreground', label: 'Task Due' },
+    task_overdue: { icon: <Clock className="w-3 h-3" />, color: 'bg-destructive text-foreground', label: 'Overdue Task' },
 };
 
 // ─── Component ──────────────────────────────────────
@@ -220,7 +220,7 @@ export function CrmCalendarView({ className }: CrmCalendarViewProps) {
                                 key={dateStr}
                                 onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                                 className={cn(
-                                    'min-h-[80px] p-1.5 border-b border-r border-border cursor-pointer hover:bg-muted/30 transition-colors',
+                                    'min-h-[80px] p-1.5 border-b border-r border-border cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors',
                                     isSelected && 'bg-primary/5 ring-1 ring-inset ring-primary/30',
                                 )}
                             >

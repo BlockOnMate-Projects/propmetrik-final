@@ -94,7 +94,7 @@ export default function OnboardingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <RefreshCw className="w-6 h-6 text-zinc-600 animate-spin" />
+        <RefreshCw className="w-6 h-6 text-muted-foreground animate-spin" />
       </div>
     )
   }
@@ -111,38 +111,38 @@ export default function OnboardingPage() {
         <div>
           <div className="flex items-center gap-3">
             <Rocket className="w-6 h-6 text-red-500" />
-            <h1 className="text-xl font-bold text-white font-mono">ONBOARDING</h1>
+            <h1 className="text-xl font-bold text-foreground font-mono">ONBOARDING</h1>
           </div>
-          <p className="text-xs text-zinc-500 mt-1 ml-9">Get started with PROPMETRIK in a few simple steps</p>
+          <p className="text-xs text-muted-foreground mt-1 ml-9">Get started with PROPMETRIK in a few simple steps</p>
         </div>
         <button
           onClick={() => { setLoading(true); load() }}
-          className="px-3 py-1 text-[10px] font-mono text-zinc-400 hover:text-white border border-zinc-800 hover:border-red-600 transition-colors"
+          className="px-3 py-1 text-[10px] font-mono text-muted-foreground hover:text-foreground border border-border hover:border-red-600 transition-colors"
         >
           REFRESH
         </button>
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-zinc-900 border border-zinc-800 p-6">
+      <div className="bg-card border border-border p-6">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             {isComplete ? (
-              <Trophy className="w-5 h-5 text-amber-400" />
+              <Trophy className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             ) : (
               <Sparkles className="w-5 h-5 text-red-500" />
             )}
-            <span className="text-sm font-bold text-white font-mono">
+            <span className="text-sm font-bold text-foreground font-mono">
               {isComplete ? 'SETUP COMPLETE!' : 'GETTING STARTED'}
             </span>
           </div>
-          <span className="text-sm font-bold font-mono text-red-400">
+          <span className="text-sm font-bold font-mono text-red-600 dark:text-red-400">
             {data.completed}/{data.total}
           </span>
         </div>
 
         {/* Progress track */}
-        <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-700 ease-out"
             style={{
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
             }}
           />
         </div>
-        <p className="text-[10px] text-zinc-500 font-mono mt-2">
+        <p className="text-[10px] text-muted-foreground font-mono mt-2">
           {isComplete
             ? 'You\'re all set! Explore the platform or check out our API docs.'
             : `${data.progress_pct}% complete — ${data.total - data.completed} steps remaining`}
@@ -163,17 +163,17 @@ export default function OnboardingPage() {
         {nextStep && (
           <div className="mt-4 p-3 bg-red-950/30 border border-red-900/50 rounded flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-red-900/50 flex items-center justify-center">
-                <ArrowRight className="w-4 h-4 text-red-400" />
+              <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                <ArrowRight className="w-4 h-4 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Next: {nextStep.title}</p>
-                <p className="text-[10px] text-zinc-500">{nextStep.description}</p>
+                <p className="text-xs font-bold text-foreground">Next: {nextStep.title}</p>
+                <p className="text-[10px] text-muted-foreground">{nextStep.description}</p>
               </div>
             </div>
             <Link
               href={nextStep.href}
-              className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white text-[11px] font-mono font-bold transition-colors"
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-foreground text-[11px] font-mono font-bold transition-colors"
             >
               START →
             </Link>
@@ -194,31 +194,31 @@ export default function OnboardingPage() {
                 onClick={() => setActiveStep(isActive ? null : step.id)}
                 className={`w-full flex items-center gap-4 p-4 transition-all border ${
                   step.done
-                    ? 'bg-zinc-900/50 border-zinc-800/50'
+                    ? 'bg-card/50 border-border/50'
                     : isActive
-                      ? 'bg-zinc-900 border-red-800'
-                      : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                      ? 'bg-card border-red-800'
+                      : 'bg-card border-border hover:border-border'
                 }`}
               >
                 {/* Step number */}
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   step.done
-                    ? 'bg-green-900/50'
-                    : 'bg-zinc-800'
+                    ? 'bg-green-100 dark:bg-green-900/50'
+                    : 'bg-muted'
                 }`}>
                   {step.done ? (
-                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
                   ) : (
-                    <span className="text-xs font-mono font-bold text-zinc-400">{index + 1}</span>
+                    <span className="text-xs font-mono font-bold text-muted-foreground">{index + 1}</span>
                   )}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 text-left">
-                  <p className={`text-xs font-bold font-mono ${step.done ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                  <p className={`text-xs font-bold font-mono ${step.done ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                     {step.title}
                   </p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">{step.description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{step.description}</p>
                 </div>
 
                 {/* Icon + Action */}
@@ -228,7 +228,7 @@ export default function OnboardingPage() {
                   <Link
                     href={step.href}
                     onClick={(e) => e.stopPropagation()}
-                    className="px-3 py-1 bg-zinc-800 hover:bg-red-900/40 border border-zinc-700 hover:border-red-700 text-[10px] font-mono text-zinc-300 hover:text-white transition-colors flex-shrink-0"
+                    className="px-3 py-1 bg-muted hover:bg-red-900/40 border border-border hover:border-red-700 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
                   >
                     GO →
                   </Link>
@@ -237,7 +237,7 @@ export default function OnboardingPage() {
 
               {/* Expanded tip */}
               {isActive && tip && (
-                <div className="ml-12 p-3 bg-zinc-950 border-x border-b border-zinc-800 text-[11px] text-zinc-400">
+                <div className="ml-12 p-3 bg-background border-x border-b border-border text-[11px] text-muted-foreground">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500 inline mr-2" />
                   {tip}
                 </div>
@@ -248,8 +248,8 @@ export default function OnboardingPage() {
       </div>
 
       {/* Help section */}
-      <div className="bg-zinc-900 border border-zinc-800 p-4">
-        <h2 className="text-sm font-bold text-white font-mono mb-3">NEED HELP?</h2>
+      <div className="bg-card border border-border p-4">
+        <h2 className="text-sm font-bold text-foreground font-mono mb-3">NEED HELP?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
             { title: 'API Documentation', desc: 'Explore our REST API reference', href: '/dashboard/admin/api-docs' },
@@ -259,10 +259,10 @@ export default function OnboardingPage() {
             <a
               key={item.title}
               href={item.href}
-              className="p-3 bg-zinc-800/50 border border-zinc-700 hover:border-red-800 transition-colors rounded"
+              className="p-3 bg-muted/50 border border-border hover:border-red-800 transition-colors rounded"
             >
-              <p className="text-xs font-bold text-white">{item.title}</p>
-              <p className="text-[10px] text-zinc-500 mt-0.5">{item.desc}</p>
+              <p className="text-xs font-bold text-foreground">{item.title}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{item.desc}</p>
             </a>
           ))}
         </div>

@@ -60,7 +60,7 @@ import {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-    draft: { color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300", icon: <FileText className="h-3 w-3" />, label: "Draft" },
+    draft: { color: "bg-muted text-gray-700 dark:bg-gray-800 dark:text-gray-300", icon: <FileText className="h-3 w-3" />, label: "Draft" },
     sent: { color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", icon: <Send className="h-3 w-3" />, label: "Sent" },
     pending: { color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400", icon: <Clock className="h-3 w-3" />, label: "Pending" },
     completed: { color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400", icon: <CheckCircle className="h-3 w-3" />, label: "Completed" },
@@ -327,7 +327,7 @@ export default function EnvelopeDetailPage() {
                     {signers.map((s, i) => (
                       <div key={s.id || i} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-foreground ${
                             s.status === "signed" || s.status === "completed" ? "bg-green-500" : s.status === "declined" ? "bg-red-500" : "bg-gray-400"
                           }`}>
                             {(s.name || s.email || "?").charAt(0).toUpperCase()}
@@ -375,7 +375,7 @@ export default function EnvelopeDetailPage() {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white ${
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-foreground ${
                       signer.status === "signed" || signer.status === "completed" ? "bg-green-500" : signer.status === "declined" ? "bg-red-500" : "bg-blue-500"
                     }`}>
                       {(signer.name || signer.email || "?").charAt(0).toUpperCase()}

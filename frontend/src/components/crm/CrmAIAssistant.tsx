@@ -80,7 +80,7 @@ const AIMsgBubble = memo(function AIMsgBubble({
     return (
         <div className="flex gap-2 mb-3 items-start">
             <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                <Bot className="w-3.5 h-3.5 text-white" />
+                <Bot className="w-3.5 h-3.5 text-foreground" />
             </div>
             <div className="flex-1 min-w-0">
                 {r && <ConfidencePill confidence={r.confidence} />}
@@ -211,7 +211,7 @@ export function CrmAIAssistant({ inline, entityType, entityId, className }: CrmA
                     className,
                 )}
             >
-                <Sparkles className="w-6 h-6 text-white group-hover:animate-pulse" />
+                <Sparkles className="w-6 h-6 text-foreground group-hover:animate-pulse" />
             </button>
         );
     }
@@ -232,7 +232,7 @@ export function CrmAIAssistant({ inline, entityType, entityId, className }: CrmA
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                        <Bot className="w-4 h-4 text-white" />
+                        <Bot className="w-4 h-4 text-foreground" />
                     </div>
                     <div>
                         <p className="text-sm font-semibold">Kobby AI</p>
@@ -251,7 +251,7 @@ export function CrmAIAssistant({ inline, entityType, entityId, className }: CrmA
                 {showWelcome && (
                     <div className="text-center py-6">
                         <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mb-3">
-                            <Sparkles className="w-6 h-6 text-white" />
+                            <Sparkles className="w-6 h-6 text-foreground" />
                         </div>
                         <p className="text-sm font-medium">Ask me anything about your CRM</p>
                         <p className="text-xs text-muted-foreground mt-1">Pipeline, deals, contacts, performance — I have the data.</p>
@@ -308,7 +308,7 @@ export function CrmAIAssistant({ inline, entityType, entityId, className }: CrmA
                         disabled={!input.trim() || thinking}
                         className="p-1.5 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 transition-colors"
                     >
-                        <Send className="w-3.5 h-3.5 text-white" />
+                        <Send className="w-3.5 h-3.5 text-foreground" />
                     </button>
                 </div>
             </div>

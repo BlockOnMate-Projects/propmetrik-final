@@ -74,24 +74,24 @@ export default function PropertyBrochurePage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-black space-y-4">
+            <div className="flex flex-col items-center justify-center min-h-screen bg-background space-y-4">
                 <Loader2 className="h-10 w-10 text-amber-600 animate-spin" />
-                <p className="text-zinc-500 font-mono text-xs uppercase">Rendering High-Fidelity Asset Brochure...</p>
+                <p className="text-muted-foreground font-mono text-xs uppercase">Rendering High-Fidelity Asset Brochure...</p>
             </div>
         )
     }
 
     if (error || !property) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-black space-y-6">
+            <div className="flex flex-col items-center justify-center min-h-screen bg-background space-y-6">
                 <div className="p-8 bg-red-950/20 border border-red-900 rounded-lg text-center max-w-md">
                     <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white font-mono uppercase mb-2">Brochure Generation Failed</h2>
-                    <p className="text-red-400 font-mono text-sm mb-4">{error || 'Property not found'}</p>
+                    <h2 className="text-xl font-bold text-foreground font-mono uppercase mb-2">Brochure Generation Failed</h2>
+                    <p className="text-red-600 dark:text-red-400 font-mono text-sm mb-4">{error || 'Property not found'}</p>
                     <Button 
                         variant="outline" 
                         onClick={() => router.back()}
-                        className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                        className="border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Return to Property
@@ -120,7 +120,7 @@ export default function PropertyBrochurePage() {
     const formattedLocation = `${formatRegion(property.region)}, Ghana`
 
     return (
-        <div className="min-h-screen bg-white text-white print:bg-white print:text-white">
+        <div className="min-h-screen bg-card text-foreground print:bg-card print:text-foreground">
             <style jsx global>{`
                 @media print {
                     body {
@@ -152,7 +152,7 @@ export default function PropertyBrochurePage() {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-500 hover:text-white"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={() => router.back()}
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -182,7 +182,7 @@ export default function PropertyBrochurePage() {
                         PRINT
                     </Button>
                     <Button
-                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs"
+                        className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold text-xs"
                         onClick={() => window.print()}
                     >
                         <Download className="h-3 w-3 mr-2" />
@@ -273,9 +273,9 @@ export default function PropertyBrochurePage() {
                 </div>
 
                 {/* Highlights Table */}
-                <div className="grid md:grid-cols-3 gap-12 bg-neutral-900 text-white p-12 rounded-sm shadow-2xl relative overflow-hidden print:bg-neutral-100 print:text-white print:shadow-none print:border print:border-neutral-200">
+                <div className="grid md:grid-cols-3 gap-12 bg-neutral-900 text-foreground p-12 rounded-sm shadow-2xl relative overflow-hidden print:bg-neutral-100 print:text-foreground print:shadow-none print:border print:border-neutral-200">
                     <div className="absolute top-0 right-0 p-4 opacity-10 print:hidden">
-                        <Building2 className="h-48 w-48 text-white rotate-12" />
+                        <Building2 className="h-48 w-48 text-foreground rotate-12" />
                     </div>
 
                     <div className="md:col-span-2 space-y-8 relative z-10">
@@ -300,7 +300,7 @@ export default function PropertyBrochurePage() {
                     </div>
 
                     <div className="text-center space-y-4 border-l border-neutral-800 md:pl-12 relative z-10 print:border-neutral-300">
-                        <div className="bg-white p-2 mx-auto rounded-sm inline-block shadow-sm">
+                        <div className="bg-card p-2 mx-auto rounded-sm inline-block shadow-sm">
                             <QRCodeCanvas
                                 value={`https://propmetrik.com/property/${propertyId}`}
                                 size={100}
@@ -317,7 +317,7 @@ export default function PropertyBrochurePage() {
                 {/* Footer Credits */}
                 <div className="flex flex-col md:flex-row justify-between items-center py-12 border-t border-neutral-100 gap-8">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 bg-black flex items-center justify-center rounded-sm">
+                        <div className="h-10 w-10 bg-background flex items-center justify-center rounded-sm">
                             <span className="text-amber-500 font-bold text-lg">P</span>
                         </div>
                         <div>

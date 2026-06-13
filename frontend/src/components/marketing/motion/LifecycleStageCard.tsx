@@ -35,29 +35,29 @@ interface LifecycleStageCardProps {
 
 const COLOR_MAP = {
     amber: {
-        value: 'text-amber-400',
-        badge: 'bg-amber-400/20 text-amber-400 border-amber-400/30',
+        value: 'text-amber-600 dark:text-amber-400',
+        badge: 'bg-amber-400/20 text-amber-600 dark:text-amber-400 border-amber-400/30',
         dot: 'bg-amber-400',
     },
     emerald: {
-        value: 'text-emerald-400',
-        badge: 'bg-emerald-400/20 text-emerald-400 border-emerald-400/30',
+        value: 'text-emerald-600 dark:text-emerald-400',
+        badge: 'bg-emerald-400/20 text-emerald-600 dark:text-emerald-400 border-emerald-400/30',
         dot: 'bg-emerald-400',
     },
     blue: {
-        value: 'text-blue-400',
-        badge: 'bg-blue-400/20 text-blue-400 border-blue-400/30',
+        value: 'text-blue-600 dark:text-blue-400',
+        badge: 'bg-blue-400/20 text-blue-600 dark:text-blue-400 border-blue-400/30',
         dot: 'bg-blue-400',
     },
     red: {
-        value: 'text-red-400',
-        badge: 'bg-red-400/20 text-red-400 border-red-400/30',
+        value: 'text-red-600 dark:text-red-400',
+        badge: 'bg-red-400/20 text-red-600 dark:text-red-400 border-red-400/30',
         dot: 'bg-red-400',
     },
     white: {
-        value: 'text-white',
-        badge: 'bg-white/10 text-white border-white/20',
-        dot: 'bg-white',
+        value: 'text-foreground',
+        badge: 'bg-card/10 text-foreground border-white/20',
+        dot: 'bg-card',
     },
 };
 
@@ -147,11 +147,11 @@ export default function LifecycleStageCard({ stage, depth, isActive }: Lifecycle
                             <div className={`text-xl font-bold font-mono leading-none ${colorSet.value}`}>
                                 {tile.value}
                             </div>
-                            <div className="text-[11px] text-zinc-400 mt-1 font-medium">
+                            <div className="text-[11px] text-muted-foreground mt-1 font-medium">
                                 {tile.label}
                             </div>
                             {tile.sub && (
-                                <div className="text-[10px] text-zinc-600 mt-0.5">
+                                <div className="text-[10px] text-muted-foreground mt-0.5">
                                     {tile.sub}
                                 </div>
                             )}
@@ -173,7 +173,7 @@ export default function LifecycleStageCard({ stage, depth, isActive }: Lifecycle
                         animate={{ scale: [1, 1.6, 1], opacity: [1, 0.4, 1] }}
                         transition={{ duration: 1.8, repeat: Infinity }}
                     />
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                         Active
                     </span>
                 </motion.div>
@@ -182,7 +182,7 @@ export default function LifecycleStageCard({ stage, depth, isActive }: Lifecycle
             {/* Depth darkening overlay when stacked */}
             {depth > 0 && (
                 <div
-                    className="absolute inset-0 bg-zinc-950 rounded-2xl pointer-events-none"
+                    className="absolute inset-0 bg-background rounded-2xl pointer-events-none"
                     style={{ opacity: Math.min(depth * 0.15, 0.5) }}
                 />
             )}

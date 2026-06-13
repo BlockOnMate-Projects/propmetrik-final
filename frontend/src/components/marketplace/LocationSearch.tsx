@@ -73,14 +73,14 @@ export function LocationSearch({ onSelect, placeholder = 'Search location...' }:
     <div ref={wrapperRef} className="relative w-full">
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           placeholder={placeholder}
-          className="w-full pl-14 pr-14 py-4 border-2 border-gray-300 rounded-xl text-gray-900 bg-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all text-base shadow-lg"
+          className="w-full pl-14 pr-14 py-4 border-2 border-gray-300 rounded-xl text-gray-900 bg-card placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all text-base shadow-lg"
         />
         {loading && (
           <Loader2 className="absolute right-5 top-1/2 transform -translate-y-1/2 h-5 w-5 text-indigo-600 animate-spin" />
@@ -89,13 +89,13 @@ export function LocationSearch({ onSelect, placeholder = 'Search location...' }:
 
       {/* Suggestions Dropdown */}
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
           <div className="max-h-80 overflow-y-auto">
             {suggestions.map((suggestion, index) => (
               <button
                 key={suggestion.id || index}
                 onClick={() => handleSelect(suggestion)}
-                className="w-full px-5 py-4 flex items-start gap-3 hover:bg-gray-50 transition-colors text-left group"
+                className="w-full px-5 py-4 flex items-start gap-3 hover:bg-muted transition-colors text-left group"
               >
                 <MapPin className="h-5 w-5 text-indigo-600 flex-shrink-0 mt-0.5 group-hover:text-indigo-700 transition-colors" />
                 <div className="flex-1 min-w-0">
@@ -103,7 +103,7 @@ export function LocationSearch({ onSelect, placeholder = 'Search location...' }:
                     {suggestion.place_name}
                   </p>
                   {suggestion.context && suggestion.context.length > 0 && (
-                    <p className="text-xs text-gray-600 truncate mt-1">
+                    <p className="text-xs text-muted-foreground truncate mt-1">
                       {suggestion.context.map((ctx: any) => ctx.text).join(', ')}
                     </p>
                   )}

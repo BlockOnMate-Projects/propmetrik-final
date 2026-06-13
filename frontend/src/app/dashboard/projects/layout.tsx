@@ -207,9 +207,9 @@ export default function ProjectsLayout({
         // and default Card/Popover/Input surfaces — render dark-on-light instead of
         // white-on-white (previously invisible until hover). --primary is identical in
         // light/dark, so the blue/orange CTAs are unaffected.
-        <div className="dark min-h-screen bg-black">
+        <div className="min-h-screen bg-background">
             {/* Row 1: Group tabs */}
-            <div className="border-b border-zinc-800 bg-zinc-900/50">
+            <div className="border-b border-border bg-card/50">
                 <div className="px-2 sm:px-4">
                     <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-none">
                         {visibleGroups.map((group) => {
@@ -227,12 +227,12 @@ export default function ProjectsLayout({
                                             ? 'border-transparent text-zinc-700 cursor-not-allowed'
                                             : isActive
                                             ? 'border-amber-500 text-amber-500'
-                                            : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                                            : 'border-transparent text-muted-foreground hover:text-muted-foreground hover:border-border'
                                     )}
                                 >
                                     <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                     <span>{group.label}</span>
-                                    {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5 text-zinc-600" />}
+                                    {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5 text-muted-foreground" />}
                                 </Link>
                             )
                         })}
@@ -242,7 +242,7 @@ export default function ProjectsLayout({
 
             {/* Row 2: Sub-items of the active group (only if group has > 1 item) */}
             {activeGroup && activeGroup.items.length > 1 && (
-                <div className="border-b border-zinc-800/60 bg-zinc-950/80">
+                <div className="border-b border-border/60 bg-background/80">
                     <div className="px-2 sm:px-4">
                         <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-none">
                             {activeGroup.items.map((item) => {
@@ -255,8 +255,8 @@ export default function ProjectsLayout({
                                         className={cn(
                                             'flex items-center gap-1.5 px-3 sm:px-4 py-2 font-mono text-[9px] sm:text-[10px] tracking-wide border-b-2 transition-colors whitespace-nowrap',
                                             active
-                                                ? 'border-amber-500/70 text-amber-400'
-                                                : 'border-transparent text-zinc-600 hover:text-zinc-400 hover:border-zinc-700'
+                                                ? 'border-amber-500/70 text-amber-600 dark:text-amber-400'
+                                                : 'border-transparent text-muted-foreground hover:text-muted-foreground hover:border-border'
                                         )}
                                     >
                                         <Icon className="h-3 w-3" />

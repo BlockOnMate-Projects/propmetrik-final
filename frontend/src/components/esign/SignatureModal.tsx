@@ -230,9 +230,9 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
   tabs.push({ key: "type", label: "Type" }, { key: "draw", label: "Draw" }, { key: "upload", label: "Upload" });
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 bg-background/60 flex items-center justify-center p-4" onClick={onCancel}>
       <div
-        className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-lg"
+        className="bg-card dark:bg-card rounded-xl shadow-2xl w-full max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -267,7 +267,7 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
           {activeTab === "saved" && savedSignature && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">Your saved signature:</p>
-              <div className="border rounded-lg p-4 bg-white dark:bg-zinc-800 flex justify-center">
+              <div className="border rounded-lg p-4 bg-card dark:bg-muted flex justify-center">
                 <img src={savedSignature.data} alt="Saved signature" className="max-h-20 object-contain" />
               </div>
               <button
@@ -292,13 +292,13 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
                 value={typedSignature}
                 onChange={(e) => setTypedSignature(e.target.value)}
                 placeholder="Type your name"
-                className="text-lg bg-white text-white border-primary/40"
+                className="text-lg bg-card text-foreground border-primary/40"
               />
               <div className="grid grid-cols-2 gap-2">
                 {SIGNATURE_FONTS.map((font) => (
                   <button
                     key={font.id}
-                    className={`p-3 rounded-lg border text-center transition-colors bg-white ${
+                    className={`p-3 rounded-lg border text-center transition-colors bg-card ${
                       selectedFont === font.id
                         ? "border-primary ring-1 ring-primary"
                         : "border-border hover:border-primary/40"
@@ -308,7 +308,7 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
                     <span style={{ fontFamily: font.style, fontSize: "22px", color: "#000" }}>
                       {typedSignature || signerName}
                     </span>
-                    <span className="block text-xs text-gray-500 mt-1">{font.name}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">{font.name}</span>
                   </button>
                 ))}
               </div>
@@ -319,7 +319,7 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
           {activeTab === "draw" && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">Draw your signature below:</p>
-              <div className="border-2 border-dashed rounded-lg overflow-hidden bg-white">
+              <div className="border-2 border-dashed rounded-lg overflow-hidden bg-card">
                 <canvas
                   ref={canvasRef}
                   width={400}
@@ -346,7 +346,7 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
             <div className="space-y-4">
               {uploadedImage ? (
                 <div className="space-y-3">
-                  <div className="border rounded-lg p-4 bg-white dark:bg-zinc-800 flex justify-center">
+                  <div className="border rounded-lg p-4 bg-card dark:bg-muted flex justify-center">
                     <img src={uploadedImage} alt="Uploaded signature" className="max-h-24 object-contain" />
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setUploadedImage(null)}>

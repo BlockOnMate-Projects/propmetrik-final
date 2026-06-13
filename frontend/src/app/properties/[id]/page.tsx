@@ -46,11 +46,11 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const { property, valuation, pois, comparables, nearby } = data;
 
   return (
-    <main className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 pb-20">
+    <main className="min-h-screen bg-card dark:bg-background text-gray-900 dark:text-gray-100 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
         
         {/* Breadcrumb / Back Navigation */}
-        <div className="flex items-center text-sm text-gray-500">
+        <div className="flex items-center text-sm text-muted-foreground">
           <Link href="/" className="hover:text-primary transition-colors">Home</Link>
           <span className="mx-2">/</span>
           <Link href="/properties" className="hover:text-primary transition-colors">Properties</Link>

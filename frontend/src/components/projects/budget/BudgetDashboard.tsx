@@ -161,7 +161,7 @@ function CurrencyCard({
           value={Math.min(spentPercent, 100)}
           className={cn(
             'h-2',
-            spentPercent > 90 ? 'bg-red-100' : spentPercent > 75 ? 'bg-yellow-100' : 'bg-gray-100'
+            spentPercent > 90 ? 'bg-red-100' : spentPercent > 75 ? 'bg-yellow-100' : 'bg-muted'
           )}
         />
         <p className="text-center text-xs text-muted-foreground">

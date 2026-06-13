@@ -133,18 +133,18 @@ export default function AnalyticsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pb-10">
+        <div className="min-h-screen bg-background text-foreground p-4 pb-10">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA ANALYTICS DASHBOARD</h1>
-                    <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                    <p className="font-mono text-[10px] text-muted-foreground mt-1">
                         COMPREHENSIVE DATA INSIGHTS • POWERED BY ML ANALYTICS ENGINE
                     </p>
                 </div>
                 <Link
                     href="/dashboard/admin/data-hub/insights"
-                    className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400 shrink-0"
+                    className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400 shrink-0"
                 >
                     <Lightbulb className="w-4 h-4" />
                     INSIGHTS
@@ -324,12 +324,12 @@ export default function AnalyticsPage() {
             <TerminalPanel title="Data Freshness Indicators">
                 <div className="space-y-3">
                     {sourcePerformanceData.map((item) => (
-                        <div key={item.name} className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+                        <div key={item.name} className="flex items-center justify-between p-3 bg-muted/30 border border-border">
                             <div className="flex items-center gap-3">
-                                <Database className="w-4 h-4 text-blue-400" />
+                                <Database className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 <div>
-                                    <div className="font-mono text-sm text-white">{item.name}</div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Reliability Score: {item.reliability}%</div>
+                                    <div className="font-mono text-sm text-foreground">{item.name}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Reliability Score: {item.reliability}%</div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -342,7 +342,7 @@ export default function AnalyticsPage() {
                                         style={{ width: `${item.quality}%` }}
                                     />
                                 </div>
-                                <span className="font-mono text-xs text-white w-12 text-right">{item.quality}%</span>
+                                <span className="font-mono text-xs text-foreground w-12 text-right">{item.quality}%</span>
                             </div>
                         </div>
                     ))}
@@ -353,28 +353,28 @@ export default function AnalyticsPage() {
             <div className="mt-6">
                 <TerminalPanel title="Source Quality Summary">
                     {qualitySummary.length === 0 ? (
-                        <div className="font-mono text-sm text-zinc-500 text-center py-4">No source data available</div>
+                        <div className="font-mono text-sm text-muted-foreground text-center py-4">No source data available</div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {qualitySummary.map((item) => (
-                                <div key={item.source} className="p-3 bg-zinc-800/30 border border-zinc-800">
-                                    <div className="font-mono text-xs text-white mb-2 truncate">{item.source}</div>
+                                <div key={item.source} className="p-3 bg-muted/30 border border-border">
+                                    <div className="font-mono text-xs text-foreground mb-2 truncate">{item.source}</div>
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between">
-                                            <span className="font-mono text-[9px] text-zinc-500">Reliability</span>
-                                            <span className={`font-mono text-xs ${item.reliability >= 80 ? 'text-green-400' : item.reliability >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                            <span className="font-mono text-[9px] text-muted-foreground">Reliability</span>
+                                            <span className={`font-mono text-xs ${item.reliability >= 80 ? 'text-green-600 dark:text-green-400' : item.reliability >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                                                 {item.reliability}%
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between">
-                                            <span className="font-mono text-[9px] text-zinc-500">Speed</span>
-                                            <span className={`font-mono text-xs ${item.speed >= 80 ? 'text-green-400' : item.speed >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                            <span className="font-mono text-[9px] text-muted-foreground">Speed</span>
+                                            <span className={`font-mono text-xs ${item.speed >= 80 ? 'text-green-600 dark:text-green-400' : item.speed >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                                                 {item.speed}%
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between">
-                                            <span className="font-mono text-[9px] text-zinc-500">Quality</span>
-                                            <span className={`font-mono text-xs ${item.quality >= 80 ? 'text-green-400' : item.quality >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                            <span className="font-mono text-[9px] text-muted-foreground">Quality</span>
+                                            <span className={`font-mono text-xs ${item.quality >= 80 ? 'text-green-600 dark:text-green-400' : item.quality >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                                                 {item.quality}%
                                             </span>
                                         </div>

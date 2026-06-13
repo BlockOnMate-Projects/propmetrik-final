@@ -93,7 +93,7 @@ const MessageBubble = memo(function MessageBubble({
     if (message.sender_type === 'system') {
         return (
             <div className="flex justify-center my-1">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-800/50 text-zinc-400 text-xs">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50 text-muted-foreground text-xs">
                     <Info className="w-3 h-3 flex-shrink-0" />
                     <span>{message.content}</span>
                 </div>
@@ -138,7 +138,7 @@ const MessageBubble = memo(function MessageBubble({
                     variant="ghost"
                     size="sm"
                     onClick={handlePopOut}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2 font-mono text-[10px] bg-violet-950/40 border border-violet-800/40 text-violet-300 hover:bg-violet-900"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2 font-mono text-[10px] bg-violet-950/40 border border-violet-800/40 text-violet-600 dark:text-violet-300 hover:bg-violet-900"
                 >
                     <Share2 className="w-3 h-3 mr-1" />
                     POP OUT
@@ -157,21 +157,21 @@ const MessageBubble = memo(function MessageBubble({
         >
             {/* Avatar */}
             {!isOwn && (
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-foreground text-xs font-bold shadow">
                     {(message.sender_name || 'U')[0].toUpperCase()}
                 </div>
             )}
 
             <div className={cn('max-w-[75%]', isOwn ? 'items-end' : 'items-start', 'flex flex-col')}>
                 {!isOwn && message.sender_name && (
-                    <p className="text-xs font-medium text-zinc-400 mb-1 ml-1">{message.sender_name}</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1 ml-1">{message.sender_name}</p>
                 )}
                 <div
                     className={cn(
                         'px-4 py-2.5 text-sm leading-relaxed rounded-2xl break-words relative group',
                         isOwn
-                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-br-sm shadow-lg shadow-emerald-500/10'
-                            : 'bg-zinc-800 text-zinc-100 rounded-bl-sm border border-zinc-700/50'
+                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-foreground rounded-br-sm shadow-lg shadow-emerald-500/10'
+                            : 'bg-muted text-zinc-100 rounded-bl-sm border border-border/50'
                     )}
                 >
                     {/* Action buttons */}
@@ -183,7 +183,7 @@ const MessageBubble = memo(function MessageBubble({
                     >
                         <button
                             onClick={() => onReply?.(message)}
-                            className="p-1.5 rounded-lg bg-zinc-900/80 text-zinc-400 hover:text-zinc-200"
+                            className="p-1.5 rounded-lg bg-card/80 text-muted-foreground hover:text-zinc-200"
                             title="Reply"
                         >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,7 +194,7 @@ const MessageBubble = memo(function MessageBubble({
                         {isOwn && onDelete && (
                             <button
                                 onClick={() => onDelete(message.id)}
-                                className="p-1.5 rounded-lg bg-zinc-900/80 text-zinc-400 hover:text-red-400"
+                                className="p-1.5 rounded-lg bg-card/80 text-muted-foreground hover:text-red-400"
                                 title="Delete message"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -205,10 +205,10 @@ const MessageBubble = memo(function MessageBubble({
                     {message.thread_id && (() => {
                         const parentMsg = allMessages?.get(message.thread_id);
                         return (
-                            <div className="mb-2 p-2 rounded bg-black/20 border-l-2 border-emerald-500/50 text-[11px] opacity-80">
+                            <div className="mb-2 p-2 rounded bg-background/20 border-l-2 border-emerald-500/50 text-[11px] opacity-80">
                                 {parentMsg ? (
                                     <>
-                                        <span className="font-semibold text-emerald-400/80 not-italic">
+                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400/80 not-italic">
                                             {parentMsg.sender_name || 'User'}
                                         </span>
                                         <p className="italic mt-0.5 line-clamp-2">{parentMsg.content}</p>
@@ -236,7 +236,7 @@ const MessageBubble = memo(function MessageBubble({
                                     href={(message.metadata as any).file.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex items-center gap-2 p-2 rounded bg-black/20 hover:bg-black/40 transition-colors"
+                                    className="flex items-center gap-2 p-2 rounded bg-background/20 hover:bg-background/40 transition-colors"
                                 >
                                     <Paperclip className="w-3.5 h-3.5" />
                                     <span className="text-xs truncate">{(message.metadata as any).file.file_name}</span>
@@ -245,7 +245,7 @@ const MessageBubble = memo(function MessageBubble({
                         </div>
                     )}
                 </div>
-                <p className={cn('text-xs text-zinc-600 mt-1', isOwn ? 'mr-1 text-right' : 'ml-1')}>
+                <p className={cn('text-xs text-muted-foreground mt-1', isOwn ? 'mr-1 text-right' : 'ml-1')}>
                     {formatTime(message.created_at)}
                 </p>
             </div>
@@ -294,11 +294,11 @@ export function MessageList({
                 <div key={group.date}>
                     {/* Date separator */}
                     <div className="flex items-center gap-3 my-4">
-                        <div className="flex-1 h-px bg-zinc-800" />
-                        <span className="text-xs text-zinc-500 flex-shrink-0 font-medium">
+                        <div className="flex-1 h-px bg-muted" />
+                        <span className="text-xs text-muted-foreground flex-shrink-0 font-medium">
                             {formatDate(group.date)}
                         </span>
-                        <div className="flex-1 h-px bg-zinc-800" />
+                        <div className="flex-1 h-px bg-muted" />
                     </div>
 
                     {group.messages.map((msg) => (
@@ -324,7 +324,7 @@ export function MessageList({
                         <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
                         <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
                     </div>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                         {typingUsers.size === 1 ? 'Someone is' : `${typingUsers.size} people are`} typing...
                     </span>
                 </div>

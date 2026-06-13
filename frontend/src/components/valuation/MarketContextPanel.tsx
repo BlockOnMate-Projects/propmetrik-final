@@ -126,9 +126,9 @@ function TrendIndicator({ trend, value }: { trend: 'up' | 'down' | 'stable'; val
   };
   
   const colors = {
-    up: 'text-green-400',
-    down: 'text-red-400',
-    stable: 'text-zinc-400',
+    up: 'text-green-600 dark:text-green-400',
+    down: 'text-red-600 dark:text-red-400',
+    stable: 'text-muted-foreground',
   };
   
   return (
@@ -166,13 +166,13 @@ function ProgressBar({
     <div className="space-y-1">
       {label && (
         <div className="flex justify-between">
-          <span className="font-mono text-[10px] text-zinc-400">{label}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
           {showValue && (
-            <span className="font-mono text-[10px] text-white">{safeToFixed(numValue, 1)}%</span>
+            <span className="font-mono text-[10px] text-foreground">{safeToFixed(numValue, 1)}%</span>
           )}
         </div>
       )}
-      <div className="h-1.5 bg-zinc-800 overflow-hidden">
+      <div className="h-1.5 bg-muted overflow-hidden">
         <div 
           className={cn('h-full transition-all duration-500', colorClasses[color])}
           style={{ width: `${percentage}%` }}
@@ -198,12 +198,12 @@ function MarketCycleIndicator({ phase }: { phase?: string }) {
               ? 'bg-amber-500 border-amber-400' 
               : i < phaseIndex 
                 ? 'bg-zinc-600 border-zinc-500' 
-                : 'bg-zinc-800 border-zinc-700'
+                : 'bg-muted border-border'
           )}
           title={p.charAt(0).toUpperCase() + p.slice(1).replace('_', ' ')}
         />
       ))}
-      <span className="ml-2 font-mono text-[10px] text-amber-400 uppercase">
+      <span className="ml-2 font-mono text-[10px] text-amber-600 dark:text-amber-400 uppercase">
         {currentPhase.replace('_', ' ')}
       </span>
     </div>
@@ -229,7 +229,7 @@ function ActivityLevel({ level }: { level: 'high' | 'moderate' | 'low' | 'unknow
           )}
         />
       ))}
-      <span className="ml-2 font-mono text-[10px] text-zinc-400 uppercase">{level}</span>
+      <span className="ml-2 font-mono text-[10px] text-muted-foreground uppercase">{level}</span>
     </div>
   );
 }
@@ -240,7 +240,7 @@ function SeasonalFactorChart({ currentMonth, factors }: { currentMonth: number; 
   // If no factors provided, show a placeholder message
   if (!factors || factors.length === 0) {
     return (
-      <div className="flex items-center justify-center py-4 text-zinc-500 font-mono text-[10px]">
+      <div className="flex items-center justify-center py-4 text-muted-foreground font-mono text-[10px]">
         Seasonal factor data not available from Data Hub
       </div>
     );
@@ -279,7 +279,7 @@ function SeasonalFactorChart({ currentMonth, factors }: { currentMonth: number; 
             key={i}
             className={cn(
               'flex-1 text-center font-mono text-[8px]',
-              i === currentMonth ? 'text-amber-500' : 'text-zinc-500'
+              i === currentMonth ? 'text-amber-500' : 'text-muted-foreground'
             )}
           >
             {label}
@@ -438,7 +438,7 @@ export function MarketContextPanel({
         <div className="flex items-center justify-center py-12">
           <div className="flex flex-col items-center gap-2">
             <RefreshCw className="w-6 h-6 text-amber-500 animate-spin" />
-            <span className="font-mono text-xs text-zinc-500">Loading market data from Data Hub...</span>
+            <span className="font-mono text-xs text-muted-foreground">Loading market data from Data Hub...</span>
           </div>
         </div>
       </TerminalPanel>
@@ -456,15 +456,15 @@ export function MarketContextPanel({
         <div className="flex flex-col items-center justify-center py-12 gap-4">
           <AlertCircle className="w-8 h-8 text-red-500" />
           <div className="text-center">
-            <div className="font-mono text-xs text-red-400 mb-2">Failed to load market data</div>
-            <div className="font-mono text-[10px] text-zinc-500 max-w-md">{error}</div>
+            <div className="font-mono text-xs text-red-600 dark:text-red-400 mb-2">Failed to load market data</div>
+            <div className="font-mono text-[10px] text-muted-foreground max-w-md">{error}</div>
           </div>
           <button 
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 bg-muted hover:bg-zinc-700 border border-border rounded transition-colors"
           >
             <RefreshCw className="w-3 h-3 text-amber-500" />
-            <span className="font-mono text-xs text-zinc-300">Retry</span>
+            <span className="font-mono text-xs text-muted-foreground">Retry</span>
           </button>
         </div>
       </TerminalPanel>
@@ -484,16 +484,16 @@ export function MarketContextPanel({
             className="p-1 hover:bg-zinc-700 rounded transition-colors"
             title="Refresh data"
           >
-            <RefreshCw className="w-3 h-3 text-zinc-400" />
+            <RefreshCw className="w-3 h-3 text-muted-foreground" />
           </button>
           <button 
             onClick={() => setCollapsed(!collapsed)}
             className="p-1 hover:bg-zinc-700 rounded transition-colors"
           >
             {collapsed ? (
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             ) : (
-              <ChevronUp className="w-3 h-3 text-zinc-400" />
+              <ChevronUp className="w-3 h-3 text-muted-foreground" />
             )}
           </button>
         </div>
@@ -503,26 +503,26 @@ export function MarketContextPanel({
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">TREND:</span>
+              <span className="font-mono text-[10px] text-muted-foreground">TREND:</span>
               <TrendIndicator 
                 trend={getTrendDirection(data?.market.trend || 'stable')} 
                 value={`${(data?.market.price_index_change_yoy || 0) > 0 ? '+' : ''}${safeToFixed(data?.market.price_index_change_yoy, 1)}%`}
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">ACTIVITY:</span>
+              <span className="font-mono text-[10px] text-muted-foreground">ACTIVITY:</span>
               <ActivityLevel level={data?.market.activity_level || 'moderate'} />
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">SEASONAL:</span>
-              <span className="font-mono text-xs text-white">{safeToFixed(data?.market.seasonal_factor, 2, '1.00')}</span>
+              <span className="font-mono text-[10px] text-muted-foreground">SEASONAL:</span>
+              <span className="font-mono text-xs text-foreground">{safeToFixed(data?.market.seasonal_factor, 2, '1.00')}</span>
             </div>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Economic Indicators */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -558,10 +558,10 @@ export function MarketContextPanel({
               <div>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="font-mono text-[10px] text-zinc-400">USD/GHS Exchange</span>
-                    <span className="font-mono text-[10px] text-white">₵{safeToFixed(data?.economic?.exchange_rate_usd, 2)}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">USD/GHS Exchange</span>
+                    <span className="font-mono text-[10px] text-foreground">₵{safeToFixed(data?.economic?.exchange_rate_usd, 2)}</span>
                   </div>
-                  <div className="h-1.5 bg-zinc-800">
+                  <div className="h-1.5 bg-muted">
                     <div className="h-full bg-blue-500" style={{ width: '60%' }} />
                   </div>
                 </div>
@@ -586,7 +586,7 @@ export function MarketContextPanel({
           </div>
           
           {/* Market Conditions */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -595,8 +595,8 @@ export function MarketContextPanel({
             </div>
             
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-2 bg-zinc-800/30">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Market Trend</div>
+              <div className="text-center p-2 bg-muted/30">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Market Trend</div>
                 <TrendIndicator 
                   trend={getTrendDirection(data?.market.trend || 'stable')} 
                   value={data?.market.price_index_change_yoy != null 
@@ -605,33 +605,33 @@ export function MarketContextPanel({
                   }
                 />
               </div>
-              <div className="text-center p-2 bg-zinc-800/30">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Market Activity</div>
+              <div className="text-center p-2 bg-muted/30">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Market Activity</div>
                 <ActivityLevel level={data?.market.activity_level || 'moderate'} />
               </div>
-              <div className="text-center p-2 bg-zinc-800/30">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Market Cycle</div>
+              <div className="text-center p-2 bg-muted/30">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Market Cycle</div>
                 <MarketCycleIndicator phase={data?.market.cycle_phase} />
               </div>
             </div>
             
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Price Index</div>
-                <div className="font-mono text-lg text-white">{safeToFixed(data?.market.price_index, 1, '100.0')}</div>
-                <div className="font-mono text-[9px] text-zinc-500">Base: 100 (Jan 2024)</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Price Index</div>
+                <div className="font-mono text-lg text-foreground">{safeToFixed(data?.market.price_index, 1, '100.0')}</div>
+                <div className="font-mono text-[9px] text-muted-foreground">Base: 100 (Jan 2024)</div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Days on Market</div>
-                <div className="font-mono text-lg text-white">{data?.market.days_on_market_avg || '—'}</div>
-                <div className="font-mono text-[9px] text-zinc-500">Average</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Days on Market</div>
+                <div className="font-mono text-lg text-foreground">{data?.market.days_on_market_avg || '—'}</div>
+                <div className="font-mono text-[9px] text-muted-foreground">Average</div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Supply/Demand</div>
-                <div className="font-mono text-lg text-white">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Supply/Demand</div>
+                <div className="font-mono text-lg text-foreground">
                   {safeToFixed(data?.market.supply_demand_ratio, 2, '1.00')}
                 </div>
-                <div className="font-mono text-[9px] text-zinc-500">
+                <div className="font-mono text-[9px] text-muted-foreground">
                   {(data?.market.supply_demand_ratio || 1) > 1.1 ? 'Oversupply' : 
                    (data?.market.supply_demand_ratio || 1) < 0.9 ? 'Undersupply' : 'Balanced'}
                 </div>
@@ -640,7 +640,7 @@ export function MarketContextPanel({
           </div>
           
           {/* Risk Premiums */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Percent className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -650,40 +650,40 @@ export function MarketContextPanel({
             
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Base Discount Rate</div>
-                <div className="font-mono text-lg text-white">{safeToFixed(data?.risk_premiums?.base_discount_rate, 1, '14.0')}%</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Base Discount Rate</div>
+                <div className="font-mono text-lg text-foreground">{safeToFixed(data?.risk_premiums?.base_discount_rate, 1, '14.0')}%</div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Risk-Free Rate</div>
-                <div className="font-mono text-lg text-white">{safeToFixed(data?.risk_premiums?.risk_free_rate, 1, '29.5')}%</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Risk-Free Rate</div>
+                <div className="font-mono text-lg text-foreground">{safeToFixed(data?.risk_premiums?.risk_free_rate, 1, '29.5')}%</div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Market Risk Premium</div>
-                <div className="font-mono text-lg text-white">{safeToFixed(data?.risk_premiums?.market_risk_premium, 1, '4.5')}%</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Market Risk Premium</div>
+                <div className="font-mono text-lg text-foreground">{safeToFixed(data?.risk_premiums?.market_risk_premium, 1, '4.5')}%</div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Cap Rate Range</div>
-                <div className="font-mono text-lg text-white">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Cap Rate Range</div>
+                <div className="font-mono text-lg text-foreground">
                   {safeToFixed(data?.risk_premiums?.cap_rate_range?.min, 1, '6.5')}% - {safeToFixed(data?.risk_premiums?.cap_rate_range?.max, 1, '8.5')}%
                 </div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Terminal Cap Rate</div>
-                <div className="font-mono text-lg text-white">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Terminal Cap Rate</div>
+                <div className="font-mono text-lg text-foreground">
                   {safeToFixed(data?.risk_premiums?.terminal_cap_rate_range?.min, 1, '7.0')}% - {safeToFixed(data?.risk_premiums?.terminal_cap_rate_range?.max, 1, '9.0')}%
                 </div>
               </div>
               <div className="text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">Yield Adjustment</div>
-                <div className="font-mono text-lg text-white">+{safeToFixed(data?.risk_premiums?.yield_adjustment, 1, '0.5')}%</div>
-                <div className="font-mono text-[9px] text-zinc-500">(inflation)</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">Yield Adjustment</div>
+                <div className="font-mono text-lg text-foreground">+{safeToFixed(data?.risk_premiums?.yield_adjustment, 1, '0.5')}%</div>
+                <div className="font-mono text-[9px] text-muted-foreground">(inflation)</div>
               </div>
             </div>
             
-            <div className="mt-3 p-2 bg-zinc-800/30 border-l-2 border-amber-500">
+            <div className="mt-3 p-2 bg-muted/30 border-l-2 border-amber-500">
               <div className="flex items-start gap-2">
                 <Info className="w-3 h-3 text-amber-500 mt-0.5 flex-shrink-0" />
-                <span className="font-mono text-[10px] text-zinc-400">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   These rates are derived from market analysis and should be reviewed for each specific property circumstance.
                 </span>
               </div>
@@ -691,11 +691,11 @@ export function MarketContextPanel({
           </div>
           
           {/* Data Sources */}
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
-            <span className="font-mono text-[9px] text-zinc-500">
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="font-mono text-[9px] text-muted-foreground">
               Sources: Bank of Ghana, Ghana Statistical Service, PROPMETRIK DB
             </span>
-            <span className="font-mono text-[9px] text-zinc-500">
+            <span className="font-mono text-[9px] text-muted-foreground">
               Last Updated: {data ? formatDate(data.last_updated) : '—'}
             </span>
           </div>

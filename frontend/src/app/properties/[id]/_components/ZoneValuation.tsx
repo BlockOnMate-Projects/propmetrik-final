@@ -75,7 +75,7 @@ export function ZoneValuation({ valuation, dataQuality }: ZoneValuationProps) {
         </div>
 
         {/* Confidence & Methodology */}
-        <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="space-y-4 border-t border-border dark:border-gray-700 pt-4">
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium flex items-center gap-1.5">
@@ -95,7 +95,7 @@ export function ZoneValuation({ valuation, dataQuality }: ZoneValuationProps) {
           </div>
 
           {/* Data Source Indicator */}
-          <div className="flex items-center justify-between text-sm bg-white/60 dark:bg-gray-900/40 rounded-lg p-3">
+          <div className="flex items-center justify-between text-sm bg-card/60 dark:bg-gray-900/40 rounded-lg p-3">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Database className="w-4 h-4" />
               Valuation Method
@@ -108,11 +108,11 @@ export function ZoneValuation({ valuation, dataQuality }: ZoneValuationProps) {
           {/* Data Quality Summary (if available) */}
           {dataQuality && (
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-white/60 dark:bg-gray-900/40 rounded-lg p-3 text-center">
+              <div className="bg-card/60 dark:bg-gray-900/40 rounded-lg p-3 text-center">
                 <div className="text-xs text-muted-foreground mb-1">Trust Score</div>
                 <div className="font-bold text-lg">{Math.round(dataQuality.trust_score * 100)}%</div>
               </div>
-              <div className="bg-white/60 dark:bg-gray-900/40 rounded-lg p-3 text-center">
+              <div className="bg-card/60 dark:bg-gray-900/40 rounded-lg p-3 text-center">
                 <div className="text-xs text-muted-foreground mb-1">Completeness</div>
                 <div className="font-bold text-lg">
                   {dataQuality.completeness_score !== null ? Math.round(dataQuality.completeness_score * 100) : 'N/A'}%

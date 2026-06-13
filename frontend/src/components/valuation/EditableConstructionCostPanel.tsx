@@ -143,7 +143,7 @@ interface EditableConstructionCostPanelProps {
 function TrendIndicator({ change }: { change: number | null | undefined }) {
   if (change === null || change === undefined || Number.isNaN(Number(change))) {
     return (
-      <span className="flex items-center gap-1 text-zinc-500 font-mono text-[10px]">
+      <span className="flex items-center gap-1 text-muted-foreground font-mono text-[10px]">
         <Minus className="w-3 h-3" />
         —
       </span>
@@ -153,21 +153,21 @@ function TrendIndicator({ change }: { change: number | null | undefined }) {
   const value = Number(change);
   if (value > 0) {
     return (
-      <span className="flex items-center gap-1 text-red-400 font-mono text-[10px]">
+      <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-mono text-[10px]">
         <TrendingUp className="w-3 h-3" />
         +{value.toFixed(1)}%
       </span>
     );
   } else if (value < 0) {
     return (
-      <span className="flex items-center gap-1 text-green-400 font-mono text-[10px]">
+      <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-mono text-[10px]">
         <TrendingDown className="w-3 h-3" />
         {value.toFixed(1)}%
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-1 text-zinc-400 font-mono text-[10px]">
+    <span className="flex items-center gap-1 text-muted-foreground font-mono text-[10px]">
       <Minus className="w-3 h-3" />
       0.0%
     </span>
@@ -212,7 +212,7 @@ function EditableNumberInput({
 
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      {prefix && <span className="font-mono text-[10px] text-zinc-500">{prefix}</span>}
+      {prefix && <span className="font-mono text-[10px] text-muted-foreground">{prefix}</span>}
       <input
         type="number"
         value={localValue}
@@ -223,12 +223,12 @@ function EditableNumberInput({
         max={max}
         step={step}
         className={cn(
-          "w-20 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-right font-mono text-xs text-white",
+          "w-20 px-2 py-1 bg-muted border border-border rounded text-right font-mono text-xs text-foreground",
           "focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50",
           disabled && "opacity-50 cursor-not-allowed"
         )}
       />
-      {suffix && <span className="font-mono text-[10px] text-zinc-500">{suffix}</span>}
+      {suffix && <span className="font-mono text-[10px] text-muted-foreground">{suffix}</span>}
     </div>
   );
 }
@@ -242,7 +242,7 @@ function LastUpdatedBadge({ date }: { date?: string }) {
   });
 
   return (
-    <span className="flex items-center gap-1 text-zinc-500 font-mono text-[9px]">
+    <span className="flex items-center gap-1 text-muted-foreground font-mono text-[9px]">
       <Clock className="w-2.5 h-2.5" />
       {formatted}
     </span>
@@ -263,24 +263,24 @@ function FormulaTooltip() {
       </button>
 
       {showFormula && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-96 p-3 bg-zinc-900 border border-amber-500/30 shadow-xl">
+        <div className="absolute right-0 top-full mt-1 z-50 w-96 p-3 bg-card border border-amber-500/30 shadow-xl">
           <div className="font-mono text-[10px] text-amber-500 uppercase mb-2">
             Construction Cost Calculation
           </div>
-          <div className="font-mono text-[10px] text-zinc-300 leading-relaxed space-y-2">
+          <div className="font-mono text-[10px] text-muted-foreground leading-relaxed space-y-2">
             <p><strong>Formula:</strong></p>
-            <p className="bg-zinc-800 p-2 rounded text-amber-400">
+            <p className="bg-muted p-2 rounded text-amber-600 dark:text-amber-400">
               Cost/sqm = Base₂₀₂₀ × (Index/100) × Material_Factor × Labor_Factor × Location_Factor
             </p>
             <p><strong>Where:</strong></p>
-            <ul className="list-disc list-inside text-zinc-400 space-y-1">
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li><strong>Base₂₀₂₀:</strong> Base cost per sqm in 2020 (quality tier)</li>
               <li><strong>Index:</strong> Construction Cost Index (2020 = 100)</li>
               <li><strong>Material_Factor:</strong> Weighted average of material indices</li>
               <li><strong>Labor_Factor:</strong> Current labor rate / Base 2020 rate</li>
               <li><strong>Location_Factor:</strong> Regional adjustment (e.g., 1.15 for Accra)</li>
             </ul>
-            <p className="text-zinc-500 mt-2">
+            <p className="text-muted-foreground mt-2">
               Material weights: Cement 25%, Steel 15%, Timber 12%, Aggregate 10%,
               Roofing 12%, Electrical 8%, Plumbing 8%, Finishes 10%
             </p>
@@ -289,7 +289,7 @@ function FormulaTooltip() {
             onClick={() => setShowFormula(false)}
             className="absolute top-2 right-2 p-1 hover:bg-zinc-700 rounded"
           >
-            <X className="w-3 h-3 text-zinc-400" />
+            <X className="w-3 h-3 text-muted-foreground" />
           </button>
         </div>
       )}
@@ -843,7 +843,7 @@ export function EditableConstructionCostPanel({
       >
         <div className="flex items-center justify-center py-8 gap-3">
           <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
-          <span className="font-mono text-sm text-zinc-400">Loading construction cost data...</span>
+          <span className="font-mono text-sm text-muted-foreground">Loading construction cost data...</span>
         </div>
       </TerminalPanel>
     );
@@ -861,8 +861,8 @@ export function EditableConstructionCostPanel({
           <span className={cn(
             "px-1.5 py-0.5 font-mono text-[9px] rounded",
             error
-              ? "bg-red-500/20 text-red-400"
-              : "bg-green-500/20 text-green-400"
+              ? "bg-red-500/20 text-red-600 dark:text-red-400"
+              : "bg-green-500/20 text-green-600 dark:text-green-400"
           )}>
             {error ? 'ERROR' : 'DB'}
           </span>
@@ -873,7 +873,7 @@ export function EditableConstructionCostPanel({
             className="p-1 hover:bg-zinc-700 rounded transition-colors"
             title="Refresh from database"
           >
-            <RefreshCw className="w-3 h-3 text-zinc-400" />
+            <RefreshCw className="w-3 h-3 text-muted-foreground" />
           </button>
 
           <FormulaTooltip />
@@ -888,7 +888,7 @@ export function EditableConstructionCostPanel({
           ) : (
             <div className="flex items-center gap-1">
               {pendingOverrides.length > 0 && (
-                <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 font-mono text-[9px]">
+                <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 font-mono text-[9px]">
                   {pendingOverrides.length} CHANGE{pendingOverrides.length > 1 ? 'S' : ''}
                 </span>
               )}
@@ -897,11 +897,11 @@ export function EditableConstructionCostPanel({
                 className="p-1 hover:bg-zinc-700 rounded transition-colors"
                 title="Reset to database values"
               >
-                <RotateCcw className="w-3 h-3 text-zinc-400" />
+                <RotateCcw className="w-3 h-3 text-muted-foreground" />
               </button>
               <button
                 onClick={cancelEditing}
-                className="px-2 py-1 bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors text-[10px] font-mono"
+                className="px-2 py-1 bg-zinc-700 text-muted-foreground hover:bg-zinc-600 transition-colors text-[10px] font-mono"
               >
                 CANCEL
               </button>
@@ -920,9 +920,9 @@ export function EditableConstructionCostPanel({
             className="p-1 hover:bg-zinc-700 rounded transition-colors"
           >
             {collapsed ? (
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             ) : (
-              <ChevronUp className="w-3 h-3 text-zinc-400" />
+              <ChevronUp className="w-3 h-3 text-muted-foreground" />
             )}
           </button>
         </div>
@@ -930,31 +930,31 @@ export function EditableConstructionCostPanel({
     >
       {/* Override Reason Dialog */}
       {showReasonDialog && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-700 max-w-lg w-full p-4">
+        <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border max-w-lg w-full p-4">
             <div className="flex items-center gap-2 mb-4">
               <MessageSquare className="w-5 h-5 text-amber-500" />
-              <h3 className="font-mono text-sm text-white">Adjustment Justification Required</h3>
+              <h3 className="font-mono text-sm text-foreground">Adjustment Justification Required</h3>
             </div>
 
-            <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700">
+            <div className="mb-4 p-3 bg-muted/50 border border-border">
               <div className="font-mono text-[10px] text-amber-500 uppercase mb-2">Changes Made:</div>
               <div className="space-y-1">
                 {pendingOverrides.map((override, idx) => (
                   <div key={idx} className="flex items-center justify-between font-mono text-[10px]">
-                    <span className="text-zinc-400">{override.field_label}</span>
-                    <span className="text-zinc-300">
-                      <span className="text-red-400 line-through mr-2">
+                    <span className="text-muted-foreground">{override.field_label}</span>
+                    <span className="text-muted-foreground">
+                      <span className="text-red-600 dark:text-red-400 line-through mr-2">
                         {typeof override.system_default_value === 'number'
                           ? override.system_default_value.toFixed(1)
                           : override.system_default_value}
                       </span>
-                      <span className="text-green-400">
+                      <span className="text-green-600 dark:text-green-400">
                         {typeof override.user_override_value === 'number'
                           ? override.user_override_value.toFixed(1)
                           : override.user_override_value}
                       </span>
-                      {override.value_unit && <span className="text-zinc-500 ml-1">{override.value_unit}</span>}
+                      {override.value_unit && <span className="text-muted-foreground ml-1">{override.value_unit}</span>}
                     </span>
                   </div>
                 ))}
@@ -962,7 +962,7 @@ export function EditableConstructionCostPanel({
             </div>
 
             <div className="mb-4">
-              <label className="block font-mono text-[10px] text-zinc-400 uppercase mb-2">
+              <label className="block font-mono text-[10px] text-muted-foreground uppercase mb-2">
                 Reason for Adjustment <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -970,14 +970,14 @@ export function EditableConstructionCostPanel({
                 onChange={(e) => setOverrideReason(e.target.value)}
                 placeholder="Explain why you are adjusting these values from the database defaults (e.g., site-specific conditions, recent market changes, special circumstances)..."
                 rows={3}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-xs placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 resize-none"
+                className="w-full px-3 py-2 bg-muted border border-border text-foreground font-mono text-xs placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 resize-none"
               />
             </div>
 
             <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 mb-4">
               <div className="flex items-start gap-2">
                 <FileWarning className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-                <span className="font-mono text-[10px] text-yellow-400">
+                <span className="font-mono text-[10px] text-yellow-600 dark:text-yellow-400">
                   This adjustment will be recorded for audit trail. A disclaimer will appear in the valuation report noting that user-adjusted values were used.
                 </span>
               </div>
@@ -986,14 +986,14 @@ export function EditableConstructionCostPanel({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowReasonDialog(false)}
-                className="px-4 py-2 bg-zinc-700 text-zinc-300 font-mono text-xs hover:bg-zinc-600 transition-colors"
+                className="px-4 py-2 bg-zinc-700 text-muted-foreground font-mono text-xs hover:bg-zinc-600 transition-colors"
               >
                 CANCEL
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !overrideReason.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
               >
                 {saving && <Loader2 className="w-3 h-3 animate-spin" />}
                 CONFIRM & SAVE
@@ -1004,7 +1004,7 @@ export function EditableConstructionCostPanel({
       )}
 
       {error && (
-        <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-[10px]">
+        <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 font-mono text-[10px]">
           {error}
         </div>
       )}
@@ -1015,29 +1015,29 @@ export function EditableConstructionCostPanel({
           <div className="flex items-start gap-2">
             <FileWarning className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
             <div>
-              <div className="font-mono text-[10px] text-yellow-400 uppercase mb-1">
+              <div className="font-mono text-[10px] text-yellow-600 dark:text-yellow-400 uppercase mb-1">
                 User Adjustments Applied ({existingOverrides.length})
               </div>
               <div className="space-y-1">
                 {existingOverrides.slice(0, 3).map((override) => (
-                  <div key={override.id} className="font-mono text-[9px] text-zinc-400">
-                    <span className="text-zinc-300">{override.field_label}:</span>
+                  <div key={override.id} className="font-mono text-[9px] text-muted-foreground">
+                    <span className="text-muted-foreground">{override.field_label}:</span>
                     {' '}
-                    <span className="text-red-400 line-through">{override.system_default_value}</span>
+                    <span className="text-red-600 dark:text-red-400 line-through">{override.system_default_value}</span>
                     {' → '}
-                    <span className="text-green-400">{override.user_override_value}</span>
-                    {override.value_unit && <span className="text-zinc-500 ml-1">({override.value_unit})</span>}
+                    <span className="text-green-600 dark:text-green-400">{override.user_override_value}</span>
+                    {override.value_unit && <span className="text-muted-foreground ml-1">({override.value_unit})</span>}
                   </div>
                 ))}
                 {existingOverrides.length > 3 && (
-                  <div className="font-mono text-[9px] text-zinc-500">
+                  <div className="font-mono text-[9px] text-muted-foreground">
                     +{existingOverrides.length - 3} more adjustment(s)
                   </div>
                 )}
               </div>
               {existingOverrides[0]?.reason && (
-                <div className="mt-2 font-mono text-[9px] text-zinc-500">
-                  <span className="text-zinc-400">Reason:</span> {existingOverrides[0].reason}
+                <div className="mt-2 font-mono text-[9px] text-muted-foreground">
+                  <span className="text-muted-foreground">Reason:</span> {existingOverrides[0].reason}
                 </div>
               )}
             </div>
@@ -1049,14 +1049,14 @@ export function EditableConstructionCostPanel({
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">STANDARD:</span>
-              <span className="font-mono text-sm text-white">
+              <span className="font-mono text-[10px] text-muted-foreground">STANDARD:</span>
+              <span className="font-mono text-sm text-foreground">
                 ₵{adjustedCosts.standard?.toLocaleString()}/sqm
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">MATERIALS:</span>
-              <span className="font-mono text-sm text-white">{materialPrices.length} items</span>
+              <span className="font-mono text-[10px] text-muted-foreground">MATERIALS:</span>
+              <span className="font-mono text-sm text-foreground">{materialPrices.length} items</span>
               <TrendIndicator change={avgPriceChangeYoy} />
             </div>
           </div>
@@ -1067,21 +1067,21 @@ export function EditableConstructionCostPanel({
           <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30">
             <div>
               <div className="font-mono text-[10px] text-amber-500 uppercase">Material Prices</div>
-              <div className="font-mono text-2xl text-white font-bold">
+              <div className="font-mono text-2xl text-foreground font-bold">
                 {materialPrices.length} items
               </div>
-              <div className="font-mono text-[9px] text-zinc-500">
+              <div className="font-mono text-[9px] text-muted-foreground">
                 From database
               </div>
             </div>
             <div className="text-right">
               <TrendIndicator change={avgPriceChangeYoy} />
-              <div className="font-mono text-[9px] text-zinc-500 mt-1">Avg. Year-over-year</div>
+              <div className="font-mono text-[9px] text-muted-foreground mt-1">Avg. Year-over-year</div>
             </div>
           </div>
 
           {/* Material Prices (Editable) */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Layers className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -1100,10 +1100,10 @@ export function EditableConstructionCostPanel({
                   {materialPrices.map((material) => (
                     <div
                       key={material.category}
-                      className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0"
+                      className="flex items-center justify-between py-1 border-b border-border/30 last:border-0"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-zinc-400 capitalize w-20">
+                        <span className="font-mono text-[10px] text-muted-foreground capitalize w-20">
                           {material.category}
                         </span>
                         <LastUpdatedBadge date={material.last_updated} />
@@ -1118,7 +1118,7 @@ export function EditableConstructionCostPanel({
                             prefix="₵"
                           />
                         ) : (
-                          <span className="font-mono text-xs text-white">
+                          <span className="font-mono text-xs text-foreground">
                             ₵{material.price_ghs.toLocaleString()}/{material.unit}
                           </span>
                         )}
@@ -1128,13 +1128,13 @@ export function EditableConstructionCostPanel({
                   ))}
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-zinc-800">
+                <div className="mt-3 pt-2 border-t border-border">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] text-zinc-500">Effective Cost/sqm:</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">Effective Cost/sqm:</span>
                     <span className="font-mono text-sm text-amber-500 font-bold">₵{effectiveConstructionCost.toFixed(2)}</span>
                   </div>
                   <div className="mt-1">
-                    <span className="font-mono text-[9px] text-zinc-500">
+                    <span className="font-mono text-[9px] text-muted-foreground">
                       {(constructionQuality === 'Custom' || constructionQuality === 'custom') 
                         ? (materialPrices.some((currentPrice, index) => {
                             const originalPrice = originalMaterialPrices[index];
@@ -1149,7 +1149,7 @@ export function EditableConstructionCostPanel({
               </>
             ) : (
               <div className="py-4 text-center">
-                <span className="font-mono text-[10px] text-zinc-500">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   No material prices available for this region
                 </span>
               </div>
@@ -1157,7 +1157,7 @@ export function EditableConstructionCostPanel({
           </div>
 
           {/* Labor Rates (Editable) */}
-          <div className="border border-zinc-800 p-3">
+          <div className="border border-border p-3">
             <div className="flex items-center gap-2 mb-3">
               <Hammer className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
@@ -1175,13 +1175,13 @@ export function EditableConstructionCostPanel({
                 {laborCosts.map((labor) => (
                   <div
                     key={`${labor.category}-${labor.skill_level}`}
-                    className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0"
+                    className="flex items-center justify-between py-1 border-b border-border/30 last:border-0"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-zinc-400 capitalize w-24">
+                      <span className="font-mono text-[10px] text-muted-foreground capitalize w-24">
                         {labor.category}
                       </span>
-                      <span className="font-mono text-[9px] text-zinc-500 capitalize">
+                      <span className="font-mono text-[9px] text-muted-foreground capitalize">
                         ({labor.skill_level})
                       </span>
                     </div>
@@ -1196,7 +1196,7 @@ export function EditableConstructionCostPanel({
                           suffix="/day"
                         />
                       ) : (
-                        <span className="font-mono text-xs text-white">
+                        <span className="font-mono text-xs text-foreground">
                           ₵{labor.daily_rate.toLocaleString()}/day
                         </span>
                       )}
@@ -1207,7 +1207,7 @@ export function EditableConstructionCostPanel({
               </div>
             ) : (
               <div className="py-4 text-center">
-                <span className="font-mono text-[10px] text-zinc-500">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   No labor rates available for this region
                 </span>
               </div>
@@ -1219,7 +1219,7 @@ export function EditableConstructionCostPanel({
             <div className="p-2 bg-yellow-500/10 border border-yellow-500/30">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-                <span className="font-mono text-[10px] text-yellow-400">
+                <span className="font-mono text-[10px] text-yellow-600 dark:text-yellow-400">
                   High construction cost inflation detected ({avgPriceChangeYoy.toFixed(1)}% YoY).
                   Consider applying an inflation adjustment to historical cost data.
                 </span>
@@ -1230,11 +1230,11 @@ export function EditableConstructionCostPanel({
 
 
           {/* Source Info */}
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
-            <span className="font-mono text-[9px] text-zinc-500">
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="font-mono text-[9px] text-muted-foreground">
               Source: Ghana Statistical Service, GREDA (Database)
             </span>
-            <span className="font-mono text-[9px] text-zinc-500">
+            <span className="font-mono text-[9px] text-muted-foreground">
               Last Updated: {lastFetchedAt ? formatDate(lastFetchedAt) : 'N/A'}
             </span>
           </div>

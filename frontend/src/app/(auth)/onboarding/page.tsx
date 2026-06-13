@@ -16,54 +16,30 @@ import {
 } from 'lucide-react';
 
 /* ====================================================================
-   Plan options (same as signup page)
+   Plans come from the DB (GET /subscriptions/plans) — NO hardcoded prices.
    ==================================================================== */
-const planCategories = [
-    {
-        group: 'Full Platform',
-        plans: [
-            { label: 'Core', price: 'GHS 390/mo', value: 'full-platform-core' },
-            { label: 'Pro', price: 'GHS 975/mo', value: 'full-platform-pro', popular: true },
-            { label: 'Enterprise', price: 'GHS 3,250/mo', value: 'full-platform-enterprise' },
-        ],
-    },
-    {
-        group: 'Property Mgmt',
-        plans: [
-            { label: 'Basic', price: 'GHS 390/mo', value: 'pm-basic' },
-            { label: 'Premium', price: 'GHS 780/mo', value: 'pm-premium', popular: true },
-            { label: 'Enterprise', price: 'GHS 1,560/mo', value: 'pm-enterprise' },
-        ],
-    },
-    {
-        group: 'CRM & Deals',
-        plans: [
-            { label: 'Starter', price: 'GHS 325/mo', value: 'crm-starter' },
-            { label: 'Professional', price: 'GHS 650/mo', value: 'crm-professional', popular: true },
-            { label: 'Enterprise', price: 'GHS 1,300/mo', value: 'crm-enterprise' },
-        ],
-    },
-    {
-        group: 'Data Intelligence',
-        plans: [
-            { label: 'Developer', price: 'GHS 260/mo', value: 'data-developer' },
-            { label: 'Business', price: 'GHS 650/mo', value: 'data-business', popular: true },
-            { label: 'Enterprise', price: 'GHS 1,950/mo', value: 'data-enterprise' },
-        ],
-    },
-    {
-        group: 'Project Mgmt',
-        plans: [
-            { label: 'Starter', price: 'GHS 325/mo', value: 'proj-starter' },
-            { label: 'Professional', price: 'GHS 650/mo', value: 'proj-professional', popular: true },
-            { label: 'Enterprise', price: 'GHS 1,300/mo', value: 'proj-enterprise' },
-        ],
-    },
+interface DbPlan {
+    slug: string;
+    name: string;
+    category: string;
+    tier: string;
+    price_monthly_ghs: string | number;
+    price_annual_ghs: string | number | null;
+    is_featured: boolean;
+    sort_order: number;
+}
+const CATEGORY_LABELS: Record<string, string> = {
+    full_platform: 'Full Platform',
+    property_management: 'Property Mgmt',
+    project_management: 'Project Mgmt',
+    crm: 'CRM & Deals',
+    data_intelligence: 'Data Intelligence',
+    valuation_services: 'Valuation',
+};
+const CATEGORY_ORDER = [
+    'full_platform', 'property_management', 'project_management',
+    'crm', 'data_intelligence', 'valuation_services',
 ];
-
-const allPlans = planCategories.flatMap((c) =>
-    c.plans.map((p) => ({ ...p, group: c.group }))
-);
 
 /* ====================================================================
    Onboarding Form — Plan Selection + Payment
@@ -85,7 +61,43 @@ function OnboardingForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const selectedPlanInfo = allPlans.find((p) => p.value === selectedPlan);
+    const [plans, setPlans] = useState<DbPlan[]>([]);
+    const [plansLoading, setPlansLoading] = useState(true);
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch('/api/subscriptions/plans');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (!cancelled) setPlans(Array.isArray(data.plans) ? data.plans : []);
+                }
+            } catch {
+                /* empty → loading/empty state */
+            } finally {
+                if (!cancelled) setPlansLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const planGroups = CATEGORY_ORDER
+        .map((cat) => ({
+            group: CATEGORY_LABELS[cat] || cat,
+            plans: plans
+                .filter((p) => p.category === cat)
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        }))
+        .filter((g) => g.plans.length > 0);
+
+    const formatPrice = (p: DbPlan) => {
+        const monthly = Number(p.price_monthly_ghs) || 0;
+        const annual = Number(p.price_annual_ghs) || monthly * 10;
+        const perMonth = billingInterval === 'annual' ? Math.round(annual / 12) : monthly;
+        return `GHS ${perMonth.toLocaleString()}/mo`;
+    };
+
+    const selectedPlanInfo = plans.find((p) => p.slug === selectedPlan);
 
     // Redirect if not authenticated or already onboarded
     useEffect(() => {
@@ -144,7 +156,7 @@ function OnboardingForm() {
 
     if (status === 'loading') {
         return (
-            <div className="text-center text-zinc-500 py-20">
+            <div className="text-center text-muted-foreground py-20">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 Loading...
             </div>
@@ -161,10 +173,10 @@ function OnboardingForm() {
                     <Sparkles className="w-3.5 h-3.5 text-primary" />
                     <span className="text-xs font-medium text-primary">Welcome to PROPMETRIK</span>
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                     Hi {session?.user?.name?.split(' ')[0]}, let&apos;s get you set up
                 </h1>
-                <p className="text-sm text-zinc-400">Choose a plan to unlock the full platform.</p>
+                <p className="text-sm text-muted-foreground">Choose a plan to unlock the full platform.</p>
             </div>
 
             {/* Step indicator */}
@@ -186,12 +198,12 @@ function OnboardingForm() {
                                         ? 'bg-gradient-to-r from-primary to-yellow-400 text-zinc-950'
                                         : isDone
                                           ? 'bg-primary/20 text-primary border border-primary/50'
-                                          : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                                          : 'bg-muted text-muted-foreground border border-border'
                                 }`}>
                                     {isDone ? <CheckCircle2 className="w-4 h-4" /> : stepNum}
                                 </div>
                                 <span className={`text-xs font-medium ${
-                                    isActive ? 'text-white' : isDone ? 'text-primary' : 'text-zinc-500'
+                                    isActive ? 'text-foreground' : isDone ? 'text-primary' : 'text-muted-foreground'
                                 }`}>
                                     {s}
                                 </span>
@@ -211,7 +223,7 @@ function OnboardingForm() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400"
+                        className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-600 dark:text-red-400"
                     >
                         {error}
                     </motion.div>
@@ -231,19 +243,19 @@ function OnboardingForm() {
                             className="space-y-5"
                         >
                             <div>
-                                <h2 className="text-2xl font-bold text-white mb-1">Choose your plan</h2>
-                                <p className="text-sm text-zinc-400">Select a product and tier that fits your needs.</p>
+                                <h2 className="text-2xl font-bold text-foreground mb-1">Choose your plan</h2>
+                                <p className="text-sm text-muted-foreground">Select a product and tier that fits your needs.</p>
                             </div>
 
                             {/* Billing toggle */}
-                            <div className="flex items-center justify-center gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-xl w-fit mx-auto">
+                            <div className="flex items-center justify-center gap-1 p-1 bg-card border border-border rounded-xl w-fit mx-auto">
                                 <button
                                     type="button"
                                     onClick={() => setBillingInterval('monthly')}
                                     className={`px-5 py-2 text-xs font-bold rounded-lg transition-all ${
                                         billingInterval === 'monthly'
                                             ? 'bg-primary text-zinc-950'
-                                            : 'text-zinc-400 hover:text-white'
+                                            : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
                                     Monthly
@@ -254,14 +266,14 @@ function OnboardingForm() {
                                     className={`px-5 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
                                         billingInterval === 'annual'
                                             ? 'bg-primary text-zinc-950'
-                                            : 'text-zinc-400 hover:text-white'
+                                            : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
                                     Annual
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                                         billingInterval === 'annual'
-                                            ? 'bg-zinc-950/20 text-zinc-950'
-                                            : 'bg-green-500/10 text-green-400'
+                                            ? 'bg-background/20 text-zinc-950'
+                                            : 'bg-green-500/10 text-green-600 dark:text-green-400'
                                     }`}>
                                         -17%
                                     </span>
@@ -270,28 +282,39 @@ function OnboardingForm() {
 
                             {/* Plan cards */}
                             <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1 styled-scrollbar">
-                                {planCategories.map((cat) => (
+                                {plansLoading && (
+                                    <div className="text-center text-muted-foreground py-10 text-sm">
+                                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                                        Loading plans…
+                                    </div>
+                                )}
+                                {!plansLoading && planGroups.length === 0 && (
+                                    <div className="text-center text-muted-foreground py-10 text-sm">
+                                        Couldn&apos;t load plans. Please refresh and try again.
+                                    </div>
+                                )}
+                                {planGroups.map((cat) => (
                                     <div key={cat.group}>
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2 px-1">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
                                             {cat.group}
                                         </div>
                                         <div className="space-y-2">
                                             {cat.plans.map((p) => {
-                                                const isSelected = selectedPlan === p.value;
+                                                const isSelected = selectedPlan === p.slug;
                                                 return (
                                                     <button
-                                                        key={p.value}
+                                                        key={p.slug}
                                                         type="button"
-                                                        onClick={() => setSelectedPlan(p.value)}
+                                                        onClick={() => setSelectedPlan(p.slug)}
                                                         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-left transition-all ${
                                                             isSelected
                                                                 ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                                                                : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900/50'
+                                                                : 'border-border bg-card/30 hover:border-border hover:bg-card/50'
                                                         }`}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                                                isSelected ? 'border-primary' : 'border-zinc-700'
+                                                                isSelected ? 'border-primary' : 'border-border'
                                                             }`}>
                                                                 {isSelected && (
                                                                     <motion.div
@@ -302,15 +325,15 @@ function OnboardingForm() {
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <span className="text-sm font-semibold text-white">{p.label}</span>
-                                                                {p.popular && (
+                                                                <span className="text-sm font-semibold text-foreground">{p.name}</span>
+                                                                {p.is_featured && (
                                                                     <span className="ml-2 text-[9px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full font-bold uppercase">
                                                                         Popular
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <span className="text-sm font-bold text-zinc-300">{p.price}</span>
+                                                        <span className="text-sm font-bold text-muted-foreground">{formatPrice(p)}</span>
                                                     </button>
                                                 );
                                             })}
@@ -344,7 +367,7 @@ function OnboardingForm() {
                                 ) : paymentBypass ? (
                                     <>
                                         <Sparkles className="w-4 h-4" />
-                                        Start Free Trial
+                                        Subscribe
                                     </>
                                 ) : (
                                     <>
@@ -367,20 +390,20 @@ function OnboardingForm() {
                             className="space-y-5"
                         >
                             <div>
-                                <h2 className="text-2xl font-bold text-white mb-1">Payment details</h2>
-                                <p className="text-sm text-zinc-400">Choose how you&apos;d like to pay.</p>
+                                <h2 className="text-2xl font-bold text-foreground mb-1">Payment details</h2>
+                                <p className="text-sm text-muted-foreground">Choose how you&apos;d like to pay.</p>
                             </div>
 
                             {/* Order summary */}
                             {selectedPlanInfo && (
-                                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+                                <div className="bg-card/50 border border-border rounded-xl p-4 flex items-center justify-between">
                                     <div>
-                                        <div className="text-xs text-zinc-500 uppercase tracking-wider">{selectedPlanInfo.group}</div>
-                                        <div className="text-sm font-bold text-white">{selectedPlanInfo.label} Plan</div>
+                                        <div className="text-xs text-muted-foreground uppercase tracking-wider">{CATEGORY_LABELS[selectedPlanInfo.category] || selectedPlanInfo.category}</div>
+                                        <div className="text-sm font-bold text-foreground">{selectedPlanInfo.name} Plan</div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-sm font-bold text-white">{selectedPlanInfo.price}</div>
-                                        <div className="text-[10px] text-zinc-500 uppercase">{billingInterval}</div>
+                                        <div className="text-sm font-bold text-foreground">{formatPrice(selectedPlanInfo)}</div>
+                                        <div className="text-[10px] text-muted-foreground uppercase">{billingInterval === 'annual' ? 'billed annually' : 'monthly'}</div>
                                     </div>
                                 </div>
                             )}
@@ -395,10 +418,10 @@ function OnboardingForm() {
                                         checked={paymentMethod === 'paystack'}
                                         onChange={() => setPaymentMethod('paystack')}
                                     />
-                                    <div className="p-4 border border-zinc-800 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary/30 transition-all group-hover:border-zinc-700">
-                                        <CreditCard className="w-5 h-5 mx-auto mb-2 text-zinc-400" />
-                                        <span className="text-sm font-bold text-white block">Paystack</span>
-                                        <span className="text-[10px] text-zinc-500">Card / MoMo</span>
+                                    <div className="p-4 border border-border rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary/30 transition-all group-hover:border-border">
+                                        <CreditCard className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+                                        <span className="text-sm font-bold text-foreground block">Paystack</span>
+                                        <span className="text-[10px] text-muted-foreground">Card / MoMo</span>
                                     </div>
                                 </label>
                                 <label className="cursor-pointer group">
@@ -409,10 +432,10 @@ function OnboardingForm() {
                                         checked={paymentMethod === 'bank_transfer'}
                                         onChange={() => setPaymentMethod('bank_transfer')}
                                     />
-                                    <div className="p-4 border border-zinc-800 rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary/30 transition-all group-hover:border-zinc-700">
-                                        <Building2 className="w-5 h-5 mx-auto mb-2 text-zinc-400" />
-                                        <span className="text-sm font-bold text-white block">Bank Transfer</span>
-                                        <span className="text-[10px] text-zinc-500">Invoice</span>
+                                    <div className="p-4 border border-border rounded-xl text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary/30 transition-all group-hover:border-border">
+                                        <Building2 className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+                                        <span className="text-sm font-bold text-foreground block">Bank Transfer</span>
+                                        <span className="text-[10px] text-muted-foreground">Invoice</span>
                                     </div>
                                 </label>
                             </div>
@@ -425,23 +448,23 @@ function OnboardingForm() {
                                         initial={{ opacity: 0, y: 8 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -8 }}
-                                        className="bg-zinc-900/50 p-5 rounded-xl border border-zinc-800"
+                                        className="bg-card/50 p-5 rounded-xl border border-border"
                                     >
-                                        <p className="text-sm text-zinc-400 mb-3">
+                                        <p className="text-sm text-muted-foreground mb-3">
                                             You&apos;ll be redirected to Paystack&apos;s secure checkout.
                                         </p>
                                         <div className="flex gap-2 mb-3">
-                                            <span className="h-7 px-2.5 bg-white text-zinc-900 rounded-md text-[10px] font-bold flex items-center justify-center">
+                                            <span className="h-7 px-2.5 bg-card text-zinc-900 rounded-md text-[10px] font-bold flex items-center justify-center">
                                                 VISA
                                             </span>
-                                            <span className="h-7 px-2.5 bg-white text-zinc-900 rounded-md text-[10px] font-bold flex items-center justify-center">
+                                            <span className="h-7 px-2.5 bg-card text-zinc-900 rounded-md text-[10px] font-bold flex items-center justify-center">
                                                 Mastercard
                                             </span>
                                             <span className="h-7 px-2.5 bg-yellow-400 text-zinc-900 rounded-md text-[10px] font-bold flex items-center justify-center">
                                                 MTN MoMo
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                                             <Lock className="w-3 h-3" />
                                             256-bit SSL encrypted. PCI DSS compliant.
                                         </div>
@@ -452,28 +475,28 @@ function OnboardingForm() {
                                         initial={{ opacity: 0, y: 8 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -8 }}
-                                        className="bg-zinc-900/50 p-5 rounded-xl border border-zinc-800 space-y-4"
+                                        className="bg-card/50 p-5 rounded-xl border border-border space-y-4"
                                     >
-                                        <p className="text-sm text-zinc-400">
+                                        <p className="text-sm text-muted-foreground">
                                             An invoice with bank details will be sent to your email.
                                         </p>
                                         <div>
-                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Billing Phone</label>
+                                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Billing Phone</label>
                                             <input
                                                 type="tel"
                                                 value={billingPhone}
                                                 onChange={(e) => setBillingPhone(e.target.value)}
-                                                className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                                 placeholder="+233 24 123 4567"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Billing Address</label>
+                                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Billing Address</label>
                                             <input
                                                 type="text"
                                                 value={billingAddress}
                                                 onChange={(e) => setBillingAddress(e.target.value)}
-                                                className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                                className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                                 placeholder="Street Address, City"
                                             />
                                         </div>
@@ -485,7 +508,7 @@ function OnboardingForm() {
                                 <button
                                     type="button"
                                     onClick={() => setStep(1)}
-                                    className="px-6 py-3.5 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
+                                    className="px-6 py-3.5 border border-border rounded-xl text-sm font-bold text-muted-foreground hover:text-foreground hover:border-zinc-600 transition-all"
                                 >
                                     Back
                                 </button>
@@ -524,9 +547,9 @@ function OnboardingForm() {
    ==================================================================== */
 export default function OnboardingPage() {
     return (
-        <div className="min-h-screen bg-zinc-950 flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-center p-6 border-b border-zinc-900">
+            <div className="flex items-center justify-center p-6 border-b border-border">
                 <Link href="/">
                     <Image
                         src="/branding/logo-dark-bg.svg"
@@ -550,7 +573,7 @@ export default function OnboardingPage() {
             </div>
 
             {/* Bottom bar */}
-            <div className="p-4 border-t border-zinc-900 flex items-center justify-center gap-4 text-[10px] text-zinc-600 uppercase tracking-wider">
+            <div className="p-4 border-t border-border flex items-center justify-center gap-4 text-[10px] text-muted-foreground uppercase tracking-wider">
                 <div className="flex items-center gap-1.5">
                     <Lock className="w-3 h-3" />
                     SSL Encrypted

@@ -61,7 +61,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <StableSessionProvider>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+        {/* Interim default 'dark' during the theming migration; flip to 'system' once the page sweep is complete. */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>
               {isDev ? (
                 <RealtimeProvider autoInvalidateQueries={true}>

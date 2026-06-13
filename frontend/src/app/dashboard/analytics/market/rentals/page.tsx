@@ -92,8 +92,8 @@ function Panel({
   className?: string
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
       </div>
       <div className="p-3">{children}</div>
@@ -168,41 +168,41 @@ export default function RentalAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-72" />
+          <div className="h-8 bg-muted rounded w-72" />
           <div className="grid grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-zinc-800/50 rounded border border-zinc-800" />
+              <div key={i} className="h-24 bg-muted/50 rounded border border-border" />
             ))}
           </div>
-          <div className="h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+          <div className="h-64 bg-muted/50 rounded border border-border" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/analytics"
-            className="flex items-center gap-1 px-2 py-1 font-mono text-[10px] text-zinc-500 hover:text-amber-500 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-amber-500 border border-border hover:border-border transition-colors"
           >
             <ArrowLeft className="w-3 h-3" /> MARKET
           </Link>
           <div>
-            <h1 className="font-mono text-xl text-white">RENTAL ANALYTICS</h1>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <h1 className="font-mono text-xl text-foreground">RENTAL ANALYTICS</h1>
+            <p className="font-mono text-[10px] text-muted-foreground">
               Rental Yields, Benchmarks & Market Trends
             </p>
           </div>
         </div>
         <button
           onClick={loadData}
-          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 hover:text-amber-500 border border-zinc-800 hover:border-zinc-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-amber-500 border border-border hover:border-border transition-colors"
         >
           <RefreshCw className="w-3 h-3" /> REFRESH
         </button>
@@ -213,37 +213,37 @@ export default function RentalAnalyticsPage() {
         <Panel title="TOTAL RENTALS">
           <div className="text-center">
             <Home className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-            <div className="font-mono text-2xl text-white">
+            <div className="font-mono text-2xl text-foreground">
               {totalRentals > 0 ? totalRentals.toLocaleString() : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">TRANSACTIONS</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">TRANSACTIONS</div>
           </div>
         </Panel>
         <Panel title="AVG RENT / MONTH">
           <div className="text-center">
-            <DollarSign className="w-4 h-4 mx-auto mb-1 text-green-400" />
-            <div className="font-mono text-2xl text-green-400">
+            <DollarSign className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
+            <div className="font-mono text-2xl text-green-600 dark:text-green-400">
               {avgRent > 0 ? formatCurrency(avgRent) : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">ALL TYPES</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">ALL TYPES</div>
           </div>
         </Panel>
         <Panel title="AVG GROSS YIELD">
           <div className="text-center">
-            <TrendingUp className="w-4 h-4 mx-auto mb-1 text-amber-400" />
-            <div className="font-mono text-2xl text-amber-400">
+            <TrendingUp className="w-4 h-4 mx-auto mb-1 text-amber-600 dark:text-amber-400" />
+            <div className="font-mono text-2xl text-amber-600 dark:text-amber-400">
               {avgYield > 0 ? `${avgYield.toFixed(2)}%` : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">ANNUAL</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">ANNUAL</div>
           </div>
         </Panel>
         <Panel title="AVG VACANCY">
           <div className="text-center">
-            <Percent className="w-4 h-4 mx-auto mb-1 text-blue-400" />
-            <div className="font-mono text-2xl text-blue-400">
+            <Percent className="w-4 h-4 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+            <div className="font-mono text-2xl text-blue-600 dark:text-blue-400">
               {avgVacancy > 0 ? `${(avgVacancy * 100).toFixed(1)}%` : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">ESTIMATED</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">ESTIMATED</div>
           </div>
         </Panel>
       </div>
@@ -255,7 +255,7 @@ export default function RentalAnalyticsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                  <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                     <th className="text-left pb-2">REGION</th>
                     <th className="text-left pb-2">TYPE</th>
                     <th className="text-right pb-2">AVG RENT</th>
@@ -268,23 +268,23 @@ export default function RentalAnalyticsPage() {
                 </thead>
                 <tbody className="font-mono text-xs">
                   {summary.map((r, i) => (
-                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="py-1.5 text-white">{formatRegion(r.region)}</td>
-                      <td className="py-1.5 text-zinc-400">{formatPropertyType(r.property_type)}</td>
-                      <td className="py-1.5 text-right text-green-400">
+                    <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <td className="py-1.5 text-foreground">{formatRegion(r.region)}</td>
+                      <td className="py-1.5 text-muted-foreground">{formatPropertyType(r.property_type)}</td>
+                      <td className="py-1.5 text-right text-green-600 dark:text-green-400">
                         {r.avg_rent_monthly > 0 ? formatCurrency(r.avg_rent_monthly) : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-300">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {r.median_rent_monthly > 0 ? formatCurrency(r.median_rent_monthly) : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-400">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {r.avg_rent_per_sqm > 0 ? `GH₵${r.avg_rent_per_sqm.toFixed(0)}` : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-300">{r.rental_transaction_count}</td>
-                      <td className="py-1.5 text-right text-amber-400">
+                      <td className="py-1.5 text-right text-muted-foreground">{r.rental_transaction_count}</td>
+                      <td className="py-1.5 text-right text-amber-600 dark:text-amber-400">
                         {r.gross_yield_pct > 0 ? `${r.gross_yield_pct.toFixed(2)}%` : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-400">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {r.vacancy_rate_pct > 0 ? `${(r.vacancy_rate_pct * 100).toFixed(1)}%` : '—'}
                       </td>
                     </tr>
@@ -294,8 +294,8 @@ export default function RentalAnalyticsPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Activity className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
-              <div className="font-mono text-xs text-zinc-500">No rental data available</div>
+              <Activity className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="font-mono text-xs text-muted-foreground">No rental data available</div>
             </div>
           )}
         </Panel>
@@ -306,7 +306,7 @@ export default function RentalAnalyticsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                  <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                     <th className="text-left pb-2">REGION</th>
                     <th className="text-left pb-2">TYPE</th>
                     <th className="text-right pb-2">GROSS</th>
@@ -317,21 +317,21 @@ export default function RentalAnalyticsPage() {
                 </thead>
                 <tbody className="font-mono text-xs">
                   {yields.map((y, i) => (
-                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="py-1.5 text-white">{formatRegion(y.region)}</td>
-                      <td className="py-1.5 text-zinc-400">{formatPropertyType(y.property_type)}</td>
-                      <td className="py-1.5 text-right text-green-400">
+                    <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <td className="py-1.5 text-foreground">{formatRegion(y.region)}</td>
+                      <td className="py-1.5 text-muted-foreground">{formatPropertyType(y.property_type)}</td>
+                      <td className="py-1.5 text-right text-green-600 dark:text-green-400">
                         {y.gross_yield > 0 ? `${y.gross_yield.toFixed(2)}%` : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-300">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {y.net_yield > 0 ? `${y.net_yield.toFixed(2)}%` : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-amber-400">
+                      <td className="py-1.5 text-right text-amber-600 dark:text-amber-400">
                         {y.cap_rate > 0 ? `${y.cap_rate.toFixed(2)}%` : '—'}
                       </td>
                       <td className={cn(
                         'py-1.5 text-right',
-                        y.rent_growth_rate >= 0 ? 'text-green-400' : 'text-red-400'
+                        y.rent_growth_rate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       )}>
                         {y.rent_growth_rate !== 0
                           ? `${y.rent_growth_rate >= 0 ? '+' : ''}${y.rent_growth_rate.toFixed(1)}%`
@@ -351,8 +351,8 @@ export default function RentalAnalyticsPage() {
             <div className="grid grid-cols-12 gap-1">
               {trends.map((t, i) => (
                 <div key={i} className="text-center">
-                  <div className="font-mono text-[8px] text-zinc-600 mb-1">{t.period.slice(5)}</div>
-                  <div className="h-16 bg-zinc-800/50 relative flex items-end justify-center">
+                  <div className="font-mono text-[8px] text-muted-foreground mb-1">{t.period.slice(5)}</div>
+                  <div className="h-16 bg-muted/50 relative flex items-end justify-center">
                     <div
                       className="w-full bg-green-500/60 rounded-sm"
                       style={{
@@ -363,7 +363,7 @@ export default function RentalAnalyticsPage() {
                       }}
                     />
                   </div>
-                  <div className="font-mono text-[8px] text-zinc-500 mt-0.5">{t.count}</div>
+                  <div className="font-mono text-[8px] text-muted-foreground mt-0.5">{t.count}</div>
                 </div>
               ))}
             </div>
@@ -376,7 +376,7 @@ export default function RentalAnalyticsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                  <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                     <th className="text-left pb-2">AREA</th>
                     <th className="text-left pb-2">TYPE</th>
                     <th className="text-right pb-2">LISTINGS</th>
@@ -388,20 +388,20 @@ export default function RentalAnalyticsPage() {
                 </thead>
                 <tbody className="font-mono text-xs">
                   {benchmarks.map((b, i) => (
-                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="py-1.5 text-white">{formatRegion(b.area_name)}</td>
-                      <td className="py-1.5 text-zinc-400">{formatPropertyType(b.property_type)}</td>
-                      <td className="py-1.5 text-right text-zinc-300">{b.listing_count}</td>
-                      <td className="py-1.5 text-right text-green-400">
+                    <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <td className="py-1.5 text-foreground">{formatRegion(b.area_name)}</td>
+                      <td className="py-1.5 text-muted-foreground">{formatPropertyType(b.property_type)}</td>
+                      <td className="py-1.5 text-right text-muted-foreground">{b.listing_count}</td>
+                      <td className="py-1.5 text-right text-green-600 dark:text-green-400">
                         {b.avg_rent_monthly > 0 ? formatCurrency(b.avg_rent_monthly) : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-300">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {b.median_rent_monthly > 0 ? formatCurrency(b.median_rent_monthly) : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-400">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {b.avg_rent_per_sqm > 0 ? `GH₵${b.avg_rent_per_sqm.toFixed(0)}` : '—'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-400">
+                      <td className="py-1.5 text-right text-muted-foreground">
                         {b.vacancy_rate_estimate != null ? `${(b.vacancy_rate_estimate * 100).toFixed(1)}%` : '—'}
                       </td>
                     </tr>

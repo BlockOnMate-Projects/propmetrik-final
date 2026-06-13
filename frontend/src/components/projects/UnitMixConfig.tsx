@@ -78,7 +78,7 @@ function UnitMixChart({ items, total }: { items: UnitMixItem[]; total: number })
   
   if (validItems.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-zinc-600">
+      <div className="flex items-center justify-center h-32 text-muted-foreground">
         <span className="font-mono text-xs">Add units to see distribution</span>
       </div>
     )
@@ -97,7 +97,7 @@ function UnitMixChart({ items, total }: { items: UnitMixItem[]; total: number })
   return (
     <div className="space-y-3">
       {/* Horizontal stacked bar */}
-      <div className="h-6 flex rounded overflow-hidden bg-zinc-800">
+      <div className="h-6 flex rounded overflow-hidden bg-muted">
         {withPercentages.map((item) => {
           accumulatedPercent += item.percentage
           return (
@@ -107,7 +107,7 @@ function UnitMixChart({ items, total }: { items: UnitMixItem[]; total: number })
               style={{ width: `${item.percentage}%` }}
             >
               {item.percentage >= 10 && (
-                <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] text-white font-medium">
+                <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] text-foreground font-medium">
                   {Math.round(item.percentage)}%
                 </span>
               )}
@@ -121,10 +121,10 @@ function UnitMixChart({ items, total }: { items: UnitMixItem[]; total: number })
         {withPercentages.map((item) => (
           <div key={item.id} className="flex items-center gap-2">
             <div className={cn("w-3 h-3 rounded-sm", item.color)} />
-            <span className="font-mono text-[10px] text-zinc-400 flex-1 truncate">
+            <span className="font-mono text-[10px] text-muted-foreground flex-1 truncate">
               {item.label}
             </span>
-            <span className="font-mono text-[10px] text-zinc-300 font-medium">
+            <span className="font-mono text-[10px] text-muted-foreground font-medium">
               {item.count}
             </span>
           </div>
@@ -154,14 +154,14 @@ function UnitTypeRow({
   const Icon = config?.icon || Home
 
   return (
-    <div className="flex items-center gap-3 p-2 bg-zinc-900/50 border border-zinc-800 rounded">
+    <div className="flex items-center gap-3 p-2 bg-card/50 border border-border rounded">
       {/* Color indicator */}
       <div className={cn("w-1 h-12 rounded", COLORS[colorIndex % COLORS.length])} />
       
       {/* Type info */}
       <div className="flex items-center gap-2 min-w-[120px]">
-        <Icon className="h-4 w-4 text-zinc-500" />
-        <span className="font-mono text-xs text-zinc-300">{item.label}</span>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <span className="font-mono text-xs text-muted-foreground">{item.label}</span>
       </div>
 
       {/* Count controls */}
@@ -181,7 +181,7 @@ function UnitTypeRow({
           min={0}
           value={item.count}
           onChange={(e) => onUpdate({ count: parseInt(e.target.value) || 0 })}
-          className="w-16 h-7 text-center font-mono text-sm bg-zinc-800 border-zinc-700"
+          className="w-16 h-7 text-center font-mono text-sm bg-muted border-border"
         />
         <Button
           type="button"
@@ -202,9 +202,9 @@ function UnitTypeRow({
           placeholder="sqm"
           value={item.avgSize || ''}
           onChange={(e) => onUpdate({ avgSize: parseFloat(e.target.value) || undefined })}
-          className="w-20 h-7 font-mono text-xs bg-zinc-800 border-zinc-700"
+          className="w-20 h-7 font-mono text-xs bg-muted border-border"
         />
-        <span className="font-mono text-[10px] text-zinc-500">sqm</span>
+        <span className="font-mono text-[10px] text-muted-foreground">sqm</span>
       </div>
 
       {/* Avg Price (optional) */}
@@ -215,9 +215,9 @@ function UnitTypeRow({
           placeholder="Price"
           value={item.avgPrice || ''}
           onChange={(e) => onUpdate({ avgPrice: parseFloat(e.target.value) || undefined })}
-          className="w-24 h-7 font-mono text-xs bg-zinc-800 border-zinc-700"
+          className="w-24 h-7 font-mono text-xs bg-muted border-border"
         />
-        <span className="font-mono text-[10px] text-zinc-500">{currency}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">{currency}</span>
       </div>
 
       {/* Remove button */}
@@ -225,7 +225,7 @@ function UnitTypeRow({
         type="button"
         variant="ghost"
         size="icon"
-        className="h-7 w-7 text-zinc-500 hover:text-red-400"
+        className="h-7 w-7 text-muted-foreground hover:text-red-400"
         onClick={onRemove}
       >
         <Trash2 className="h-3 w-3" />
@@ -307,17 +307,17 @@ export function UnitMixConfig({
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-mono text-xs text-zinc-400">
+          <span className="font-mono text-xs text-muted-foreground">
             Total: <span className="text-zinc-100">{calculatedTotal}</span>
             {totalUnits && totalUnits !== calculatedTotal && (
-              <span className="text-amber-400 ml-1">/ {totalUnits} target</span>
+              <span className="text-amber-600 dark:text-amber-400 ml-1">/ {totalUnits} target</span>
             )}
           </span>
         </div>
       </div>
 
       {/* Distribution chart */}
-      <div className="p-3 bg-zinc-900/30 border border-zinc-800 rounded">
+      <div className="p-3 bg-card/30 border border-border rounded">
         <UnitMixChart items={value} total={calculatedTotal || 1} />
       </div>
 
@@ -327,10 +327,10 @@ export function UnitMixConfig({
         {value.length > 0 && (
           <div className="flex items-center gap-3 px-2 py-1">
             <div className="w-1" />
-            <div className="min-w-[120px] font-mono text-[10px] text-zinc-500">Type</div>
-            <div className="w-[108px] font-mono text-[10px] text-zinc-500 text-center">Count</div>
-            <div className="w-[88px] font-mono text-[10px] text-zinc-500">Avg Size</div>
-            <div className="w-[100px] font-mono text-[10px] text-zinc-500">Avg Price</div>
+            <div className="min-w-[120px] font-mono text-[10px] text-muted-foreground">Type</div>
+            <div className="w-[108px] font-mono text-[10px] text-muted-foreground text-center">Count</div>
+            <div className="w-[88px] font-mono text-[10px] text-muted-foreground">Avg Size</div>
+            <div className="w-[100px] font-mono text-[10px] text-muted-foreground">Avg Price</div>
             <div className="w-7" />
           </div>
         )}
@@ -349,7 +349,7 @@ export function UnitMixConfig({
 
         {/* Empty state */}
         {value.length === 0 && (
-          <div className="text-center py-8 text-zinc-600">
+          <div className="text-center py-8 text-muted-foreground">
             <Home className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="font-mono text-xs">No unit types added yet</p>
             <p className="font-mono text-[10px]">Click below to add unit types</p>
@@ -365,7 +365,7 @@ export function UnitMixConfig({
           size="sm"
           onClick={() => setShowAddMenu(!showAddMenu)}
           disabled={availableTypes.length === 0}
-          className="w-full border-dashed border-zinc-700 hover:border-zinc-600 hover:bg-zinc-900"
+          className="w-full border-dashed border-border hover:border-zinc-600 hover:bg-card"
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Unit Type
@@ -373,7 +373,7 @@ export function UnitMixConfig({
 
         {/* Dropdown menu */}
         {showAddMenu && availableTypes.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 py-1 bg-zinc-900 border border-zinc-700 rounded shadow-xl max-h-60 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 py-1 bg-card border border-border rounded shadow-xl max-h-60 overflow-y-auto">
             {availableTypes.map((type) => {
               const Icon = type.icon
               return (
@@ -381,12 +381,12 @@ export function UnitMixConfig({
                   key={type.type}
                   type="button"
                   onClick={() => addUnitType(type.type)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-800 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted transition-colors"
                 >
-                  <Icon className="h-4 w-4 text-zinc-500" />
-                  <span className="font-mono text-xs text-zinc-300">{type.label}</span>
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-mono text-xs text-muted-foreground">{type.label}</span>
                   {type.bedrooms !== null && (
-                    <span className="font-mono text-[10px] text-zinc-500 ml-auto">
+                    <span className="font-mono text-[10px] text-muted-foreground ml-auto">
                       {type.bedrooms} BR
                     </span>
                   )}
@@ -399,17 +399,17 @@ export function UnitMixConfig({
 
       {/* Summary */}
       {value.length > 0 && (summary.totalArea > 0 || summary.totalValue > 0) && (
-        <div className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded">
+        <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border border-border rounded">
           {summary.totalArea > 0 && (
             <div className="font-mono text-xs">
-              <span className="text-zinc-500">Total Area: </span>
-              <span className="text-zinc-300">{summary.totalArea.toLocaleString()} sqm</span>
+              <span className="text-muted-foreground">Total Area: </span>
+              <span className="text-muted-foreground">{summary.totalArea.toLocaleString()} sqm</span>
             </div>
           )}
           {summary.totalValue > 0 && (
             <div className="font-mono text-xs">
-              <span className="text-zinc-500">Total Value: </span>
-              <span className="text-amber-400">
+              <span className="text-muted-foreground">Total Value: </span>
+              <span className="text-amber-600 dark:text-amber-400">
                 {currency} {summary.totalValue.toLocaleString()}
               </span>
             </div>

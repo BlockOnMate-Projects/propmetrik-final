@@ -73,8 +73,8 @@ interface UserStats {
 // ════════════════════════════════════════════════════════════════════
 function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
       </div>
       <div className="p-3">{children}</div>
@@ -90,7 +90,7 @@ function StatusMsg({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
     <div className={cn(
       'px-3 py-2 font-mono text-xs border mb-3',
-      type === 'success' ? 'bg-green-900/30 border-green-800 text-green-400' : 'bg-red-900/30 border-red-800 text-red-400'
+      type === 'success' ? 'bg-green-100 dark:bg-green-900/30 border-green-800 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 border-red-800 text-red-600 dark:text-red-400'
     )}>
       {msg}
     </div>
@@ -360,18 +360,18 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4 flex items-center justify-center">
-        <div className="font-mono text-xs text-zinc-500 animate-pulse">LOADING PROFILE...</div>
+      <div className="min-h-screen bg-background text-foreground p-4 flex items-center justify-center">
+        <div className="font-mono text-xs text-muted-foreground animate-pulse">LOADING PROFILE...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="mb-4">
-        <h1 className="font-mono text-xl text-white">USER SETTINGS</h1>
-        <p className="font-mono text-[10px] text-zinc-500">Account Configuration & Preferences</p>
+        <h1 className="font-mono text-xl text-foreground">USER SETTINGS</h1>
+        <p className="font-mono text-[10px] text-muted-foreground">Account Configuration & Preferences</p>
       </div>
 
       {/* Tabs */}
@@ -388,8 +388,8 @@ export default function ProfilePage() {
             className={cn(
               'px-4 py-2 font-mono text-xs transition-colors',
               activeTab === tab.id
-                ? 'bg-amber-500 text-white font-bold'
-                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                ? 'bg-amber-500 text-foreground font-bold'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
             )}
           >
             {tab.label}
@@ -408,70 +408,70 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">FIRST NAME</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">FIRST NAME</label>
                     <input
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">LAST NAME</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">LAST NAME</label>
                     <input
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">EMAIL</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">EMAIL</label>
                     <input
                       type="email"
                       value={profile?.email || ''}
                       disabled
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 font-mono text-sm text-zinc-400"
+                      className="w-full px-3 py-2 bg-card border border-border font-mono text-sm text-muted-foreground"
                     />
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">ROLE</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">ROLE</label>
                     <input
                       type="text"
                       value={roleName(profile?.role || '')}
                       disabled
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 font-mono text-sm text-zinc-400"
+                      className="w-full px-3 py-2 bg-card border border-border font-mono text-sm text-muted-foreground"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">ORGANIZATION</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">ORGANIZATION</label>
                     <input
                       type="text"
                       value={profile?.organization?.name || '—'}
                       disabled
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 font-mono text-sm text-zinc-400"
+                      className="w-full px-3 py-2 bg-card border border-border font-mono text-sm text-muted-foreground"
                     />
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">PHONE</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">PHONE</label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+233 XX XXX XXXX"
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none"
                     />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-zinc-800">
+                <div className="pt-4 border-t border-border">
                   <button
                     onClick={saveProfile}
                     disabled={saving}
-                    className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                   >
                     {saving ? 'SAVING...' : 'SAVE CHANGES'}
                   </button>
@@ -486,36 +486,36 @@ export default function ProfilePage() {
               <Panel title="PROFESSIONAL CREDENTIALS">
                 {valuerMsg && <StatusMsg msg={valuerMsg.text} type={valuerMsg.type} />}
                 {!valuer && (
-                  <div className="mb-3 px-3 py-2 bg-amber-900/20 border border-amber-800 font-mono text-xs text-amber-400">
+                  <div className="mb-3 px-3 py-2 bg-amber-100 dark:bg-amber-900/20 border border-amber-800 font-mono text-xs text-amber-600 dark:text-amber-400">
                     No professional profile found. Complete the form below to create your valuer profile.
                   </div>
                 )}
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">FULL NAME *</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">FULL NAME *</label>
                       <input type="text" value={valuerForm.name} onChange={e => updateValuerField('name', e.target.value)}
                         placeholder="e.g. Eric Danso"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">PROFESSIONAL TITLE</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">PROFESSIONAL TITLE</label>
                       <input type="text" value={valuerForm.title} onChange={e => updateValuerField('title', e.target.value)}
                         placeholder="e.g. Surveyor, Estate Valuer"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">QUALIFICATIONS</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">QUALIFICATIONS</label>
                     <input type="text" value={valuerForm.qualifications} onChange={e => updateValuerField('qualifications', e.target.value)}
                       placeholder="e.g. BSc Land Economy, MGIPC"
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">COMPANY / FIRM NAME</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">COMPANY / FIRM NAME</label>
                     <input type="text" value={valuerForm.company_name} onChange={e => updateValuerField('company_name', e.target.value)}
                       placeholder="e.g. Cedyn Valuations Ltd"
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                   </div>
                 </div>
               </Panel>
@@ -524,22 +524,22 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">LICENSE NUMBER *</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">LICENSE NUMBER *</label>
                       <input type="text" value={valuerForm.license_number} onChange={e => updateValuerField('license_number', e.target.value)}
                         placeholder="e.g. GhIS/LV/2024/001"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">LICENSE ISSUER</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">LICENSE ISSUER</label>
                       <input type="text" value={valuerForm.license_issuer} onChange={e => updateValuerField('license_issuer', e.target.value)}
                         placeholder="e.g. GhIS, RICS"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">LICENSE VALID UNTIL *</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">LICENSE VALID UNTIL *</label>
                     <input type="date" value={valuerForm.license_valid_until} onChange={e => updateValuerField('license_valid_until', e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                   </div>
                 </div>
               </Panel>
@@ -548,28 +548,28 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">PI PROVIDER</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">PI PROVIDER</label>
                       <input type="text" value={valuerForm.pi_provider} onChange={e => updateValuerField('pi_provider', e.target.value)}
                         placeholder="e.g. SIC Insurance"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">POLICY NUMBER</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">POLICY NUMBER</label>
                       <input type="text" value={valuerForm.pi_policy_number} onChange={e => updateValuerField('pi_policy_number', e.target.value)}
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">COVERAGE AMOUNT</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">COVERAGE AMOUNT</label>
                       <input type="text" value={valuerForm.pi_coverage} onChange={e => updateValuerField('pi_coverage', e.target.value)}
                         placeholder="e.g. GHS 500,000"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">PI VALID UNTIL</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">PI VALID UNTIL</label>
                       <input type="date" value={valuerForm.pi_valid_until} onChange={e => updateValuerField('pi_valid_until', e.target.value)}
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                   </div>
                 </div>
@@ -579,33 +579,33 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">CONTACT EMAIL *</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">CONTACT EMAIL *</label>
                       <input type="email" value={valuerForm.contact_email} onChange={e => updateValuerField('contact_email', e.target.value)}
                         placeholder="valuer@example.com"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                     <div>
-                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">CONTACT PHONE</label>
+                      <label className="block font-mono text-[10px] text-muted-foreground mb-1">CONTACT PHONE</label>
                       <input type="tel" value={valuerForm.contact_phone} onChange={e => updateValuerField('contact_phone', e.target.value)}
                         placeholder="+233 XX XXX XXXX"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                        className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                     </div>
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">OFFICE ADDRESS</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">OFFICE ADDRESS</label>
                     <input type="text" value={valuerForm.contact_address} onChange={e => updateValuerField('contact_address', e.target.value)}
                       placeholder="e.g. 14 Independence Ave, Accra"
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none" />
                   </div>
                 </div>
               </Panel>
 
               <div className="flex items-center gap-3">
                 <button onClick={saveValuerProfile} disabled={valuerSaving}
-                  className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
+                  className="px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
                   {valuerSaving ? 'SAVING...' : valuer ? 'UPDATE PROFESSIONAL DETAILS' : 'CREATE PROFESSIONAL PROFILE'}
                 </button>
-                <span className="font-mono text-[10px] text-zinc-600">* Required for report signing</span>
+                <span className="font-mono text-[10px] text-muted-foreground">* Required for report signing</span>
               </div>
             </div>
           )}
@@ -616,43 +616,43 @@ export default function ProfilePage() {
               {pwMsg && <StatusMsg msg={pwMsg.text} type={pwMsg.type} />}
               <div className="space-y-4">
                 <div>
-                  <label className="block font-mono text-[10px] text-zinc-500 mb-1">CURRENT PASSWORD</label>
+                  <label className="block font-mono text-[10px] text-muted-foreground mb-1">CURRENT PASSWORD</label>
                   <input
                     type="password"
                     value={currentPw}
                     onChange={(e) => setCurrentPw(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">NEW PASSWORD</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">NEW PASSWORD</label>
                     <input
                       type="password"
                       value={newPw}
                       onChange={(e) => setNewPw(e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">CONFIRM PASSWORD</label>
+                    <label className="block font-mono text-[10px] text-muted-foreground mb-1">CONFIRM PASSWORD</label>
                     <input
                       type="password"
                       value={confirmPw}
                       onChange={(e) => setConfirmPw(e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-muted border border-border font-mono text-sm text-foreground focus:border-amber-500 focus:outline-none"
                     />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-zinc-800 flex items-center gap-3">
+                <div className="pt-4 border-t border-border flex items-center gap-3">
                   <button
                     onClick={changePassword}
                     disabled={pwSaving}
-                    className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                   >
                     {pwSaving ? 'UPDATING...' : 'UPDATE PASSWORD'}
                   </button>
-                  <span className="font-mono text-[10px] text-zinc-600">Minimum 8 characters</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">Minimum 8 characters</span>
                 </div>
               </div>
             </Panel>
@@ -664,18 +664,18 @@ export default function ProfilePage() {
               {notifMsg && <StatusMsg msg={notifMsg.text} type={notifMsg.type} />}
               <div className="space-y-3">
                 {notifItems.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between py-2 border-b border-zinc-800/50">
+                  <div key={item.key} className="flex items-center justify-between py-2 border-b border-border/50">
                     <div>
-                      <div className="font-mono text-sm text-white">{item.label}</div>
-                      <div className="font-mono text-[10px] text-zinc-500">{item.desc}</div>
+                      <div className="font-mono text-sm text-foreground">{item.label}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">{item.desc}</div>
                     </div>
                     <button
                       onClick={() => toggleNotif(item.key)}
                       className={cn(
                         'px-3 py-1 font-mono text-[10px] transition-colors',
                         notifPrefs[item.key]
-                          ? 'bg-green-900/50 text-green-400 border border-green-800'
-                          : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                          ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border border-green-800'
+                          : 'bg-muted text-muted-foreground border border-border'
                       )}
                     >
                       {notifPrefs[item.key] ? 'ON' : 'OFF'}
@@ -692,30 +692,30 @@ export default function ProfilePage() {
           <Panel title="ACCOUNT STATUS">
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">PLAN</span>
-                <span className="font-mono text-xs text-amber-400">{tierLabel(profile?.subscriptionTier || 'free').toUpperCase()}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">PLAN</span>
+                <span className="font-mono text-xs text-amber-600 dark:text-amber-400">{tierLabel(profile?.subscriptionTier || 'free').toUpperCase()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">STATUS</span>
+                <span className="font-mono text-[10px] text-muted-foreground">STATUS</span>
                 <span className={cn(
                   'font-mono text-xs',
-                  profile?.status === 'active' ? 'text-green-400' : 'text-red-400'
+                  profile?.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                 )}>
                   {(profile?.status || 'active').toUpperCase()}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">MEMBER SINCE</span>
-                <span className="font-mono text-xs text-white">{formatDate(profile?.createdAt || null)}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">MEMBER SINCE</span>
+                <span className="font-mono text-xs text-foreground">{formatDate(profile?.createdAt || null)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">LAST LOGIN</span>
-                <span className="font-mono text-xs text-white">{formatDate(profile?.lastLoginAt || null)}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">LAST LOGIN</span>
+                <span className="font-mono text-xs text-foreground">{formatDate(profile?.lastLoginAt || null)}</span>
               </div>
               {profile?.emailVerified && (
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">EMAIL</span>
-                  <span className="font-mono text-xs text-green-400">VERIFIED</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">EMAIL</span>
+                  <span className="font-mono text-xs text-green-600 dark:text-green-400">VERIFIED</span>
                 </div>
               )}
             </div>
@@ -724,16 +724,16 @@ export default function ProfilePage() {
           <Panel title="QUICK STATS">
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">VALUATIONS</span>
-                <span className="font-mono text-xs text-white">{stats.valuations.toLocaleString()}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">VALUATIONS</span>
+                <span className="font-mono text-xs text-foreground">{stats.valuations.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">DEALS CLOSED</span>
-                <span className="font-mono text-xs text-white">{stats.dealsClosed.toLocaleString()}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">DEALS CLOSED</span>
+                <span className="font-mono text-xs text-foreground">{stats.dealsClosed.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">PROPERTIES</span>
-                <span className="font-mono text-xs text-white">{stats.properties.toLocaleString()}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">PROPERTIES</span>
+                <span className="font-mono text-xs text-foreground">{stats.properties.toLocaleString()}</span>
               </div>
             </div>
           </Panel>
@@ -742,12 +742,12 @@ export default function ProfilePage() {
             <Panel title="ORGANIZATION">
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">NAME</span>
-                  <span className="font-mono text-xs text-white">{profile.organization.name}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">NAME</span>
+                  <span className="font-mono text-xs text-foreground">{profile.organization.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">TYPE</span>
-                  <span className="font-mono text-xs text-amber-400">{profile.organization.type.toUpperCase()}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">TYPE</span>
+                  <span className="font-mono text-xs text-amber-600 dark:text-amber-400">{profile.organization.type.toUpperCase()}</span>
                 </div>
               </div>
             </Panel>
@@ -757,21 +757,21 @@ export default function ProfilePage() {
             <Panel title="CREDENTIAL STATUS">
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">PROFILE</span>
-                  <span className={cn('font-mono text-xs', valuer ? 'text-green-400' : 'text-red-400')}>
+                  <span className="font-mono text-[10px] text-muted-foreground">PROFILE</span>
+                  <span className={cn('font-mono text-xs', valuer ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                     {valuer ? 'CREATED' : 'MISSING'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">LICENSE</span>
-                  <span className={cn('font-mono text-xs', valuer?.license_number ? 'text-green-400' : 'text-red-400')}>
+                  <span className="font-mono text-[10px] text-muted-foreground">LICENSE</span>
+                  <span className={cn('font-mono text-xs', valuer?.license_number ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                     {valuer?.license_number || 'NOT SET'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">LICENSE STATUS</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">LICENSE STATUS</span>
                   <span className={cn('font-mono text-xs',
-                    valuer?.license_valid_until && new Date(valuer.license_valid_until) > new Date() ? 'text-green-400' : 'text-amber-400'
+                    valuer?.license_valid_until && new Date(valuer.license_valid_until) > new Date() ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
                   )}>
                     {valuer?.license_valid_until
                       ? new Date(valuer.license_valid_until) > new Date() ? 'VALID' : 'EXPIRED'
@@ -779,15 +779,15 @@ export default function ProfilePage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">PI INSURANCE</span>
-                  <span className={cn('font-mono text-xs', valuer?.pi_provider ? 'text-green-400' : 'text-zinc-600')}>
+                  <span className="font-mono text-[10px] text-muted-foreground">PI INSURANCE</span>
+                  <span className={cn('font-mono text-xs', valuer?.pi_provider ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground')}>
                     {valuer?.pi_provider ? 'ACTIVE' : 'NOT SET'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">E-SIGN READY</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">E-SIGN READY</span>
                   <span className={cn('font-mono text-xs',
-                    valuer?.license_number && valuer?.contact_email ? 'text-green-400' : 'text-red-400'
+                    valuer?.license_number && valuer?.contact_email ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   )}>
                     {valuer?.license_number && valuer?.contact_email ? 'YES' : 'NO'}
                   </span>

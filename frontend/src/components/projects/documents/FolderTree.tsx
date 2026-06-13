@@ -106,7 +106,7 @@ function FolderNode({
           'group flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer transition-colors',
           isSelected
             ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+            : 'hover:bg-muted dark:hover:bg-gray-800'
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => onFolderSelect(folder.id)}
@@ -123,9 +123,9 @@ function FolderNode({
           }}
         >
           {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-gray-500" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-gray-500" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
         </button>
 
@@ -143,7 +143,7 @@ function FolderNode({
 
         {/* Document count badge */}
         {folder.document_count !== undefined && folder.document_count > 0 && (
-          <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+          <span className="text-xs text-muted-foreground bg-muted dark:bg-gray-700 px-1.5 py-0.5 rounded">
             {folder.document_count}
           </span>
         )}
@@ -376,7 +376,7 @@ export function FolderTree({
     return (
       <div className="p-4 space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-8 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+          <div key={i} className="h-8 bg-muted dark:bg-gray-800 rounded animate-pulse" />
         ))}
       </div>
     );
@@ -424,11 +424,11 @@ export function FolderTree({
           'flex items-center gap-2 py-2 px-4 cursor-pointer transition-colors border-b',
           selectedFolderId === null
             ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+            : 'hover:bg-muted dark:hover:bg-gray-800'
         )}
         onClick={() => onFolderSelect(null)}
       >
-        <FileText className="h-4 w-4 text-gray-500" />
+        <FileText className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">All Documents</span>
       </div>
 
@@ -452,8 +452,8 @@ export function FolderTree({
             />
           ))
         ) : (
-          <div className="p-4 text-center text-gray-500 text-sm">
-            <Folder className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+          <div className="p-4 text-center text-muted-foreground text-sm">
+            <Folder className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             <p>No folders yet</p>
             <Button
               variant="link"

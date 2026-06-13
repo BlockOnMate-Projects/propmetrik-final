@@ -306,7 +306,7 @@ export default function ProjectLifecycleSection() {
         <section ref={containerRef} style={{ height: `${STAGES.length * 100}vh` }} className="relative">
             {/* ── Sticky Viewport ── */}
             <div
-                className="sticky top-0 h-screen overflow-hidden bg-zinc-950 flex flex-col"
+                className="sticky top-0 h-screen overflow-hidden bg-background flex flex-col"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
@@ -319,10 +319,10 @@ export default function ProjectLifecycleSection() {
                         viewport={{ once: true }}
                         className="text-center mb-6"
                     >
-                        <div className="inline-block px-3 py-1 mb-4 border border-amber-500/30 rounded-full text-xs font-bold tracking-widest uppercase bg-amber-500/5 text-amber-400">
+                        <div className="inline-block px-3 py-1 mb-4 border border-amber-500/30 rounded-full text-xs font-bold tracking-widest uppercase bg-amber-500/5 text-amber-600 dark:text-amber-400">
                             The Full Lifecycle
                         </div>
-                        <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                        <h2 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
                             From First Land Visit to Last Key Handover —{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300">
                                 One Platform. Five Stages.
@@ -374,7 +374,7 @@ export default function ProjectLifecycleSection() {
 
                             {/* Empty state / placeholder for before any card is shown */}
                             {activeStage < 0 && (
-                                <div className="absolute inset-0 rounded-2xl bg-zinc-900 border border-zinc-800" />
+                                <div className="absolute inset-0 rounded-2xl bg-card border border-border" />
                             )}
                         </div>
                     </div>
@@ -386,7 +386,7 @@ export default function ProjectLifecycleSection() {
                     transition={{ duration: 0.4 }}
                     className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
                 >
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                         Scroll to advance
                     </span>
                     <motion.div

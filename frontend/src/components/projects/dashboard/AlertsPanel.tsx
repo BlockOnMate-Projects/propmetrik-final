@@ -56,7 +56,7 @@ const SEVERITY_CONFIG = {
     icon: AlertTriangle,
     bg: 'bg-red-500/10',
     border: 'border-red-500/30',
-    text: 'text-red-400',
+    text: 'text-red-600 dark:text-red-400',
     badge: 'bg-red-500',
     label: 'Critical',
   },
@@ -64,7 +64,7 @@ const SEVERITY_CONFIG = {
     icon: AlertCircle,
     bg: 'bg-amber-500/10',
     border: 'border-amber-500/30',
-    text: 'text-amber-400',
+    text: 'text-amber-600 dark:text-amber-400',
     badge: 'bg-amber-500',
     label: 'Warning',
   },
@@ -72,7 +72,7 @@ const SEVERITY_CONFIG = {
     icon: Info,
     bg: 'bg-blue-500/10',
     border: 'border-blue-500/30',
-    text: 'text-blue-400',
+    text: 'text-blue-600 dark:text-blue-400',
     badge: 'bg-blue-500',
     label: 'Info',
   },
@@ -137,25 +137,25 @@ function AlertItem({
         <div className="flex-1 min-w-0">
           {/* Project name and type */}
           <div className="flex items-center gap-2 mb-1">
-            <TypeIcon className="h-3 w-3 text-zinc-500" />
-            <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">
+            <TypeIcon className="h-3 w-3 text-muted-foreground" />
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
               {alert.projectName}
             </span>
             <Badge 
               variant="secondary" 
-              className={cn("text-[9px] h-4 px-1.5 text-white", config.badge)}
+              className={cn("text-[9px] h-4 px-1.5 text-foreground", config.badge)}
             >
               {config.label}
             </Badge>
           </div>
           
           {/* Message */}
-          <p className="font-mono text-xs text-zinc-300 leading-relaxed">
+          <p className="font-mono text-xs text-muted-foreground leading-relaxed">
             {alert.message}
           </p>
           
           {/* Timestamp */}
-          <p className="font-mono text-[10px] text-zinc-500 mt-1">
+          <p className="font-mono text-[10px] text-muted-foreground mt-1">
             {timeAgo}
           </p>
         </div>
@@ -167,7 +167,7 @@ function AlertItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-zinc-500 hover:text-zinc-300"
+              className="h-7 w-7 text-muted-foreground hover:text-muted-foreground"
               onClick={() => setShowSnoozeMenu(!showSnoozeMenu)}
             >
               <BellOff className="h-3.5 w-3.5" />
@@ -175,7 +175,7 @@ function AlertItem({
             
             {/* Snooze menu */}
             {showSnoozeMenu && (
-              <div className="absolute right-0 top-full mt-1 z-10 bg-zinc-900 border border-zinc-700 rounded shadow-xl py-1 min-w-[100px]">
+              <div className="absolute right-0 top-full mt-1 z-10 bg-card border border-border rounded shadow-xl py-1 min-w-[100px]">
                 {SNOOZE_OPTIONS.map((option) => (
                   <button
                     key={option.hours}
@@ -183,7 +183,7 @@ function AlertItem({
                       onSnooze?.(alert.id, option.hours)
                       setShowSnoozeMenu(false)
                     }}
-                    className="w-full px-3 py-1.5 text-left font-mono text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"
+                    className="w-full px-3 py-1.5 text-left font-mono text-xs text-muted-foreground hover:bg-muted transition-colors"
                   >
                     {option.label}
                   </button>
@@ -196,7 +196,7 @@ function AlertItem({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-zinc-500 hover:text-red-400"
+            className="h-7 w-7 text-muted-foreground hover:text-red-400"
             onClick={() => onDismiss?.(alert.id)}
           >
             <X className="h-3.5 w-3.5" />
@@ -249,16 +249,16 @@ export function AlertsPanel({
   }
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-900/50", className)}>
+    <div className={cn("border border-border bg-card/50", className)}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-amber-500" />
           <span className="font-mono text-xs text-amber-500 tracking-wider">
             ALERTS
           </span>
           {alerts.length > 0 && (
-            <Badge variant="secondary" className="bg-zinc-700 text-zinc-300 text-[10px]">
+            <Badge variant="secondary" className="bg-zinc-700 text-muted-foreground text-[10px]">
               {alerts.length}
             </Badge>
           )}
@@ -267,12 +267,12 @@ export function AlertsPanel({
         {/* Severity counts */}
         <div className="flex items-center gap-2">
           {counts.critical > 0 && (
-            <Badge className="bg-red-500/20 text-red-400 text-[10px]">
+            <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 text-[10px]">
               {counts.critical} Critical
             </Badge>
           )}
           {counts.warning > 0 && (
-            <Badge className="bg-amber-500/20 text-amber-400 text-[10px]">
+            <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px]">
               {counts.warning} Warning
             </Badge>
           )}
@@ -283,10 +283,10 @@ export function AlertsPanel({
       <div className="p-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : alerts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-zinc-500">
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Bell className="h-8 w-8 mb-2 opacity-50" />
             <span className="font-mono text-xs">No active alerts</span>
             <span className="font-mono text-[10px]">All projects are on track</span>
@@ -309,7 +309,7 @@ export function AlertsPanel({
             {hiddenCount > 0 && !showAll && (
               <Button
                 variant="ghost"
-                className="w-full text-xs text-zinc-500 hover:text-zinc-300"
+                className="w-full text-xs text-muted-foreground hover:text-muted-foreground"
                 onClick={() => setShowAll(true)}
               >
                 Show {hiddenCount} more alerts
@@ -320,7 +320,7 @@ export function AlertsPanel({
             {showAll && sortedAlerts.length > maxVisible && (
               <Button
                 variant="ghost"
-                className="w-full text-xs text-zinc-500 hover:text-zinc-300"
+                className="w-full text-xs text-muted-foreground hover:text-muted-foreground"
                 onClick={() => setShowAll(false)}
               >
                 Show less

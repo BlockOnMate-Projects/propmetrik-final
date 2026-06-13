@@ -14,6 +14,10 @@ import * as crypto from 'crypto';
 import { whatsappService, WebhookPayload } from '../../shared-services/messaging/whatsappService';
 import { paystackService } from '../services/property-management/payment/paystackService';
 import { paymentProcessor } from '../services/property-management/payment/paymentProcessor';
+import {
+  isSubscriptionReference,
+  reconcileSubscriptionPayment,
+} from '../../shared-services/payments/subscriptions/subscriptionBillingService';
 import { logger } from '../utils/logger';
 import { CompletionEvent, ESignSourceModule } from '../../shared-services/e-sign/integration/types';
 
@@ -398,14 +402,26 @@ router.post('/paystack', async (req: Request, res: Response) => {
     //    verifyAndRecordPayment re-verifies with Paystack, is safe to call twice
     //    (ledger/rent_payment idempotency), and carries the locked FX through metadata.
     if (event === 'charge.success' && reference) {
-      paymentProcessor
-        .verifyAndRecordPayment(reference)
-        .catch((err) =>
-          logger.error('Paystack webhook: verifyAndRecordPayment failed', {
+      if (isSubscriptionReference(reference)) {
+        // SaaS subscription charge (signup or renewal) → capture authorization,
+        // mark invoice paid, activate. Idempotent with the verify endpoint.
+        reconcileSubscriptionPayment(reference).catch((err) =>
+          logger.error('Paystack webhook: reconcileSubscriptionPayment failed', {
             reference,
             error: (err as Error).message,
           })
         );
+      } else {
+        // Rent / PM invoice payment.
+        paymentProcessor
+          .verifyAndRecordPayment(reference)
+          .catch((err) =>
+            logger.error('Paystack webhook: verifyAndRecordPayment failed', {
+              reference,
+              error: (err as Error).message,
+            })
+          );
+      }
     }
 
     // Acknowledge immediately so Paystack does not retry; processing is async above.

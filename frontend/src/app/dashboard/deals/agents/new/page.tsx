@@ -232,8 +232,8 @@ export default function NewAgentPage() {
 
             {/* Error message */}
             {errors.submit && (
-                <div className="border border-red-900 bg-red-900/20 p-3 text-center">
-                    <p className="font-mono text-xs text-red-400">{errors.submit}</p>
+                <div className="border border-red-900 bg-red-100 dark:bg-red-900/20 p-3 text-center">
+                    <p className="font-mono text-xs text-red-600 dark:text-red-400">{errors.submit}</p>
                 </div>
             )}
 
@@ -251,7 +251,7 @@ export default function NewAgentPage() {
                                 errors.firstName && "border-red-500"
                             )}
                         />
-                        {errors.firstName && <p className="font-mono text-[10px] text-red-400 mt-1">{errors.firstName}</p>}
+                        {errors.firstName && <p className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-1">{errors.firstName}</p>}
                     </div>
 
                     <div>
@@ -265,7 +265,7 @@ export default function NewAgentPage() {
                                 errors.lastName && "border-red-500"
                             )}
                         />
-                        {errors.lastName && <p className="font-mono text-[10px] text-red-400 mt-1">{errors.lastName}</p>}
+                        {errors.lastName && <p className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-1">{errors.lastName}</p>}
                     </div>
 
                     <div>
@@ -283,7 +283,7 @@ export default function NewAgentPage() {
                                 )}
                             />
                         </div>
-                        {errors.email && <p className="font-mono text-[10px] text-red-400 mt-1">{errors.email}</p>}
+                        {errors.email && <p className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-1">{errors.email}</p>}
                     </div>
 
                     <div>
@@ -300,7 +300,7 @@ export default function NewAgentPage() {
                                 )}
                             />
                         </div>
-                        {errors.phonePrimary && <p className="font-mono text-[10px] text-red-400 mt-1">{errors.phonePrimary}</p>}
+                        {errors.phonePrimary && <p className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-1">{errors.phonePrimary}</p>}
                     </div>
 
                     <div>
@@ -419,7 +419,7 @@ export default function NewAgentPage() {
                         ))}
                     </div>
                     {errors.specializations && (
-                        <p className="font-mono text-[10px] text-red-400">{errors.specializations}</p>
+                        <p className="font-mono text-[10px] text-red-600 dark:text-red-400">{errors.specializations}</p>
                     )}
                 </div>
             </Panel>
@@ -453,7 +453,7 @@ export default function NewAgentPage() {
                         ))}
                     </div>
                     {errors.regions && (
-                        <p className="font-mono text-[10px] text-red-400">{errors.regions}</p>
+                        <p className="font-mono text-[10px] text-red-600 dark:text-red-400">{errors.regions}</p>
                     )}
                 </div>
             </Panel>

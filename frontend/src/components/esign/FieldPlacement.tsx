@@ -358,7 +358,7 @@ export default function FieldPlacement({
         </div>
 
         {/* PDF scroll area */}
-        <div className="flex-1 overflow-auto bg-zinc-200 dark:bg-zinc-800">
+        <div className="flex-1 overflow-auto bg-zinc-200 dark:bg-muted">
           <div
             className="flex flex-col items-center gap-4 py-4 px-2"
             style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
@@ -366,7 +366,7 @@ export default function FieldPlacement({
             {pdfPages.map((page) => (
               <div
                 key={page.pageNum}
-                className="relative bg-white shadow-lg"
+                className="relative bg-card shadow-lg"
                 ref={(el) => {
                   if (el) pageRefs.current.set(page.pageNum, el);
                 }}
@@ -377,7 +377,7 @@ export default function FieldPlacement({
                 }}
                 onClick={() => setSelectedField(null)}
               >
-                <div className="absolute -top-3 left-2 z-10 bg-zinc-700 text-white text-[10px] px-2 py-0.5 rounded">
+                <div className="absolute -top-3 left-2 z-10 bg-zinc-700 text-foreground text-[10px] px-2 py-0.5 rounded">
                   Page {page.pageNum}
                 </div>
                 <img src={page.dataUrl} alt={`Page ${page.pageNum}`} draggable={false} className="block" />
@@ -446,7 +446,7 @@ export default function FieldPlacement({
                       {isSelected && (
                         <>
                           <button
-                            className="absolute -top-2 -right-2 w-4 h-4 bg-destructive text-white rounded-full flex items-center justify-center text-[8px] z-30"
+                            className="absolute -top-2 -right-2 w-4 h-4 bg-destructive text-foreground rounded-full flex items-center justify-center text-[8px] z-30"
                             onMouseDown={(e) => {
                               e.stopPropagation();
                               deleteField(field.id);
@@ -495,11 +495,11 @@ export default function FieldPlacement({
             return (
               <div key={page.pageNum} className="relative rounded border overflow-hidden hover:border-primary transition-colors cursor-pointer">
                 <img src={page.dataUrl} alt={`Thumb ${page.pageNum}`} className="w-full" />
-                <span className="absolute bottom-0 inset-x-0 text-center text-[9px] bg-black/50 text-white py-0.5">
+                <span className="absolute bottom-0 inset-x-0 text-center text-[9px] bg-background/50 text-foreground py-0.5">
                   {page.pageNum}
                 </span>
                 {fc > 0 && (
-                  <span className="absolute top-0.5 right-0.5 bg-primary text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="absolute top-0.5 right-0.5 bg-primary text-primary-foreground text-[8px] rounded-full w-4 h-4 flex items-center justify-center">
                     {fc}
                   </span>
                 )}
@@ -686,7 +686,7 @@ function SelfSignSidebar({
                   key={field.id}
                   className={`text-xs flex items-center gap-2 px-2 py-1.5 rounded ${
                     isSigned
-                      ? "bg-green-900/40 text-green-300 border border-green-700/50"
+                      ? "bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 border border-green-700/50"
                       : "bg-slate-800 text-slate-200 border border-slate-700/50"
                   }`}
                 >
@@ -881,7 +881,7 @@ function FieldSignedContent({
         />
         {isSelfSigning && (
           <button
-            className="absolute bottom-0 right-0 text-[8px] bg-white/80 px-1 rounded"
+            className="absolute bottom-0 right-0 text-[8px] bg-card/80 px-1 rounded"
             onClick={(e) => {
               e.stopPropagation();
               onChangeSignature();

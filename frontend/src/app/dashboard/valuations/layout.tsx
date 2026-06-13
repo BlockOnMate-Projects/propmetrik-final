@@ -55,7 +55,7 @@ export default function ValuationsLayout({
     return (
         <div className="flex flex-col h-full">
             {/* Valuations Sub Navigation */}
-            <div className="border-b border-zinc-800 bg-zinc-900/30">
+            <div className="border-b border-border bg-card/30">
                 <div className="px-4">
                     <nav className="flex items-center gap-1 py-1 overflow-x-auto no-scrollbar">
                         {visibleNavItems.map((item) => {
@@ -68,8 +68,8 @@ export default function ValuationsLayout({
                                     className={cn(
                                         'flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider transition-colors whitespace-nowrap',
                                         active
-                                            ? 'text-amber-500 bg-zinc-800/50'
-                                            : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'
+                                            ? 'text-amber-500 bg-muted/50'
+                                            : 'text-muted-foreground hover:text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10'
                                     )}
                                 >
                                     <Icon className="w-3.5 h-3.5" />

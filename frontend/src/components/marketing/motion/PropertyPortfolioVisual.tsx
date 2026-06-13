@@ -12,9 +12,9 @@ const properties = [
 ];
 
 const statusColors = {
-    healthy: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', bar: 'bg-emerald-500' },
-    attention: { bg: 'bg-amber-500/20', text: 'text-amber-400', bar: 'bg-amber-500' },
-    warning: { bg: 'bg-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
+    healthy: { bg: 'bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' },
+    attention: { bg: 'bg-amber-500/20', text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
+    warning: { bg: 'bg-red-500/20', text: 'text-red-600 dark:text-red-400', bar: 'bg-red-500' },
 };
 
 export default function PropertyPortfolioVisual() {
@@ -31,32 +31,32 @@ export default function PropertyPortfolioVisual() {
     const colors = statusColors[active.status as keyof typeof statusColors];
 
     return (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="bg-background border border-border rounded-xl overflow-hidden">
             {/* Header */}
-            <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+            <div className="px-5 py-3 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-mono text-zinc-400">Portfolio Overview</span>
+                    <span className="text-xs font-mono text-muted-foreground">Portfolio Overview</span>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5">Illustrative</span>
+                <span className="text-[10px] font-mono text-muted-foreground border border-border rounded px-1.5 py-0.5">Illustrative</span>
             </div>
 
             {/* Summary Row */}
-            <div className="grid grid-cols-3 gap-4 p-5 border-b border-zinc-800">
+            <div className="grid grid-cols-3 gap-4 p-5 border-b border-border">
                 {[
                     { label: 'Total Units', value: '94' },
                     { label: 'Avg Occupancy', value: '90%' },
                     { label: 'Monthly Revenue', value: 'GHS 195K' },
                 ].map((stat) => (
                     <div key={stat.label} className="text-center">
-                        <div className="text-lg font-bold text-white">{stat.value}</div>
-                        <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{stat.label}</div>
+                        <div className="text-lg font-bold text-foreground">{stat.value}</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</div>
                     </div>
                 ))}
             </div>
 
             {/* Property List */}
-            <div className="divide-y divide-zinc-800/50">
+            <div className="divide-y divide-border/50">
                 {properties.map((prop, i) => {
                     const c = statusColors[prop.status as keyof typeof statusColors];
                     const isActive = i === activeIdx;
@@ -69,12 +69,12 @@ export default function PropertyPortfolioVisual() {
                         >
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium text-white truncate">{prop.name}</span>
-                                    <span className="text-[10px] text-zinc-600">{prop.type}</span>
+                                    <span className="text-sm font-medium text-foreground truncate">{prop.name}</span>
+                                    <span className="text-[10px] text-muted-foreground">{prop.type}</span>
                                 </div>
                                 <div className="flex items-center gap-3 mt-1">
-                                    <span className="text-[10px] text-zinc-500">{prop.units} units</span>
-                                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden max-w-[120px]">
+                                    <span className="text-[10px] text-muted-foreground">{prop.units} units</span>
+                                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[120px]">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             whileInView={{ width: `${prop.occupancy}%` }}
@@ -87,8 +87,8 @@ export default function PropertyPortfolioVisual() {
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-sm font-mono text-white">{prop.revenue}</div>
-                                <div className="text-[10px] text-zinc-500">/month</div>
+                                <div className="text-sm font-mono text-foreground">{prop.revenue}</div>
+                                <div className="text-[10px] text-muted-foreground">/month</div>
                             </div>
                         </motion.div>
                     );
@@ -96,7 +96,7 @@ export default function PropertyPortfolioVisual() {
             </div>
 
             {/* Detail Card */}
-            <div className="px-5 py-4 border-t border-zinc-800">
+            <div className="px-5 py-4 border-t border-border">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeIdx}
@@ -113,8 +113,8 @@ export default function PropertyPortfolioVisual() {
                             { label: 'Collections', value: `${active.occupancy}%`, accent: false },
                         ].map((item) => (
                             <div key={item.label} className="text-center">
-                                <div className={`text-base font-bold ${item.accent ? 'text-amber-400' : 'text-white'}`}>{item.value}</div>
-                                <div className="text-[9px] text-zinc-500 uppercase">{item.label}</div>
+                                <div className={`text-base font-bold ${item.accent ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>{item.value}</div>
+                                <div className="text-[9px] text-muted-foreground uppercase">{item.label}</div>
                             </div>
                         ))}
                     </motion.div>

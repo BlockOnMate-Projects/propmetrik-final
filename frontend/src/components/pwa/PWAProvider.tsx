@@ -238,7 +238,7 @@ export function OfflineIndicator() {
   return (
     <div className="fixed bottom-4 left-4 z-50">
       {!isOnline && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white font-mono text-xs rounded">
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-foreground font-mono text-xs rounded">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
             <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
@@ -248,7 +248,7 @@ export function OfflineIndicator() {
         </div>
       )}
       {isUpdating && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white font-mono text-xs rounded">
+        <div className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-foreground font-mono text-xs rounded">
           <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M23 4v6h-6" />
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
@@ -269,29 +269,29 @@ export function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl p-4">
+      <div className="bg-card border border-border rounded-lg shadow-xl p-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-6 h-6 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-mono text-sm text-white">Install PROPMETRIK</h3>
-            <p className="font-mono text-xs text-zinc-400 mt-1">
+            <h3 className="font-mono text-sm text-foreground">Install PROPMETRIK</h3>
+            <p className="font-mono text-xs text-muted-foreground mt-1">
               Install for quick access and offline support
             </p>
             <div className="flex items-center gap-2 mt-3">
               <button
                 onClick={promptInstall}
-                className="px-3 py-1.5 bg-amber-500 text-white font-mono text-xs rounded hover:bg-amber-400 transition-colors"
+                className="px-3 py-1.5 bg-amber-500 text-foreground font-mono text-xs rounded hover:bg-amber-400 transition-colors"
               >
                 Install
               </button>
               <button
                 onClick={() => setDismissed(true)}
-                className="px-3 py-1.5 bg-zinc-700 text-zinc-300 font-mono text-xs rounded hover:bg-zinc-600 transition-colors"
+                className="px-3 py-1.5 bg-zinc-700 text-muted-foreground font-mono text-xs rounded hover:bg-zinc-600 transition-colors"
               >
                 Not now
               </button>

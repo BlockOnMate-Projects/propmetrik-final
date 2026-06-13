@@ -97,7 +97,7 @@ export default function PropertyManagementPage() {
     return (
         <main>
             {/* ====== Hero ====== */}
-            <section className="relative pt-32 pb-24 overflow-hidden bg-zinc-950">
+            <section className="relative pt-32 pb-24 overflow-hidden dark bg-background">
                 <div className="absolute inset-0">
                     <motion.div
                         animate={{ scale: [1, 1.06, 1] }}
@@ -122,21 +122,21 @@ export default function PropertyManagementPage() {
                         <div className="inline-block px-3 py-1 mb-6 border border-primary/50 rounded-full text-xs font-medium tracking-wider uppercase bg-primary/10 text-primary">
                             Property Management
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-white">
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-foreground">
                             Manage Properties,{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                 Maximize Returns
                             </span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed max-w-3xl mb-12">
+                        <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mb-12">
                             From rent collection to maintenance dispatch — a complete property management platform designed for Ghana&apos;s landlords, facility managers, and institutional investors.
                         </p>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Mobile Money rent</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Maintenance & vendors</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Multi-property view</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">GHS accounting</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Mobile Money rent</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Maintenance & vendors</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Multi-property view</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">GHS accounting</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -146,14 +146,14 @@ export default function PropertyManagementPage() {
                                     whileTap={{ scale: 0.98 }}
                                     className="bg-gradient-to-r from-primary to-yellow-400 text-zinc-950 px-8 py-4 font-bold tracking-wider uppercase hover:shadow-lg hover:shadow-primary/50 transition-shadow"
                                 >
-                                    Start Free Trial
+                                    Get Started
                                 </motion.button>
                             </Link>
                             <Link href="/pricing?category=property_management">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="px-8 py-4 border-2 border-zinc-700 text-white font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
+                                    className="px-8 py-4 border-2 border-border text-foreground font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
                                 >
                                     View Pricing
                                 </motion.button>
@@ -164,7 +164,7 @@ export default function PropertyManagementPage() {
             </section>
 
             {/* ====== Portfolio Dashboard Visual ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -172,10 +172,10 @@ export default function PropertyManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                        <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
                             Your Entire Portfolio at a Glance
                         </h2>
-                        <p className="text-lg text-zinc-400">
+                        <p className="text-lg text-muted-foreground">
                             Occupancy, revenue, and maintenance — unified in one live view across all your properties.
                         </p>
                     </motion.div>
@@ -194,7 +194,7 @@ export default function PropertyManagementPage() {
             </section>
 
             {/* ====== Capabilities ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -202,10 +202,10 @@ export default function PropertyManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Built for Ghana&apos;s Property Market
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Mobile Money integrations, GHS accounting, and workflows tailored to local lease conventions.
                         </p>
                     </motion.div>
@@ -219,13 +219,13 @@ export default function PropertyManagementPage() {
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.08 }}
                                 whileHover={{ y: -5 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors group"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors group"
                             >
                                 <div className="w-12 h-12 rounded bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary/20 transition-colors">
                                     {cap.icon}
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{cap.title}</h3>
-                                <p className="text-zinc-400 text-sm leading-relaxed">{cap.description}</p>
+                                <h3 className="text-xl font-bold text-foreground mb-3">{cap.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{cap.description}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -233,7 +233,7 @@ export default function PropertyManagementPage() {
             </section>
 
             {/* ====== Maintenance Tracker Visual ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         <motion.div
@@ -241,13 +241,13 @@ export default function PropertyManagementPage() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                                 Maintenance{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                     on Autopilot
                                 </span>
                             </h2>
-                            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                                 Tenants submit requests from their phone. The system routes by priority, dispatches vendors, and tracks SLA — you only handle escalations.
                             </p>
                             <div className="space-y-4">
@@ -266,7 +266,7 @@ export default function PropertyManagementPage() {
                                         className="flex items-start gap-3"
                                     >
                                         <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                        <span className="text-zinc-300 text-sm">{item}</span>
+                                        <span className="text-muted-foreground text-sm">{item}</span>
                                     </motion.div>
                                 ))}
                             </div>
@@ -285,7 +285,7 @@ export default function PropertyManagementPage() {
             </section>
 
             {/* ====== Use Cases ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -293,10 +293,10 @@ export default function PropertyManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Every Property Type, One Platform
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Residential, commercial, mixed-use, or hospitality — configured to your asset class.
                         </p>
                     </motion.div>
@@ -309,13 +309,13 @@ export default function PropertyManagementPage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors"
                             >
-                                <h3 className="text-2xl font-bold text-white mb-3">{uc.title}</h3>
-                                <p className="text-zinc-400 mb-6 text-sm">{uc.description}</p>
+                                <h3 className="text-2xl font-bold text-foreground mb-3">{uc.title}</h3>
+                                <p className="text-muted-foreground mb-6 text-sm">{uc.description}</p>
                                 <ul className="space-y-3">
                                     {uc.features.map((feat, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                             <span>{feat}</span>
                                         </li>
@@ -328,7 +328,7 @@ export default function PropertyManagementPage() {
             </section>
 
             {/* ====== How It Works ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -336,10 +336,10 @@ export default function PropertyManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             How It Works
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             From portfolio setup to automated operations in four simple steps.
                         </p>
                     </motion.div>
@@ -348,7 +348,7 @@ export default function PropertyManagementPage() {
             </section>
 
             {/* ====== Pricing Teaser ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -356,10 +356,10 @@ export default function PropertyManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Pricing That Scales With You
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Pay per-unit, not per-property. Start small, grow without limits.
                         </p>
                     </motion.div>
@@ -394,8 +394,8 @@ export default function PropertyManagementPage() {
                                 transition={{ delay: i * 0.1 }}
                                 className={`relative rounded-xl p-8 border transition-colors ${
                                     plan.featured
-                                        ? 'bg-zinc-900 border-primary/50 ring-1 ring-primary/20'
-                                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                                        ? 'bg-card border-primary/50 ring-1 ring-primary/20'
+                                        : 'bg-card border-border hover:border-border'
                                 }`}
                             >
                                 {plan.featured && (
@@ -403,15 +403,15 @@ export default function PropertyManagementPage() {
                                         Most Popular
                                     </div>
                                 )}
-                                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{plan.audience}</div>
-                                <h3 className="text-2xl font-bold text-white mb-1">{plan.tier}</h3>
-                                <div className="text-3xl font-bold text-white mb-1">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{plan.audience}</div>
+                                <h3 className="text-2xl font-bold text-foreground mb-1">{plan.tier}</h3>
+                                <div className="text-3xl font-bold text-foreground mb-1">
                                     {plan.price}
-                                    <span className="text-sm text-zinc-500 font-normal"> /month</span>
+                                    <span className="text-sm text-muted-foreground font-normal"> /month</span>
                                 </div>
                                 <ul className="mt-6 space-y-3">
                                     {plan.features.map((f, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <span>{f}</span>
                                         </li>
@@ -424,7 +424,7 @@ export default function PropertyManagementPage() {
                                         className={`w-full mt-8 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
                                             plan.featured
                                                 ? 'bg-gradient-to-r from-primary to-yellow-400 text-zinc-950'
-                                                : 'border border-zinc-700 text-white hover:border-primary hover:text-primary'
+                                                : 'border border-border text-foreground hover:border-primary hover:text-primary'
                                         }`}
                                     >
                                         Get Started
@@ -441,7 +441,7 @@ export default function PropertyManagementPage() {
                 title="Ready to Simplify Property Management?"
                 description="Join landlords and property managers across Ghana who trust PROPMETRIK to collect rent, manage tenants, and maximize returns."
                 primaryCTA={{
-                    text: 'Start Free Trial',
+                    text: 'Get Started',
                     href: '/signup?category=property_management',
                 }}
                 secondaryCTA={{

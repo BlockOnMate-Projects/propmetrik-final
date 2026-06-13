@@ -71,16 +71,16 @@ function DashboardContent() {
           Welcome back, {firstName}!
         </h2>
         {activeTenancy && (
-          <p className="text-gray-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             {activeTenancy.propertyTitle} • {activeTenancy.propertyAddress}
           </p>
         )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-card rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance</span>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
               (paymentSummary?.totalOutstanding || 0) > 0 ? 'bg-red-50' : 'bg-emerald-50'
             }`}>
@@ -108,9 +108,9 @@ function DashboardContent() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-card rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Next Due</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Next Due</span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
               <Calendar className="w-4 h-4 text-amber-500" />
             </div>
@@ -120,7 +120,7 @@ function DashboardContent() {
               <p className="text-2xl lg:text-3xl font-bold text-gray-900">
                 {paymentSummary.currency} {paymentSummary.nextPaymentDue.amount.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {nextPaymentDays !== null && nextPaymentDays <= 7 ? (
                   <span className="text-amber-600 font-medium">
                     <Clock className="w-3 h-3 inline" /> in {nextPaymentDays} days
@@ -132,8 +132,8 @@ function DashboardContent() {
             </>
           ) : (
             <>
-              <p className="text-lg font-medium text-gray-400 mt-1">No upcoming</p>
-              <p className="text-xs text-gray-400">payments</p>
+              <p className="text-lg font-medium text-muted-foreground mt-1">No upcoming</p>
+              <p className="text-xs text-muted-foreground">payments</p>
             </>
           )}
           <Link href={`${T}/payments`} className="text-xs text-cyan-600 hover:text-cyan-700 font-medium mt-3 inline-flex items-center gap-1">
@@ -141,15 +141,15 @@ function DashboardContent() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-card rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Maintenance</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Maintenance</span>
             <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
               <Wrench className="w-4 h-4 text-cyan-500" />
             </div>
           </div>
           <p className="text-2xl lg:text-3xl font-bold text-gray-900">{openRequests.length}</p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {highPriority.length > 0 ? (
               <span className="text-orange-600 font-medium">{highPriority.length} high priority</span>
             ) : (
@@ -161,9 +161,9 @@ function DashboardContent() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-card rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lease</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lease</span>
             <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
               <FileText className="w-4 h-4 text-purple-500" />
             </div>
@@ -174,7 +174,7 @@ function DashboardContent() {
                 {daysRemaining > 0 ? `${daysRemaining} days` : 'Expired'}
               </p>
               <div className="mt-2">
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div className="w-full bg-muted rounded-full h-1.5">
                   <div
                     className={`h-1.5 rounded-full transition-all ${
                       leaseProgress > 85 ? 'bg-amber-500' : 'bg-cyan-500'
@@ -182,13 +182,13 @@ function DashboardContent() {
                     style={{ width: `${leaseProgress}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   {Math.round(leaseProgress)}% elapsed
                 </p>
               </div>
             </>
           ) : (
-            <p className="text-lg font-medium text-gray-400">No active lease</p>
+            <p className="text-lg font-medium text-muted-foreground">No active lease</p>
           )}
           <Link href={`${T}/documents`} className="text-xs text-cyan-600 hover:text-cyan-700 font-medium mt-2 inline-flex items-center gap-1">
             View lease <ChevronRight className="w-3 h-3" />
@@ -210,10 +210,10 @@ function DashboardContent() {
             <Link
               key={action.label}
               href={action.href}
-              className="group flex flex-col items-center justify-center p-4 lg:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+              className="group flex flex-col items-center justify-center p-4 lg:p-5 bg-card rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform`}>
-                <action.icon className="w-5 h-5 text-white" />
+                <action.icon className="w-5 h-5 text-foreground" />
               </div>
               <span className="text-xs font-medium text-gray-700">{action.label}</span>
             </Link>
@@ -222,7 +222,7 @@ function DashboardContent() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Recent Activity</h3>
             <Link href={`${T}/payments`} className="text-xs text-cyan-600 hover:underline font-medium">View all</Link>
@@ -249,13 +249,13 @@ function DashboardContent() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">Rent payment received</p>
-                      <p className="text-xs text-gray-500">{paymentSummary.currency} {paymentSummary.totalPaid.toLocaleString()} total paid</p>
+                      <p className="text-xs text-muted-foreground">{paymentSummary.currency} {paymentSummary.totalPaid.toLocaleString()} total paid</p>
                     </div>
-                    <span className="text-xs text-gray-400">Recent</span>
+                    <span className="text-xs text-muted-foreground">Recent</span>
                   </div>
                 )}
                 {maintenanceRequests.slice(0, 3).map(req => (
-                  <Link key={req.id} href={`${T}/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors">
+                  <Link key={req.id} href={`${T}/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-muted transition-colors">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
                       req.status === 'completed' ? 'bg-emerald-50' :
                       req.status === 'in_progress' ? 'bg-blue-50' :
@@ -269,18 +269,18 @@ function DashboardContent() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{req.title}</p>
-                      <p className="text-xs text-gray-500 capitalize">{req.status.replace('_', ' ')} • {req.category}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{req.status.replace('_', ' ')} • {req.category}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-300" />
                   </Link>
                 ))}
                 {maintenanceRequests.length === 0 && !paymentSummary?.totalPaid && (
                   <div className="py-12 text-center">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Clock className="w-5 h-5 text-gray-400" />
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Clock className="w-5 h-5 text-muted-foreground" />
                     </div>
-                    <p className="text-sm text-gray-500">No recent activity</p>
-                    <p className="text-xs text-gray-400 mt-1">Your activity will appear here</p>
+                    <p className="text-sm text-muted-foreground">No recent activity</p>
+                    <p className="text-xs text-muted-foreground mt-1">Your activity will appear here</p>
                   </div>
                 )}
               </>
@@ -288,7 +288,7 @@ function DashboardContent() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Maintenance Requests</h3>
             <Link href={`${T}/maintenance`} className="text-xs text-cyan-600 hover:underline font-medium">View all</Link>
@@ -302,16 +302,16 @@ function DashboardContent() {
               </div>
             ) : maintenanceRequests.length > 0 ? (
               maintenanceRequests.slice(0, 4).map(req => (
-                <Link key={req.id} href={`${T}/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors">
+                <Link key={req.id} href={`${T}/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-muted transition-colors">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{req.title}</p>
-                    <p className="text-xs text-gray-500">{req.category} • {new Date(req.createdAt).toLocaleDateString('en-GB')}</p>
+                    <p className="text-xs text-muted-foreground">{req.category} • {new Date(req.createdAt).toLocaleDateString('en-GB')}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                     req.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :
                     req.status === 'in_progress' ? 'bg-blue-50 text-blue-700' :
                     req.status === 'assigned' ? 'bg-amber-50 text-amber-700' :
-                    'bg-gray-100 text-gray-600'
+                    'bg-muted text-muted-foreground'
                   }`}>
                     {req.status.replace('_', ' ')}
                   </span>
@@ -320,10 +320,10 @@ function DashboardContent() {
             ) : (
               <div className="py-12 text-center">
                 <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <p className="text-sm font-medium text-gray-700">All good!</p>
-                <p className="text-xs text-gray-400 mt-1">No active maintenance requests</p>
+                <p className="text-xs text-muted-foreground mt-1">No active maintenance requests</p>
                 <Link href={`${T}/maintenance/new`} className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-cyan-600 hover:text-cyan-700">
                   Submit a request <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -334,7 +334,7 @@ function DashboardContent() {
       </div>
 
       {activeTenancy && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">Your Lease</h3>
             <Link href={`${T}/documents`} className="text-xs text-cyan-600 hover:underline font-medium inline-flex items-center gap-1">
@@ -343,23 +343,23 @@ function DashboardContent() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Property</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Property</p>
               <p className="text-sm font-semibold text-gray-900 mt-1">{activeTenancy.propertyTitle}</p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Rent</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Monthly Rent</p>
               <p className="text-sm font-semibold text-gray-900 mt-1">
                 {activeTenancy.rentCurrency} {activeTenancy.rentAmount.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Lease Start</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lease Start</p>
               <p className="text-sm font-semibold text-gray-900 mt-1">
                 {new Date(activeTenancy.startDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Lease End</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lease End</p>
               <p className="text-sm font-semibold text-gray-900 mt-1">
                 {new Date(activeTenancy.endDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>

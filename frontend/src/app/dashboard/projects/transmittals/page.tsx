@@ -27,12 +27,12 @@ const API = process.env.NEXT_PUBLIC_API_URL || ''
 interface Project { id: string; name: string; }
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  draft: { label: 'Draft', cls: 'border-zinc-600 text-zinc-400' },
-  issued: { label: 'Issued', cls: 'border-blue-600 text-blue-400' },
-  partially_acknowledged: { label: 'Partial Ack', cls: 'border-amber-600 text-amber-400' },
-  fully_acknowledged: { label: 'Acknowledged', cls: 'border-emerald-600 text-emerald-400' },
-  closed: { label: 'Closed', cls: 'border-zinc-600 text-zinc-500' },
-  void: { label: 'Void', cls: 'border-red-600 text-red-400' },
+  draft: { label: 'Draft', cls: 'border-zinc-600 text-muted-foreground' },
+  issued: { label: 'Issued', cls: 'border-blue-600 text-blue-600 dark:text-blue-400' },
+  partially_acknowledged: { label: 'Partial Ack', cls: 'border-amber-600 text-amber-600 dark:text-amber-400' },
+  fully_acknowledged: { label: 'Acknowledged', cls: 'border-emerald-600 text-emerald-600 dark:text-emerald-400' },
+  closed: { label: 'Closed', cls: 'border-zinc-600 text-muted-foreground' },
+  void: { label: 'Void', cls: 'border-red-600 text-red-600 dark:text-red-400' },
 }
 
 const PURPOSE_LABELS: Record<string, string> = {
@@ -190,10 +190,10 @@ export default function TransmittalsPage() {
   // ── Stat Cards ────────────────────────────────────────────────────────────
 
   const statCards = [
-    { label: 'Total', value: stats?.total || 0, icon: FileText, color: 'text-zinc-400' },
-    { label: 'Issued', value: stats?.issued || 0, icon: Send, color: 'text-blue-400' },
-    { label: 'Acknowledged', value: stats?.acknowledged || 0, icon: CheckCircle2, color: 'text-emerald-400' },
-    { label: 'Overdue', value: stats?.overdue || 0, icon: AlertTriangle, color: 'text-red-400' },
+    { label: 'Total', value: stats?.total || 0, icon: FileText, color: 'text-muted-foreground' },
+    { label: 'Issued', value: stats?.issued || 0, icon: Send, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Acknowledged', value: stats?.acknowledged || 0, icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Overdue', value: stats?.overdue || 0, icon: AlertTriangle, color: 'text-red-600 dark:text-red-400' },
   ]
 
   if (!projectId) {
@@ -209,17 +209,17 @@ export default function TransmittalsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-mono font-bold text-white tracking-tight">TRANSMITTALS</h1>
-          <p className="text-zinc-500 font-mono text-xs mt-1">Formal document distribution &amp; acknowledgement tracking</p>
+          <h1 className="text-2xl font-mono font-bold text-foreground tracking-tight">TRANSMITTALS</h1>
+          <p className="text-muted-foreground font-mono text-xs mt-1">Formal document distribution &amp; acknowledgement tracking</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={projectId} onValueChange={setProjectId}>
-            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800 text-sm text-white"><SelectValue placeholder="Select project" /></SelectTrigger>
+            <SelectTrigger className="w-[200px] bg-card border-border text-sm text-foreground"><SelectValue placeholder="Select project" /></SelectTrigger>
             <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
           </Select>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+              <Button className="bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs">
                 <Plus className="h-3.5 w-3.5 mr-1" />NEW TRANSMITTAL
               </Button>
             </DialogTrigger>
@@ -239,12 +239,12 @@ export default function TransmittalsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map(s => (
-          <Card key={s.label} className="bg-zinc-900/80 border-zinc-800">
+          <Card key={s.label} className="bg-card/80 border-border">
             <CardContent className="p-4 flex items-center gap-3">
               <s.icon className={`h-5 w-5 ${s.color}`} />
               <div>
-                <p className="text-lg font-mono font-bold text-white">{s.value}</p>
-                <p className="text-[10px] font-mono text-zinc-500 uppercase">{s.label}</p>
+                <p className="text-lg font-mono font-bold text-foreground">{s.value}</p>
+                <p className="text-[10px] font-mono text-muted-foreground uppercase">{s.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -254,19 +254,19 @@ export default function TransmittalsPage() {
       {/* Filters */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search transmittals..."
-            className="pl-9 bg-zinc-900 border-zinc-800 text-white text-xs font-mono"
+            className="pl-9 bg-card border-border text-foreground text-xs font-mono"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-zinc-900 border-zinc-800 text-white text-xs font-mono">
-            <Filter className="h-3 w-3 mr-1 text-zinc-500" /><SelectValue />
+          <SelectTrigger className="w-40 bg-card border-border text-foreground text-xs font-mono">
+            <Filter className="h-3 w-3 mr-1 text-muted-foreground" /><SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-800">
+          <SelectContent className="bg-card border-border">
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="issued">Issued</SelectItem>
@@ -284,11 +284,11 @@ export default function TransmittalsPage() {
           {isLoading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-amber-500" /></div>
           ) : !transmittals?.data?.length ? (
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardContent className="p-8 text-center">
-                <FileText className="h-8 w-8 text-zinc-600 mx-auto mb-3" />
-                <p className="text-sm text-zinc-500">No transmittals found</p>
-                <Button onClick={() => setShowCreate(true)} size="sm" className="mt-3 bg-amber-500 text-white text-xs">
+                <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No transmittals found</p>
+                <Button onClick={() => setShowCreate(true)} size="sm" className="mt-3 bg-amber-500 text-foreground text-xs">
                   Create First Transmittal
                 </Button>
               </CardContent>
@@ -299,19 +299,19 @@ export default function TransmittalsPage() {
               return (
                 <Card
                   key={t.id}
-                  className={`bg-zinc-900/80 border-zinc-800 cursor-pointer transition-colors hover:border-zinc-700 ${selectedId === t.id ? 'border-amber-500/50' : ''}`}
+                  className={`bg-card/80 border-border cursor-pointer transition-colors hover:border-border ${selectedId === t.id ? 'border-amber-500/50' : ''}`}
                   onClick={() => setSelectedId(t.id)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-amber-400 font-bold">{t.transmittal_number}</span>
+                          <span className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold">{t.transmittal_number}</span>
                           <Badge variant="outline" className={`text-[10px] ${badge.cls}`}>{badge.label}</Badge>
-                          {t.priority === 'urgent' && <Badge className="bg-red-500/20 text-red-400 text-[10px]">Urgent</Badge>}
+                          {t.priority === 'urgent' && <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 text-[10px]">Urgent</Badge>}
                         </div>
-                        <p className="text-sm text-white truncate">{t.subject}</p>
-                        <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-500">
+                        <p className="text-sm text-foreground truncate">{t.subject}</p>
+                        <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
                           {t.to_company && <span>To: {t.to_company}</span>}
                           <span>{t.item_count} items</span>
                           <span>{t.acknowledged_count}/{t.recipient_count} ack</span>
@@ -320,10 +320,10 @@ export default function TransmittalsPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
-                            <MoreVertical className="h-3.5 w-3.5 text-zinc-500" />
+                            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-zinc-900 border-zinc-800">
+                        <DropdownMenuContent className="bg-card border-border">
                           <DropdownMenuItem onClick={() => setSelectedId(t.id)} className="text-zinc-200">
                             <Eye className="h-3 w-3 mr-2" />View Detail
                           </DropdownMenuItem>
@@ -338,11 +338,11 @@ export default function TransmittalsPage() {
                             </DropdownMenuItem>
                           )}
                           {t.status !== 'void' && t.status !== 'closed' && (
-                            <DropdownMenuItem onClick={() => voidMutation.mutate(t.id)} className="text-red-400">
+                            <DropdownMenuItem onClick={() => voidMutation.mutate(t.id)} className="text-red-600 dark:text-red-400">
                               <X className="h-3 w-3 mr-2" />Void
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => deleteMutation.mutate(t.id)} className="text-red-400">
+                          <DropdownMenuItem onClick={() => deleteMutation.mutate(t.id)} className="text-red-600 dark:text-red-400">
                             <Trash2 className="h-3 w-3 mr-2" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -358,50 +358,50 @@ export default function TransmittalsPage() {
         {/* Detail Panel */}
         {selectedId && detail && (
           <div className="lg:col-span-2 space-y-4">
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-mono text-amber-400">{detail.transmittal_number}</CardTitle>
-                    <p className="text-white text-lg font-medium mt-1">{detail.subject}</p>
+                    <CardTitle className="text-sm font-mono text-amber-600 dark:text-amber-400">{detail.transmittal_number}</CardTitle>
+                    <p className="text-foreground text-lg font-medium mt-1">{detail.subject}</p>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
-                    <X className="h-4 w-4 text-zinc-500" />
+                    <X className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div><p className="text-[10px] font-mono text-zinc-500">STATUS</p><Badge variant="outline" className={STATUS_BADGE[detail.status]?.cls}>{STATUS_BADGE[detail.status]?.label}</Badge></div>
-                  <div><p className="text-[10px] font-mono text-zinc-500">PURPOSE</p><p className="text-sm text-white">{PURPOSE_LABELS[detail.purpose] || detail.purpose}</p></div>
-                  <div><p className="text-[10px] font-mono text-zinc-500">TO</p><p className="text-sm text-white">{detail.to_company || detail.to_contact || '—'}</p></div>
-                  <div><p className="text-[10px] font-mono text-zinc-500">DUE DATE</p><p className="text-sm text-white">{detail.due_date ? new Date(detail.due_date).toLocaleDateString('en-GB') : '—'}</p></div>
+                  <div><p className="text-[10px] font-mono text-muted-foreground">STATUS</p><Badge variant="outline" className={STATUS_BADGE[detail.status]?.cls}>{STATUS_BADGE[detail.status]?.label}</Badge></div>
+                  <div><p className="text-[10px] font-mono text-muted-foreground">PURPOSE</p><p className="text-sm text-foreground">{PURPOSE_LABELS[detail.purpose] || detail.purpose}</p></div>
+                  <div><p className="text-[10px] font-mono text-muted-foreground">TO</p><p className="text-sm text-foreground">{detail.to_company || detail.to_contact || '—'}</p></div>
+                  <div><p className="text-[10px] font-mono text-muted-foreground">DUE DATE</p><p className="text-sm text-foreground">{detail.due_date ? new Date(detail.due_date).toLocaleDateString('en-GB') : '—'}</p></div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {detail.to_email && <div><p className="text-[10px] font-mono text-zinc-500">TO EMAIL</p><p className="text-sm text-white">{detail.to_email}</p></div>}
-                  <div><p className="text-[10px] font-mono text-zinc-500">RESPONSE</p><p className="text-sm text-white">{detail.response_required ? 'Required' : 'Not required'}</p></div>
-                  <div><p className="text-[10px] font-mono text-zinc-500">PRIORITY</p><Badge variant="outline" className={`text-[10px] ${detail.priority === 'urgent' ? 'border-red-600 text-red-400' : detail.priority === 'high' ? 'border-amber-600 text-amber-400' : 'border-zinc-600 text-zinc-400'}`}>{detail.priority?.toUpperCase()}</Badge></div>
+                  {detail.to_email && <div><p className="text-[10px] font-mono text-muted-foreground">TO EMAIL</p><p className="text-sm text-foreground">{detail.to_email}</p></div>}
+                  <div><p className="text-[10px] font-mono text-muted-foreground">RESPONSE</p><p className="text-sm text-foreground">{detail.response_required ? 'Required' : 'Not required'}</p></div>
+                  <div><p className="text-[10px] font-mono text-muted-foreground">PRIORITY</p><Badge variant="outline" className={`text-[10px] ${detail.priority === 'urgent' ? 'border-red-600 text-red-600 dark:text-red-400' : detail.priority === 'high' ? 'border-amber-600 text-amber-600 dark:text-amber-400' : 'border-zinc-600 text-muted-foreground'}`}>{detail.priority?.toUpperCase()}</Badge></div>
                 </div>
                 {detail.cc_emails?.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-mono text-zinc-500 mb-1">CC RECIPIENTS</p>
+                    <p className="text-[10px] font-mono text-muted-foreground mb-1">CC RECIPIENTS</p>
                     <div className="flex flex-wrap gap-1.5">
                       {detail.cc_emails.map((email: string, i: number) => (
-                        <Badge key={i} variant="outline" className="border-zinc-600 text-zinc-400 text-[10px]">{email}</Badge>
+                        <Badge key={i} variant="outline" className="border-zinc-600 text-muted-foreground text-[10px]">{email}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
                 {detail.description && (
-                  <div><p className="text-[10px] font-mono text-zinc-500">DESCRIPTION</p><p className="text-sm text-zinc-300">{detail.description}</p></div>
+                  <div><p className="text-[10px] font-mono text-muted-foreground">DESCRIPTION</p><p className="text-sm text-muted-foreground">{detail.description}</p></div>
                 )}
                 {detail.status === 'draft' && (
-                  <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800">
+                  <div className="flex flex-col gap-2 pt-2 border-t border-border">
                     <div className="flex items-center gap-2">
                       <Button
                         onClick={() => issueMutation.mutate(detail.id)}
                         disabled={issueMutation.isPending || esigning}
-                        className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs flex-1"
+                        className="bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs flex-1"
                       >
                         <Send className="h-3.5 w-3.5 mr-1" />
                         {issueMutation.isPending ? 'ISSUING...' : 'ISSUE TRANSMITTAL'}
@@ -410,7 +410,7 @@ export default function TransmittalsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => { if (confirm('Delete this draft transmittal?')) deleteMutation.mutate(detail.id) }}
-                        className="border-red-800 text-red-400 hover:bg-red-500/10 text-xs"
+                        className="border-red-800 text-red-600 dark:text-red-400 hover:bg-red-500/10 text-xs"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -419,7 +419,7 @@ export default function TransmittalsPage() {
                       <Button
                         onClick={() => handleIssueWithESign(detail)}
                         disabled={issueMutation.isPending || esigning}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-foreground font-mono text-xs"
                       >
                         {esigning ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
                         {esigning ? 'SENDING...' : 'E-SIGN & ISSUE'}
@@ -431,20 +431,20 @@ export default function TransmittalsPage() {
             </Card>
 
             {/* Items */}
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-mono text-zinc-400">DOCUMENT ITEMS ({detail.items?.length || 0})</CardTitle>
+                <CardTitle className="text-xs font-mono text-muted-foreground">DOCUMENT ITEMS ({detail.items?.length || 0})</CardTitle>
               </CardHeader>
               <CardContent>
                 {detail.items?.length ? (
                   <div className="space-y-2">
                     {detail.items.map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-amber-400 font-bold">{item.item_number}</span>
+                          <span className="text-xs font-mono text-amber-600 dark:text-amber-400 font-bold">{item.item_number}</span>
                           <div>
-                            <p className="text-sm text-white">{item.document_title}</p>
-                            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500">
+                            <p className="text-sm text-foreground">{item.document_title}</p>
+                            <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
                               {item.document_ref && <span>Ref: {item.document_ref}</span>}
                               {item.revision && <span>Rev: {item.revision}</span>}
                               <span>{item.format}</span>
@@ -452,7 +452,7 @@ export default function TransmittalsPage() {
                           </div>
                         </div>
                         {item.file_url && (
-                          <a href={item.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">
+                          <a href={item.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
                             View File
                           </a>
                         )}
@@ -460,34 +460,34 @@ export default function TransmittalsPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-500 text-center py-4">No items added yet</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No items added yet</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Recipients */}
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-mono text-zinc-400">RECIPIENTS ({detail.recipients?.length || 0})</CardTitle>
+                <CardTitle className="text-xs font-mono text-muted-foreground">RECIPIENTS ({detail.recipients?.length || 0})</CardTitle>
               </CardHeader>
               <CardContent>
                 {detail.recipients?.length ? (
                   <div className="space-y-2">
                     {detail.recipients.map((r: any) => (
-                      <div key={r.id} className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
+                      <div key={r.id} className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <Mail className="h-4 w-4 text-zinc-500" />
+                          <Mail className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm text-white">{r.recipient_name || r.recipient_email}</p>
-                            {r.recipient_name && <p className="text-[10px] font-mono text-zinc-500">{r.recipient_email}</p>}
+                            <p className="text-sm text-foreground">{r.recipient_name || r.recipient_email}</p>
+                            {r.recipient_name && <p className="text-[10px] font-mono text-muted-foreground">{r.recipient_email}</p>}
                           </div>
                         </div>
                         {r.acknowledged ? (
-                          <Badge className="bg-emerald-500/20 text-emerald-400 text-[10px]">
+                          <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px]">
                             <CheckCircle2 className="h-3 w-3 mr-1" />Acknowledged
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="border-zinc-600 text-zinc-400 text-[10px]">
+                          <Badge variant="outline" className="border-zinc-600 text-muted-foreground text-[10px]">
                             <Clock className="h-3 w-3 mr-1" />Pending
                           </Badge>
                         )}
@@ -495,23 +495,23 @@ export default function TransmittalsPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-500 text-center py-4">No recipients</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No recipients</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Activity */}
             {detail.activity?.length > 0 && (
-              <Card className="bg-zinc-900/80 border-zinc-800">
+              <Card className="bg-card/80 border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-mono text-zinc-400">ACTIVITY LOG</CardTitle>
+                  <CardTitle className="text-xs font-mono text-muted-foreground">ACTIVITY LOG</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {detail.activity.map((a: any) => (
                       <div key={a.id} className="flex items-center gap-3 text-xs">
-                        <span className="text-zinc-500 font-mono">{new Date(a.created_at).toLocaleDateString('en-GB')}</span>
-                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">{a.action}</Badge>
+                        <span className="text-muted-foreground font-mono">{new Date(a.created_at).toLocaleDateString('en-GB')}</span>
+                        <Badge variant="outline" className="border-border text-muted-foreground text-[10px]">{a.action}</Badge>
                       </div>
                     ))}
                   </div>
@@ -665,48 +665,48 @@ function CreateTransmittalDialog({
   }
 
   return (
-    <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl max-h-[85vh] overflow-y-auto">
+    <DialogContent className="bg-card border-border max-w-2xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle className="text-white font-mono">NEW TRANSMITTAL</DialogTitle>
+        <DialogTitle className="text-foreground font-mono">NEW TRANSMITTAL</DialogTitle>
       </DialogHeader>
       <div className="space-y-4">
         <div>
-          <Label className="text-[10px] font-mono text-zinc-500">SUBJECT *</Label>
-          <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white" />
+          <Label className="text-[10px] font-mono text-muted-foreground">SUBJECT *</Label>
+          <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="bg-muted border-border text-foreground" />
         </div>
         <div>
-          <Label className="text-[10px] font-mono text-zinc-500">DESCRIPTION</Label>
-          <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} className="bg-zinc-800 border-zinc-700 text-white" />
+          <Label className="text-[10px] font-mono text-muted-foreground">DESCRIPTION</Label>
+          <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} className="bg-muted border-border text-foreground" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-[10px] font-mono text-zinc-500">TO COMPANY</Label>
-            <Input value={form.to_company} onChange={e => setForm({ ...form, to_company: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white" />
+            <Label className="text-[10px] font-mono text-muted-foreground">TO COMPANY</Label>
+            <Input value={form.to_company} onChange={e => setForm({ ...form, to_company: e.target.value })} className="bg-muted border-border text-foreground" />
           </div>
           <div>
-            <Label className="text-[10px] font-mono text-zinc-500">TO CONTACT</Label>
-            <Input value={form.to_contact} onChange={e => setForm({ ...form, to_contact: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white" />
+            <Label className="text-[10px] font-mono text-muted-foreground">TO CONTACT</Label>
+            <Input value={form.to_contact} onChange={e => setForm({ ...form, to_contact: e.target.value })} className="bg-muted border-border text-foreground" />
           </div>
         </div>
         <div>
-          <Label className="text-[10px] font-mono text-zinc-500">TO EMAIL <span className="text-zinc-600">(primary addressee — auto-added as recipient)</span></Label>
-          <Input type="email" value={form.to_email} onChange={e => setForm({ ...form, to_email: e.target.value })} placeholder="contact@company.com" className="bg-zinc-800 border-zinc-700 text-white text-xs" />
+          <Label className="text-[10px] font-mono text-muted-foreground">TO EMAIL <span className="text-muted-foreground">(primary addressee — auto-added as recipient)</span></Label>
+          <Input type="email" value={form.to_email} onChange={e => setForm({ ...form, to_email: e.target.value })} placeholder="contact@company.com" className="bg-muted border-border text-foreground text-xs" />
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <Label className="text-[10px] font-mono text-zinc-500">PURPOSE</Label>
+            <Label className="text-[10px] font-mono text-muted-foreground">PURPOSE</Label>
             <Select value={form.purpose} onValueChange={v => setForm({ ...form, purpose: v })}>
-              <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectTrigger className="bg-muted border-border text-foreground text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-muted border-border">
                 {Object.entries(PURPOSE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="text-[10px] font-mono text-zinc-500">PRIORITY</Label>
+            <Label className="text-[10px] font-mono text-muted-foreground">PRIORITY</Label>
             <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
-              <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-700">
+              <SelectTrigger className="bg-muted border-border text-foreground text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-muted border-border">
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="normal">Normal</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -715,8 +715,8 @@ function CreateTransmittalDialog({
             </Select>
           </div>
           <div>
-            <Label className="text-[10px] font-mono text-zinc-500">DUE DATE</Label>
-            <Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white text-xs" />
+            <Label className="text-[10px] font-mono text-muted-foreground">DUE DATE</Label>
+            <Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} className="bg-muted border-border text-foreground text-xs" />
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -725,34 +725,34 @@ function CreateTransmittalDialog({
               type="checkbox"
               checked={form.response_required}
               onChange={e => setForm({ ...form, response_required: e.target.checked })}
-              className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500"
+              className="h-4 w-4 rounded border-zinc-600 bg-muted text-amber-500 focus:ring-amber-500"
             />
-            <span className="text-xs font-mono text-zinc-400">Response Required</span>
+            <span className="text-xs font-mono text-muted-foreground">Response Required</span>
           </label>
         </div>
 
         {/* Items */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <Label className="text-[10px] font-mono text-zinc-500">DOCUMENT ITEMS</Label>
-            <Button type="button" size="sm" variant="outline" onClick={addItem} className="text-xs border-zinc-700 text-zinc-400">
+            <Label className="text-[10px] font-mono text-muted-foreground">DOCUMENT ITEMS</Label>
+            <Button type="button" size="sm" variant="outline" onClick={addItem} className="text-xs border-border text-muted-foreground">
               <Plus className="h-3 w-3 mr-1" />Add Item
             </Button>
           </div>
           {items.map((item, idx) => (
-            <div key={idx} className="p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg mb-2 space-y-2">
+            <div key={idx} className="p-3 bg-muted/50 border border-border/50 rounded-lg mb-2 space-y-2">
               <div className="flex items-center gap-2">
-                <Input placeholder="Document title" value={item.document_title} onChange={e => updateItem(idx, 'document_title', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" />
-                <Input placeholder="Ref" value={item.document_ref} onChange={e => updateItem(idx, 'document_ref', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs w-24" />
-                <Input placeholder="Rev" value={item.revision} onChange={e => updateItem(idx, 'revision', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs w-16" />
+                <Input placeholder="Document title" value={item.document_title} onChange={e => updateItem(idx, 'document_title', e.target.value)} className="bg-muted border-border text-foreground text-xs flex-1" />
+                <Input placeholder="Ref" value={item.document_ref} onChange={e => updateItem(idx, 'document_ref', e.target.value)} className="bg-muted border-border text-foreground text-xs w-24" />
+                <Input placeholder="Rev" value={item.revision} onChange={e => updateItem(idx, 'revision', e.target.value)} className="bg-muted border-border text-foreground text-xs w-16" />
                 <Button type="button" size="sm" variant="ghost" onClick={() => removeItem(idx)} className="h-8 w-8 p-0">
-                  <X className="h-3 w-3 text-zinc-500" />
+                  <X className="h-3 w-3 text-muted-foreground" />
                 </Button>
               </div>
               <div className="flex items-center gap-2">
                 <label className="flex items-center gap-2 px-3 py-1.5 border border-dashed border-zinc-600 rounded-md cursor-pointer hover:border-amber-500/50 transition-colors flex-1">
-                  <Upload className="h-3.5 w-3.5 text-zinc-500" />
-                  <span className="text-[11px] font-mono text-zinc-400">
+                  <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[11px] font-mono text-muted-foreground">
                     {item.file ? item.file.name : 'Attach file...'}
                   </span>
                   <input
@@ -763,7 +763,7 @@ function CreateTransmittalDialog({
                 </label>
                 {item.file && (
                   <Button type="button" size="sm" variant="ghost" onClick={() => updateItem(idx, 'file', null)} className="h-7 px-2">
-                    <X className="h-3 w-3 text-zinc-500" />
+                    <X className="h-3 w-3 text-muted-foreground" />
                   </Button>
                 )}
               </div>
@@ -773,14 +773,14 @@ function CreateTransmittalDialog({
 
         {/* Recipients */}
         <div>
-          <Label className="text-[10px] font-mono text-zinc-500">ADDITIONAL RECIPIENTS <span className="text-zinc-600">(extra people who must acknowledge)</span></Label>
+          <Label className="text-[10px] font-mono text-muted-foreground">ADDITIONAL RECIPIENTS <span className="text-muted-foreground">(extra people who must acknowledge)</span></Label>
           <div className="flex items-center gap-2 mb-2">
-            <Input placeholder="email@example.com" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" onKeyDown={e => e.key === 'Enter' && addRecipient()} />
-            <Button type="button" size="sm" variant="outline" onClick={addRecipient} className="text-xs border-zinc-700 text-zinc-400">Add</Button>
+            <Input placeholder="email@example.com" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="bg-muted border-border text-foreground text-xs flex-1" onKeyDown={e => e.key === 'Enter' && addRecipient()} />
+            <Button type="button" size="sm" variant="outline" onClick={addRecipient} className="text-xs border-border text-muted-foreground">Add</Button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {recipients.map((r, i) => (
-              <Badge key={i} variant="outline" className="border-zinc-700 text-zinc-300 text-[10px] pr-1">
+              <Badge key={i} variant="outline" className="border-border text-muted-foreground text-[10px] pr-1">
                 {r.email}
                 <button onClick={() => setRecipients(recipients.filter((_, j) => j !== i))} className="ml-1 hover:text-red-400">
                   <X className="h-3 w-3" />
@@ -792,14 +792,14 @@ function CreateTransmittalDialog({
 
         {/* CC Recipients */}
         <div>
-          <Label className="text-[10px] font-mono text-zinc-500">CC RECIPIENTS</Label>
+          <Label className="text-[10px] font-mono text-muted-foreground">CC RECIPIENTS</Label>
           <div className="flex items-center gap-2 mb-2">
-            <Input placeholder="cc@example.com" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCcEmail())} />
-            <Button type="button" size="sm" variant="outline" onClick={addCcEmail} className="text-xs border-zinc-700 text-zinc-400">Add</Button>
+            <Input placeholder="cc@example.com" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className="bg-muted border-border text-foreground text-xs flex-1" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCcEmail())} />
+            <Button type="button" size="sm" variant="outline" onClick={addCcEmail} className="text-xs border-border text-muted-foreground">Add</Button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {ccEmails.map((email, i) => (
-              <Badge key={i} variant="outline" className="border-zinc-600 text-zinc-400 text-[10px] pr-1">
+              <Badge key={i} variant="outline" className="border-zinc-600 text-muted-foreground text-[10px] pr-1">
                 CC: {email}
                 <button onClick={() => setCcEmails(ccEmails.filter((_, j) => j !== i))} className="ml-1 hover:text-red-400">
                   <X className="h-3 w-3" />
@@ -809,7 +809,7 @@ function CreateTransmittalDialog({
           </div>
         </div>
 
-        <Button onClick={create} disabled={saving || !form.subject} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+        <Button onClick={create} disabled={saving || !form.subject} className="w-full bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs">
           {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
           CREATE TRANSMITTAL
         </Button>

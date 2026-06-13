@@ -96,7 +96,7 @@ export default function ValuationServicePage() {
     return (
         <main>
             {/* ====== Hero ====== */}
-            <section className="relative pt-32 pb-24 overflow-hidden bg-zinc-950">
+            <section className="relative pt-32 pb-24 overflow-hidden dark bg-background">
                 <div className="absolute inset-0">
                     <motion.div
                         animate={{ scale: [1, 1.06, 1] }}
@@ -121,21 +121,21 @@ export default function ValuationServicePage() {
                         <div className="inline-block px-3 py-1 mb-6 border border-primary/50 rounded-full text-xs font-medium tracking-wider uppercase bg-primary/10 text-primary">
                             Valuation & Advisory
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-white">
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-foreground">
                             Confident Valuations for{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                 Ghana&apos;s Real Estate
                             </span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed max-w-3xl mb-12">
+                        <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mb-12">
                             Leverage AI and verified local market data — with every valuation reviewed by a qualified valuation professional — built for banks, insurers, and developers across Ghana.
                         </p>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Professionally reviewed</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">AI + expert review</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Mortgage-ready reports</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">API access</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Professionally reviewed</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">AI + expert review</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Mortgage-ready reports</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">API access</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -152,7 +152,7 @@ export default function ValuationServicePage() {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="px-8 py-4 border-2 border-zinc-700 text-white font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
+                                    className="px-8 py-4 border-2 border-border text-foreground font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
                                 >
                                     View Pricing
                                 </motion.button>
@@ -163,7 +163,7 @@ export default function ValuationServicePage() {
             </section>
 
             {/* ====== Valuation Scanner Visual ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -171,10 +171,10 @@ export default function ValuationServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                        <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
                             Watch the AI at Work
                         </h2>
-                        <p className="text-lg text-zinc-400">
+                        <p className="text-lg text-muted-foreground">
                             Our valuation engine scans location, comparables, and market trends in real time.
                         </p>
                     </motion.div>
@@ -191,7 +191,7 @@ export default function ValuationServicePage() {
             </section>
 
             {/* ====== Capabilities ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -199,10 +199,10 @@ export default function ValuationServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Why PROPMETRIK Valuations
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Technology meets expertise — an AI-powered valuation platform built for Ghana.
                         </p>
                     </motion.div>
@@ -216,13 +216,13 @@ export default function ValuationServicePage() {
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.08 }}
                                 whileHover={{ y: -5 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors group"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors group"
                             >
                                 <div className="w-12 h-12 rounded bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary/20 transition-colors">
                                     {cap.icon}
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{cap.title}</h3>
-                                <p className="text-zinc-400 text-sm leading-relaxed">{cap.description}</p>
+                                <h3 className="text-xl font-bold text-foreground mb-3">{cap.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{cap.description}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -230,7 +230,7 @@ export default function ValuationServicePage() {
             </section>
 
             {/* ====== Split Visual — How AI Works ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         <motion.div
@@ -238,13 +238,13 @@ export default function ValuationServicePage() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                                 Institutional-Grade{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                     Precision
                                 </span>
                             </h2>
-                            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                                 Our AI cross-references verified transactions, construction costs, and neighbourhood trends — then a qualified valuer signs off before the report reaches you.
                             </p>
                             <div className="space-y-4">
@@ -263,7 +263,7 @@ export default function ValuationServicePage() {
                                         className="flex items-start gap-3"
                                     >
                                         <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                        <span className="text-zinc-300 text-sm">{item}</span>
+                                        <span className="text-muted-foreground text-sm">{item}</span>
                                     </motion.div>
                                 ))}
                             </div>
@@ -276,7 +276,7 @@ export default function ValuationServicePage() {
                             transition={{ delay: 0.2 }}
                             className="relative"
                         >
-                            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-8">
+                            <div className="bg-background border border-border rounded-xl p-8">
                                 <div className="space-y-6">
                                     {[
                                         { label: 'Location Score', value: 92, color: 'bg-emerald-500' },
@@ -286,10 +286,10 @@ export default function ValuationServicePage() {
                                     ].map((metric, i) => (
                                         <div key={metric.label}>
                                             <div className="flex justify-between text-sm mb-2">
-                                                <span className="text-zinc-400">{metric.label}</span>
-                                                <span className="text-white font-mono font-bold">{metric.value}%</span>
+                                                <span className="text-muted-foreground">{metric.label}</span>
+                                                <span className="text-foreground font-mono font-bold">{metric.value}%</span>
                                             </div>
-                                            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     whileInView={{ width: `${metric.value}%` }}
@@ -301,10 +301,10 @@ export default function ValuationServicePage() {
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-8 pt-6 border-t border-zinc-800 text-center">
-                                    <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Estimated Value</div>
-                                    <div className="text-3xl font-bold text-white">GHS 1,250,000</div>
-                                    <div className="text-xs text-zinc-500 mt-1">± 4.8% confidence band</div>
+                                <div className="mt-8 pt-6 border-t border-border text-center">
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Estimated Value</div>
+                                    <div className="text-3xl font-bold text-foreground">GHS 1,250,000</div>
+                                    <div className="text-xs text-muted-foreground mt-1">± 4.8% confidence band</div>
                                 </div>
                             </div>
                         </motion.div>
@@ -313,7 +313,7 @@ export default function ValuationServicePage() {
             </section>
 
             {/* ====== Use Cases ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -321,10 +321,10 @@ export default function ValuationServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Valuation Services
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Comprehensive solutions for every valuation need — from single properties to entire portfolios.
                         </p>
                     </motion.div>
@@ -337,13 +337,13 @@ export default function ValuationServicePage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors"
                             >
-                                <h3 className="text-2xl font-bold text-white mb-3">{uc.title}</h3>
-                                <p className="text-zinc-400 mb-6 text-sm">{uc.description}</p>
+                                <h3 className="text-2xl font-bold text-foreground mb-3">{uc.title}</h3>
+                                <p className="text-muted-foreground mb-6 text-sm">{uc.description}</p>
                                 <ul className="space-y-3">
                                     {uc.features.map((feat, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                             <span>{feat}</span>
                                         </li>
@@ -356,7 +356,7 @@ export default function ValuationServicePage() {
             </section>
 
             {/* ====== How It Works ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -364,10 +364,10 @@ export default function ValuationServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             How It Works
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Simple, transparent process from request to report.
                         </p>
                     </motion.div>
@@ -376,7 +376,7 @@ export default function ValuationServicePage() {
             </section>
 
             {/* ====== Pricing Teaser ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -384,10 +384,10 @@ export default function ValuationServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Transparent Pricing
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             From single valuations to enterprise-scale portfolios.
                         </p>
                     </motion.div>
@@ -422,8 +422,8 @@ export default function ValuationServicePage() {
                                 transition={{ delay: i * 0.1 }}
                                 className={`relative rounded-xl p-8 border transition-colors ${
                                     plan.featured
-                                        ? 'bg-zinc-900 border-primary/50 ring-1 ring-primary/20'
-                                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                                        ? 'bg-card border-primary/50 ring-1 ring-primary/20'
+                                        : 'bg-card border-border hover:border-border'
                                 }`}
                             >
                                 {plan.featured && (
@@ -431,15 +431,15 @@ export default function ValuationServicePage() {
                                         Most Popular
                                     </div>
                                 )}
-                                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{plan.audience}</div>
-                                <h3 className="text-2xl font-bold text-white mb-1">{plan.tier}</h3>
-                                <div className="text-3xl font-bold text-white mb-1">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{plan.audience}</div>
+                                <h3 className="text-2xl font-bold text-foreground mb-1">{plan.tier}</h3>
+                                <div className="text-3xl font-bold text-foreground mb-1">
                                     {plan.price}
-                                    <span className="text-sm text-zinc-500 font-normal"> /month</span>
+                                    <span className="text-sm text-muted-foreground font-normal"> /month</span>
                                 </div>
                                 <ul className="mt-6 space-y-3">
                                     {plan.features.map((f, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <span>{f}</span>
                                         </li>
@@ -452,7 +452,7 @@ export default function ValuationServicePage() {
                                         className={`w-full mt-8 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
                                             plan.featured
                                                 ? 'bg-gradient-to-r from-primary to-yellow-400 text-zinc-950'
-                                                : 'border border-zinc-700 text-white hover:border-primary hover:text-primary'
+                                                : 'border border-border text-foreground hover:border-primary hover:text-primary'
                                         }`}
                                     >
                                         Get Started

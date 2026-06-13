@@ -443,7 +443,7 @@ export default function GenerateLeasePage() {
         return (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
                 <AlertCircle className="h-12 w-12 text-red-500" />
-                <p className="text-zinc-400">Application not found</p>
+                <p className="text-muted-foreground">Application not found</p>
                 <Link href="/dashboard/property-management/applications">
                     <Button variant="outline">Back to Applications</Button>
                 </Link>
@@ -457,8 +457,8 @@ export default function GenerateLeasePage() {
         return (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
                 <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                <h2 className="text-xl font-semibold text-white">Lease Already Generated</h2>
-                <p className="text-zinc-400 text-center max-w-md">
+                <h2 className="text-xl font-semibold text-foreground">Lease Already Generated</h2>
+                <p className="text-muted-foreground text-center max-w-md">
                     A lease has already been generated for this application. You can continue to e-sign, view the lease, or regenerate it (e.g. to fix the currency, rent, or signers).
                 </p>
                 <div className="flex flex-wrap gap-3 mt-4 justify-center">
@@ -473,7 +473,7 @@ export default function GenerateLeasePage() {
                     <Button
                         variant="outline"
                         onClick={() => { setError(null); setForceShowForm(true); }}
-                        className="border-amber-700 text-amber-400 hover:bg-amber-950/40 hover:text-amber-300"
+                        className="border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-950/40 hover:text-amber-300"
                     >
                         <FileSignature className="h-4 w-4 mr-2" />
                         Regenerate Lease
@@ -504,7 +504,7 @@ export default function GenerateLeasePage() {
         return (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
                 <AlertCircle className="h-12 w-12 text-yellow-500" />
-                <p className="text-zinc-400">Application must be approved before generating a lease</p>
+                <p className="text-muted-foreground">Application must be approved before generating a lease</p>
                 <Link href={`/dashboard/property-management/applications/${applicationId}`}>
                     <Button variant="outline">Back to Application</Button>
                 </Link>
@@ -518,13 +518,13 @@ export default function GenerateLeasePage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href={`/dashboard/property-management/applications/${applicationId}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white">Generate Lease Agreement</h1>
-                        <p className="text-sm text-zinc-400">Create a lease for {application.applicantFullName}</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Generate Lease Agreement</h1>
+                        <p className="text-sm text-muted-foreground">Create a lease for {application.applicantFullName}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -532,7 +532,7 @@ export default function GenerateLeasePage() {
                         variant="outline"
                         onClick={handlePreview}
                         disabled={isGenerating || !formData.templateId}
-                        className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                        className="border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                     >
                         <Eye className="mr-2 h-4 w-4" />
                         Preview
@@ -540,7 +540,7 @@ export default function GenerateLeasePage() {
                     <Button
                         onClick={handleGenerateLease}
                         disabled={isGenerating || !formData.templateId}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-foreground"
                     >
                         {isGenerating ? (
                             <>
@@ -558,16 +558,16 @@ export default function GenerateLeasePage() {
             </div>
 
             {error && (
-                <div className="bg-red-900/20 border border-red-900 rounded-lg p-4 flex items-center gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-400" />
-                    <p className="text-red-400">{error}</p>
+                <div className="bg-red-100 dark:bg-red-900/20 border border-red-900 rounded-lg p-4 flex items-center gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    <p className="text-red-600 dark:text-red-400">{error}</p>
                 </div>
             )}
 
             {/* Application Summary */}
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
                 <CardHeader>
-                    <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                    <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                         <User className="h-5 w-5" />
                         Applicant Information
                     </CardTitle>
@@ -575,31 +575,31 @@ export default function GenerateLeasePage() {
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="flex items-center gap-3">
-                            <User className="h-4 w-4 text-zinc-400" />
+                            <User className="h-4 w-4 text-muted-foreground" />
                             <div>
-                                <p className="text-xs text-zinc-500">Name</p>
-                                <p className="text-white">{application.applicantFullName}</p>
+                                <p className="text-xs text-muted-foreground">Name</p>
+                                <p className="text-foreground">{application.applicantFullName}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Mail className="h-4 w-4 text-zinc-400" />
+                            <Mail className="h-4 w-4 text-muted-foreground" />
                             <div>
-                                <p className="text-xs text-zinc-500">Email</p>
-                                <p className="text-white">{application.applicantEmail}</p>
+                                <p className="text-xs text-muted-foreground">Email</p>
+                                <p className="text-foreground">{application.applicantEmail}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Phone className="h-4 w-4 text-zinc-400" />
+                            <Phone className="h-4 w-4 text-muted-foreground" />
                             <div>
-                                <p className="text-xs text-zinc-500">Phone</p>
-                                <p className="text-white">{application.applicantPhone}</p>
+                                <p className="text-xs text-muted-foreground">Phone</p>
+                                <p className="text-foreground">{application.applicantPhone}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 md:col-span-3">
-                            <Building2 className="h-4 w-4 text-zinc-400" />
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
                             <div>
-                                <p className="text-xs text-zinc-500">Property</p>
-                                <p className="text-white">{application.propertyName || application.propertyAddress || 'N/A'}</p>
+                                <p className="text-xs text-muted-foreground">Property</p>
+                                <p className="text-foreground">{application.propertyName || application.propertyAddress || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
@@ -608,23 +608,23 @@ export default function GenerateLeasePage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Template Selection */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                <Card className="bg-card border-border md:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Lease Template</CardTitle>
-                        <CardDescription className="text-zinc-500">Select a template for this lease agreement</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Lease Template</CardTitle>
+                        <CardDescription className="text-muted-foreground">Select a template for this lease agreement</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="template" className="text-zinc-300">Template</Label>
+                                <Label htmlFor="template" className="text-muted-foreground">Template</Label>
                                 <Select
                                     value={formData.templateId}
                                     onValueChange={(value) => setFormData(prev => ({ ...prev, templateId: value }))}
                                 >
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder="Select a lease template" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                    <SelectContent className="bg-card border-border text-muted-foreground">
                                         {templates.length === 0 ? (
                                             <SelectItem value="none" disabled>No templates available</SelectItem>
                                         ) : (
@@ -647,9 +647,9 @@ export default function GenerateLeasePage() {
                 </Card>
 
                 {/* Lease Duration */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                             <Calendar className="h-5 w-5" />
                             Lease Duration
                         </CardTitle>
@@ -657,23 +657,23 @@ export default function GenerateLeasePage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="startDate" className="text-zinc-300">Start Date</Label>
+                                <Label htmlFor="startDate" className="text-muted-foreground">Start Date</Label>
                                 <Input
                                     id="startDate"
                                     type="date"
                                     value={formData.startDate}
                                     onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                                    className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                    className="bg-background border-border focus:border-orange-500"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="endDate" className="text-zinc-300">End Date</Label>
+                                <Label htmlFor="endDate" className="text-muted-foreground">End Date</Label>
                                 <Input
                                     id="endDate"
                                     type="date"
                                     value={formData.endDate}
                                     onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                                    className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                    className="bg-background border-border focus:border-orange-500"
                                 />
                             </div>
                         </div>
@@ -684,37 +684,37 @@ export default function GenerateLeasePage() {
                                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, autoRenew: checked as boolean }))}
                                 className="border-zinc-600 data-[state=checked]:bg-orange-500"
                             />
-                            <Label htmlFor="autoRenew" className="text-zinc-300 font-normal">Auto-renew lease at end of term</Label>
+                            <Label htmlFor="autoRenew" className="text-muted-foreground font-normal">Auto-renew lease at end of term</Label>
                         </div>
                         <div className="space-y-2 pt-2">
-                            <Label htmlFor="noticePeriod" className="text-zinc-300">Notice Period (Days)</Label>
+                            <Label htmlFor="noticePeriod" className="text-muted-foreground">Notice Period (Days)</Label>
                             <Input
                                 id="noticePeriod"
                                 type="number"
                                 value={formData.noticePeriodDays}
                                 onChange={(e) => setFormData(prev => ({ ...prev, noticePeriodDays: parseInt(e.target.value) || 30 }))}
-                                className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                className="bg-background border-border focus:border-orange-500"
                             />
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Financial Details */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                             <DollarSign className="h-5 w-5" />
                             Financial Terms
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="currency" className="text-zinc-300">Currency</Label>
+                            <Label htmlFor="currency" className="text-muted-foreground">Currency</Label>
                             <select
                                 id="currency"
                                 value={formData.currency}
                                 onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-                                className="flex h-10 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-orange-500 focus:outline-none"
+                                className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-orange-500 focus:outline-none"
                             >
                                 <option value="GHS">GHS (Ghana Cedi)</option>
                                 <option value="USD">USD (US Dollar)</option>
@@ -724,54 +724,54 @@ export default function GenerateLeasePage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="monthlyRent" className="text-zinc-300">Monthly Rent ({formData.currency})</Label>
+                                <Label htmlFor="monthlyRent" className="text-muted-foreground">Monthly Rent ({formData.currency})</Label>
                                 <Input
                                     id="monthlyRent"
                                     type="number"
                                     value={formData.monthlyRent}
                                     onChange={(e) => setFormData(prev => ({ ...prev, monthlyRent: parseFloat(e.target.value) || 0 }))}
-                                    className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                    className="bg-background border-border focus:border-orange-500"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="securityDeposit" className="text-zinc-300">Security Deposit ({formData.currency})</Label>
+                                <Label htmlFor="securityDeposit" className="text-muted-foreground">Security Deposit ({formData.currency})</Label>
                                 <Input
                                     id="securityDeposit"
                                     type="number"
                                     value={formData.securityDeposit}
                                     onChange={(e) => setFormData(prev => ({ ...prev, securityDeposit: parseFloat(e.target.value) || 0 }))}
-                                    className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                    className="bg-background border-border focus:border-orange-500"
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="advanceMonths" className="text-zinc-300">Advance Months</Label>
+                            <Label htmlFor="advanceMonths" className="text-muted-foreground">Advance Months</Label>
                             <Input
                                 id="advanceMonths"
                                 type="number"
                                 min={1}
                                 value={formData.advanceMonths}
                                 onChange={(e) => setFormData(prev => ({ ...prev, advanceMonths: parseInt(e.target.value) || 1 }))}
-                                className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                className="bg-background border-border focus:border-orange-500"
                             />
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Utilities & Services */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                <Card className="bg-card border-border md:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                             <Building2 className="h-5 w-5" />
                             Utilities & Services
                         </CardTitle>
-                        <CardDescription className="text-zinc-500">Select who is responsible for each utility</CardDescription>
+                        <CardDescription className="text-muted-foreground">Select who is responsible for each utility</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-2 gap-6">
                             {/* Tenant Utilities */}
                             <div className="space-y-3">
-                                <Label className="text-zinc-300 font-medium">Tenant Pays For:</Label>
+                                <Label className="text-muted-foreground font-medium">Tenant Pays For:</Label>
                                 <div className="space-y-2">
                                     {UTILITIES.map((utility) => (
                                         <div key={`tenant-${utility.id}`} className="flex items-center space-x-2">
@@ -794,7 +794,7 @@ export default function GenerateLeasePage() {
                                                 }}
                                                 className="border-zinc-600 data-[state=checked]:bg-orange-500"
                                             />
-                                            <Label htmlFor={`tenant-${utility.id}`} className="text-zinc-300 font-normal cursor-pointer">
+                                            <Label htmlFor={`tenant-${utility.id}`} className="text-muted-foreground font-normal cursor-pointer">
                                                 {utility.label}
                                             </Label>
                                         </div>
@@ -804,7 +804,7 @@ export default function GenerateLeasePage() {
                             
                             {/* Landlord Utilities */}
                             <div className="space-y-3">
-                                <Label className="text-zinc-300 font-medium">Landlord Pays For:</Label>
+                                <Label className="text-muted-foreground font-medium">Landlord Pays For:</Label>
                                 <div className="space-y-2">
                                     {UTILITIES.map((utility) => (
                                         <div key={`landlord-${utility.id}`} className="flex items-center space-x-2">
@@ -827,7 +827,7 @@ export default function GenerateLeasePage() {
                                                 }}
                                                 className="border-zinc-600 data-[state=checked]:bg-emerald-500"
                                             />
-                                            <Label htmlFor={`landlord-${utility.id}`} className="text-zinc-300 font-normal cursor-pointer">
+                                            <Label htmlFor={`landlord-${utility.id}`} className="text-muted-foreground font-normal cursor-pointer">
                                                 {utility.label}
                                             </Label>
                                         </div>
@@ -835,26 +835,26 @@ export default function GenerateLeasePage() {
                                 </div>
                             </div>
                         </div>
-                        <p className="text-xs text-zinc-500 mt-4">
+                        <p className="text-xs text-muted-foreground mt-4">
                             Note: Utilities not selected by either party will be left blank in the lease agreement.
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* Landlord Information */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                             <User className="h-5 w-5" />
                             Landlord / Owner Details
                         </CardTitle>
-                        <CardDescription className="text-zinc-500">
+                        <CardDescription className="text-muted-foreground">
                             The landlord's name will appear on the lease agreement
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {/* Signing Authorization Questions */}
-                        <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4">
+                        <div className="bg-muted/50 rounded-lg p-4 space-y-4">
                             <div className="flex items-start space-x-3">
                                 <Checkbox
                                     id="isUserLandlord"
@@ -870,14 +870,14 @@ export default function GenerateLeasePage() {
                                     <Label htmlFor="isUserLandlord" className="text-zinc-200 font-medium">
                                         I am the Landlord / Property Owner
                                     </Label>
-                                    <p className="text-xs text-zinc-500 mt-1">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         Check this if you own the property and will sign as the landlord
                                     </p>
                                 </div>
                             </div>
 
                             {!formData.isUserLandlord && (
-                                <div className="flex items-start space-x-3 pt-2 border-t border-zinc-700">
+                                <div className="flex items-start space-x-3 pt-2 border-t border-border">
                                     <Checkbox
                                         id="landlordWillSign"
                                         checked={formData.landlordWillSign}
@@ -891,7 +891,7 @@ export default function GenerateLeasePage() {
                                         <Label htmlFor="landlordWillSign" className="text-zinc-200 font-medium">
                                             Landlord will also sign this lease
                                         </Label>
-                                        <p className="text-xs text-zinc-500 mt-1">
+                                        <p className="text-xs text-muted-foreground mt-1">
                                             Check this if the property owner will also sign. Otherwise, you'll sign on their behalf as authorized agent.
                                         </p>
                                     </div>
@@ -902,26 +902,26 @@ export default function GenerateLeasePage() {
                         <Separator className="bg-zinc-700" />
 
                         <div className="space-y-2">
-                            <Label htmlFor="landlordName" className="text-zinc-300">
-                                Landlord Name <span className="text-red-400">*</span>
+                            <Label htmlFor="landlordName" className="text-muted-foreground">
+                                Landlord Name <span className="text-red-600 dark:text-red-400">*</span>
                             </Label>
                             <Input
                                 id="landlordName"
                                 value={formData.landlordName}
                                 onChange={(e) => setFormData(prev => ({ ...prev, landlordName: e.target.value }))}
                                 placeholder="Enter landlord or property owner name"
-                                className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                className="bg-background border-border focus:border-orange-500"
                                 disabled={formData.isUserLandlord}
                             />
                             {formData.isUserLandlord && (
-                                <p className="text-xs text-emerald-400">
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400">
                                     Auto-filled from your profile
                                 </p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="landlordEmail" className="text-zinc-300">
-                                Landlord Email {formData.landlordWillSign && <span className="text-red-400">*</span>}
+                            <Label htmlFor="landlordEmail" className="text-muted-foreground">
+                                Landlord Email {formData.landlordWillSign && <span className="text-red-600 dark:text-red-400">*</span>}
                             </Label>
                             <Input
                                 id="landlordEmail"
@@ -929,11 +929,11 @@ export default function GenerateLeasePage() {
                                 value={formData.landlordEmail}
                                 onChange={(e) => setFormData(prev => ({ ...prev, landlordEmail: e.target.value }))}
                                 placeholder="landlord@email.com"
-                                className="bg-zinc-950 border-zinc-800 focus:border-orange-500"
+                                className="bg-background border-border focus:border-orange-500"
                                 disabled={formData.isUserLandlord}
                             />
                             {!formData.isUserLandlord && !formData.landlordWillSign && (
-                                <p className="text-xs text-zinc-500">
+                                <p className="text-xs text-muted-foreground">
                                     Optional if landlord won't sign (you'll sign on their behalf)
                                 </p>
                             )}
@@ -942,9 +942,9 @@ export default function GenerateLeasePage() {
                 </Card>
 
                 {/* E-Signature Options */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white flex items-center gap-2">
+                        <CardTitle className="text-lg font-medium text-foreground flex items-center gap-2">
                             <FileSignature className="h-5 w-5" />
                             E-Signature Options
                         </CardTitle>
@@ -957,51 +957,51 @@ export default function GenerateLeasePage() {
                                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, includeESign: checked as boolean }))}
                                 className="border-zinc-600 data-[state=checked]:bg-emerald-500"
                             />
-                            <Label htmlFor="includeESign" className="text-zinc-300 font-normal">
+                            <Label htmlFor="includeESign" className="text-muted-foreground font-normal">
                                 Send for electronic signature
                             </Label>
                         </div>
                         {formData.includeESign && (
-                            <div className="bg-zinc-800/50 rounded-lg p-4 mt-4">
-                                <h4 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
+                            <div className="bg-muted/50 rounded-lg p-4 mt-4">
+                                <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
                                     <Users className="h-4 w-4" />
                                     Signing Order
                                 </h4>
                                 <div className="space-y-3 text-sm">
                                     {/* Signer 1: Current User (Agent or Landlord) */}
-                                    <div className="flex justify-between items-center p-2 bg-zinc-900 rounded">
+                                    <div className="flex justify-between items-center p-2 bg-card rounded">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white font-bold">1</div>
-                                            <span className="text-zinc-300">
+                                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs text-foreground font-bold">1</div>
+                                            <span className="text-muted-foreground">
                                                 {formData.isUserLandlord ? 'Landlord (You)' : 'Property Manager (You)'}
                                             </span>
                                         </div>
-                                        <span className="text-zinc-400">{user?.name || 'Current User'}</span>
+                                        <span className="text-muted-foreground">{user?.name || 'Current User'}</span>
                                     </div>
 
                                     {/* Signer 2: Tenant */}
-                                    <div className="flex justify-between items-center p-2 bg-zinc-900 rounded">
+                                    <div className="flex justify-between items-center p-2 bg-card rounded">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-xs text-white font-bold">2</div>
-                                            <span className="text-zinc-300">Tenant</span>
+                                            <div className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center text-xs text-foreground font-bold">2</div>
+                                            <span className="text-muted-foreground">Tenant</span>
                                         </div>
-                                        <span className="text-zinc-400">{application?.applicantFullName}</span>
+                                        <span className="text-muted-foreground">{application?.applicantFullName}</span>
                                     </div>
 
                                     {/* Signer 3: Landlord (only if not user and landlord will sign) */}
                                     {!formData.isUserLandlord && formData.landlordWillSign && (
-                                        <div className="flex justify-between items-center p-2 bg-zinc-900 rounded">
+                                        <div className="flex justify-between items-center p-2 bg-card rounded">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-xs text-white font-bold">3</div>
-                                                <span className="text-zinc-300">Landlord</span>
+                                                <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-xs text-foreground font-bold">3</div>
+                                                <span className="text-muted-foreground">Landlord</span>
                                             </div>
-                                            <span className="text-zinc-400">{formData.landlordName || 'Not specified'}</span>
+                                            <span className="text-muted-foreground">{formData.landlordName || 'Not specified'}</span>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Info message */}
-                                <div className="mt-4 p-3 bg-blue-900/20 border border-blue-800 rounded text-xs text-blue-300">
+                                <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/20 border border-blue-800 rounded text-xs text-blue-600 dark:text-blue-300">
                                     {formData.isUserLandlord ? (
                                         <p>As the landlord, you will sign first, then the tenant will receive the document for signature.</p>
                                     ) : formData.landlordWillSign ? (
@@ -1016,17 +1016,17 @@ export default function GenerateLeasePage() {
                 </Card>
 
                 {/* Additional Terms */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                <Card className="bg-card border-border md:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Additional Terms & Conditions</CardTitle>
-                        <CardDescription className="text-zinc-500">Add any custom terms for this specific lease</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Additional Terms & Conditions</CardTitle>
+                        <CardDescription className="text-muted-foreground">Add any custom terms for this specific lease</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Textarea
                             value={formData.additionalTerms}
                             onChange={(e) => setFormData(prev => ({ ...prev, additionalTerms: e.target.value }))}
                             placeholder="Enter any additional terms, conditions, or special agreements..."
-                            className="bg-zinc-950 border-zinc-800 focus:border-orange-500 min-h-[100px]"
+                            className="bg-background border-border focus:border-orange-500 min-h-[100px]"
                         />
                     </CardContent>
                 </Card>
@@ -1034,14 +1034,14 @@ export default function GenerateLeasePage() {
 
             {/* Preview Dialog */}
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-zinc-900 border-zinc-800">
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Lease Preview</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground">Lease Preview</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Preview how the lease document will look
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-white rounded-lg p-6 text-white">
+                    <div className="bg-card rounded-lg p-6 text-foreground">
                         <div dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
                     </div>
                     <DialogFooter>
@@ -1054,34 +1054,34 @@ export default function GenerateLeasePage() {
 
             {/* Success Dialog */}
             <Dialog open={isSuccessOpen} onOpenChange={() => {}}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
+                        <DialogTitle className="text-foreground flex items-center gap-2">
                             <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                             Lease Generated Successfully
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogDescription className="text-muted-foreground">
                             The lease agreement has been generated and sent for signature.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+                        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                             {generatedResult?.tenantId && (
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-400">Tenant Created</span>
-                                    <span className="text-emerald-400">✓</span>
+                                    <span className="text-muted-foreground">Tenant Created</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400">✓</span>
                                 </div>
                             )}
                             {generatedResult?.tenancyId && (
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-400">Tenancy Created</span>
-                                    <span className="text-emerald-400">✓</span>
+                                    <span className="text-muted-foreground">Tenancy Created</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400">✓</span>
                                 </div>
                             )}
                             {formData.includeESign && (
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-zinc-400">E-Signature Requested</span>
-                                    <span className="text-emerald-400">✓</span>
+                                    <span className="text-muted-foreground">E-Signature Requested</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400">✓</span>
                                 </div>
                             )}
                         </div>

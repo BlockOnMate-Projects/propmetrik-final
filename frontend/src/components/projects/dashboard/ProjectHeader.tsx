@@ -58,9 +58,9 @@ const statusStyles: Record<ProjectStatus, string> = {
   nearing_completion: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
   completed: 'bg-green-500/10 text-green-500 border-green-500/20',
   sold_out: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  on_hold: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
+  on_hold: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20',
   cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
-  archived: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
+  archived: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20',
 }
 
 export function ProjectHeader({ project, isLoading, projectManagerName }: ProjectHeaderProps) {
@@ -122,13 +122,13 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
   if (isLoading || !project) {
     return (
       <div className="animate-pulse space-y-4 mb-8">
-        <div className="h-4 w-24 bg-zinc-800 rounded" />
+        <div className="h-4 w-24 bg-muted rounded" />
         <div className="flex justify-between items-start">
           <div className="space-y-2">
-            <div className="h-8 w-64 bg-zinc-800 rounded" />
-            <div className="h-4 w-48 bg-zinc-800 rounded" />
+            <div className="h-8 w-64 bg-muted rounded" />
+            <div className="h-4 w-48 bg-muted rounded" />
           </div>
-          <div className="h-10 w-32 bg-zinc-800 rounded" />
+          <div className="h-10 w-32 bg-muted rounded" />
         </div>
       </div>
     )
@@ -137,7 +137,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
   return (
     <div className="mb-8 space-y-4">
       {/* Breadcrumb / Back Navigation */}
-      <nav className="flex items-center text-xs text-zinc-500 font-mono">
+      <nav className="flex items-center text-xs text-muted-foreground font-mono">
         <Link
           href="/dashboard/projects"
           className="hover:text-amber-500 transition-colors flex items-center gap-1"
@@ -146,7 +146,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
           BACK TO PROJECTS
         </Link>
         <span className="mx-2 text-zinc-700">/</span>
-        <span className="text-zinc-300">{project.project_number}</span>
+        <span className="text-muted-foreground">{project.project_number}</span>
       </nav>
 
       {/* Main Header Area */}
@@ -154,7 +154,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
         {/* Left: Title & Meta */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-white">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
               {project.project_name}
             </h1>
             <Badge
@@ -165,22 +165,22 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
             </Badge>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-zinc-400 font-mono">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground font-mono">
             {project.city && (
               <div className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-zinc-500" />
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{project.city}, {project.region}</span>
               </div>
             )}
 
             <div className="flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5 text-zinc-500" />
+              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="capitalize">{project.project_type.replace('_', ' ')}</span>
             </div>
 
             {project.planned_start_date && (
               <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-zinc-500" />
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>
                   {new Date(project.planned_start_date).toLocaleDateString('en-GB')}
                   {project.planned_completion_date && ` - ${new Date(project.planned_completion_date).toLocaleDateString('en-GB')}`}
@@ -190,7 +190,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
 
             {projectManagerName && (
               <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-zinc-500" />
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>PM: {projectManagerName}</span>
               </div>
             )}
@@ -203,7 +203,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
             <Button
               variant="outline"
               size="sm"
-              className="hidden lg:flex border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-300"
+              className="hidden lg:flex border-border bg-card/50 hover:bg-muted text-muted-foreground"
               onClick={handleShare}
             >
               <Share2 className="h-3.5 w-3.5 mr-2" />
@@ -212,7 +212,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
             <Button
               variant="outline"
               size="sm"
-              className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-300"
+              className="border-border bg-card/50 hover:bg-muted text-muted-foreground"
               onClick={() => router.push(`/dashboard/projects/${project.id}/edit`)}
             >
               <Edit className="h-3.5 w-3.5 mr-2" />
@@ -222,28 +222,28 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-300">
+              <Button variant="outline" size="icon" className="border-border bg-card/50 hover:bg-muted text-muted-foreground">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800">
-              <DropdownMenuLabel className="text-zinc-500 text-xs font-mono uppercase">Manage Project</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-56 bg-card border-border">
+              <DropdownMenuLabel className="text-muted-foreground text-xs font-mono uppercase">Manage Project</DropdownMenuLabel>
               <DropdownMenuItem
-                className="text-zinc-300 focus:text-white focus:bg-zinc-800 cursor-pointer"
+                className="text-muted-foreground focus:text-foreground focus:bg-muted cursor-pointer"
                 onClick={() => router.push(`/dashboard/projects/${project.id}/edit`)}
               >
                 <Edit className="h-4 w-4 mr-2" /> Edit Details
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-zinc-300 focus:text-white focus:bg-zinc-800 cursor-pointer"
+                className="text-muted-foreground focus:text-foreground focus:bg-muted cursor-pointer"
                 onClick={handleShare}
               >
                 <Share2 className="h-4 w-4 mr-2" /> Share Dashboard
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-zinc-800" />
-              <DropdownMenuLabel className="text-zinc-500 text-xs font-mono uppercase">Danger Zone</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-muted" />
+              <DropdownMenuLabel className="text-muted-foreground text-xs font-mono uppercase">Danger Zone</DropdownMenuLabel>
               <DropdownMenuItem
-                className="text-red-400 focus:text-red-300 focus:bg-red-900/20 cursor-pointer"
+                className="text-red-600 dark:text-red-400 focus:text-red-300 focus:bg-red-900/20 cursor-pointer"
                 onClick={() => setShowArchiveDialog(true)}
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Archive Project
@@ -255,25 +255,25 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
 
       {/* Archive Confirmation Dialog */}
       <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-white">
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
               <AlertTriangle className="h-5 w-5 text-red-500" />
               Archive Project
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
-              Are you sure you want to archive <span className="text-white font-medium">{project.project_name || project.name}</span>?
+            <AlertDialogDescription className="text-muted-foreground">
+              Are you sure you want to archive <span className="text-foreground font-medium">{project.project_name || project.name}</span>?
               This will hide the project from the active list. You can restore it later from archived projects.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700">
+            <AlertDialogCancel className="bg-muted text-muted-foreground border-border hover:bg-zinc-700">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleArchive}
               disabled={isArchiving}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-red-600 text-foreground hover:bg-red-700"
             >
               {isArchiving ? 'Archiving...' : 'Archive Project'}
             </AlertDialogAction>
@@ -283,15 +283,15 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
 
       {/* Optional: Ghana Context Info Banner (If available) */}
       {(project.land_tenure || project.traditional_authority) && (
-        <div className="flex items-center gap-4 py-2 px-3 bg-zinc-900/40 border border-zinc-800/60 rounded-md">
+        <div className="flex items-center gap-4 py-2 px-3 bg-card/40 border border-border/60 rounded-md">
           {project.land_tenure && (
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-zinc-800 rounded">
+              <div className="p-1.5 bg-muted rounded">
                 <Map className="h-4 w-4 text-emerald-500" />
               </div>
               <div>
-                <span className="text-[10px] text-zinc-500 font-mono block">TENURE</span>
-                <span className="text-xs text-zinc-300 font-medium capitalize">{project.land_tenure.replace(/_/g, ' ')}</span>
+                <span className="text-[10px] text-muted-foreground font-mono block">TENURE</span>
+                <span className="text-xs text-muted-foreground font-medium capitalize">{project.land_tenure.replace(/_/g, ' ')}</span>
               </div>
             </div>
           )}

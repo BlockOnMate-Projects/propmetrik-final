@@ -42,9 +42,9 @@ import { EmptyState } from '@/components/crm/EmptyState'
 function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) => void }) {
     const getPriorityColor = (priority: TaskPriority) => {
         switch (priority) {
-            case TaskPriority.URGENT: return 'bg-red-900/50 text-red-400 border-red-500'
-            case TaskPriority.HIGH: return 'bg-orange-900/50 text-orange-400 border-orange-500'
-            case TaskPriority.MEDIUM: return 'bg-yellow-900/50 text-yellow-400 border-yellow-500'
+            case TaskPriority.URGENT: return 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-500'
+            case TaskPriority.HIGH: return 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 border-orange-500'
+            case TaskPriority.MEDIUM: return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border-yellow-500'
             case TaskPriority.LOW: return 'bg-muted text-muted-foreground border-border'
             default: return 'bg-muted text-muted-foreground border-border'
         }
@@ -77,7 +77,7 @@ function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) =>
                         {task.priority?.toUpperCase()}
                     </span>
                     {isOverdue && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-red-900/50 text-red-400 flex items-center gap-1 rounded">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center gap-1 rounded">
                             <AlertTriangle className="h-3 w-3" />
                             OVERDUE
                         </span>
@@ -102,7 +102,7 @@ function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) =>
                 {task.due_date && (
                     <span className={cn(
                         'text-xs flex items-center gap-1',
-                        isOverdue ? 'text-red-400' : 'text-muted-foreground'
+                        isOverdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
                     )}>
                         <Calendar className="h-3 w-3" />
                         {new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
@@ -220,7 +220,7 @@ export default function TasksPage() {
                 <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
                         <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Overdue</div>
-                        <div className="text-xl font-bold text-red-400">{overdueTasks.length}</div>
+                        <div className="text-xl font-bold text-red-600 dark:text-red-400">{overdueTasks.length}</div>
                     </CardContent>
                 </Card>
                 <Card className="border-border shadow-sm">
@@ -232,13 +232,13 @@ export default function TasksPage() {
                 <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
                         <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">In Progress</div>
-                        <div className="text-xl font-bold text-blue-400">{inProgressCount}</div>
+                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{inProgressCount}</div>
                     </CardContent>
                 </Card>
                 <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
                         <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Completed</div>
-                        <div className="text-xl font-bold text-green-400">{completedCount}</div>
+                        <div className="text-xl font-bold text-green-600 dark:text-green-400">{completedCount}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -305,8 +305,8 @@ export default function TasksPage() {
             </Card>
 
             {error && (
-                <div className="border border-red-900 bg-red-900/20 p-4 text-center rounded-md">
-                    <p className="text-xs text-red-400">{error}</p>
+                <div className="border border-red-900 bg-red-100 dark:bg-red-900/20 p-4 text-center rounded-md">
+                    <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
                 </div>
             )}
 

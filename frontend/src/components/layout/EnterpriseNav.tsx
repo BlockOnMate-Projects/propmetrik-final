@@ -38,10 +38,10 @@ export function EnterpriseNav() {
                             variant="outline"
                             size="sm"
                             className={cn(
-                                "border-zinc-800 bg-black font-mono text-xs uppercase h-8",
+                                "border-border bg-background font-mono text-xs uppercase h-8",
                                 isActive
                                     ? "border-amber-600 text-amber-500 bg-amber-950/30"
-                                    : "text-zinc-400 hover:text-amber-500 hover:border-amber-900"
+                                    : "text-muted-foreground hover:text-amber-500 hover:border-amber-900"
                             )}
                         >
                             <Icon className="mr-2 h-3 w-3" />

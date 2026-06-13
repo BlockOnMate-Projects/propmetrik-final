@@ -90,26 +90,26 @@ interface Project {
 type ViewMode = 'grid' | 'list';
 
 const categoryConfig: Record<PhotoCategory, { label: string; color: string; icon: string }> = {
-  progress: { label: 'Progress', color: 'bg-blue-900/50 text-blue-400', icon: '🔨' },
-  issue: { label: 'Issue', color: 'bg-red-900/50 text-red-400', icon: '⚠️' },
-  safety: { label: 'Safety', color: 'bg-orange-900/50 text-orange-400', icon: '🦺' },
-  quality: { label: 'Quality', color: 'bg-emerald-900/50 text-emerald-400', icon: '✅' },
-  delivery: { label: 'Delivery', color: 'bg-purple-900/50 text-purple-400', icon: '📦' },
-  inspection: { label: 'Inspection', color: 'bg-indigo-900/50 text-indigo-400', icon: '🔍' },
-  before_after: { label: 'Before/After', color: 'bg-pink-900/50 text-pink-400', icon: '📷' },
-  equipment: { label: 'Equipment', color: 'bg-zinc-700 text-zinc-300', icon: '🏗️' },
-  materials: { label: 'Materials', color: 'bg-amber-900/50 text-amber-400', icon: '🧱' },
-  weather: { label: 'Weather', color: 'bg-cyan-900/50 text-cyan-400', icon: '🌤️' },
-  milestone: { label: 'Milestone', color: 'bg-emerald-900/50 text-emerald-400', icon: '🎯' },
-  documentation: { label: 'Documentation', color: 'bg-zinc-700 text-zinc-400', icon: '📄' },
-  other: { label: 'Other', color: 'bg-zinc-800 text-zinc-400', icon: '📌' }
+  progress: { label: 'Progress', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400', icon: '🔨' },
+  issue: { label: 'Issue', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400', icon: '⚠️' },
+  safety: { label: 'Safety', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400', icon: '🦺' },
+  quality: { label: 'Quality', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: '✅' },
+  delivery: { label: 'Delivery', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400', icon: '📦' },
+  inspection: { label: 'Inspection', color: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400', icon: '🔍' },
+  before_after: { label: 'Before/After', color: 'bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400', icon: '📷' },
+  equipment: { label: 'Equipment', color: 'bg-zinc-700 text-muted-foreground', icon: '🏗️' },
+  materials: { label: 'Materials', color: 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400', icon: '🧱' },
+  weather: { label: 'Weather', color: 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-400', icon: '🌤️' },
+  milestone: { label: 'Milestone', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: '🎯' },
+  documentation: { label: 'Documentation', color: 'bg-zinc-700 text-muted-foreground', icon: '📄' },
+  other: { label: 'Other', color: 'bg-muted text-muted-foreground', icon: '📌' }
 };
 
 const statusConfig: Record<PhotoStatus, { label: string; color: string; icon: any }> = {
-  pending: { label: 'Pending', color: 'bg-yellow-900/50 text-yellow-400', icon: Clock },
-  approved: { label: 'Approved', color: 'bg-emerald-900/50 text-emerald-400', icon: CheckCircle },
-  rejected: { label: 'Rejected', color: 'bg-red-900/50 text-red-400', icon: XCircle },
-  archived: { label: 'Archived', color: 'bg-zinc-700 text-zinc-400', icon: Camera }
+  pending: { label: 'Pending', color: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: CheckCircle },
+  rejected: { label: 'Rejected', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400', icon: XCircle },
+  archived: { label: 'Archived', color: 'bg-zinc-700 text-muted-foreground', icon: Camera }
 };
 
 export default function ProjectPhotosPage() {
@@ -296,17 +296,17 @@ export default function ProjectPhotosPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Photos</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Photos</h1>
             {project && (
-              <p className="text-zinc-400 text-sm mt-1">{project.name}</p>
+              <p className="text-muted-foreground text-sm mt-1">{project.name}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="border-zinc-700" onClick={fetchPhotos}>
+          <Button variant="outline" size="icon" className="border-border" onClick={fetchPhotos}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <div className="flex border border-zinc-700 rounded-lg overflow-hidden">
+          <div className="flex border border-border rounded-lg overflow-hidden">
             <Button 
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
               size="sm"
@@ -324,7 +324,7 @@ export default function ProjectPhotosPage() {
               <List className="h-4 w-4" />
             </Button>
           </div>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => setShowUploadDialog(true)}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground" onClick={() => setShowUploadDialog(true)}>
             <Upload className="h-4 w-4 mr-2" /> Upload
           </Button>
         </div>
@@ -334,45 +334,45 @@ export default function ProjectPhotosPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.total}</p>
               </div>
               <Camera className="h-5 w-5 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Progress</p>
-                <p className="text-2xl font-bold text-blue-400 mt-1">{stats.progress}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Progress</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{stats.progress}</p>
               </div>
               <ImageIcon className="h-5 w-5 text-blue-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Pending</p>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.pending}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Pending</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats.pending}</p>
               </div>
               <Clock className="h-5 w-5 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Approved</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.approved}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Approved</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.approved}</p>
               </div>
               <CheckCircle className="h-5 w-5 text-emerald-500" />
             </div>
@@ -383,16 +383,16 @@ export default function ProjectPhotosPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-wrap">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search photos..."
-            className="pl-9 bg-zinc-900 border-zinc-800"
+            className="pl-9 bg-card border-border"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800">
+          <SelectTrigger className="w-[150px] bg-card border-border">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -405,7 +405,7 @@ export default function ProjectPhotosPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800">
+          <SelectTrigger className="w-[150px] bg-card border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -423,11 +423,11 @@ export default function ProjectPhotosPage() {
           <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       ) : filteredPhotos.length === 0 ? (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
             <Camera className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Photos</h3>
-            <p className="text-zinc-400 mb-4">Upload photos for this project</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Photos</h3>
+            <p className="text-muted-foreground mb-4">Upload photos for this project</p>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={() => setShowUploadDialog(true)}>
               <Upload className="h-4 w-4 mr-2" /> Upload Photo
             </Button>
@@ -442,10 +442,10 @@ export default function ProjectPhotosPage() {
             return (
               <Card 
                 key={photo.id} 
-                className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors overflow-hidden cursor-pointer group"
+                className="bg-card border-border hover:border-border transition-colors overflow-hidden cursor-pointer group"
                 onClick={() => openLightbox(photo)}
               >
-                <div className="aspect-square relative bg-zinc-800">
+                <div className="aspect-square relative bg-muted">
                   {photo.thumbnailPath || photo.filePath ? (
                     <img 
                       src={photo.thumbnailPath || photo.filePath} 
@@ -457,8 +457,8 @@ export default function ProjectPhotosPage() {
                       <ImageIcon className="h-12 w-12 text-zinc-700" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Eye className="h-8 w-8 text-white" />
+                  <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye className="h-8 w-8 text-foreground" />
                   </div>
                   <div className="absolute top-2 left-2">
                     <Badge className={`${category.color} text-xs`}>
@@ -472,7 +472,7 @@ export default function ProjectPhotosPage() {
                   </div>
                 </div>
                 <CardContent className="p-3">
-                  <h3 className="font-medium text-white text-sm line-clamp-1">{photo.title}</h3>
+                  <h3 className="font-medium text-foreground text-sm line-clamp-1">{photo.title}</h3>
                 </CardContent>
               </Card>
             );
@@ -486,11 +486,11 @@ export default function ProjectPhotosPage() {
             const StatusIcon = status.icon;
 
             return (
-              <Card key={photo.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <Card key={photo.id} className="bg-card border-border hover:border-border transition-colors">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <div 
-                      className="w-16 h-16 rounded-lg bg-zinc-800 overflow-hidden flex-shrink-0 cursor-pointer"
+                      className="w-16 h-16 rounded-lg bg-muted overflow-hidden flex-shrink-0 cursor-pointer"
                       onClick={() => openLightbox(photo)}
                     >
                       {photo.thumbnailPath || photo.filePath ? (
@@ -506,7 +506,7 @@ export default function ProjectPhotosPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-white line-clamp-1">{photo.title}</h3>
+                      <h3 className="font-medium text-foreground line-clamp-1">{photo.title}</h3>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <Badge className={`${category.color} text-xs`}>
                           {category.icon} {category.label}
@@ -516,7 +516,7 @@ export default function ProjectPhotosPage() {
                           {status.label}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-zinc-500 mt-2">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                         {photo.locationName && (
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" /> {photo.locationName}
@@ -533,22 +533,22 @@ export default function ProjectPhotosPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                      <DropdownMenuContent align="end" className="bg-card border-border">
                         <DropdownMenuItem onClick={() => openLightbox(photo)}>
                           <Eye className="h-4 w-4 mr-2" /> View
                         </DropdownMenuItem>
                         {photo.status === 'pending' && (
                           <>
-                            <DropdownMenuItem className="text-emerald-400" onClick={() => handleApprove(photo)}>
+                            <DropdownMenuItem className="text-emerald-600 dark:text-emerald-400" onClick={() => handleApprove(photo)}>
                               <Check className="h-4 w-4 mr-2" /> Approve
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-400" onClick={() => handleReject(photo)}>
+                            <DropdownMenuItem className="text-red-600 dark:text-red-400" onClick={() => handleReject(photo)}>
                               <X className="h-4 w-4 mr-2" /> Reject
                             </DropdownMenuItem>
                           </>
                         )}
-                        <DropdownMenuSeparator className="bg-zinc-800" />
-                        <DropdownMenuItem className="text-red-400" onClick={() => openDeleteDialog(photo)}>
+                        <DropdownMenuSeparator className="bg-muted" />
+                        <DropdownMenuItem className="text-red-600 dark:text-red-400" onClick={() => openDeleteDialog(photo)}>
                           <Trash2 className="h-4 w-4 mr-2" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -563,10 +563,10 @@ export default function ProjectPhotosPage() {
 
       {/* Lightbox */}
       <Dialog open={showLightbox} onOpenChange={setShowLightbox}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl p-0">
+        <DialogContent className="bg-card border-border max-w-4xl p-0">
           {selectedPhoto && (
             <>
-              <div className="relative aspect-video bg-black">
+              <div className="relative aspect-video bg-background">
                 {selectedPhoto.filePath ? (
                   <img 
                     src={selectedPhoto.filePath} 
@@ -580,15 +580,15 @@ export default function ProjectPhotosPage() {
                 )}
               </div>
               <div className="p-4">
-                <h3 className="text-lg font-semibold text-white">{selectedPhoto.title}</h3>
+                <h3 className="text-lg font-semibold text-foreground">{selectedPhoto.title}</h3>
                 {selectedPhoto.description && (
-                  <p className="text-zinc-400 text-sm mt-1">{selectedPhoto.description}</p>
+                  <p className="text-muted-foreground text-sm mt-1">{selectedPhoto.description}</p>
                 )}
                 <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <Badge className={categoryConfig[selectedPhoto.category]?.color || 'bg-zinc-800'}>
+                  <Badge className={categoryConfig[selectedPhoto.category]?.color || 'bg-muted'}>
                     {categoryConfig[selectedPhoto.category]?.icon} {categoryConfig[selectedPhoto.category]?.label}
                   </Badge>
-                  <Badge className={statusConfig[selectedPhoto.status]?.color || 'bg-zinc-800'}>
+                  <Badge className={statusConfig[selectedPhoto.status]?.color || 'bg-muted'}>
                     {statusConfig[selectedPhoto.status]?.label}
                   </Badge>
                 </div>
@@ -600,23 +600,23 @@ export default function ProjectPhotosPage() {
 
       {/* Upload Dialog */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Upload Photos</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Upload Photos</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Upload photos from your device.
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4 border-2 border-dashed border-zinc-700 rounded-lg p-12 text-center">
-            <Upload className="h-12 w-12 mx-auto text-zinc-600 mb-4" />
-            <p className="text-zinc-400">Drag and drop photos here</p>
-            <p className="text-zinc-500 text-sm mt-1">or click to browse</p>
+          <div className="mt-4 border-2 border-dashed border-border rounded-lg p-12 text-center">
+            <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Drag and drop photos here</p>
+            <p className="text-muted-foreground text-sm mt-1">or click to browse</p>
             <Button className="mt-4 bg-amber-600 hover:bg-amber-700">
               Select Files
             </Button>
           </div>
           <DialogFooter className="mt-4">
-            <Button variant="outline" className="border-zinc-700" onClick={() => setShowUploadDialog(false)}>
+            <Button variant="outline" className="border-border" onClick={() => setShowUploadDialog(false)}>
               Cancel
             </Button>
           </DialogFooter>
@@ -625,18 +625,18 @@ export default function ProjectPhotosPage() {
 
       {/* Delete Confirmation */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Photo</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Delete Photo</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete this photo? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button variant="outline" className="border-zinc-700" onClick={() => setShowDeleteDialog(false)}>
+            <Button variant="outline" className="border-border" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
-            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={submitting}>
+            <Button className="bg-red-600 hover:bg-red-700 text-foreground" onClick={handleDelete} disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete
             </Button>

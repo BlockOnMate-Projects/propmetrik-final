@@ -56,7 +56,7 @@ export default function ProjectPhaseVisual() {
     }, [activePhase]);
 
     return (
-        <div className="relative w-full rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 p-8">
+        <div className="relative w-full rounded-xl overflow-hidden bg-background border border-border p-8">
             {/* Phase selector */}
             <div className="flex gap-1 mb-8">
                 {PHASES.map((phase, i) => (
@@ -72,7 +72,7 @@ export default function ProjectPhaseVisual() {
                             transition={{ duration: 2, repeat: Infinity }}
                         />
                         <div className={`text-[10px] font-mono mt-2 transition-colors ${
-                            activePhase === i ? 'text-white' : 'text-zinc-600'
+                            activePhase === i ? 'text-foreground' : 'text-muted-foreground'
                         }`}>
                             {phase.name}
                         </div>
@@ -96,8 +96,8 @@ export default function ProjectPhaseVisual() {
                             animate={{ scale: [1, 1.3, 1] }}
                             transition={{ duration: 1.5, repeat: Infinity }}
                         />
-                        <h3 className="text-2xl font-bold text-white">{PHASES[activePhase].name}</h3>
-                        <span className="text-xs text-zinc-500 font-mono ml-auto">{PHASES[activePhase].duration}</span>
+                        <h3 className="text-2xl font-bold text-foreground">{PHASES[activePhase].name}</h3>
+                        <span className="text-xs text-muted-foreground font-mono ml-auto">{PHASES[activePhase].duration}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -115,8 +115,8 @@ export default function ProjectPhaseVisual() {
                                     activeItem === i
                                         ? 'border-amber-500/50 bg-amber-500/5'
                                         : i < activeItem
-                                            ? 'border-zinc-700 bg-zinc-900/50'
-                                            : 'border-zinc-800 bg-transparent'
+                                            ? 'border-border bg-card/50'
+                                            : 'border-border bg-transparent'
                                 }`}
                             >
                                 <div
@@ -125,11 +125,11 @@ export default function ProjectPhaseVisual() {
                                             ? 'border-emerald-500 bg-emerald-500'
                                             : activeItem === i
                                                 ? 'border-amber-500'
-                                                : 'border-zinc-700'
+                                                : 'border-border'
                                     }`}
                                 >
                                     {i < activeItem && (
-                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <svg className="w-3 h-3 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                     )}
@@ -142,7 +142,7 @@ export default function ProjectPhaseVisual() {
                                     )}
                                 </div>
                                 <span className={`text-sm font-mono ${
-                                    activeItem === i ? 'text-white' : i < activeItem ? 'text-zinc-400' : 'text-zinc-600'
+                                    activeItem === i ? 'text-foreground' : i < activeItem ? 'text-muted-foreground' : 'text-muted-foreground'
                                 }`}>
                                     {item}
                                 </span>

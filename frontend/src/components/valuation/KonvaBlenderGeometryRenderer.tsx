@@ -419,14 +419,14 @@ export default function BlenderGeometryRenderer({
       </Stage>
 
       {/* Floor indicator */}
-      <div className="absolute top-2 left-2 bg-white/90 px-3 py-1 rounded-md shadow-sm text-sm font-medium">
+      <div className="absolute top-2 left-2 bg-card/90 px-3 py-1 rounded-md shadow-sm text-sm font-medium">
         {geometry.measurements.floors.find(f => f.floor_number === floorNumber)?.floor_label || `Floor ${floorNumber}`}
       </div>
 
       {/* Measurements summary */}
-      <div className="absolute top-2 right-2 bg-white/90 px-3 py-2 rounded-md shadow-sm text-sm">
+      <div className="absolute top-2 right-2 bg-card/90 px-3 py-2 rounded-md shadow-sm text-sm">
         <div className="font-medium">GFA: {formatArea(geometry.measurements.gfa_sqm)}</div>
-        <div className="text-gray-600">NIA: {formatArea(geometry.measurements.nia_sqm)}</div>
+        <div className="text-muted-foreground">NIA: {formatArea(geometry.measurements.nia_sqm)}</div>
       </div>
     </div>
   );

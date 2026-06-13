@@ -315,8 +315,8 @@ export default function BulkOperationsPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono">BULK OPERATIONS</h1>
-                    <p className="text-sm text-zinc-500 font-mono">Mass updates, imports, and exports</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">BULK OPERATIONS</h1>
+                    <p className="text-sm text-muted-foreground font-mono">Mass updates, imports, and exports</p>
                 </div>
             </div>
 
@@ -330,10 +330,10 @@ export default function BulkOperationsPage() {
                             <AlertCircle className="h-5 w-5 text-red-500" />
                         )}
                         <div>
-                            <p className={`font-mono text-sm ${result.success ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className={`font-mono text-sm ${result.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {result.message}
                             </p>
-                            <p className="font-mono text-xs text-zinc-500">
+                            <p className="font-mono text-xs text-muted-foreground">
                                 Processed: {result.processed} | Failed: {result.failed}
                             </p>
                         </div>
@@ -341,7 +341,7 @@ export default function BulkOperationsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setResult(null)}
-                            className="ml-auto text-zinc-500"
+                            className="ml-auto text-muted-foreground"
                         >
                             Dismiss
                         </Button>
@@ -354,8 +354,8 @@ export default function BulkOperationsPage() {
                 <Card className="bg-red-950/30 border border-red-800">
                     <CardContent className="flex items-center gap-3 py-4">
                         <AlertCircle className="h-5 w-5 text-red-500" />
-                        <p className="text-red-400 font-mono text-sm">{error}</p>
-                        <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto text-zinc-500">
+                        <p className="text-red-600 dark:text-red-400 font-mono text-sm">{error}</p>
+                        <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto text-muted-foreground">
                             Dismiss
                         </Button>
                     </CardContent>
@@ -364,20 +364,20 @@ export default function BulkOperationsPage() {
 
             {/* Operation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-zinc-900 border border-zinc-800 w-full justify-start">
-                    <TabsTrigger value="rent-increase" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                <TabsList className="bg-card border border-border w-full justify-start">
+                    <TabsTrigger value="rent-increase" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <DollarSign className="mr-2 h-3 w-3" />
                         Rent Increase
                     </TabsTrigger>
-                    <TabsTrigger value="work-orders" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="work-orders" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <Wrench className="mr-2 h-3 w-3" />
                         Work Orders
                     </TabsTrigger>
-                    <TabsTrigger value="export" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="export" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <Download className="mr-2 h-3 w-3" />
                         Export
                     </TabsTrigger>
-                    <TabsTrigger value="import" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="import" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <Upload className="mr-2 h-3 w-3" />
                         Import
                     </TabsTrigger>
@@ -387,18 +387,18 @@ export default function BulkOperationsPage() {
                 <TabsContent value="rent-increase" className="mt-4 space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                         {/* Configuration */}
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Rent Increase Settings</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Increase Type</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Increase Type</Label>
                                     <Select value={rentIncreaseType} onValueChange={(v: 'percentage' | 'fixed') => setRentIncreaseType(v)}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-card border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="percentage" className="font-mono">Percentage (%)</SelectItem>
                                             <SelectItem value="fixed" className="font-mono">Fixed Amount (₵)</SelectItem>
                                         </SelectContent>
@@ -406,7 +406,7 @@ export default function BulkOperationsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">
                                         {rentIncreaseType === 'percentage' ? 'Percentage (%)' : 'Amount (₵)'}
                                     </Label>
                                     <div className="relative">
@@ -415,28 +415,28 @@ export default function BulkOperationsPage() {
                                             value={rentIncreaseValue}
                                             onChange={(e) => setRentIncreaseValue(e.target.value)}
                                             placeholder={rentIncreaseType === 'percentage' ? '5' : '500'}
-                                            className="bg-zinc-900 border-zinc-800 text-white font-mono pr-8"
+                                            className="bg-card border-border text-foreground font-mono pr-8"
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-sm">
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
                                             {rentIncreaseType === 'percentage' ? '%' : '₵'}
                                         </span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Effective Date</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Effective Date</Label>
                                     <Input
                                         type="date"
                                         value={effectiveDate}
                                         onChange={(e) => setEffectiveDate(e.target.value)}
-                                        className="bg-zinc-900 border-zinc-800 text-white font-mono"
+                                        className="bg-card border-border text-foreground font-mono"
                                     />
                                 </div>
 
                                 <Button
                                     onClick={handleRentIncrease}
                                     disabled={isLoading || !selectedProperties.length}
-                                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                                    className="w-full bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase"
                                 >
                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUpRight className="h-4 w-4 mr-2" />}
                                     Apply to {selectedProperties.length} Properties
@@ -445,7 +445,7 @@ export default function BulkOperationsPage() {
                         </Card>
 
                         {/* Property Selection */}
-                        <Card className="bg-black border border-zinc-800 md:col-span-2">
+                        <Card className="bg-background border border-border md:col-span-2">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Select Properties</CardTitle>
                                 <Button
@@ -461,18 +461,18 @@ export default function BulkOperationsPage() {
                                 <div className="max-h-96 overflow-y-auto">
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="border-zinc-800">
+                                            <TableRow className="border-border">
                                                 <TableHead className="w-10"></TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Property</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Location</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Current Rent</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Property</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Location</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Current Rent</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {properties.map((property) => (
                                                 <TableRow
                                                     key={property.id}
-                                                    className="border-zinc-800 hover:bg-zinc-900/50 cursor-pointer"
+                                                    className="border-border hover:bg-card/50 cursor-pointer"
                                                     onClick={() => togglePropertySelection(property.id)}
                                                 >
                                                     <TableCell>
@@ -482,9 +482,9 @@ export default function BulkOperationsPage() {
                                                             className="border-zinc-600"
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="font-mono text-sm text-white">{property.title}</TableCell>
-                                                    <TableCell className="font-mono text-xs text-zinc-400">{property.region || '-'}</TableCell>
-                                                    <TableCell className="font-mono text-sm text-right text-amber-400">
+                                                    <TableCell className="font-mono text-sm text-foreground">{property.title}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-muted-foreground">{property.region || '-'}</TableCell>
+                                                    <TableCell className="font-mono text-sm text-right text-amber-600 dark:text-amber-400">
                                                         ₵{(property.price || 0).toLocaleString()}
                                                     </TableCell>
                                                 </TableRow>
@@ -501,39 +501,39 @@ export default function BulkOperationsPage() {
                 <TabsContent value="work-orders" className="mt-4 space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                         {/* Configuration */}
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Work Order Details</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Title</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Title</Label>
                                     <Input
                                         value={workOrderTitle}
                                         onChange={(e) => setWorkOrderTitle(e.target.value)}
                                         placeholder="e.g., Annual Inspection"
-                                        className="bg-zinc-900 border-zinc-800 text-white font-mono"
+                                        className="bg-card border-border text-foreground font-mono"
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Description</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Description</Label>
                                     <Textarea
                                         value={workOrderDescription}
                                         onChange={(e) => setWorkOrderDescription(e.target.value)}
                                         placeholder="Work order details..."
                                         rows={3}
-                                        className="bg-zinc-900 border-zinc-800 text-white font-mono resize-none"
+                                        className="bg-card border-border text-foreground font-mono resize-none"
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Category</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Category</Label>
                                     <Select value={workOrderCategory} onValueChange={setWorkOrderCategory}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-card border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="GENERAL" className="font-mono">General</SelectItem>
                                             <SelectItem value="PLUMBING" className="font-mono">Plumbing</SelectItem>
                                             <SelectItem value="ELECTRICAL" className="font-mono">Electrical</SelectItem>
@@ -547,12 +547,12 @@ export default function BulkOperationsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Priority</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Priority</Label>
                                     <Select value={workOrderPriority} onValueChange={setWorkOrderPriority}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-card border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="LOW" className="font-mono">Low</SelectItem>
                                             <SelectItem value="MEDIUM" className="font-mono">Medium</SelectItem>
                                             <SelectItem value="HIGH" className="font-mono">High</SelectItem>
@@ -564,7 +564,7 @@ export default function BulkOperationsPage() {
                                 <Button
                                     onClick={handleBulkWorkOrders}
                                     disabled={isLoading || !selectedProperties.length || !workOrderTitle.trim()}
-                                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                                    className="w-full bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase"
                                 >
                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                                     Create {selectedProperties.length} Work Orders
@@ -573,7 +573,7 @@ export default function BulkOperationsPage() {
                         </Card>
 
                         {/* Property Selection */}
-                        <Card className="bg-black border border-zinc-800 md:col-span-2">
+                        <Card className="bg-background border border-border md:col-span-2">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Select Properties</CardTitle>
                                 <Button
@@ -589,18 +589,18 @@ export default function BulkOperationsPage() {
                                 <div className="max-h-96 overflow-y-auto">
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="border-zinc-800">
+                                            <TableRow className="border-border">
                                                 <TableHead className="w-10"></TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Property</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Location</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Type</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Property</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Location</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Type</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {properties.map((property) => (
                                                 <TableRow
                                                     key={property.id}
-                                                    className="border-zinc-800 hover:bg-zinc-900/50 cursor-pointer"
+                                                    className="border-border hover:bg-card/50 cursor-pointer"
                                                     onClick={() => togglePropertySelection(property.id)}
                                                 >
                                                     <TableCell>
@@ -610,9 +610,9 @@ export default function BulkOperationsPage() {
                                                             className="border-zinc-600"
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="font-mono text-sm text-white">{property.title}</TableCell>
-                                                    <TableCell className="font-mono text-xs text-zinc-400">{property.region || '-'}</TableCell>
-                                                    <TableCell className="font-mono text-xs text-zinc-400">{property.propertyType || '-'}</TableCell>
+                                                    <TableCell className="font-mono text-sm text-foreground">{property.title}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-muted-foreground">{property.region || '-'}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-muted-foreground">{property.propertyType || '-'}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -625,22 +625,22 @@ export default function BulkOperationsPage() {
 
                 {/* Export Tab */}
                 <TabsContent value="export" className="mt-4">
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Export Data</CardTitle>
-                            <CardDescription className="text-xs text-zinc-500 font-mono">
+                            <CardDescription className="text-xs text-muted-foreground font-mono">
                                 Download your property management data in various formats
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Resource</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Resource</Label>
                                     <Select value={exportResource} onValueChange={setExportResource}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-card border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="properties" className="font-mono">
                                                 <div className="flex items-center gap-2">
                                                     <Building2 className="h-4 w-4" /> Properties
@@ -666,12 +666,12 @@ export default function BulkOperationsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Format</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Format</Label>
                                     <Select value={exportFormat} onValueChange={(v: 'csv' | 'json' | 'excel') => setExportFormat(v)}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-card border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="csv" className="font-mono">CSV (.csv)</SelectItem>
                                             <SelectItem value="json" className="font-mono">JSON (.json)</SelectItem>
                                             <SelectItem value="excel" className="font-mono">Excel (.xlsx)</SelectItem>
@@ -683,7 +683,7 @@ export default function BulkOperationsPage() {
                                     <Button
                                         onClick={handleExport}
                                         disabled={isLoading}
-                                        className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                                        className="w-full bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase"
                                     >
                                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
                                         Export {exportResource}
@@ -696,22 +696,22 @@ export default function BulkOperationsPage() {
 
                 {/* Import Tab */}
                 <TabsContent value="import" className="mt-4">
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardHeader>
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Import Data</CardTitle>
-                            <CardDescription className="text-xs text-zinc-500 font-mono">
+                            <CardDescription className="text-xs text-muted-foreground font-mono">
                                 Bulk import data from CSV or JSON format
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-4">
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-zinc-500 font-mono uppercase">Resource</Label>
+                                    <Label className="text-xs text-muted-foreground font-mono uppercase">Resource</Label>
                                     <Select value={importResource} onValueChange={setImportResource}>
-                                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-card border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="tenants" className="font-mono">
                                                 <div className="flex items-center gap-2">
                                                     <Users className="h-4 w-4" /> Tenants
@@ -728,20 +728,20 @@ export default function BulkOperationsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-xs text-zinc-500 font-mono uppercase">Data (JSON or CSV)</Label>
+                                <Label className="text-xs text-muted-foreground font-mono uppercase">Data (JSON or CSV)</Label>
                                 <Textarea
                                     value={importData}
                                     onChange={(e) => setImportData(e.target.value)}
                                     placeholder={`Paste your ${importResource} data here...\n\nJSON format:\n[{"name": "John Doe", "email": "john@example.com", "phone": "+233..."}]\n\nCSV format:\nname,email,phone\nJohn Doe,john@example.com,+233...`}
                                     rows={10}
-                                    className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs resize-none"
+                                    className="bg-card border-border text-foreground font-mono text-xs resize-none"
                                 />
                             </div>
 
                             <Button
                                 onClick={handleImport}
                                 disabled={isLoading || !importData.trim()}
-                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                                className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase"
                             >
                                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
                                 Import Data

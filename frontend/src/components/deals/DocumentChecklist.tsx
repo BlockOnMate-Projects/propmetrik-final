@@ -37,13 +37,13 @@ interface DocumentChecklistProps {
 
 const getCategoryColor = (category: string) => {
     switch (category) {
-        case 'offer_letter': return 'text-blue-400'
-        case 'agreement': return 'text-amber-400'
-        case 'contract': return 'text-green-400'
-        case 'receipt': return 'text-purple-400'
-        case 'disclosure': return 'text-red-400'
-        case 'commission': return 'text-cyan-400'
-        default: return 'text-zinc-400'
+        case 'offer_letter': return 'text-blue-600 dark:text-blue-400'
+        case 'agreement': return 'text-amber-600 dark:text-amber-400'
+        case 'contract': return 'text-green-600 dark:text-green-400'
+        case 'receipt': return 'text-purple-600 dark:text-purple-400'
+        case 'disclosure': return 'text-red-600 dark:text-red-400'
+        case 'commission': return 'text-cyan-600 dark:text-cyan-400'
+        default: return 'text-muted-foreground'
     }
 }
 
@@ -127,8 +127,8 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
     if (error) {
         return (
             <div className="text-center py-8">
-                <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                <p className="font-mono text-xs text-red-400">{error}</p>
+                <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
+                <p className="font-mono text-xs text-red-600 dark:text-red-400">{error}</p>
                 <Button 
                     variant="ghost" 
                     onClick={loadData}
@@ -152,13 +152,13 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
         <div className="space-y-4">
             {/* Progress Overview */}
             {items.length > 0 && (
-                <div className="bg-zinc-800/50 border border-zinc-700 p-3 rounded-lg">
+                <div className="bg-muted/50 border border-border p-3 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-[10px] text-zinc-500">DOCUMENT COMPLETION</span>
-                        <span className="font-mono text-xs text-white">{completionPercent}%</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">DOCUMENT COMPLETION</span>
+                        <span className="font-mono text-xs text-foreground">{completionPercent}%</span>
                     </div>
                     <Progress value={completionPercent} className="h-1.5" />
-                    <div className="flex items-center gap-4 mt-2 text-[10px] text-zinc-500">
+                    <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground">
                         <span>{generatedRequired}/{totalRequired} Generated</span>
                         <span>{signedRequired}/{totalRequired} Signed</span>
                     </div>
@@ -169,7 +169,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
             {items.length === 0 && documents.length === 0 ? (
                 <div className="text-center py-6">
                     <FileText className="h-10 w-10 text-zinc-700 mx-auto mb-2" />
-                    <p className="font-mono text-xs text-zinc-500">
+                    <p className="font-mono text-xs text-muted-foreground">
                         No document requirements for this deal stage
                     </p>
                 </div>
@@ -183,25 +183,25 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                             className={cn(
                                 'flex items-center gap-3 p-3 border rounded-lg transition-colors',
                                 item.is_signed 
-                                    ? 'border-green-800/50 bg-green-900/10'
+                                    ? 'border-green-800/50 bg-green-100 dark:bg-green-900/10'
                                     : item.is_generated
-                                    ? 'border-amber-800/50 bg-amber-900/10'
-                                    : 'border-zinc-700 bg-zinc-800/30'
+                                    ? 'border-amber-800/50 bg-amber-100 dark:bg-amber-900/10'
+                                    : 'border-border bg-muted/30'
                             )}
                         >
                             {/* Status Icon */}
                             <div className="flex-shrink-0">
                                 {item.is_signed ? (
                                     <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                                        <Check className="h-3.5 w-3.5 text-green-400" />
+                                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                                     </div>
                                 ) : item.is_generated ? (
                                     <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
-                                        <FileText className="h-3.5 w-3.5 text-amber-400" />
+                                        <FileText className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                                     </div>
                                 ) : (
                                     <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center">
-                                        <Circle className="h-3 w-3 text-zinc-500" />
+                                        <Circle className="h-3 w-3 text-muted-foreground" />
                                     </div>
                                 )}
                             </div>
@@ -209,11 +209,11 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs text-white truncate">
+                                    <span className="font-mono text-xs text-foreground truncate">
                                         {item.template_name}
                                     </span>
                                     {item.is_required && (
-                                        <Badge className="text-[8px] bg-red-900/50 text-red-400 shrink-0">
+                                        <Badge className="text-[8px] bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 shrink-0">
                                             Required
                                         </Badge>
                                     )}
@@ -226,7 +226,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                         {item.category.replace('_', ' ')}
                                     </span>
                                     {item.generated_at && (
-                                        <span className="font-mono text-[10px] text-zinc-600">
+                                        <span className="font-mono text-[10px] text-muted-foreground">
                                             Generated {format(new Date(item.generated_at), 'MMM d')}
                                         </span>
                                     )}
@@ -254,7 +254,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-7 px-2 text-zinc-400 hover:text-white"
+                                        className="h-7 px-2 text-muted-foreground hover:text-foreground"
                                         title="Download"
                                     >
                                         <Download className="h-3.5 w-3.5" />
@@ -264,7 +264,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                     <Button
                                         size="sm"
                                         onClick={() => onGenerateDocument?.(item.template_id)}
-                                        className="h-7 px-3 bg-amber-600 hover:bg-amber-700 text-white text-[10px]"
+                                        className="h-7 px-3 bg-amber-600 hover:bg-amber-700 text-foreground text-[10px]"
                                     >
                                         Generate
                                     </Button>
@@ -277,8 +277,8 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
 
             {/* Generated Documents */}
             {documents.length > 0 && (
-                <div className="pt-4 border-t border-zinc-800">
-                    <h4 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-3">
+                <div className="pt-4 border-t border-border">
+                    <h4 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-3">
                         Generated Documents ({documents.length})
                     </h4>
                     <div className="space-y-2">
@@ -286,7 +286,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                             <div
                                 key={doc.id}
                                 onClick={() => openPreview(doc)}
-                                className="flex items-center gap-3 p-3 bg-zinc-900 border border-zinc-700/80 rounded-lg cursor-pointer hover:border-amber-600/50 hover:bg-zinc-800/80 transition-all group"
+                                className="flex items-center gap-3 p-3 bg-card border border-border/80 rounded-lg cursor-pointer hover:border-amber-600/50 hover:bg-muted/80 transition-all group"
                             >
                                 <div className="flex-shrink-0 w-8 h-8 rounded bg-amber-600/15 flex items-center justify-center">
                                     <FileText className="h-4 w-4 text-amber-500" />
@@ -295,7 +295,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                     <p className="font-mono text-xs text-amber-100 group-hover:text-amber-50 truncate font-medium">
                                         {doc.file_name || doc.document_number || doc.template_name}
                                     </p>
-                                    <p className="font-mono text-[10px] text-zinc-400">
+                                    <p className="font-mono text-[10px] text-muted-foreground">
                                         {doc.template_name} • {format(new Date(doc.created_at), 'MMM d, yyyy')}
                                     </p>
                                 </div>
@@ -305,16 +305,16 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                     )}
                                     {(doc.generation_status === 'failed' || doc.status === 'failed') && (
                                         <span title={doc.error_message}>
-                                            <AlertCircle className="h-4 w-4 text-red-400" />
+                                            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                                         </span>
                                     )}
                                     {!(doc.generation_status === 'generating' || doc.status === 'generating') &&
                                      !(doc.generation_status === 'failed' || doc.status === 'failed') && (
-                                        <Badge className="bg-zinc-800 text-zinc-500 text-[9px] border-0">
+                                        <Badge className="bg-muted text-muted-foreground text-[9px] border-0">
                                             {doc.mime_type === 'application/pdf' ? 'PDF' : 'HTML'}
                                         </Badge>
                                     )}
-                                    <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
                                 </div>
                             </div>
                         ))}
@@ -324,14 +324,14 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
 
             {/* Document Preview Dialog */}
             <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) setPreviewDoc(null) }}>
-                <DialogContent className="max-w-4xl max-h-[85vh] bg-zinc-900 border-zinc-700 p-0 overflow-hidden">
-                    <DialogHeader className="px-6 pt-5 pb-3 border-b border-zinc-800">
-                        <DialogTitle className="font-mono text-sm text-white flex items-center gap-2">
+                <DialogContent className="max-w-4xl max-h-[85vh] bg-card border-border p-0 overflow-hidden">
+                    <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
+                        <DialogTitle className="font-mono text-sm text-foreground flex items-center gap-2">
                             <FileText className="h-4 w-4 text-amber-500" />
                             {previewDoc?.file_name || previewDoc?.template_name || 'Document Preview'}
                         </DialogTitle>
                         {previewDoc && (
-                            <p className="font-mono text-[10px] text-zinc-400 mt-1">
+                            <p className="font-mono text-[10px] text-muted-foreground mt-1">
                                 {previewDoc.template_name} • Created {format(new Date(previewDoc.created_at), 'MMM d, yyyy')}
                                 {previewDoc.mime_type && ` • ${previewDoc.mime_type}`}
                             </p>
@@ -341,10 +341,10 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                         {previewLoading ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
-                                <span className="ml-3 font-mono text-xs text-zinc-400">Loading document...</span>
+                                <span className="ml-3 font-mono text-xs text-muted-foreground">Loading document...</span>
                             </div>
                         ) : previewHtml ? (
-                            <div className="bg-white">
+                            <div className="bg-card">
                                 <iframe
                                     srcDoc={previewHtml}
                                     className="w-full border-0"
@@ -355,11 +355,11 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                             </div>
                         ) : previewDoc?.file_url ? (
                             <div className="flex flex-col items-center justify-center py-20 gap-4">
-                                <FileDown className="h-12 w-12 text-zinc-600" />
-                                <p className="font-mono text-xs text-zinc-400">This document is available for download</p>
+                                <FileDown className="h-12 w-12 text-muted-foreground" />
+                                <p className="font-mono text-xs text-muted-foreground">This document is available for download</p>
                                 <Button
                                     onClick={() => handleDownload(previewDoc)}
-                                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                                    className="bg-amber-600 hover:bg-amber-700 text-foreground"
                                 >
                                     <Download className="h-4 w-4 mr-2" />
                                     Download {previewDoc.file_name || 'Document'}
@@ -367,22 +367,22 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-20 gap-3">
-                                <FileText className="h-12 w-12 text-zinc-600" />
-                                <p className="font-mono text-xs text-zinc-400">No preview available for this document</p>
+                                <FileText className="h-12 w-12 text-muted-foreground" />
+                                <p className="font-mono text-xs text-muted-foreground">No preview available for this document</p>
                             </div>
                         )}
                     </div>
                     {/* Footer with actions */}
                     {previewDoc && !previewLoading && (
-                        <div className="px-6 py-3 border-t border-zinc-800 flex items-center justify-between">
+                        <div className="px-6 py-3 border-t border-border flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 {previewDoc.esign_envelope_id ? (
-                                    <Badge className="bg-green-900/50 text-green-400 text-[10px]">
+                                    <Badge className="bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 text-[10px]">
                                         <PenLine className="h-3 w-3 mr-1" />
                                         Sent for Signing
                                     </Badge>
                                 ) : (
-                                    <Badge className="bg-zinc-800 text-zinc-400 text-[10px]">
+                                    <Badge className="bg-muted text-muted-foreground text-[10px]">
                                         {previewDoc.status || 'Draft'}
                                     </Badge>
                                 )}
@@ -392,7 +392,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="border-zinc-700 text-zinc-300 hover:text-white"
+                                        className="border-border text-muted-foreground hover:text-foreground"
                                         onClick={() => handleDownload(previewDoc)}
                                     >
                                         <Download className="h-3.5 w-3.5 mr-1.5" />

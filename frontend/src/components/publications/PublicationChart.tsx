@@ -183,12 +183,12 @@ function StatHeader({
 
   return (
     <div className="flex items-baseline gap-3 mb-3">
-      {label && <span className="text-xs text-zinc-500 uppercase tracking-wider">{label}</span>}
-      <span className="text-2xl font-bold text-white">
+      {label && <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>}
+      <span className="text-2xl font-bold text-foreground">
         {current.toLocaleString(undefined, { maximumFractionDigits: 1 })}
       </span>
       {delta != null && (
-        <span className={`text-sm font-medium ${delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+        <span className={`text-sm font-medium ${delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
           {delta >= 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(1)}%
         </span>
       )}
@@ -240,11 +240,11 @@ export default function PublicationChart({ chart }: PublicationChartProps) {
   const chartNode = renderChart();
 
   return (
-    <div className="my-8 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 not-prose">
+    <div className="my-8 bg-card/50 border border-border rounded-xl p-5 not-prose">
       {/* Title Bar */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-base font-semibold text-white">{chart.title || 'Data Visualization'}</h3>
-        <span className="text-[10px] text-zinc-600 uppercase tracking-wider">
+        <h3 className="text-base font-semibold text-foreground">{chart.title || 'Data Visualization'}</h3>
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
           {snap._aiGenerated ? 'AI-Synthesized' : snap.timestamp
             ? `Data as of ${new Date(snap.timestamp as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
             : 'Published Data'}
@@ -263,18 +263,18 @@ export default function PublicationChart({ chart }: PublicationChartProps) {
         <div className="mt-2">{chartNode}</div>
       ) : snap._currentValue != null ? (
         /* Stat-only chart — current/previous values displayed in header above */
-        <div className="py-4 text-center text-zinc-600 text-xs">
+        <div className="py-4 text-center text-muted-foreground text-xs">
           Metric snapshot — no time-series data available for this indicator
         </div>
       ) : (
-        <div className="py-8 text-center text-zinc-600 text-sm">
+        <div className="py-8 text-center text-muted-foreground text-sm">
           No visualization data available
         </div>
       )}
 
       {/* AI Insight */}
       {chart.aiInsight && (
-        <p className="mt-3 text-sm text-zinc-400 bg-zinc-950/50 rounded-lg p-3 border border-zinc-800/50">
+        <p className="mt-3 text-sm text-muted-foreground bg-background/50 rounded-lg p-3 border border-border/50">
           {chart.aiInsight}
         </p>
       )}

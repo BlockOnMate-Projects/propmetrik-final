@@ -140,14 +140,14 @@ const defaultFormData: POFormData = {
 };
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-700 text-zinc-300', icon: FileText },
-  pending_approval: { label: 'Pending Approval', color: 'bg-yellow-900/50 text-yellow-400', icon: Clock },
-  approved: { label: 'Approved', color: 'bg-blue-900/50 text-blue-400', icon: CheckCircle2 },
-  rejected: { label: 'Rejected', color: 'bg-red-900/50 text-red-400', icon: XCircle },
-  ordered: { label: 'Ordered', color: 'bg-purple-900/50 text-purple-400', icon: Truck },
-  partially_delivered: { label: 'Partial Delivery', color: 'bg-orange-900/50 text-orange-400', icon: Package },
-  delivered: { label: 'Delivered', color: 'bg-emerald-900/50 text-emerald-400', icon: CheckCircle2 },
-  cancelled: { label: 'Cancelled', color: 'bg-red-900/50 text-red-400', icon: AlertCircle },
+  draft: { label: 'Draft', color: 'bg-zinc-700 text-muted-foreground', icon: FileText },
+  pending_approval: { label: 'Pending Approval', color: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400', icon: XCircle },
+  ordered: { label: 'Ordered', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400', icon: Truck },
+  partially_delivered: { label: 'Partial Delivery', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400', icon: Package },
+  delivered: { label: 'Delivered', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+  cancelled: { label: 'Cancelled', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400', icon: AlertCircle },
 };
 
 export default function ProcurementPage() {
@@ -479,14 +479,14 @@ export default function ProcurementPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Procurement</h1>
-          <p className="text-zinc-400 text-sm mt-1">Manage purchase orders and material supplies.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Procurement</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage purchase orders and material supplies.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="border-zinc-700" onClick={fetchPurchaseOrders}>
+          <Button variant="outline" size="icon" className="border-border" onClick={fetchPurchaseOrders}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={openNewDialog}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground" onClick={openNewDialog}>
             <Plus className="h-4 w-4 mr-2" /> New Purchase Order
           </Button>
         </div>
@@ -494,12 +494,12 @@ export default function ProcurementPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total Orders</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.totalOrders}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total Orders</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.totalOrders}</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                 <FileText className="h-5 w-5 text-blue-500" />
@@ -507,12 +507,12 @@ export default function ProcurementPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Pending Approval</p>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.pendingApproval}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Pending Approval</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats.pendingApproval}</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
                 <Clock className="h-5 w-5 text-yellow-500" />
@@ -520,12 +520,12 @@ export default function ProcurementPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total Value</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{formatCurrency(stats.totalValue, 'GHS')}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total Value</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(stats.totalValue, 'GHS')}</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                 <DollarSign className="h-5 w-5 text-emerald-500" />
@@ -533,12 +533,12 @@ export default function ProcurementPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Ordered / Delivered</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.orderedCount}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Ordered / Delivered</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.orderedCount}</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                 <Truck className="h-5 w-5 text-purple-500" />
@@ -552,16 +552,16 @@ export default function ProcurementPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search orders..."
-              className="pl-9 bg-zinc-900 border-zinc-800"
+              className="pl-9 bg-card border-border"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-800">
+            <SelectTrigger className="w-[180px] bg-card border-border">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -583,11 +583,11 @@ export default function ProcurementPage() {
           <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       ) : filteredOrders.length === 0 ? (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
             <Package className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Purchase Orders Found</h3>
-            <p className="text-zinc-400 mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Purchase Orders Found</h3>
+            <p className="text-muted-foreground mb-4">
               {search || statusFilter !== 'all' 
                 ? 'Try adjusting your filters' 
                 : 'Create your first purchase order to get started'}
@@ -598,18 +598,18 @@ export default function ProcurementPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-zinc-800/50">
-                <TableRow className="border-zinc-800 hover:bg-zinc-800/50">
-                  <TableHead className="text-zinc-400">PO Number</TableHead>
-                  <TableHead className="text-zinc-400">Vendor</TableHead>
-                  <TableHead className="text-zinc-400">Project</TableHead>
-                  <TableHead className="text-zinc-400 text-center">Items</TableHead>
-                  <TableHead className="text-zinc-400 text-right">Amount</TableHead>
-                  <TableHead className="text-zinc-400">Status</TableHead>
-                  <TableHead className="text-zinc-400 text-right">Actions</TableHead>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="border-border hover:bg-muted/50">
+                  <TableHead className="text-muted-foreground">PO Number</TableHead>
+                  <TableHead className="text-muted-foreground">Vendor</TableHead>
+                  <TableHead className="text-muted-foreground">Project</TableHead>
+                  <TableHead className="text-muted-foreground text-center">Items</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Amount</TableHead>
+                  <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -617,12 +617,12 @@ export default function ProcurementPage() {
                   const status = statusConfig[po.status] || statusConfig['draft'];
                   const StatusIcon = status.icon;
                   return (
-                    <TableRow key={po.id} className="border-zinc-800 hover:bg-zinc-800/30">
-                      <TableCell className="font-mono text-sm text-amber-400">{po.poNumber}</TableCell>
+                    <TableRow key={po.id} className="border-border hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <TableCell className="font-mono text-sm text-amber-600 dark:text-amber-400">{po.poNumber}</TableCell>
                       <TableCell className="text-zinc-200">{po.vendorName}</TableCell>
-                      <TableCell className="text-zinc-400 text-sm">{po.projectName}</TableCell>
-                      <TableCell className="text-center text-zinc-300">{po.itemCount || po.items?.length || 0}</TableCell>
-                      <TableCell className="text-right font-mono text-emerald-400">
+                      <TableCell className="text-muted-foreground text-sm">{po.projectName}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{po.itemCount || po.items?.length || 0}</TableCell>
+                      <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(po.totalAmount || 0, po.currency)}
                       </TableCell>
                       <TableCell>
@@ -638,9 +638,9 @@ export default function ProcurementPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                          <DropdownMenuContent align="end" className="bg-card border-border">
                             <DropdownMenuItem 
-                              className="text-zinc-300 focus:text-white"
+                              className="text-muted-foreground focus:text-foreground"
                               onClick={() => openViewSheet(po)}
                             >
                               <Eye className="h-4 w-4 mr-2" /> View Details
@@ -648,13 +648,13 @@ export default function ProcurementPage() {
                             {po.status === 'draft' && (
                               <>
                                 <DropdownMenuItem 
-                                  className="text-zinc-300 focus:text-white"
+                                  className="text-muted-foreground focus:text-foreground"
                                   onClick={() => openEditDialog(po)}
                                 >
                                   <Edit className="h-4 w-4 mr-2" /> Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                  className="text-blue-400 focus:text-blue-300"
+                                  className="text-blue-600 dark:text-blue-400 focus:text-blue-300"
                                   onClick={() => handleStatusAction(po, 'submit')}
                                 >
                                   <Send className="h-4 w-4 mr-2" /> Submit for Approval
@@ -664,13 +664,13 @@ export default function ProcurementPage() {
                             {po.status === 'pending_approval' && (
                               <>
                                 <DropdownMenuItem 
-                                  className="text-emerald-400 focus:text-emerald-300"
+                                  className="text-emerald-600 dark:text-emerald-400 focus:text-emerald-300"
                                   onClick={() => handleStatusAction(po, 'approve')}
                                 >
                                   <CheckCircle className="h-4 w-4 mr-2" /> Approve
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                  className="text-red-400 focus:text-red-300"
+                                  className="text-red-600 dark:text-red-400 focus:text-red-300"
                                   onClick={() => handleStatusAction(po, 'reject')}
                                 >
                                   <XCircle className="h-4 w-4 mr-2" /> Reject
@@ -679,16 +679,16 @@ export default function ProcurementPage() {
                             )}
                             {po.status === 'approved' && (
                               <DropdownMenuItem 
-                                className="text-purple-400 focus:text-purple-300"
+                                className="text-purple-600 dark:text-purple-400 focus:text-purple-300"
                                 onClick={() => handleStatusAction(po, 'order')}
                               >
                                 <Truck className="h-4 w-4 mr-2" /> Mark as Ordered
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator className="bg-zinc-800" />
+                            <DropdownMenuSeparator className="bg-muted" />
                             {['draft', 'pending_approval', 'approved'].includes(po.status) && (
                               <DropdownMenuItem 
-                                className="text-orange-400 focus:text-orange-300"
+                                className="text-orange-600 dark:text-orange-400 focus:text-orange-300"
                                 onClick={() => handleStatusAction(po, 'cancel')}
                               >
                                 <AlertCircle className="h-4 w-4 mr-2" /> Cancel
@@ -696,7 +696,7 @@ export default function ProcurementPage() {
                             )}
                             {po.status === 'draft' && (
                               <DropdownMenuItem 
-                                className="text-red-400 focus:text-red-300"
+                                className="text-red-600 dark:text-red-400 focus:text-red-300"
                                 onClick={() => openDeleteDialog(po)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -723,12 +723,12 @@ export default function ProcurementPage() {
           setShowEditDialog(false);
         }
       }}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-card border-border max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground">
               {showEditDialog ? 'Edit Purchase Order' : 'Create Purchase Order'}
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground">
               Fill in the details for your purchase order.
             </DialogDescription>
           </DialogHeader>
@@ -736,12 +736,12 @@ export default function ProcurementPage() {
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Project *</Label>
+                  <Label className="text-muted-foreground">Project *</Label>
                   <Select 
                     value={formData.projectId} 
                     onValueChange={(value) => setFormData({...formData, projectId: value})}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="bg-muted border-border">
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
@@ -754,43 +754,43 @@ export default function ProcurementPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Vendor Name *</Label>
+                  <Label className="text-muted-foreground">Vendor Name *</Label>
                   <Input 
                     placeholder="Enter vendor name"
                     value={formData.vendorName}
                     onChange={(e) => setFormData({...formData, vendorName: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Title *</Label>
+                  <Label className="text-muted-foreground">Title *</Label>
                   <Input 
                     placeholder="PO Title (e.g., Cement Order - Phase 1)"
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Vendor Contact</Label>
+                  <Label className="text-muted-foreground">Vendor Contact</Label>
                   <Input 
                     placeholder="Phone / Email"
                     value={formData.vendorContact}
                     onChange={(e) => setFormData({...formData, vendorContact: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Currency</Label>
+                  <Label className="text-muted-foreground">Currency</Label>
                   <Select 
                     value={formData.currency}
                     onValueChange={(value) => setFormData({...formData, currency: value})}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="bg-muted border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -802,30 +802,30 @@ export default function ProcurementPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Requested Delivery Date</Label>
+                  <Label className="text-muted-foreground">Requested Delivery Date</Label>
                   <Input 
                     type="date"
                     value={formData.requestedDeliveryDate}
                     onChange={(e) => setFormData({...formData, requestedDeliveryDate: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Description</Label>
+                <Label className="text-muted-foreground">Description</Label>
                 <Textarea 
                   placeholder="Additional notes or description..."
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
 
               {/* Line Items */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-zinc-300">Line Items</Label>
-                  <Button type="button" variant="outline" size="sm" className="border-zinc-700" onClick={addItemRow}>
+                  <Label className="text-muted-foreground">Line Items</Label>
+                  <Button type="button" variant="outline" size="sm" className="border-border" onClick={addItemRow}>
                     <Plus className="h-3 w-3 mr-1" /> Add Item
                   </Button>
                 </div>
@@ -836,20 +836,20 @@ export default function ProcurementPage() {
                         placeholder="Description"
                         value={item.description}
                         onChange={(e) => updateItem(index, 'description', e.target.value)}
-                        className="flex-1 bg-zinc-800 border-zinc-700" 
+                        className="flex-1 bg-muted border-border" 
                       />
                       <Input 
                         type="number"
                         placeholder="Qty"
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                        className="w-20 bg-zinc-800 border-zinc-700" 
+                        className="w-20 bg-muted border-border" 
                       />
                       <Select 
                         value={item.unitOfMeasure}
                         onValueChange={(value) => updateItem(index, 'unitOfMeasure', value)}
                       >
-                        <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700">
+                        <SelectTrigger className="w-24 bg-muted border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -867,13 +867,13 @@ export default function ProcurementPage() {
                         placeholder="Unit Price"
                         value={item.unitPrice}
                         onChange={(e) => updateItem(index, 'unitPrice', e.target.value)}
-                        className="w-28 bg-zinc-800 border-zinc-700" 
+                        className="w-28 bg-muted border-border" 
                       />
                       <Button 
                         type="button"
                         variant="ghost" 
                         size="icon" 
-                        className="text-red-400 hover:text-red-300"
+                        className="text-red-600 dark:text-red-400 hover:text-red-300"
                         onClick={() => removeItemRow(index)}
                         disabled={formData.items.length <= 1}
                       >
@@ -882,7 +882,7 @@ export default function ProcurementPage() {
                     </div>
                   ))}
                 </div>
-                <div className="text-right text-lg font-semibold text-emerald-400">
+                <div className="text-right text-lg font-semibold text-emerald-600 dark:text-emerald-400">
                   Total: {formatCurrency(calculateFormTotal(), formData.currency)}
                 </div>
               </div>
@@ -891,14 +891,14 @@ export default function ProcurementPage() {
               <Button 
                 type="button"
                 variant="outline" 
-                className="border-zinc-700" 
+                className="border-border" 
                 onClick={() => { setShowNewDialog(false); setShowEditDialog(false); }}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
+                className="bg-amber-600 hover:bg-amber-700 text-foreground"
                 disabled={submitting}
               >
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -911,12 +911,12 @@ export default function ProcurementPage() {
 
       {/* View Sheet */}
       <Sheet open={showViewSheet} onOpenChange={setShowViewSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-xl overflow-y-auto">
+        <SheetContent className="bg-card border-border w-full sm:max-w-xl overflow-y-auto">
           <SheetHeader>
-            <SheetTitle className="text-white flex items-center gap-2">
-              <span className="font-mono text-amber-400">{selectedPO?.poNumber}</span>
+            <SheetTitle className="text-foreground flex items-center gap-2">
+              <span className="font-mono text-amber-600 dark:text-amber-400">{selectedPO?.poNumber}</span>
             </SheetTitle>
-            <SheetDescription className="text-zinc-400">
+            <SheetDescription className="text-muted-foreground">
               {selectedPO?.title}
             </SheetDescription>
           </SheetHeader>
@@ -937,30 +937,30 @@ export default function ProcurementPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Project</Label>
-                  <p className="text-white mt-1">{selectedPO.projectName}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Project</Label>
+                  <p className="text-foreground mt-1">{selectedPO.projectName}</p>
                 </div>
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Vendor</Label>
-                  <p className="text-white mt-1">{selectedPO.vendorName}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Vendor</Label>
+                  <p className="text-foreground mt-1">{selectedPO.vendorName}</p>
                 </div>
               </div>
 
               {selectedPO.description && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Description</Label>
-                  <p className="text-zinc-300 mt-1">{selectedPO.description}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Description</Label>
+                  <p className="text-muted-foreground mt-1">{selectedPO.description}</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Created</Label>
-                  <p className="text-white mt-1">{new Date(selectedPO.createdAt).toLocaleDateString('en-GB')}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Created</Label>
+                  <p className="text-foreground mt-1">{new Date(selectedPO.createdAt).toLocaleDateString('en-GB')}</p>
                 </div>
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Requested Delivery</Label>
-                  <p className="text-white mt-1">
+                  <Label className="text-muted-foreground text-xs uppercase">Requested Delivery</Label>
+                  <p className="text-foreground mt-1">
                     {selectedPO.requestedDeliveryDate 
                       ? new Date(selectedPO.requestedDeliveryDate).toLocaleDateString('en-GB') 
                       : '-'}
@@ -971,17 +971,17 @@ export default function ProcurementPage() {
               {/* Line Items */}
               {selectedPO.items && selectedPO.items.length > 0 && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase mb-2 block">Line Items</Label>
+                  <Label className="text-muted-foreground text-xs uppercase mb-2 block">Line Items</Label>
                   <div className="space-y-2">
                     {selectedPO.items.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
                         <div>
-                          <p className="text-white text-sm">{item.description}</p>
-                          <p className="text-zinc-500 text-xs">
+                          <p className="text-foreground text-sm">{item.description}</p>
+                          <p className="text-muted-foreground text-xs">
                             {item.quantity} {item.unitOfMeasure} × {formatCurrency(item.unitPrice, selectedPO.currency)}
                           </p>
                         </div>
-                        <p className="text-emerald-400 font-mono">
+                        <p className="text-emerald-600 dark:text-emerald-400 font-mono">
                           {formatCurrency(item.totalPrice, selectedPO.currency)}
                         </p>
                       </div>
@@ -990,21 +990,21 @@ export default function ProcurementPage() {
                 </div>
               )}
 
-              <div className="pt-4 border-t border-zinc-800">
+              <div className="pt-4 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <Label className="text-zinc-300 text-lg">Total Amount</Label>
-                  <p className="text-2xl font-bold text-emerald-400 font-mono">
+                  <Label className="text-muted-foreground text-lg">Total Amount</Label>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                     {formatCurrency(selectedPO.totalAmount || 0, selectedPO.currency)}
                   </p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-zinc-800 flex gap-2 flex-wrap">
+              <div className="pt-4 border-t border-border flex gap-2 flex-wrap">
                 {selectedPO.status === 'draft' && (
                   <>
                     <Button 
                       variant="outline" 
-                      className="flex-1 border-zinc-700"
+                      className="flex-1 border-border"
                       onClick={() => { setShowViewSheet(false); openEditDialog(selectedPO); }}
                     >
                       <Edit className="h-4 w-4 mr-2" /> Edit
@@ -1027,7 +1027,7 @@ export default function ProcurementPage() {
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="flex-1 border-red-700 text-red-400"
+                      className="flex-1 border-red-700 text-red-600 dark:text-red-400"
                       onClick={() => { setShowViewSheet(false); handleStatusAction(selectedPO, 'reject'); }}
                     >
                       <XCircle className="h-4 w-4 mr-2" /> Reject
@@ -1042,23 +1042,23 @@ export default function ProcurementPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Purchase Order</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Delete Purchase Order</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete {selectedPO?.poNumber}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <Button 
               variant="outline" 
-              className="border-zinc-700" 
+              className="border-border" 
               onClick={() => setShowDeleteDialog(false)}
             >
               Cancel
             </Button>
             <Button 
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-foreground"
               onClick={handleDelete}
               disabled={submitting}
             >

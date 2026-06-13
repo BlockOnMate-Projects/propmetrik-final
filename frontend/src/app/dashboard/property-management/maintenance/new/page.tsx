@@ -18,22 +18,22 @@ export default function NewWorkOrderPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/property-management/maintenance">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white">New Work Order</h1>
-                        <p className="text-sm text-zinc-400">Report a maintenance issue or request repair</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">New Work Order</h1>
+                        <p className="text-sm text-muted-foreground">Report a maintenance issue or request repair</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Link href="/dashboard/property-management/maintenance">
-                        <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800">
+                        <Button variant="outline" className="border-border text-muted-foreground hover:text-foreground hover:bg-muted">
                             Cancel
                         </Button>
                     </Link>
-                    <Button className="bg-orange-600 hover:bg-orange-500 text-white">
+                    <Button className="bg-orange-600 hover:bg-orange-500 text-foreground">
                         <Save className="mr-2 h-4 w-4" />
                         Create Ticket
                     </Button>
@@ -42,22 +42,22 @@ export default function NewWorkOrderPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Step 1: Issue Details */}
-                <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                <Card className="bg-card border-border md:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Issue Details</CardTitle>
-                        <CardDescription className="text-zinc-500">Describe the problem and location</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Issue Details</CardTitle>
+                        <CardDescription className="text-muted-foreground">Describe the problem and location</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label htmlFor="property" className="text-zinc-300">Property</Label>
+                                <Label htmlFor="property" className="text-muted-foreground">Property</Label>
                                 <Select>
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder="Select property" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                    <SelectContent className="bg-card border-border text-muted-foreground">
                                         <SelectItem value="prop-1">East Legon Villa</SelectItem>
-                                        <p className="text-zinc-400 font-mono text-sm leading-relaxed">
+                                        <p className="text-muted-foreground font-mono text-sm leading-relaxed">
                                             If you can&apos;t find the specific category, choose &quot;Other&quot; and provide details in the description.
                                         </p>
                                         <SelectItem value="prop-2">Cantonments Apt 304</SelectItem>
@@ -66,12 +66,12 @@ export default function NewWorkOrderPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="category" className="text-zinc-300">Category</Label>
+                                <Label htmlFor="category" className="text-muted-foreground">Category</Label>
                                 <Select>
-                                    <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                    <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                    <SelectContent className="bg-card border-border text-muted-foreground">
                                         <SelectItem value="PLUMBING">Plumbing</SelectItem>
                                         <SelectItem value="ELECTRICAL">Electrical</SelectItem>
                                         <SelectItem value="HVAC">AC / HVAC</SelectItem>
@@ -85,38 +85,38 @@ export default function NewWorkOrderPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="subject" className="text-zinc-300">Subject / Title</Label>
-                            <Input id="subject" placeholder="Biief summary of the issue (e.g. Leaking pipe)" className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                            <Label htmlFor="subject" className="text-muted-foreground">Subject / Title</Label>
+                            <Input id="subject" placeholder="Biief summary of the issue (e.g. Leaking pipe)" className="bg-background border-border focus:border-orange-500" />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="description" className="text-zinc-300">Detailed Description</Label>
-                            <Textarea id="description" placeholder="Provide full details about the issue..." className="bg-zinc-950 border-zinc-800 focus:border-orange-500 h-32" />
+                            <Label htmlFor="description" className="text-muted-foreground">Detailed Description</Label>
+                            <Textarea id="description" placeholder="Provide full details about the issue..." className="bg-background border-border focus:border-orange-500 h-32" />
                         </div>
                         <div>
-                            <Label className="text-zinc-300 mb-2 block">Photos / Attachments</Label>
-                            <div className="border border-dashed border-zinc-800 rounded-lg p-6 flex flex-col items-center justify-center bg-zinc-950/50 hover:bg-zinc-900/50 transition-colors cursor-pointer">
-                                <Upload className="h-8 w-8 text-zinc-500 mb-2" />
-                                <span className="text-sm text-zinc-400">Click to upload photos or documents</span>
-                                <span className="text-xs text-zinc-600 mt-1">JPG, PNG, PDF up to 10MB</span>
+                            <Label className="text-muted-foreground mb-2 block">Photos / Attachments</Label>
+                            <div className="border border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center bg-background/50 hover:bg-card/50 transition-colors cursor-pointer">
+                                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                                <span className="text-sm text-muted-foreground">Click to upload photos or documents</span>
+                                <span className="text-xs text-muted-foreground mt-1">JPG, PNG, PDF up to 10MB</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Step 2: Planning & Assignment */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Planning</CardTitle>
-                        <CardDescription className="text-zinc-500">Timeline and urgency</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Planning</CardTitle>
+                        <CardDescription className="text-muted-foreground">Timeline and urgency</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="priority" className="text-zinc-300">Priority Level</Label>
+                            <Label htmlFor="priority" className="text-muted-foreground">Priority Level</Label>
                             <Select defaultValue="MEDIUM">
-                                <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                <SelectContent className="bg-card border-border text-muted-foreground">
                                     <SelectItem value="LOW">Low (Routine)</SelectItem>
                                     <SelectItem value="MEDIUM">Medium (Normal)</SelectItem>
                                     <SelectItem value="HIGH">High (Urgent)</SelectItem>
@@ -125,30 +125,30 @@ export default function NewWorkOrderPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="dueDate" className="text-zinc-300">Due Date</Label>
-                            <Input id="dueDate" type="date" className="bg-zinc-950 border-zinc-800 focus:border-orange-500" />
+                            <Label htmlFor="dueDate" className="text-muted-foreground">Due Date</Label>
+                            <Input id="dueDate" type="date" className="bg-background border-border focus:border-orange-500" />
                         </div>
                         <div className="flex items-center space-x-2 pt-2">
                             <Checkbox id="tenantAccess" className="border-zinc-600 data-[state=checked]:bg-orange-500" />
-                            <Label htmlFor="tenantAccess" className="text-zinc-300 font-normal">Tenant has granted access permission</Label>
+                            <Label htmlFor="tenantAccess" className="text-muted-foreground font-normal">Tenant has granted access permission</Label>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Step 3: Vendor Assignment (Optional) */}
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
-                        <CardTitle className="text-lg font-medium text-white">Assignment</CardTitle>
-                        <CardDescription className="text-zinc-500">Assign to a vendor (Optional)</CardDescription>
+                        <CardTitle className="text-lg font-medium text-foreground">Assignment</CardTitle>
+                        <CardDescription className="text-muted-foreground">Assign to a vendor (Optional)</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="vendor" className="text-zinc-300">Select Vendor</Label>
+                            <Label htmlFor="vendor" className="text-muted-foreground">Select Vendor</Label>
                             <Select>
-                                <SelectTrigger className="bg-zinc-950 border-zinc-800 focus:border-orange-500 text-zinc-300">
+                                <SelectTrigger className="bg-background border-border focus:border-orange-500 text-muted-foreground">
                                     <SelectValue placeholder="Unassigned" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                                <SelectContent className="bg-card border-border text-muted-foreground">
                                     <SelectItem value="unassigned">Unassigned</SelectItem>
                                     <SelectItem value="v-1">Kofi Plumbers Ltd</SelectItem>
                                     <SelectItem value="v-2">Bright Electricals</SelectItem>
@@ -156,12 +156,12 @@ export default function NewWorkOrderPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="rounded-md bg-blue-900/10 border border-blue-900/30 p-3">
-                            <p className="text-xs text-blue-400">
+                        <div className="rounded-md bg-blue-100 dark:bg-blue-900/10 border border-blue-900/30 p-3">
+                            <p className="text-xs text-blue-600 dark:text-blue-400">
                                 Leave unassigned if you haven&apos;t received quotes yet. You can assign a vendor later.
                             </p>
                         </div>
-                        <Button variant="outline" className="w-full border-zinc-800 text-zinc-300 hover:bg-zinc-800">
+                        <Button variant="outline" className="w-full border-border text-muted-foreground hover:bg-muted">
                             <Plus className="mr-2 h-4 w-4" /> Add New Vendor
                         </Button>
                     </CardContent>

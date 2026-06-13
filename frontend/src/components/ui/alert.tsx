@@ -10,13 +10,13 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-zinc-900 border-zinc-800 text-zinc-100",
+        default: "bg-card border-border text-zinc-100",
         destructive:
-          "border-red-500/50 text-red-400 bg-red-900/20 [&>svg]:text-red-400",
+          "border-red-500/50 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 [&>svg]:text-red-400",
         warning:
-          "border-yellow-500/50 text-yellow-400 bg-yellow-900/20 [&>svg]:text-yellow-400",
+          "border-yellow-500/50 text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 [&>svg]:text-yellow-400",
         success:
-          "border-green-500/50 text-green-400 bg-green-900/20 [&>svg]:text-green-400",
+          "border-green-500/50 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20 [&>svg]:text-green-400",
       },
     },
     defaultVariants: {

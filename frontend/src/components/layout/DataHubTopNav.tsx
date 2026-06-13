@@ -28,7 +28,7 @@ export function DataHubTopNav() {
     const pathname = usePathname()
 
     return (
-        <div className="w-full bg-black border-b border-zinc-800">
+        <div className="w-full bg-background border-b border-border">
             <div className="flex items-center h-10 px-4 gap-1 overflow-x-auto scrollbar-hide">
                 {navigation.map((item) => {
                     const isActive = item.exact
@@ -43,11 +43,11 @@ export function DataHubTopNav() {
                             className={cn(
                                 'flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono font-medium transition-all min-w-max',
                                 isActive
-                                    ? 'bg-amber-500 text-white font-bold'
+                                    ? 'bg-amber-500 text-foreground font-bold'
                                     : 'text-amber-500/70 hover:text-amber-500 hover:bg-amber-950/30'
                             )}
                         >
-                            <item.icon className={cn("w-3 h-3", isActive ? "text-white" : "text-amber-600")} />
+                            <item.icon className={cn("w-3 h-3", isActive ? "text-foreground" : "text-amber-600")} />
                             {item.name}
                         </Link>
                     )

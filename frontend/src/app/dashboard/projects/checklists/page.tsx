@@ -125,14 +125,14 @@ interface CreateInstanceData {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-700 text-zinc-300', icon: FileText },
-  scheduled: { label: 'Scheduled', color: 'bg-blue-900/50 text-blue-400', icon: Calendar },
-  in_progress: { label: 'In Progress', color: 'bg-yellow-900/50 text-yellow-400', icon: Clock },
-  pending_review: { label: 'Pending Review', color: 'bg-purple-900/50 text-purple-400', icon: Eye },
-  approved: { label: 'Approved', color: 'bg-emerald-900/50 text-emerald-400', icon: CheckCircle2 },
-  rejected: { label: 'Rejected', color: 'bg-red-900/50 text-red-400', icon: XCircle },
-  requires_reinspection: { label: 'Reinspection', color: 'bg-orange-900/50 text-orange-400', icon: AlertTriangle },
-  cancelled: { label: 'Cancelled', color: 'bg-zinc-700 text-zinc-400', icon: AlertCircle },
+  draft: { label: 'Draft', color: 'bg-zinc-700 text-muted-foreground', icon: FileText },
+  scheduled: { label: 'Scheduled', color: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400', icon: Calendar },
+  in_progress: { label: 'In Progress', color: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400', icon: Clock },
+  pending_review: { label: 'Pending Review', color: 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400', icon: Eye },
+  approved: { label: 'Approved', color: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400', icon: XCircle },
+  requires_reinspection: { label: 'Reinspection', color: 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400', icon: AlertTriangle },
+  cancelled: { label: 'Cancelled', color: 'bg-zinc-700 text-muted-foreground', icon: AlertCircle },
 };
 
 const templateTypeLabels: Record<string, string> = {
@@ -333,14 +333,14 @@ export default function ChecklistsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Quality Checklists</h1>
-          <p className="text-zinc-400 text-sm mt-1">Inspections & QC management for your projects.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Quality Checklists</h1>
+          <p className="text-muted-foreground text-sm mt-1">Inspections & QC management for your projects.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="border-zinc-700" onClick={() => { fetchTemplates(); fetchInstances(); }}>
+          <Button variant="outline" size="icon" className="border-border" onClick={() => { fetchTemplates(); fetchInstances(); }}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => setShowCreateDialog(true)}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground" onClick={() => setShowCreateDialog(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Inspection
           </Button>
         </div>
@@ -348,56 +348,56 @@ export default function ChecklistsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.total}</p>
               </div>
               <ClipboardCheck className="h-5 w-5 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">In Progress</p>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.inProgress}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">In Progress</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats.inProgress}</p>
               </div>
               <Clock className="h-5 w-5 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Pending Review</p>
-                <p className="text-2xl font-bold text-purple-400 mt-1">{stats.pendingReview}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Pending Review</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{stats.pendingReview}</p>
               </div>
               <Eye className="h-5 w-5 text-purple-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Pass Rate</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.passRate}%</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Pass Rate</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.passRate}%</p>
               </div>
               <BarChart3 className="h-5 w-5 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Avg Score</p>
-                <p className="text-2xl font-bold text-blue-400 mt-1">{stats.avgScore}%</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Avg Score</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{stats.avgScore}%</p>
               </div>
               <Star className="h-5 w-5 text-blue-500" />
             </div>
@@ -408,7 +408,7 @@ export default function ChecklistsPage() {
       {/* Tabs and Filters */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <TabsList className="bg-zinc-800/50">
+          <TabsList className="bg-muted/50">
             <TabsTrigger value="inspections" className="data-[state=active]:bg-zinc-700">
               <ClipboardCheck className="h-4 w-4 mr-2" /> Inspections
             </TabsTrigger>
@@ -418,17 +418,17 @@ export default function ChecklistsPage() {
           </TabsList>
           <div className="flex items-center gap-2 flex-1 sm:max-w-md">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search..."
-                className="pl-9 bg-zinc-900 border-zinc-800"
+                className="pl-9 bg-card border-border"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             {activeTab === 'inspections' && (
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-800">
+                <SelectTrigger className="w-[160px] bg-card border-border">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -450,11 +450,11 @@ export default function ChecklistsPage() {
               <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
             </div>
           ) : filteredInstances.length === 0 ? (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
                 <ClipboardCheck className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No Inspections Found</h3>
-                <p className="text-zinc-400 mb-4">Create your first inspection to get started</p>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Inspections Found</h3>
+                <p className="text-muted-foreground mb-4">Create your first inspection to get started</p>
                 <Button className="bg-amber-600 hover:bg-amber-700" onClick={() => setShowCreateDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" /> New Inspection
                 </Button>
@@ -472,13 +472,13 @@ export default function ChecklistsPage() {
                 return (
                   <Card 
                     key={instance.id} 
-                    className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
+                    className="bg-card border-border hover:border-border transition-colors cursor-pointer"
                     onClick={() => openViewSheet(instance)}
                   >
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <span className="text-xs font-mono text-zinc-500">{instance.instanceNumber}</span>
+                          <span className="text-xs font-mono text-muted-foreground">{instance.instanceNumber}</span>
                           <Badge className={`ml-2 ${status.color} gap-1`}>
                             <StatusIcon className="h-3 w-3" />
                             {status.label}
@@ -486,17 +486,17 @@ export default function ChecklistsPage() {
                         </div>
                         {instance.overallScore !== undefined && instance.overallScore > 0 && (
                           <span className={`text-sm font-semibold ${
-                            instance.overallScore >= 80 ? 'text-emerald-400' :
-                            instance.overallScore >= 60 ? 'text-yellow-400' : 'text-red-400'
+                            instance.overallScore >= 80 ? 'text-emerald-600 dark:text-emerald-400' :
+                            instance.overallScore >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                           }`}>
                             {instance.overallScore.toFixed(0)}%
                           </span>
                         )}
                       </div>
                       
-                      <h3 className="font-semibold text-white mb-2 line-clamp-1">{instance.templateName}</h3>
+                      <h3 className="font-semibold text-foreground mb-2 line-clamp-1">{instance.templateName}</h3>
                       
-                      <div className="space-y-2 text-sm text-zinc-400 mb-3">
+                      <div className="space-y-2 text-sm text-muted-foreground mb-3">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-3.5 w-3.5" />
                           <span className="line-clamp-1">{instance.projectName}</span>
@@ -516,11 +516,11 @@ export default function ChecklistsPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <div className="flex justify-between text-xs text-zinc-500">
+                        <div className="flex justify-between text-xs text-muted-foreground">
                           <span>{instance.completedItems} / {instance.totalItems} items</span>
                           <span>{progressPercent}%</span>
                         </div>
-                        <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden flex">
                           <div 
                             className="bg-emerald-500 transition-all" 
                             style={{ width: `${instance.totalItems > 0 ? (instance.passedItems / instance.totalItems) * 100 : 0}%` }}
@@ -542,35 +542,35 @@ export default function ChecklistsPage() {
         {/* Templates Tab */}
         <TabsContent value="templates">
           {filteredTemplates.length === 0 ? (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
                 <Layers className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No Templates Found</h3>
-                <p className="text-zinc-400">Checklist templates will appear here when available</p>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Templates Found</h3>
+                <p className="text-muted-foreground">Checklist templates will appear here when available</p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTemplates.map((template) => (
-                <Card key={template.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <Card key={template.id} className="bg-card border-border hover:border-border transition-colors">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <span className="text-xs font-mono text-zinc-500">{template.templateCode}</span>
-                        <Badge className={`ml-2 ${template.isPublished ? 'bg-emerald-900/50 text-emerald-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                        <span className="text-xs font-mono text-muted-foreground">{template.templateCode}</span>
+                        <Badge className={`ml-2 ${template.isPublished ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-700 text-muted-foreground'}`}>
                           {template.isPublished ? 'Published' : 'Draft'}
                         </Badge>
                       </div>
-                      <span className="text-xs text-zinc-500">v{template.version}</span>
+                      <span className="text-xs text-muted-foreground">v{template.version}</span>
                     </div>
 
-                    <h3 className="font-semibold text-white mb-2">{template.name}</h3>
+                    <h3 className="font-semibold text-foreground mb-2">{template.name}</h3>
                     
                     {template.description && (
-                      <p className="text-sm text-zinc-400 line-clamp-2 mb-3">{template.description}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{template.description}</p>
                     )}
 
-                    <div className="flex items-center gap-4 text-sm text-zinc-500 mb-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <div className="flex items-center gap-1">
                         <Layers className="h-3.5 w-3.5" />
                         <span>{template.sectionCount} sections</span>
@@ -587,8 +587,8 @@ export default function ChecklistsPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
-                      <Badge className="bg-blue-900/30 text-blue-400">
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                         {templateTypeLabels[template.templateType] || template.templateType}
                       </Badge>
                       {template.isPublished && (
@@ -613,19 +613,19 @@ export default function ChecklistsPage() {
 
       {/* Create Instance Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">Start New Inspection</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Start New Inspection</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Create a new inspection from a template.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
             {selectedTemplate && (
-              <div className="p-3 rounded-lg bg-blue-900/20 border border-blue-800/50">
-                <p className="text-sm font-medium text-blue-400">{selectedTemplate.name}</p>
-                <p className="text-xs text-blue-400/70 mt-1">
+              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20 border border-blue-800/50">
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">{selectedTemplate.name}</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400/70 mt-1">
                   {selectedTemplate.sectionCount} sections • {selectedTemplate.itemCount} items
                 </p>
               </div>
@@ -633,12 +633,12 @@ export default function ChecklistsPage() {
 
             {!selectedTemplate && (
               <div className="space-y-2">
-                <Label className="text-zinc-300">Template *</Label>
+                <Label className="text-muted-foreground">Template *</Label>
                 <Select 
                   value={createData.templateId} 
                   onValueChange={(value) => setCreateData({...createData, templateId: value})}
                 >
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                  <SelectTrigger className="bg-muted border-border">
                     <SelectValue placeholder="Select template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -653,12 +653,12 @@ export default function ChecklistsPage() {
             )}
 
             <div className="space-y-2">
-              <Label className="text-zinc-300">Project *</Label>
+              <Label className="text-muted-foreground">Project *</Label>
               <Select 
                 value={createData.projectId} 
                 onValueChange={(value) => setCreateData({...createData, projectId: value})}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
@@ -672,22 +672,22 @@ export default function ChecklistsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-zinc-300">Location / Zone</Label>
+              <Label className="text-muted-foreground">Location / Zone</Label>
               <Input 
                 placeholder="e.g., Floor 3, Section B"
                 value={createData.location}
                 onChange={(e) => setCreateData({...createData, location: e.target.value})}
-                className="bg-zinc-800 border-zinc-700" 
+                className="bg-muted border-border" 
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-zinc-300">Due Date</Label>
+              <Label className="text-muted-foreground">Due Date</Label>
               <Input 
                 type="date"
                 value={createData.dueDate}
                 onChange={(e) => setCreateData({...createData, dueDate: e.target.value})}
-                className="bg-zinc-800 border-zinc-700" 
+                className="bg-muted border-border" 
               />
             </div>
           </div>
@@ -695,13 +695,13 @@ export default function ChecklistsPage() {
           <DialogFooter className="mt-6">
             <Button 
               variant="outline" 
-              className="border-zinc-700" 
+              className="border-border" 
               onClick={() => { setShowCreateDialog(false); setSelectedTemplate(null); }}
             >
               Cancel
             </Button>
             <Button 
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-amber-600 hover:bg-amber-700 text-foreground"
               onClick={handleCreateInstance}
               disabled={submitting}
             >
@@ -714,10 +714,10 @@ export default function ChecklistsPage() {
 
       {/* View Instance Sheet */}
       <Sheet open={showViewSheet} onOpenChange={setShowViewSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle className="text-white">{selectedInstance?.instanceNumber}</SheetTitle>
-            <SheetDescription className="text-zinc-400">
+            <SheetTitle className="text-foreground">{selectedInstance?.instanceNumber}</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               {selectedInstance?.templateName}
             </SheetDescription>
           </SheetHeader>
@@ -736,8 +736,8 @@ export default function ChecklistsPage() {
                 })()}
                 {selectedInstance.overallScore !== undefined && selectedInstance.overallScore > 0 && (
                   <Badge className={`${
-                    selectedInstance.overallScore >= 80 ? 'bg-emerald-900/50 text-emerald-400' :
-                    selectedInstance.overallScore >= 60 ? 'bg-yellow-900/50 text-yellow-400' : 'bg-red-900/50 text-red-400'
+                    selectedInstance.overallScore >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400' :
+                    selectedInstance.overallScore >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400' : 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'
                   }`}>
                     Score: {selectedInstance.overallScore.toFixed(1)}%
                   </Badge>
@@ -746,31 +746,31 @@ export default function ChecklistsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Project</Label>
-                  <p className="text-white mt-1">{selectedInstance.projectName}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Project</Label>
+                  <p className="text-foreground mt-1">{selectedInstance.projectName}</p>
                 </div>
                 {selectedInstance.location && (
                   <div>
-                    <Label className="text-zinc-500 text-xs uppercase">Location</Label>
-                    <p className="text-white mt-1">{selectedInstance.location}</p>
+                    <Label className="text-muted-foreground text-xs uppercase">Location</Label>
+                    <p className="text-foreground mt-1">{selectedInstance.location}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                <Label className="text-zinc-500 text-xs uppercase mb-2 block">Progress</Label>
+                <Label className="text-muted-foreground text-xs uppercase mb-2 block">Progress</Label>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">
+                    <span className="text-muted-foreground">
                       {selectedInstance.completedItems} / {selectedInstance.totalItems} items
                     </span>
-                    <span className="text-white">
+                    <span className="text-foreground">
                       {selectedInstance.totalItems > 0 
                         ? Math.round((selectedInstance.completedItems / selectedInstance.totalItems) * 100) 
                         : 0}%
                     </span>
                   </div>
-                  <div className="h-2 bg-zinc-800 rounded-full overflow-hidden flex">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden flex">
                     <div 
                       className="bg-emerald-500 transition-all" 
                       style={{ width: `${selectedInstance.totalItems > 0 ? (selectedInstance.passedItems / selectedInstance.totalItems) * 100 : 0}%` }}
@@ -781,33 +781,33 @@ export default function ChecklistsPage() {
                     />
                   </div>
                   <div className="flex gap-4 text-xs">
-                    <span className="text-emerald-400">{selectedInstance.passedItems} passed</span>
-                    <span className="text-red-400">{selectedInstance.failedItems} failed</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">{selectedInstance.passedItems} passed</span>
+                    <span className="text-red-600 dark:text-red-400">{selectedInstance.failedItems} failed</span>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Created</Label>
-                  <p className="text-white mt-1">{new Date(selectedInstance.createdAt).toLocaleDateString('en-GB')}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Created</Label>
+                  <p className="text-foreground mt-1">{new Date(selectedInstance.createdAt).toLocaleDateString('en-GB')}</p>
                 </div>
                 {selectedInstance.dueDate && (
                   <div>
-                    <Label className="text-zinc-500 text-xs uppercase">Due Date</Label>
-                    <p className="text-white mt-1">{new Date(selectedInstance.dueDate).toLocaleDateString('en-GB')}</p>
+                    <Label className="text-muted-foreground text-xs uppercase">Due Date</Label>
+                    <p className="text-foreground mt-1">{new Date(selectedInstance.dueDate).toLocaleDateString('en-GB')}</p>
                   </div>
                 )}
               </div>
 
               {selectedInstance.assignedToName && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Assigned To</Label>
-                  <p className="text-white mt-1">{selectedInstance.assignedToName}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Assigned To</Label>
+                  <p className="text-foreground mt-1">{selectedInstance.assignedToName}</p>
                 </div>
               )}
 
-              <div className="pt-4 border-t border-zinc-800 flex gap-2">
+              <div className="pt-4 border-t border-border flex gap-2">
                 {selectedInstance.status === 'in_progress' && (
                   <Button className="flex-1 bg-amber-600 hover:bg-amber-700">
                     <Play className="h-4 w-4 mr-2" /> Continue Inspection

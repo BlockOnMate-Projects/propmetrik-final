@@ -26,7 +26,7 @@ const features = [
 
 export default function FeatureGrid() {
     return (
-        <section className="py-32 bg-zinc-50 text-zinc-900">
+        <section className="py-32 bg-muted text-zinc-900">
             <div className="container mx-auto px-4 md:px-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16">
                     {features.map((feature, index) => (
@@ -39,11 +39,11 @@ export default function FeatureGrid() {
                             className="group relative"
                         >
                             <Link href={feature.href} className="block h-full">
-                                <div className="absolute top-0 left-0 w-12 h-1 bg-zinc-900 mb-8" />
+                                <div className="absolute top-0 left-0 w-12 h-1 bg-card mb-8" />
                                 <h3 className="text-3xl font-bold mb-6 mt-10 tracking-tight group-hover:text-amber-600 transition-colors duration-300">
                                     {feature.title}
                                 </h3>
-                                <p className="text-zinc-600 text-lg mb-8 leading-relaxed">
+                                <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
                                     {feature.description}
                                 </p>
                                 <span className="text-sm font-bold uppercase tracking-widest border-b-2 border-transparent group-hover:border-amber-600 pb-1 inline-block transition-all duration-300 cursor-pointer">

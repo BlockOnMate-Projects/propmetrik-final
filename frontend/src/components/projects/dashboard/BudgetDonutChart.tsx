@@ -89,36 +89,36 @@ function CustomTooltip({ active, payload, currency }: any) {
   const percentSpent = data.budgeted > 0 ? (data.spent / data.budgeted) * 100 : 0
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 p-3 shadow-xl rounded">
+    <div className="bg-card border border-border p-3 shadow-xl rounded">
       <p className="font-mono text-xs text-amber-500 mb-2">{data.label}</p>
       <div className="space-y-1">
         <div className="flex justify-between gap-4">
-          <span className="font-mono text-[10px] text-zinc-500">Budgeted:</span>
-          <span className="font-mono text-xs text-zinc-300">
+          <span className="font-mono text-[10px] text-muted-foreground">Budgeted:</span>
+          <span className="font-mono text-xs text-muted-foreground">
             {formatCurrency(data.budgeted, currency)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="font-mono text-[10px] text-zinc-500">Spent:</span>
-          <span className="font-mono text-xs text-zinc-300">
+          <span className="font-mono text-[10px] text-muted-foreground">Spent:</span>
+          <span className="font-mono text-xs text-muted-foreground">
             {formatCurrency(data.spent, currency)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="font-mono text-[10px] text-zinc-500">Remaining:</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Remaining:</span>
           <span className={cn(
             "font-mono text-xs",
-            data.remaining >= 0 ? "text-green-400" : "text-red-400"
+            data.remaining >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
           )}>
             {formatCurrency(data.remaining, currency)}
           </span>
         </div>
-        <div className="pt-1 border-t border-zinc-700 mt-1">
+        <div className="pt-1 border-t border-border mt-1">
           <div className="flex justify-between gap-4">
-            <span className="font-mono text-[10px] text-zinc-500">Utilized:</span>
+            <span className="font-mono text-[10px] text-muted-foreground">Utilized:</span>
             <span className={cn(
               "font-mono text-xs font-medium",
-              percentSpent > 100 ? "text-red-400" : percentSpent > 90 ? "text-amber-400" : "text-green-400"
+              percentSpent > 100 ? "text-red-600 dark:text-red-400" : percentSpent > 90 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"
             )}>
               {percentSpent.toFixed(1)}%
             </span>
@@ -146,7 +146,7 @@ function CenterLabel({
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-      <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">
+      <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
         Total Budget
       </span>
       <span className="font-mono text-lg font-semibold text-zinc-100">
@@ -154,13 +154,13 @@ function CenterLabel({
       </span>
       <div className="flex items-center gap-1 mt-1">
         {isOverBudget ? (
-          <TrendingDown className="h-3 w-3 text-red-400" />
+          <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />
         ) : (
-          <TrendingUp className="h-3 w-3 text-green-400" />
+          <TrendingUp className="h-3 w-3 text-green-600 dark:text-green-400" />
         )}
         <span className={cn(
           "font-mono text-xs",
-          isOverBudget ? "text-red-400" : "text-green-400"
+          isOverBudget ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
         )}>
           {utilization.toFixed(1)}% used
         </span>
@@ -193,7 +193,7 @@ function BudgetLegend({
             onClick={() => onCategoryClick?.(item.category)}
             className={cn(
               "flex items-center gap-2 px-2 py-1.5 rounded transition-colors text-left",
-              onCategoryClick && "hover:bg-zinc-800 cursor-pointer"
+              onCategoryClick && "hover:bg-muted cursor-pointer"
             )}
           >
             <div
@@ -202,15 +202,15 @@ function BudgetLegend({
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[10px] text-zinc-400 truncate">
+                <span className="font-mono text-[10px] text-muted-foreground truncate">
                   {label}
                 </span>
-                <span className="font-mono text-[10px] text-zinc-300">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   {item.percentage.toFixed(1)}%
                 </span>
               </div>
               {/* Mini progress bar */}
-              <div className="h-1 bg-zinc-800 rounded-full mt-0.5 overflow-hidden">
+              <div className="h-1 bg-muted rounded-full mt-0.5 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
@@ -256,7 +256,7 @@ export function BudgetDonutChart({
 
   if (isLoading) {
     return (
-      <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
+      <div className={cn("border border-border bg-card/50 p-4", className)}>
         <div className="flex items-center gap-2 mb-4">
           <DollarSign className="h-4 w-4 text-amber-500" />
           <span className="font-mono text-xs text-amber-500 tracking-wider">
@@ -264,7 +264,7 @@ export function BudgetDonutChart({
           </span>
         </div>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
     )
@@ -272,14 +272,14 @@ export function BudgetDonutChart({
 
   if (!data || chartData.length === 0) {
     return (
-      <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
+      <div className={cn("border border-border bg-card/50 p-4", className)}>
         <div className="flex items-center gap-2 mb-4">
           <DollarSign className="h-4 w-4 text-amber-500" />
           <span className="font-mono text-xs text-amber-500 tracking-wider">
             BUDGET OVERVIEW
           </span>
         </div>
-        <div className="flex items-center justify-center h-64 text-zinc-500">
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
           <span className="font-mono text-sm">No budget data available</span>
         </div>
       </div>
@@ -287,7 +287,7 @@ export function BudgetDonutChart({
   }
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
+    <div className={cn("border border-border bg-card/50 p-4", className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ export function BudgetDonutChart({
             onClick={() => setViewMode('budgeted')}
             className={cn(
               "text-xs h-7",
-              viewMode === 'budgeted' ? "bg-amber-500/10 text-amber-500" : "text-zinc-500"
+              viewMode === 'budgeted' ? "bg-amber-500/10 text-amber-500" : "text-muted-foreground"
             )}
           >
             Budgeted
@@ -316,7 +316,7 @@ export function BudgetDonutChart({
             onClick={() => setViewMode('spent')}
             className={cn(
               "text-xs h-7",
-              viewMode === 'spent' ? "bg-amber-500/10 text-amber-500" : "text-zinc-500"
+              viewMode === 'spent' ? "bg-amber-500/10 text-amber-500" : "text-muted-foreground"
             )}
           >
             Spent
@@ -362,24 +362,24 @@ export function BudgetDonutChart({
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-zinc-800">
+      <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
         <div className="text-center">
-          <span className="font-mono text-[10px] text-zinc-500 block">Total Budget</span>
+          <span className="font-mono text-[10px] text-muted-foreground block">Total Budget</span>
           <span className="font-mono text-sm text-zinc-100">
             {formatCurrency(data.totalBudget, data.currency)}
           </span>
         </div>
         <div className="text-center">
-          <span className="font-mono text-[10px] text-zinc-500 block">Spent</span>
-          <span className="font-mono text-sm text-amber-400">
+          <span className="font-mono text-[10px] text-muted-foreground block">Spent</span>
+          <span className="font-mono text-sm text-amber-600 dark:text-amber-400">
             {formatCurrency(data.totalSpent, data.currency)}
           </span>
         </div>
         <div className="text-center">
-          <span className="font-mono text-[10px] text-zinc-500 block">Remaining</span>
+          <span className="font-mono text-[10px] text-muted-foreground block">Remaining</span>
           <span className={cn(
             "font-mono text-sm",
-            data.totalRemaining >= 0 ? "text-green-400" : "text-red-400"
+            data.totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
           )}>
             {formatCurrency(data.totalRemaining, data.currency)}
           </span>

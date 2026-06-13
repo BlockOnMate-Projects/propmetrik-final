@@ -294,7 +294,7 @@ export default function LegacyFloorPlanRenderer({
               })}
             </Layer>
           </Stage>
-          <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">Read-only view</div>
+          <div className="absolute top-2 left-2 bg-background/50 text-foreground text-xs px-2 py-1 rounded">Read-only view</div>
         </div>
 
         {rooms.length > 0 && (

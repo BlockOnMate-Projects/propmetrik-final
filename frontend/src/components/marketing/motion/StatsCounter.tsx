@@ -65,7 +65,7 @@ export default function StatsCounter({
             <div className="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400 mb-2">
                 {prefix}{displayValue}{suffix}
             </div>
-            <div className="text-sm md:text-base text-zinc-400 uppercase tracking-wider">
+            <div className="text-sm md:text-base text-muted-foreground uppercase tracking-wider">
                 {label}
             </div>
         </motion.div>

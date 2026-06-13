@@ -62,19 +62,19 @@ import {
 // =====================================================
 
 const statusConfig: Record<RfiStatus, { bg: string; text: string; label: string; icon: React.ElementType }> = {
-  draft: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'Draft', icon: FileText },
-  open: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'Open', icon: MessageSquare },
-  pending_response: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'Awaiting Response', icon: Clock },
-  answered: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Answered', icon: CheckCircle2 },
-  closed: { bg: 'bg-emerald-900/50', text: 'text-emerald-400', label: 'Closed', icon: CheckCircle2 },
-  void: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Void', icon: X },
+  draft: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground', label: 'Draft', icon: FileText },
+  open: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'Open', icon: MessageSquare },
+  pending_response: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400', label: 'Awaiting Response', icon: Clock },
+  answered: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'Answered', icon: CheckCircle2 },
+  closed: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-600 dark:text-emerald-400', label: 'Closed', icon: CheckCircle2 },
+  void: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'Void', icon: X },
 }
 
 const priorityConfig: Record<RfiPriority, { bg: string; text: string; label: string }> = {
-  low: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'Low' },
-  normal: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'Normal' },
-  high: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'High' },
-  critical: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Critical' },
+  low: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground', label: 'Low' },
+  normal: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'Normal' },
+  high: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400', label: 'High' },
+  critical: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'Critical' },
 }
 
 // =====================================================
@@ -225,21 +225,21 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
     <div className="space-y-6">
       {/* Notification Banner for Open RFIs */}
       {stats.actionRequired > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+        <div className="flex items-center gap-3 p-4 bg-amber-100 dark:bg-amber-900/20 border border-amber-700/50 rounded-lg">
           <div className="flex-shrink-0 h-10 w-10 bg-amber-600 rounded-full flex items-center justify-center">
-            <MessageSquare className="h-5 w-5 text-white" />
+            <MessageSquare className="h-5 w-5 text-foreground" />
           </div>
           <div className="flex-1">
-            <h4 className="font-mono text-sm text-amber-400 font-medium">
+            <h4 className="font-mono text-sm text-amber-600 dark:text-amber-400 font-medium">
               {stats.actionRequired} RFI{stats.actionRequired > 1 ? 's' : ''} Require Your Response
             </h4>
-            <p className="font-mono text-xs text-zinc-400 mt-0.5">
+            <p className="font-mono text-xs text-muted-foreground mt-0.5">
               The project manager is waiting for your input on these requests
             </p>
           </div>
           <Button
             size="sm"
-            className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+            className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
             onClick={() => setStatusFilter('open')}
           >
             View Open RFIs
@@ -256,14 +256,14 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
       </div>
       
       {/* Filters */}
-      <div className="flex items-center gap-4 pb-4 border-b border-zinc-800">
+      <div className="flex items-center gap-4 pb-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-zinc-500" />
-          <span className="font-mono text-xs text-zinc-500">Filters:</span>
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="font-mono text-xs text-muted-foreground">Filters:</span>
         </div>
         
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as RfiStatus | 'all')}>
-          <SelectTrigger className="w-40 h-8 font-mono text-xs bg-zinc-900 border-zinc-700">
+          <SelectTrigger className="w-40 h-8 font-mono text-xs bg-card border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -275,7 +275,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
         </Select>
         
         <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as RfiPriority | 'all')}>
-          <SelectTrigger className="w-40 h-8 font-mono text-xs bg-zinc-900 border-zinc-700">
+          <SelectTrigger className="w-40 h-8 font-mono text-xs bg-card border-border">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -289,17 +289,17 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
       
       {/* RFI List */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-4 text-center">
-          <AlertTriangle className="h-6 w-6 text-red-400 mx-auto mb-2" />
-          <p className="font-mono text-sm text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-4 text-center">
+          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+          <p className="font-mono text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
       
       {rfis.length === 0 ? (
-        <div className="text-center py-12 border border-zinc-800 bg-zinc-900/50">
+        <div className="text-center py-12 border border-border bg-card/50">
           <MessageSquare className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-          <h3 className="font-mono text-sm text-white mb-2">No RFIs Found</h3>
-          <p className="font-mono text-xs text-zinc-500">
+          <h3 className="font-mono text-sm text-foreground mb-2">No RFIs Found</h3>
+          <p className="font-mono text-xs text-muted-foreground">
             RFIs from the project manager will appear here
           </p>
         </div>
@@ -314,7 +314,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
             return (
               <div 
                 key={rfi.id}
-                className="border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors"
+                className="border border-border bg-card/50 hover:border-border transition-colors"
               >
                 {/* RFI Header */}
                 <div 
@@ -337,15 +337,15 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                         {priority.label}
                       </Badge>
                       {rfi.is_overdue && (
-                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-red-900/50 text-red-400">
+                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400">
                           {rfi.days_overdue} days overdue
                         </Badge>
                       )}
                     </div>
-                    <h4 className="font-mono text-sm text-white line-clamp-1">
+                    <h4 className="font-mono text-sm text-foreground line-clamp-1">
                       {rfi.subject}
                     </h4>
-                    <p className="font-mono text-xs text-zinc-500 mt-1">
+                    <p className="font-mono text-xs text-muted-foreground mt-1">
                       From: {rfi.submitted_by_name || 'Project Manager'} • 
                       {rfi.due_date && ` Due: ${new Date(rfi.due_date).toLocaleDateString('en-GB')}`}
                     </p>
@@ -353,14 +353,14 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                   
                   <div className="flex items-center gap-2">
                     {rfi.status === 'draft' && (
-                      <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-700/50 text-zinc-400">
+                      <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-700/50 text-muted-foreground">
                         Pending Submission
                       </Badge>
                     )}
                     {(rfi.status === 'open' || rfi.status === 'pending_response') && (
                       <Button
                         size="sm"
-                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground"
                         onClick={(e) => {
                           e.stopPropagation()
                           openResponseDialog(rfi)
@@ -371,27 +371,27 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                       </Button>
                     )}
                     {rfi.status === 'answered' && (
-                      <Badge variant="outline" className="font-mono text-[10px] border-0 bg-green-900/50 text-green-400">
+                      <Badge variant="outline" className="font-mono text-[10px] border-0 bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400">
                         Response Submitted
                       </Badge>
                     )}
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-zinc-500" />
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
                 </div>
                 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-800 p-4 space-y-4">
+                  <div className="border-t border-border p-4 space-y-4">
                     {/* Question */}
                     <div>
-                      <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                      <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                         Question
                       </h5>
-                      <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                      <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                         {rfi.question}
                       </p>
                     </div>
@@ -399,7 +399,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                     {/* Attachments */}
                     {rfi.attachments && rfi.attachments.length > 0 && (
                       <div>
-                        <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                        <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                           Attachments
                         </h5>
                         <div className="flex flex-wrap gap-2">
@@ -409,10 +409,10 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                               href={att.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors"
+                              className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border hover:border-amber-500/50 transition-colors"
                             >
-                              <Paperclip className="h-3 w-3 text-zinc-500" />
-                              <span className="font-mono text-xs text-zinc-300">{att.filename}</span>
+                              <Paperclip className="h-3 w-3 text-muted-foreground" />
+                              <span className="font-mono text-xs text-muted-foreground">{att.filename}</span>
                               <Download className="h-3 w-3 text-amber-500" />
                             </a>
                           ))}
@@ -422,17 +422,17 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                     
                     {/* Response (if answered) */}
                     {rfi.response && (
-                      <div className="bg-green-900/20 border border-green-800/50 p-4">
-                        <h5 className="font-mono text-[10px] text-green-400 uppercase tracking-wider mb-2">
+                      <div className="bg-green-100 dark:bg-green-900/20 border border-green-800/50 p-4">
+                        <h5 className="font-mono text-[10px] text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">
                           Response from {rfi.answered_by_name || 'Client'}
                         </h5>
-                        <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                        <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                           {rfi.response}
                         </p>
                         
                         {rfi.response_attachments && rfi.response_attachments.length > 0 && (
                           <div className="mt-3">
-                            <h6 className="font-mono text-[10px] text-zinc-500 mb-2">Response Documents</h6>
+                            <h6 className="font-mono text-[10px] text-muted-foreground mb-2">Response Documents</h6>
                             <div className="flex flex-wrap gap-2">
                               {rfi.response_attachments.map((att) => (
                                 <a
@@ -440,10 +440,10 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                                   href={att.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 border border-zinc-700 hover:border-green-500/50 transition-colors"
+                                  className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border hover:border-green-500/50 transition-colors"
                                 >
                                   <FileText className="h-3 w-3 text-green-500" />
-                                  <span className="font-mono text-xs text-zinc-300">{att.filename}</span>
+                                  <span className="font-mono text-xs text-muted-foreground">{att.filename}</span>
                                   <Download className="h-3 w-3 text-green-500" />
                                 </a>
                               ))}
@@ -454,13 +454,13 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                     )}
                     
                     {/* Impact Summary */}
-                    <div className="flex items-center gap-6 pt-2 border-t border-zinc-800">
+                    <div className="flex items-center gap-6 pt-2 border-t border-border">
                       {rfi.cost_impact !== undefined && rfi.cost_impact !== 0 && (
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-zinc-500">Cost Impact:</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">Cost Impact:</span>
                           <span className={cn(
                             "font-mono text-xs",
-                            rfi.cost_impact > 0 ? "text-red-400" : "text-green-400"
+                            rfi.cost_impact > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                           )}>
                             {rfi.cost_impact > 0 ? '+' : ''}{formatCurrency(rfi.cost_impact, rfi.cost_impact_currency || 'GHS')}
                           </span>
@@ -468,10 +468,10 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                       )}
                       {rfi.schedule_impact_days !== undefined && rfi.schedule_impact_days !== 0 && (
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-zinc-500">Schedule Impact:</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">Schedule Impact:</span>
                           <span className={cn(
                             "font-mono text-xs",
-                            rfi.schedule_impact_days > 0 ? "text-red-400" : "text-green-400"
+                            rfi.schedule_impact_days > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                           )}>
                             {rfi.schedule_impact_days > 0 ? '+' : ''}{rfi.schedule_impact_days} days
                           </span>
@@ -479,8 +479,8 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                       )}
                       {rfi.comment_count !== undefined && rfi.comment_count > 0 && (
                         <div className="flex items-center gap-2">
-                          <MessageSquare className="h-3 w-3 text-zinc-500" />
-                          <span className="font-mono text-xs text-zinc-400">{rfi.comment_count} comments</span>
+                          <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-mono text-xs text-muted-foreground">{rfi.comment_count} comments</span>
                         </div>
                       )}
                     </div>
@@ -494,46 +494,46 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
       
       {/* Response Dialog */}
       <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-2xl">
+        <DialogContent className="bg-card border-border max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-mono text-white">
+            <DialogTitle className="font-mono text-foreground">
               Respond to RFI
             </DialogTitle>
-            <DialogDescription className="font-mono text-zinc-400">
+            <DialogDescription className="font-mono text-muted-foreground">
               {responseRfi?.rfi_number}: {responseRfi?.subject}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             {/* Original Question */}
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4">
-              <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+            <div className="bg-muted/50 border border-border p-4">
+              <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                 Original Question
               </h5>
-              <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+              <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                 {responseRfi?.question}
               </p>
             </div>
             
             {/* Response Text */}
             <div>
-              <label className="font-mono text-xs text-zinc-400 mb-2 block">
+              <label className="font-mono text-xs text-muted-foreground mb-2 block">
                 Your Response *
               </label>
               <Textarea
                 value={responseText}
                 onChange={(e) => setResponseText(e.target.value)}
                 placeholder="Enter your response to this RFI..."
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm min-h-[150px] text-white placeholder:text-zinc-500"
+                className="bg-muted border-border font-mono text-sm min-h-[150px] text-foreground placeholder:text-muted-foreground"
               />
             </div>
             
             {/* File Upload */}
             <div>
-              <label className="font-mono text-xs text-zinc-400 mb-2 block">
+              <label className="font-mono text-xs text-muted-foreground mb-2 block">
                 Attach Documents (Optional)
               </label>
-              <div className="border-2 border-dashed border-zinc-700 p-4 text-center hover:border-amber-500/50 transition-colors">
+              <div className="border-2 border-dashed border-border p-4 text-center hover:border-amber-500/50 transition-colors">
                 <input
                   type="file"
                   multiple
@@ -542,11 +542,11 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                   id="response-file-upload"
                 />
                 <label htmlFor="response-file-upload" className="cursor-pointer">
-                  <Upload className="h-8 w-8 text-zinc-500 mx-auto mb-2" />
-                  <p className="font-mono text-xs text-zinc-400">
+                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="font-mono text-xs text-muted-foreground">
                     Click to upload or drag and drop
                   </p>
-                  <p className="font-mono text-[10px] text-zinc-600 mt-1">
+                  <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     PDF, DWG, XLSX, DOCX up to 50MB each
                   </p>
                 </label>
@@ -558,12 +558,12 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                   {responseFiles.map((file, index) => (
                     <div 
                       key={index}
-                      className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 border border-zinc-700"
+                      className="flex items-center justify-between px-3 py-2 bg-muted/50 border border-border"
                     >
                       <div className="flex items-center gap-2">
-                        <Paperclip className="h-3 w-3 text-zinc-500" />
-                        <span className="font-mono text-xs text-zinc-300">{file.name}</span>
-                        <span className="font-mono text-[10px] text-zinc-600">
+                        <Paperclip className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-mono text-xs text-muted-foreground">{file.name}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
                           ({(file.size / 1024 / 1024).toFixed(2)} MB)
                         </span>
                       </div>
@@ -571,7 +571,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                         variant="ghost"
                         size="sm"
                         onClick={() => removeFile(index)}
-                        className="h-6 w-6 p-0 text-zinc-500 hover:text-red-400"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-red-400"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -594,7 +594,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
             <Button
               onClick={submitResponse}
               disabled={!responseText.trim() || isSubmitting}
-              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
+              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground"
             >
               {isSubmitting ? (
                 <>
@@ -629,16 +629,16 @@ function StatCard({
   color?: 'zinc' | 'blue' | 'amber' | 'red' | 'green'
 }) {
   const colorClasses = {
-    zinc: 'text-white',
-    blue: 'text-blue-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-    green: 'text-green-400',
+    zinc: 'text-foreground',
+    blue: 'text-blue-600 dark:text-blue-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    red: 'text-red-600 dark:text-red-400',
+    green: 'text-green-600 dark:text-green-400',
   }
   
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
+    <div className="border border-border bg-card/50 p-4">
+      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
         {label}
       </div>
       <div className={cn("font-mono text-2xl", colorClasses[color])}>
