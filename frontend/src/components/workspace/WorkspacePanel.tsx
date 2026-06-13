@@ -7,6 +7,11 @@ import { workspaceApi, type EntityType } from '@/lib/workspace-api';
 import { MessageSquare } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
+// Short-lived cache for the unread-count lookup so the floating widget doesn't re-hit
+// getOrCreate every time it remounts (e.g. toggling to/from project pages).
+const WORKSPACE_UNREAD_TTL_MS = 60 * 1000;
+const _workspaceUnreadCache = new Map<string, { unreadCount: number; at: number }>();
+
 // ============================================================================
 // FLOATING TRIGGER BUTTON
 // ============================================================================
@@ -66,9 +71,18 @@ export function WorkspaceWidget({
     const resolvedToken = initialToken || ((session as any)?.accessToken ?? null);
 
     useEffect(() => {
+        const key = `${entityType}:${entityId}`;
+        const cached = _workspaceUnreadCache.get(key);
+        if (cached && Date.now() - cached.at < WORKSPACE_UNREAD_TTL_MS) {
+            setUnreadCount(cached.unreadCount);
+            return;
+        }
         workspaceApi
             .getOrCreate(entityType, entityId)
-            .then(({ unreadCount: c }) => setUnreadCount(c))
+            .then(({ unreadCount: c }) => {
+                _workspaceUnreadCache.set(key, { unreadCount: c, at: Date.now() });
+                setUnreadCount(c);
+            })
             .catch(() => { });
     }, [entityType, entityId]);
 

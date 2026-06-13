@@ -13,6 +13,9 @@ const poolConfig: PoolConfig = {
 
 export const pool = new Pool(poolConfig);
 
+// Queries slower than this (ms) are logged; faster ones are not, to keep the hot path quiet.
+const SLOW_QUERY_MS = 100;
+
 // Log pool events
 pool.on('connect', () => {
   logger.debug('New database connection established');
@@ -37,11 +40,15 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   try {
     const result = await pool.query<T>(text, params);
     const duration = Date.now() - start;
-    logger.debug('Executed query', {
-      text: text.substring(0, 100),
-      duration,
-      rows: result.rowCount,
-    });
+    // Only log slow queries. A single dashboard load can fire hundreds of fast queries;
+    // logging every one adds real overhead (and noise) on the hot path.
+    if (duration >= SLOW_QUERY_MS) {
+      logger.warn('Slow query', {
+        text: text.substring(0, 100),
+        duration,
+        rows: result.rowCount,
+      });
+    }
     return result;
   } catch (error: any) {
     logger.error('Query error', {

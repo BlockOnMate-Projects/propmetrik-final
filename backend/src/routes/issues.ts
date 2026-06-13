@@ -5,10 +5,12 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { pool } from '../database';
-import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
 
 const router = Router();
 registerPMParamValidation(router);
+// All routes are /projects/:projectId/... — gate by project membership.
+registerProjectAccessParams(router, ['projectId']);
 
 // ============================================================================
 // ISSUES

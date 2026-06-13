@@ -444,20 +444,48 @@ class ValuationInvoiceService {
         // Try Paystack integration (if PAYSTACK_SECRET_KEY is configured)
         let paymentLink: string | null = null;
         let accessCode: string | null = null;
+        // FX settlement context (populated when the invoice is in a non-GHS currency)
+        let chargedGhs: number | null = null;
+        let fxRate: number | null = null;
+        let fxSource: string | null = null;
+        let fxLockedAt: Date | null = null;
 
         try {
             const { paystackService } = await import('../property-management/payment/paystackService').catch(() => ({ paystackService: null }));
 
             if (paystackService && invoice.clientEmail) {
+                // Settle in GHS — Paystack Ghana cannot settle foreign currencies. A
+                // USD invoice is charged in its GHS equivalent at a LIVE, locked rate;
+                // if no live rate is available normalizeToGhs throws (no fallback) and
+                // we skip the charge rather than bill a guessed amount.
+                const { exchangeRateService } = await import('../../../shared-services/payments/crypto/exchangeRateService');
+                const obligationCurrency = (invoice.currency || 'GHS').toUpperCase();
+                const isForeign = obligationCurrency !== 'GHS';
+                const fxConv = await exchangeRateService.normalizeToGhs(invoice.subtotal, obligationCurrency);
+                const subtotalGhs = fxConv.ghsAmount;
+
+                // Platform fee always computed on the GHS principal (fees are GHS-denominated)
+                const platformFeeCalc = await feeEngine.calculate('valuation', subtotalGhs, invoice.organizationId, 'organization');
+                const platformFeePesewas = platformFeeCalc.serviceFeeSubunits;
+                const totalGhs = Number((subtotalGhs + platformFeeCalc.serviceFee).toFixed(2));
+                const totalPesewas = Math.round(totalGhs * 100);
+
+                chargedGhs = totalGhs;
+                if (isForeign) { fxRate = fxConv.rate; fxSource = fxConv.source; fxLockedAt = fxConv.fetchedAt; }
+
+                const fxMetadata = isForeign ? {
+                    obligation_currency: obligationCurrency,
+                    obligation_amount: invoice.totalAmount,
+                    fx_rate: fxConv.rate,
+                    fx_source: fxConv.source,
+                    fx_locked_at: fxConv.fetchedAt.toISOString(),
+                } : {};
+
                 // Check if org has a payout account (subaccount) configured
                 const payoutConfig = await paystackService.getPaymentAccountConfig(invoice.organizationId, 'organization', 'valuation');
 
                 if (payoutConfig?.subaccountCode) {
                     // Split payment: client pays → valuer receives principal, PROPMETRIK retains platform fee
-                    const platformFeeCalc = await feeEngine.calculate('valuation', invoice.subtotal, invoice.organizationId, 'organization');
-                    const platformFeePesewas = platformFeeCalc.serviceFeeSubunits;
-                    const totalPesewas = Math.round(invoice.totalAmount * 100);
-
                     const response = await paystackService.initializeWithSubaccount(
                         {
                             email: invoice.clientEmail,
@@ -472,6 +500,7 @@ class ValuationInvoiceService {
                                 clientName: invoice.clientName,
                                 type: 'valuation_invoice',
                                 splitPayment: true,
+                                ...fxMetadata,
                             },
                         },
                         payoutConfig.subaccountCode,
@@ -486,7 +515,9 @@ class ValuationInvoiceService {
                     logger.info('Invoice sent with split payment', {
                         id, reference,
                         subaccount: payoutConfig.subaccountCode,
-                        total: invoice.totalAmount,
+                        obligationCurrency,
+                        obligationTotal: invoice.totalAmount,
+                        chargedGhs: totalGhs,
                         platformFee: platformFeeCalc.serviceFee,
                     });
                 } else {
@@ -498,7 +529,7 @@ class ValuationInvoiceService {
                             'https://api.paystack.co/transaction/initialize',
                             {
                                 email: invoice.clientEmail,
-                                amount: Math.round(invoice.totalAmount * 100),
+                                amount: totalPesewas,
                                 reference,
                                 currency: 'GHS',
                                 channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
@@ -509,6 +540,7 @@ class ValuationInvoiceService {
                                     invoiceNumber: invoice.invoiceNumber,
                                     clientName: invoice.clientName,
                                     type: 'valuation_invoice',
+                                    ...fxMetadata,
                                 },
                             },
                             {
@@ -540,11 +572,15 @@ class ValuationInvoiceService {
         paystack_reference = $2,
         paystack_access_code = $3,
         payment_link = $4,
+        charged_amount_ghs = $5,
+        fx_rate = $6,
+        fx_source = $7,
+        fx_locked_at = $8,
         sent_at = NOW(),
         updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-            [id, reference, accessCode, inlinePaymentUrl]
+            [id, reference, accessCode, inlinePaymentUrl, chargedGhs, fxRate, fxSource, fxLockedAt]
         );
 
         const sentInvoice = this.mapInvoice(result.rows[0]);

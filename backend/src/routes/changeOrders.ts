@@ -31,7 +31,7 @@ import {
 } from '../services/project-management/changeOrderService';
 import { logger } from '../utils/logger';
 import { pool, query as dbQuery } from '../database';
-import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, enforceChildProjectAccess, requireProjectQueryAccess, requireProjectPermission, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { createChangeOrderSchema, updateChangeOrderSchema, changeOrderLineItemSchema } from '../middleware/pmProjectValidation';
 
@@ -39,6 +39,9 @@ const router = Router();
 
 // Register UUID parameter validation
 registerPMParamValidation(router);
+// ':id' is a change-order id — resolve its project and enforce membership.
+router.param('id', enforceChildProjectAccess('change_orders'));
+registerProjectAccessParams(router, ['projectId']);
 
 // Helper to get organization ID from project
 async function getOrgIdFromProject(projectId: string): Promise<string | null> {
@@ -75,7 +78,7 @@ const getOrganizationId = (req: Request): string | undefined => {
  * GET /api/change-orders
  * List Change Orders with filters and pagination
  */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requireProjectQueryAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters: ChangeOrderFilters = {
       organization_id: getOrganizationId(req),
@@ -85,6 +88,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       co_type: req.query.coType as any,
       submitted_by: req.query.submittedBy as string,
       approved_by: req.query.approvedBy as string,
+      // ?ballInCourt=me → COs awaiting the current user (their drafts, or COs
+      // pending their approval as the project PM).
+      ball_in_court: req.query.ballInCourt === 'me'
+        ? getAuthUserId(req)
+        : (req.query.ballInCourt as string) || undefined,
       phase_id: req.query.phaseId as string,
       created_from: req.query.createdFrom ? new Date(req.query.createdFrom as string) : undefined,
       created_to: req.query.createdTo ? new Date(req.query.createdTo as string) : undefined,
@@ -155,6 +163,57 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     });
   } catch (error) {
     logger.error('Error fetching Change Order:', error);
+    next(error);
+  }
+});
+
+/**
+ * GET /api/change-orders/:id/document
+ * Stream the change order PDF (signed copy if e-signed, otherwise generated).
+ * ?download=1 forces an attachment disposition.
+ */
+router.get('/:id/document', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const orgId = getAuthOrgId(req);
+    const doc = await changeOrderService.getDocument(id, orgId);
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Change Order document not found' });
+    }
+
+    const disposition = req.query.download ? 'attachment' : 'inline';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `${disposition}; filename="${doc.filename}"`);
+    res.setHeader('Content-Length', doc.buffer.length);
+    return res.end(doc.buffer);
+  } catch (error) {
+    logger.error('Error fetching Change Order document:', error);
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/change-orders/:id
+ * Permanently delete a change order (executed orders must be voided instead).
+ */
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const orgId = getAuthOrgId(req);
+    const result = await changeOrderService.delete(id, orgId);
+
+    if (!result.deleted) {
+      const status = result.reason === 'not_found' ? 404 : 409;
+      const message = result.reason === 'executed_orders_cannot_be_deleted'
+        ? 'Executed change orders cannot be deleted — void it instead.'
+        : 'Change Order not found';
+      return res.status(status).json({ success: false, message });
+    }
+
+    res.json({ success: true, message: 'Change Order deleted' });
+  } catch (error) {
+    logger.error('Error deleting Change Order:', error);
     next(error);
   }
 });
@@ -231,7 +290,7 @@ router.post('/', requirePMWrite, validate(createChangeOrderSchema), async (req: 
  * PUT /api/change-orders/:id
  * Update a Change Order
  */
-router.put('/:id', requirePMWrite, validate(updateChangeOrderSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, requireProjectPermission('can_edit'), validate(updateChangeOrderSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -443,7 +502,7 @@ router.post('/:id/sign', requirePMWrite, async (req: Request, res: Response, nex
  * POST /api/change-orders/:id/approve
  * Approve Change Order (bypass signatures)
  */
-router.post('/:id/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/approve', requirePMWrite, requireProjectPermission('can_approve_costs'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -465,6 +524,33 @@ router.post('/:id/approve', requirePMWrite, async (req: Request, res: Response, 
     });
   } catch (error) {
     logger.error('Error approving Change Order:', error);
+    next(error);
+  }
+});
+
+/**
+ * POST /api/change-orders/:id/request-esign
+ * Manually generate the branded change-order document and send it for signature
+ * via the hardened backend flow (config-driven signers + fields).
+ */
+router.post('/:id/request-esign', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User ID is required' });
+    }
+
+    const changeOrder = await changeOrderService.requestEsign(id, userId);
+    res.json({
+      success: true,
+      data: changeOrder,
+      message: changeOrder.esign_envelope_id
+        ? 'Change order sent for e-signature'
+        : 'No signers could be resolved — add project team members (PM, owner, contractor) with emails first',
+    });
+  } catch (error) {
+    logger.error('Error requesting e-sign for Change Order:', error);
     next(error);
   }
 });
@@ -510,7 +596,7 @@ router.post('/:id/reject', requirePMWrite, async (req: Request, res: Response, n
  * POST /api/change-orders/:id/execute
  * Execute Change Order (apply to contract)
  */
-router.post('/:id/execute', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/execute', requirePMWrite, requireProjectPermission('can_approve_costs'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);

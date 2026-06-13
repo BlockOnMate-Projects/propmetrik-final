@@ -21,6 +21,8 @@ import {
   PlayCircle,
   Trash2,
   Edit,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,10 +71,9 @@ import {
   Project
 } from '@/lib/pm-portal-api';
 import { changeOrderSchema, validateForm } from '@/lib/schemas/pm.schemas';
+import { humanize } from '@/lib/utils';
 import { FieldError, FormErrorSummary } from '@/components/ui/form-errors';
 import { Pagination } from '@/components/ui/pagination-controls';
-import { createEnvelope } from '@/lib/esign-api';
-import { useRouter } from 'next/navigation';
 
 // Status configuration
 const statusConfig: Record<ChangeOrderStatus, { label: string; bg: string; text: string }> = {
@@ -88,7 +89,6 @@ const statusConfig: Record<ChangeOrderStatus, { label: string; bg: string; text:
 function ChangeOrdersContent() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const projectId = params?.id as string | undefined;
   
   const [loading, setLoading] = useState(true);
@@ -106,6 +106,7 @@ function ChangeOrdersContent() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [esigning, setEsigning] = useState(false);
+  const [docBusyId, setDocBusyId] = useState<string | null>(null);
   
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -124,10 +125,11 @@ function ChangeOrdersContent() {
     setLoading(true);
     try {
       const [coResponse, statsResponse] = await Promise.allSettled([
-        changeOrdersApi.getAll({ 
-          projectId, 
+        changeOrdersApi.getAll({
+          projectId,
           status: statusFilter !== 'all' ? statusFilter : undefined,
           search: searchQuery || undefined,
+          ballInCourt: activeTab === 'awaiting-me' ? 'me' : undefined,
           limit: 20,
           offset: (page - 1) * 20,
         }),
@@ -155,7 +157,7 @@ function ChangeOrdersContent() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, statusFilter, searchQuery, page]);
+  }, [projectId, statusFilter, searchQuery, page, activeTab]);
 
   useEffect(() => {
     fetchData();
@@ -231,23 +233,24 @@ function ChangeOrdersContent() {
     }
   };
 
+  // E-signature via the hardened backend flow (config-driven signers + branded PDF).
   const handleRequestESign = async () => {
     if (!selectedCO) return;
     setEsigning(true);
     try {
-      await createEnvelope({
-        title: `Change Order ${selectedCO.co_number}: ${selectedCO.title}`,
-        source_type: 'change_order',
-        source_id: selectedCO.id,
-        signers: [{ email: 'client@example.com', name: 'Client' }],
-        message: `Please review and sign Change Order ${selectedCO.co_number}.`,
-      });
-      toast.success('E-signature envelope created — redirecting to E-Sign dashboard');
+      // Hardened backend flow: generates the branded change-order PDF, resolves
+      // signers from the project team + config, and sends for signature.
+      const updated = await changeOrdersApi.requestEsign(selectedCO.id);
+      if ((updated as any)?.esign_envelope_id) {
+        toast.success('Change order sent for e-signature — signers will receive an email');
+      } else {
+        toast.warning('No signers could be resolved. Add project team members (PM, owner, contractor) with email addresses, then try again.');
+      }
       setShowDetailSheet(false);
-      router.push('/dashboard/e-sign');
+      fetchData();
     } catch (error) {
-      console.error('Failed to create e-sign envelope:', error);
-      toast.error('Failed to create e-signature request');
+      console.error('Failed to request e-signature:', error);
+      toast.error('Failed to request e-signature');
     } finally {
       setEsigning(false);
     }
@@ -272,6 +275,58 @@ function ChangeOrdersContent() {
     }
   };
 
+  // Row actions: view/download the PDF (signed copy if e-signed, else generated).
+  const handleViewDocument = async (co: ChangeOrder) => {
+    setDocBusyId(co.id);
+    try {
+      const blob = await changeOrdersApi.getDocumentBlob(co.id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      console.error('Failed to open document:', error);
+      toast.error('Failed to open change order document');
+    } finally {
+      setDocBusyId(null);
+    }
+  };
+
+  const handleDownloadDocument = async (co: ChangeOrder) => {
+    setDocBusyId(co.id);
+    try {
+      const blob = await changeOrdersApi.getDocumentBlob(co.id, true);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${co.co_number || 'change-order'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      console.error('Failed to download document:', error);
+      toast.error('Failed to download change order document');
+    } finally {
+      setDocBusyId(null);
+    }
+  };
+
+  const handleDeleteRow = async (co: ChangeOrder) => {
+    if (!confirm(`Delete change order ${co.co_number}? This cannot be undone.`)) return;
+    setDocBusyId(co.id);
+    try {
+      await changeOrdersApi.delete(co.id);
+      toast.success('Change Order deleted');
+      if (selectedCO?.id === co.id) { setShowDetailSheet(false); setSelectedCO(null); }
+      fetchData();
+    } catch (error: any) {
+      console.error('Failed to delete change order:', error);
+      toast.error(error?.message || 'Failed to delete change order');
+    } finally {
+      setDocBusyId(null);
+    }
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     try {
@@ -289,7 +344,8 @@ function ChangeOrdersContent() {
   const getFilteredCOs = () => {
     let filtered = [...changeOrders];
     
-    if (activeTab !== 'all') {
+    if (activeTab !== 'all' && activeTab !== 'awaiting-me') {
+      // 'awaiting-me' is filtered server-side (ball-in-court) — don't re-filter.
       if (activeTab === 'pending') {
         filtered = filtered.filter(co => co.status === 'pending_approval');
       } else if (activeTab === 'approved') {
@@ -396,6 +452,7 @@ function ChangeOrdersContent() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-zinc-800 border-zinc-700">
           <TabsTrigger value="all">All ({changeOrders.length})</TabsTrigger>
+          <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
           <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
           <TabsTrigger value="cost-adds">Cost Adds</TabsTrigger>
@@ -423,9 +480,11 @@ function ChangeOrdersContent() {
                       <TableHead className="text-zinc-400">Title</TableHead>
                       <TableHead className="text-zinc-400">Reason</TableHead>
                       <TableHead className="text-zinc-400">Status</TableHead>
+                      <TableHead className="text-zinc-400">Ball in Court</TableHead>
                       <TableHead className="text-zinc-400 text-right">Cost Impact</TableHead>
                       <TableHead className="text-zinc-400 text-right">Schedule</TableHead>
                       <TableHead className="text-zinc-400">Date</TableHead>
+                      <TableHead className="text-zinc-400 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -435,12 +494,27 @@ function ChangeOrdersContent() {
                       const scheduleImpact = co.schedule_impact_days || 0;
                       return (
                         <TableRow key={co.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => handleViewCO(co)}>
-                          <TableCell className="font-mono text-purple-400">{co.co_number}</TableCell>
+                          <TableCell className="font-mono text-purple-400">
+                            <span className="flex items-center gap-1.5">
+                              {co.co_number}
+                              {co.esign_status === 'completed' && (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-400" aria-label="E-signed" />
+                              )}
+                              {co.esign_status === 'sent' && (
+                                <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" aria-label="Out for signature" />
+                              )}
+                            </span>
+                          </TableCell>
                           <TableCell>
                             <span className="font-medium text-white truncate max-w-[200px] block">{co.title}</span>
                           </TableCell>
-                          <TableCell className="text-zinc-300 text-sm truncate max-w-[150px]">{co.reason || '—'}</TableCell>
+                          <TableCell className="text-zinc-300 text-sm truncate max-w-[150px]">{co.reason ? humanize(co.reason) : '—'}</TableCell>
                           <TableCell><Badge className={`${status.bg} ${status.text} border-0`}>{status.label}</Badge></TableCell>
+                          <TableCell className="text-sm">
+                            {co.ball_in_court_name
+                              ? <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-300 px-2 py-0.5 text-xs">{co.ball_in_court_name}</span>
+                              : <span className="text-zinc-600">—</span>}
+                          </TableCell>
                           <TableCell className={`text-right font-mono ${costImpact > 0 ? 'text-red-400' : costImpact < 0 ? 'text-green-400' : 'text-zinc-400'}`}>
                             {formatCurrency(costImpact)}
                           </TableCell>
@@ -448,6 +522,37 @@ function ChangeOrdersContent() {
                             {scheduleImpact > 0 ? `+${scheduleImpact}d` : scheduleImpact === 0 ? '—' : `${scheduleImpact}d`}
                           </TableCell>
                           <TableCell className="text-zinc-400 text-sm">{formatDate(co.created_at)}</TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                                title="View PDF"
+                                disabled={docBusyId === co.id}
+                                onClick={() => handleViewDocument(co)}
+                              >
+                                {docBusyId === co.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                              </Button>
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                                title="Download PDF"
+                                disabled={docBusyId === co.id}
+                                onClick={() => handleDownloadDocument(co)}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/40"
+                                title={co.status === 'executed' ? 'Executed orders must be voided, not deleted' : 'Delete'}
+                                disabled={docBusyId === co.id || co.status === 'executed'}
+                                onClick={() => handleDeleteRow(co)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -532,7 +637,7 @@ function ChangeOrdersContent() {
             <div className="mt-6 space-y-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-2">{selectedCO.title}</h3>
-                <p className="text-sm text-zinc-400">{selectedCO.reason}</p>
+                <p className="text-sm text-zinc-400">{humanize(selectedCO.reason)}</p>
               </div>
               
               {/* Impact Cards */}
@@ -581,7 +686,20 @@ function ChangeOrdersContent() {
                     Submit for Client Approval
                   </Button>
                 )}
-                {(selectedCO.status === 'pending_review' || selectedCO.status === 'pending_approval' || selectedCO.status === 'approved') && (
+                {selectedCO.esign_status === 'completed' ? (
+                  <div className="w-full flex items-center justify-center gap-2 rounded-md bg-green-600/10 text-green-400 border border-green-600/30 py-2 text-sm font-medium">
+                    <CheckCircle2 className="h-4 w-4" /> E-signed &amp; completed
+                  </div>
+                ) : selectedCO.esign_status === 'sent' ? (
+                  <div className="w-full space-y-2">
+                    <div className="w-full flex items-center justify-center gap-2 rounded-md bg-blue-600/10 text-blue-400 border border-blue-600/30 py-2 text-sm font-medium">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Out for signature — awaiting signers
+                    </div>
+                    <Button variant="outline" className="w-full" onClick={handleRequestESign} disabled={esigning}>
+                      {esigning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null} Resend / re-request
+                    </Button>
+                  </div>
+                ) : (selectedCO.status === 'pending_review' || selectedCO.status === 'pending_approval' || selectedCO.status === 'approved') ? (
                   <Button
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={handleRequestESign}
@@ -590,7 +708,7 @@ function ChangeOrdersContent() {
                     {esigning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                     Request E-Signature
                   </Button>
-                )}
+                ) : null}
                 {selectedCO.status === 'approved' && (
                   <Button 
                     className="w-full bg-green-600 hover:bg-green-700 text-white" 

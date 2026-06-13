@@ -372,18 +372,19 @@ export async function calculateCriticalPath(
   const client = await pool.connect();
   
   try {
-    // Get phases with dependencies
+    // Get phases with dependencies. project_phases has no start_date/end_date/
+    // sequence_order columns — alias the real planned-date columns so the downstream
+    // code keeps reading phase.start_date / phase.end_date, and order by planned start.
     const phasesQuery = `
-      SELECT 
+      SELECT
         pp.id,
         pp.name,
-        pp.start_date,
-        pp.end_date,
-        pp.dependency_ids,
-        pp.sequence_order
+        COALESCE(pp.actual_start_date, pp.planned_start_date) AS start_date,
+        COALESCE(pp.actual_end_date, pp.estimated_end_date, pp.planned_end_date) AS end_date,
+        pp.dependency_ids
       FROM project_phases pp
       WHERE pp.project_id = $1
-      ORDER BY pp.sequence_order
+      ORDER BY pp.planned_start_date NULLS LAST, pp.created_at
     `;
     
     const phasesResult = await client.query(phasesQuery, [projectId]);

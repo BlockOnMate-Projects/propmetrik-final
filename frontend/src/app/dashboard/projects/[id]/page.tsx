@@ -4,6 +4,8 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { canCustomerAccessSubTab } from '@/lib/rbac'
 import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -84,7 +86,7 @@ import type {
   ProjectStatus,
   PhaseStatus,
 } from '@/types/projects'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatCurrencyCompact } from '@/lib/utils'
 import { authedFetch } from '@/lib/authed-fetch'
 import { PhaseHierarchy } from '@/components/projects/PhaseHierarchy'
 
@@ -379,25 +381,25 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700">
-          <div className="font-mono text-[9px] text-zinc-500">ORIGINAL BUDGET</div>
-          <div className="font-mono text-sm text-white">{formatCurrency(originalBudget, currency)}</div>
+        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
+          <div className="font-mono text-[9px] text-zinc-500 truncate">ORIGINAL BUDGET</div>
+          <div className="font-mono text-sm text-white truncate" title={formatCurrency(originalBudget, currency)}>{formatCurrencyCompact(originalBudget, currency)}</div>
         </div>
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700">
-          <div className="font-mono text-[9px] text-zinc-500">REVISED BUDGET</div>
-          <div className="font-mono text-sm text-amber-400">{formatCurrency(revisedBudget, currency)}</div>
+        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
+          <div className="font-mono text-[9px] text-zinc-500 truncate">REVISED BUDGET</div>
+          <div className="font-mono text-sm text-amber-400 truncate" title={formatCurrency(revisedBudget, currency)}>{formatCurrencyCompact(revisedBudget, currency)}</div>
         </div>
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700">
-          <div className="font-mono text-[9px] text-zinc-500">ACTUAL SPENT</div>
-          <div className="font-mono text-sm text-green-400">{formatCurrency(actualSpent, currency)}</div>
+        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
+          <div className="font-mono text-[9px] text-zinc-500 truncate">ACTUAL SPENT</div>
+          <div className="font-mono text-sm text-green-400 truncate" title={formatCurrency(actualSpent, currency)}>{formatCurrencyCompact(actualSpent, currency)}</div>
         </div>
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700">
-          <div className="font-mono text-[9px] text-zinc-500">VARIANCE</div>
-          <div className={cn(
-            "font-mono text-sm",
-            variance >= 0 ? "text-green-400" : "text-red-400"
-          )}>
-            {variance >= 0 ? '+' : ''}{formatCurrency(variance, currency)}
+        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
+          <div className="font-mono text-[9px] text-zinc-500 truncate">VARIANCE</div>
+          <div
+            className={cn("font-mono text-sm truncate", variance >= 0 ? "text-green-400" : "text-red-400")}
+            title={`${variance >= 0 ? '+' : ''}${formatCurrency(variance, currency)}`}
+          >
+            {variance >= 0 ? '+' : ''}{formatCurrencyCompact(variance, currency)}
           </div>
         </div>
       </div>
@@ -830,8 +832,37 @@ export default function ProjectDetailPage() {
   const searchParams = useSearchParams()
   const projectId = params.id as string
 
-  const validTabs = ['overview', 'construction', 'phases', 'rfis', 'submittals', 'change-orders', 'milestones', 'budget', 'contractors', 'team', 'documents']
-  const initialTab = validTabs.includes(searchParams.get('tab') || '') ? searchParams.get('tab')! : 'overview'
+  const { data: session } = useSession()
+  const sessionUserType = (session?.user as any)?.userType || 'staff'
+  const customerProjectsRole = (session?.user as any)?.customerServiceRoles?.projects as string | undefined
+
+  // Each detail tab maps to a PM feature key. Internal staff see all tabs;
+  // external customers (contractor/architect/etc.) only see the tabs their
+  // 'projects' service-role grants — so a site_supervisor never sees Budget,
+  // a viewer never sees Change Orders, etc. (Backend still enforces data access.)
+  const ALL_TABS: { value: string; label: string; icon: any; feature: string }[] = [
+    { value: 'overview', label: 'Overview', icon: BarChart3, feature: 'pm-overview' },
+    { value: 'construction', label: 'Site Ops', icon: ClipboardType, feature: 'pm-construction' },
+    { value: 'phases', label: 'Phases', icon: Layers, feature: 'pm-construction' },
+    { value: 'rfis', label: 'RFIs', icon: MessageSquare, feature: 'pm-overview' },
+    { value: 'submittals', label: 'Submittals', icon: FileCheck2, feature: 'pm-construction' },
+    { value: 'change-orders', label: 'Change Orders', icon: FileEdit, feature: 'pm-procurement' },
+    { value: 'milestones', label: 'Milestones', icon: Flag, feature: 'pm-overview' },
+    { value: 'budget', label: 'Budget', icon: DollarSign, feature: 'pm-financials' },
+    { value: 'contractors', label: 'Contractors', icon: HardHat, feature: 'pm-procurement' },
+    { value: 'team', label: 'Team', icon: Users, feature: 'pm-overview' },
+    { value: 'documents', label: 'Documents', icon: FileText, feature: 'pm-documents' },
+  ]
+  // Fall back to the user's platform role when a customer has no explicit
+  // projects service-role, so a misconfigured customer (or a stale session)
+  // never lands on an empty, tabless page.
+  const effectiveCustomerRole = customerProjectsRole || (session?.user as any)?.role
+  const visibleTabs = sessionUserType === 'customer'
+    ? ALL_TABS.filter(t => canCustomerAccessSubTab(effectiveCustomerRole, 'projects', t.feature))
+    : ALL_TABS
+  const validTabs = visibleTabs.map(t => t.value)
+  const requestedTab = searchParams.get('tab') || ''
+  const initialTab = validTabs.includes(requestedTab) ? requestedTab : (validTabs[0] || 'overview')
 
   const [project, setProject] = useState<DevelopmentProject | null>(null)
   const [phases, setPhases] = useState<ProjectPhase[]>([])
@@ -1104,19 +1135,7 @@ export default function ProjectDetailPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="border-b border-zinc-800">
           <TabsList className="bg-transparent p-0 h-auto gap-0 w-full justify-start">
-            {[
-              { value: 'overview', label: 'Overview', icon: BarChart3 },
-              { value: 'construction', label: 'Site Ops', icon: ClipboardType },
-              { value: 'phases', label: 'Phases', icon: Layers },
-              { value: 'rfis', label: 'RFIs', icon: MessageSquare },
-              { value: 'submittals', label: 'Submittals', icon: FileCheck2 },
-              { value: 'change-orders', label: 'Change Orders', icon: FileEdit },
-              { value: 'milestones', label: 'Milestones', icon: Flag },
-              { value: 'budget', label: 'Budget', icon: DollarSign },
-              { value: 'contractors', label: 'Contractors', icon: HardHat },
-              { value: 'team', label: 'Team', icon: Users },
-              { value: 'documents', label: 'Documents', icon: FileText },
-            ].map((tab) => (
+            {visibleTabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}

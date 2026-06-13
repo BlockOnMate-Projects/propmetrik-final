@@ -89,6 +89,8 @@ export interface Rfi {
   is_overdue?: boolean;
   days_overdue?: number;
   comment_count?: number;
+  ball_in_court?: string | null;
+  ball_in_court_name?: string | null;
   response?: string;
   responded_at?: string;
   responded_by_name?: string;
@@ -140,6 +142,8 @@ export interface Submittal {
   is_overdue?: boolean;
   revision_number: number;
   review_comments?: string;
+  ball_in_court?: string | null;
+  ball_in_court_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -173,6 +177,12 @@ export interface ChangeOrder {
   requested_by_name?: string;
   approved_by_name?: string;
   approved_at?: string;
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: string | null;
+  signed_document_url?: string | null;
+  ball_in_court?: string | null;
+  ball_in_court_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -618,6 +628,7 @@ export const rfisApi = {
     status?: RfiStatus;
     priority?: RfiPriority;
     search?: string;
+    ballInCourt?: 'me' | string;
     limit?: number;
     offset?: number;
   }): Promise<PaginatedResponse<Rfi>> => {
@@ -626,6 +637,7 @@ export const rfisApi = {
     if (filters?.status) params.set('status', filters.status);
     if (filters?.priority) params.set('priority', filters.priority);
     if (filters?.search) params.set('search', filters.search);
+    if (filters?.ballInCourt) params.set('ballInCourt', filters.ballInCourt);
     if (filters?.limit) params.set('limit', String(filters.limit));
     if (filters?.offset) params.set('offset', String(filters.offset));
     
@@ -689,6 +701,7 @@ export const submittalsApi = {
     status?: SubmittalStatus;
     type?: SubmittalType;
     search?: string;
+    ballInCourt?: 'me' | string;
     limit?: number;
     offset?: number;
   }): Promise<PaginatedResponse<Submittal>> => {
@@ -697,6 +710,7 @@ export const submittalsApi = {
     if (filters?.status) params.set('status', filters.status);
     if (filters?.type) params.set('type', filters.type);
     if (filters?.search) params.set('search', filters.search);
+    if (filters?.ballInCourt) params.set('ballInCourt', filters.ballInCourt);
     if (filters?.limit) params.set('limit', String(filters.limit));
     if (filters?.offset) params.set('offset', String(filters.offset));
     
@@ -786,6 +800,12 @@ function normalizeChangeOrder(co: any): ChangeOrder {
     requested_by_name: co.requested_by_name,
     approved_by_name: co.approved_by_name,
     approved_at: co.approved_at,
+    esign_envelope_id: co.esign_envelope_id ?? null,
+    esign_status: co.esign_status ?? null,
+    esign_completed_at: co.esign_completed_at ?? null,
+    signed_document_url: co.signed_document_url ?? null,
+    ball_in_court: co.ball_in_court ?? null,
+    ball_in_court_name: co.ball_in_court_name ?? null,
     created_at: co.created_at || new Date().toISOString(),
     updated_at: co.updated_at || new Date().toISOString(),
   };
@@ -797,6 +817,7 @@ export const changeOrdersApi = {
     status?: ChangeOrderStatus;
     type?: ChangeOrderType;
     search?: string;
+    ballInCourt?: 'me' | string;
     limit?: number;
     offset?: number;
   }): Promise<PaginatedResponse<ChangeOrder>> => {
@@ -805,6 +826,7 @@ export const changeOrdersApi = {
     if (filters?.status) params.set('status', filters.status);
     if (filters?.type) params.set('type', filters.type);
     if (filters?.search) params.set('search', filters.search);
+    if (filters?.ballInCourt) params.set('ballInCourt', filters.ballInCourt);
     if (filters?.limit) params.set('limit', String(filters.limit));
     if (filters?.offset) params.set('offset', String(filters.offset));
     
@@ -866,6 +888,12 @@ export const changeOrdersApi = {
     });
   },
 
+  requestEsign: async (id: string): Promise<ChangeOrder> => {
+    return apiRequest(`/change-orders/${id}/request-esign`, {
+      method: 'POST',
+    });
+  },
+
   execute: async (id: string): Promise<ChangeOrder> => {
     return apiRequest(`/change-orders/${id}/execute`, {
       method: 'POST',
@@ -876,6 +904,22 @@ export const changeOrdersApi = {
     return apiRequest(`/change-orders/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  /**
+   * Fetch the change order PDF (signed copy if e-signed, else generated) as a
+   * Blob, carrying the auth header. The caller turns it into an object URL to
+   * view in a new tab or download.
+   */
+  getDocumentBlob: async (id: string, download = false): Promise<Blob> => {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE}/change-orders/${id}/document${download ? '?download=1' : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load document (HTTP ${response.status})`);
+    }
+    return response.blob();
   },
 };
 
@@ -1222,6 +1266,9 @@ export interface DrawRequest {
   submitted_at?: string;
   approved_at?: string;
   paid_at?: string;
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: string | null;
   created_at: string;
 }
 
@@ -1252,6 +1299,10 @@ export const drawsApi = {
 
   submit: async (projectId: string, id: string): Promise<DrawRequest> => {
     return apiRequest(`/projects/${projectId}/draws/${id}/submit`, { method: 'POST' });
+  },
+
+  requestEsign: async (id: string): Promise<{ success: boolean; data: DrawRequest; message: string }> => {
+    return apiRequest(`/projects/draws/${id}/request-esign`, { method: 'POST' });
   },
 };
 

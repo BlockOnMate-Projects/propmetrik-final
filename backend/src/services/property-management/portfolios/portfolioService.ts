@@ -12,12 +12,20 @@ import {
     WorkOrderStatus,
     PaymentStatus
 } from '../../../types/property-management.types';
+import { getGhsRateMap, ghsValueSql, ghsHistoricalValueSql, fxMeta } from '../utils/currencyFx';
 
 export class PortfolioService {
     /**
      * Get high-level portfolio metrics for dashboard
      */
     async getOverview(organizationId: string): Promise<PortfolioMetrics> {
+        // Normalize mixed-currency values to GHS before summing. Property *value* (price)
+        // is a current figure -> live rate. Realized *income* records -> rate as of each
+        // record's transaction date.
+        const fx = await getGhsRateMap();
+        const priceGhs = ghsValueSql('price', 'price_currency', fx);
+        const incomeGhs = ghsHistoricalValueSql('fr.amount', 'fr.currency', 'fr.transaction_date', fx);
+        const incomeMonthGhs = ghsHistoricalValueSql('amount', 'currency', 'transaction_date', fx);
         const queries = {
             properties: `SELECT COUNT(*) as count FROM properties WHERE organization_id = $1`,
             propertiesLastMonth: `SELECT COUNT(*) as count FROM properties WHERE organization_id = $1 AND created_at < DATE_TRUNC('month', CURRENT_DATE)`,
@@ -25,16 +33,16 @@ export class PortfolioService {
             tenancies: `SELECT COUNT(*) as count FROM tenancies WHERE organization_id = $1 AND status = 'active'`,
             workOrders: `SELECT COUNT(*) as count FROM maintenance_work_orders WHERE organization_id = $1 AND status IN ('open', 'assigned', 'in_progress')`,
             incomeCurrentMonth: `
-                SELECT COALESCE(SUM(amount), 0) as total 
-                FROM property_financial_records 
-                WHERE organization_id = $1 
+                SELECT COALESCE(SUM(${incomeMonthGhs}), 0) as total
+                FROM property_financial_records
+                WHERE organization_id = $1
                 AND record_type = 'income'
                 AND transaction_date >= DATE_TRUNC('month', CURRENT_DATE)
             `,
             incomeLastMonth: `
-                SELECT COALESCE(SUM(amount), 0) as total 
-                FROM property_financial_records 
-                WHERE organization_id = $1 
+                SELECT COALESCE(SUM(${incomeMonthGhs}), 0) as total
+                FROM property_financial_records
+                WHERE organization_id = $1
                 AND record_type = 'income'
                 AND transaction_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
                 AND transaction_date < DATE_TRUNC('month', CURRENT_DATE)
@@ -48,9 +56,9 @@ export class PortfolioService {
                 AND p.payment_date < CURRENT_DATE
             `,
             totalValue: `
-                SELECT COALESCE(SUM(price), 0) as total,
+                SELECT COALESCE(SUM(${priceGhs}), 0) as total,
                        COALESCE((
-                           SELECT SUM(fr.amount) FROM property_financial_records fr
+                           SELECT SUM(${incomeGhs}) FROM property_financial_records fr
                            JOIN properties p2 ON fr.property_id = p2.id
                            WHERE p2.organization_id = $1
                              AND fr.record_type = 'income'
@@ -102,7 +110,8 @@ export class PortfolioService {
             activeTenancies,
             pendingWorkOrders: parseInt(woRes.rows[0].count),
             overduePayments: parseInt(overdueRes.rows[0].count),
-            collectionRate: 94.2 // Placeholder
+            collectionRate: 94.2, // Placeholder
+            fx: fxMeta(fx)
         };
     }
 
@@ -110,23 +119,25 @@ export class PortfolioService {
      * Get portfolio composition breakdown
      */
     async getPortfolioComposition(organizationId: string): Promise<PortfolioComposition> {
+        const fx = await getGhsRateMap();
+        const valueGhs = ghsValueSql('price', 'price_currency', fx);
         const queries = {
             byType: `
-                SELECT property_type as type, COUNT(*) as count, SUM(price) as value 
-                FROM properties 
-                WHERE organization_id = $1 
+                SELECT property_type as type, COUNT(*) as count, SUM(${valueGhs}) as value
+                FROM properties
+                WHERE organization_id = $1
                 GROUP BY property_type
             `,
             byRegion: `
-                SELECT region, COUNT(*) as count, SUM(price) as value 
-                FROM properties 
-                WHERE organization_id = $1 
+                SELECT region, COUNT(*) as count, SUM(${valueGhs}) as value
+                FROM properties
+                WHERE organization_id = $1
                 GROUP BY region
             `,
             byStatus: `
-                SELECT status, COUNT(*) as count, SUM(price) as value 
-                FROM properties 
-                WHERE organization_id = $1 
+                SELECT status, COUNT(*) as count, SUM(${valueGhs}) as value
+                FROM properties
+                WHERE organization_id = $1
                 GROUP BY status
             `
         };
@@ -140,7 +151,8 @@ export class PortfolioService {
         return {
             byType: typeRes.rows.map(r => ({ type: r.type, count: parseInt(r.count), value: parseFloat(r.value || 0) })),
             byRegion: regionRes.rows.map(r => ({ region: r.region, count: parseInt(r.count), value: parseFloat(r.value || 0) })),
-            byStatus: statusRes.rows.map(r => ({ status: r.status, count: parseInt(r.count), value: parseFloat(r.value || 0) }))
+            byStatus: statusRes.rows.map(r => ({ status: r.status, count: parseInt(r.count), value: parseFloat(r.value || 0) })),
+            fx: fxMeta(fx)
         };
     }
 
@@ -148,13 +160,14 @@ export class PortfolioService {
      * Get global lease portfolio summary
      */
     async getLeasePortfolioSummary(organizationId: string): Promise<LeasePortfolioSummary> {
+        const fx = await getGhsRateMap();
         const queries = {
             counts: `
-                SELECT 
+                SELECT
                     COUNT(*) FILTER (WHERE status = 'active') as active_leases,
                     COUNT(*) as total_leases,
-                    COALESCE(SUM(monthly_rent), 0) as total_revenue
-                FROM tenancies 
+                    COALESCE(SUM(${ghsValueSql('monthly_rent', 'rent_currency', fx)}), 0) as total_revenue
+                FROM tenancies
                 WHERE organization_id = $1
             `,
             totalUnits: `SELECT COUNT(*) as count FROM properties WHERE organization_id = $1`,
@@ -188,7 +201,8 @@ export class PortfolioService {
                 within90Days: parseInt(expiringRes.rows[0].within_90)
             },
             totalMonthlyRevenue: parseFloat(countsRes.rows[0].total_revenue),
-            revenueCurrency: 'GHS'
+            revenueCurrency: 'GHS',
+            fx: fxMeta(fx)
         };
     }
 
@@ -198,18 +212,22 @@ export class PortfolioService {
      * Falls back to price column when no income data exists
      */
     async getPortfolioValue(organizationId: string): Promise<PortfolioValue> {
-        // Get purchase/listing price sum
+        // Live FX rates — normalize mixed-currency prices/income to GHS before summing.
+        const fx = await getGhsRateMap();
+
+        // Get purchase/listing price sum (normalized to GHS)
         const priceQuery = `
-            SELECT COALESCE(SUM(price), 0) as total_price
-            FROM properties 
+            SELECT COALESCE(SUM(${ghsValueSql('price', 'price_currency', fx)}), 0) as total_price
+            FROM properties
             WHERE organization_id = $1
         `;
         const priceResult = await db.query(priceQuery, [organizationId]);
         const purchaseValue = parseFloat(priceResult.rows[0].total_price || 0);
 
-        // Calculate income-based valuation from actual rental data
+        // Income-based valuation from actual rental data (realized income -> rate as of
+        // each record's transaction date).
         const incomeQuery = `
-            SELECT COALESCE(SUM(fr.amount), 0) as annual_income
+            SELECT COALESCE(SUM(${ghsHistoricalValueSql('fr.amount', 'fr.currency', 'fr.transaction_date', fx)}), 0) as annual_income
             FROM property_financial_records fr
             JOIN properties p ON fr.property_id = p.id
             WHERE p.organization_id = $1
@@ -237,7 +255,8 @@ export class PortfolioService {
             appreciationAmount: parseFloat(appreciationAmount.toFixed(2)),
             appreciationPercentage,
             lastUpdated: new Date(),
-            valuationConfidence: annualIncome > 0 ? 85 : 50
+            valuationConfidence: annualIncome > 0 ? 85 : 50,
+            fx: fxMeta(fx)
         };
     }
 

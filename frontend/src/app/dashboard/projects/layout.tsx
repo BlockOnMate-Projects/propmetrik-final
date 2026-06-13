@@ -32,6 +32,7 @@ import {
     Send,
     LayoutDashboard,
     FileStack,
+    GanttChartSquare,
     Lock,
 }  from 'lucide-react'
 
@@ -69,6 +70,7 @@ const projectsNavGroups: NavGroup[] = [
         icon: Hammer,
         featureKey: 'pm-construction',
         items: [
+            { href: '/dashboard/projects/gantt', label: 'Schedule', icon: GanttChartSquare },
             { href: '/dashboard/projects/drawings', label: 'Drawings', icon: Pencil },
             { href: '/dashboard/projects/issues', label: 'Issues', icon: AlertTriangle },
             { href: '/dashboard/projects/punch-lists', label: 'Punch Lists', icon: ClipboardList },
@@ -181,7 +183,11 @@ export default function ProjectsLayout({
                 if (!userRole && !customerServiceRole) return true
                 if (!group.featureKey) return true
                 if (userType === 'customer') {
-                    return canCustomerAccessSubTab(customerServiceRole, 'projects', group.featureKey)
+                    // Fall back to the user's primary role when no explicit customer
+                    // service-role is granted, so a customer whose role is e.g.
+                    // project_manager (and who is subscribed to projects) still gets
+                    // the module instead of an empty, broken nav.
+                    return canCustomerAccessSubTab(customerServiceRole || userRole, 'projects', group.featureKey)
                 }
                 return canAccessServiceSubTab(userRole, 'projects', group.featureKey)
             })
@@ -196,13 +202,18 @@ export default function ProjectsLayout({
     const activeGroup = findActiveGroup(pathname, visibleGroups)
 
     return (
-        <div className="min-h-screen bg-black">
+        // `dark` scopes shadcn's dark CSS tokens to the (already dark) PM terminal so
+        // theme-variable components — notably `variant="outline"` buttons (bg-background)
+        // and default Card/Popover/Input surfaces — render dark-on-light instead of
+        // white-on-white (previously invisible until hover). --primary is identical in
+        // light/dark, so the blue/orange CTAs are unaffected.
+        <div className="dark min-h-screen bg-black">
             {/* Row 1: Group tabs */}
             <div className="border-b border-zinc-800 bg-zinc-900/50">
                 <div className="px-2 sm:px-4">
                     <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-none">
                         {visibleGroups.map((group) => {
-                            const isActive = group.label === activeGroup.label
+                            const isActive = group.label === activeGroup?.label
                             const Icon = group.icon
                             const isLocked = 'locked' in group && group.locked
                             return (
@@ -230,7 +241,7 @@ export default function ProjectsLayout({
             </div>
 
             {/* Row 2: Sub-items of the active group (only if group has > 1 item) */}
-            {activeGroup.items.length > 1 && (
+            {activeGroup && activeGroup.items.length > 1 && (
                 <div className="border-b border-zinc-800/60 bg-zinc-950/80">
                     <div className="px-2 sm:px-4">
                         <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-none">

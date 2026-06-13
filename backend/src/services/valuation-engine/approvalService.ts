@@ -844,6 +844,7 @@ export class ApprovalService {
           order: 1,
         }],
         fields,
+        organizationId: report.valuer_organization_id || report.organization_id || '',
         sourceModule: 'valuation',
         sourceEntityType: 'valuation_report',
         sourceEntityId: reportId,

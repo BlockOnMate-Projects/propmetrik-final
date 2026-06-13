@@ -34,6 +34,9 @@ import { Badge } from '@/components/ui/badge'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { cryptoRevenueApi, CryptoRevenueSummary } from '@/lib/property-management-api'
 import { FinancialRecord } from '@/types/property-management'
+import { useExchangeRates } from '@/lib/use-exchange-rates'
+import { RateStamp } from '@/components/property-management/RateStamp'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
     BarChart,
     Bar,
@@ -86,6 +89,8 @@ export default function FinancialsPage() {
     const [period, setPeriod] = useState('this_month')
     const [mounted, setMounted] = useState(false)
     const [activeTab, setActiveTab] = useState<'overview' | 'payment-settings'>('overview')
+    // All amounts on this page are GHS-normalized server-side; show the live rate used.
+    const { fx } = useExchangeRates()
 
     useEffect(() => {
         setMounted(true)
@@ -215,6 +220,30 @@ export default function FinancialsPage() {
 
     const formatCurrency = (val: number) => `₵${val.toLocaleString('en-GH', { maximumFractionDigits: 0 })}`
 
+    const [isExporting, setIsExporting] = useState(false)
+    const handleExport = async () => {
+        setIsExporting(true)
+        try {
+            const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+            const res = await authedFetch(`${base}/pm/reports/portfolio-financial?period=${encodeURIComponent(period)}`)
+            if (!res.ok) throw new Error(`Export failed (${res.status})`)
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `portfolio-financial-report-${period}-${new Date().toISOString().slice(0, 10)}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error('Export failed:', err)
+            setError('Could not generate the report. Please try again.')
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
     if (!mounted) return null
 
     return (
@@ -224,6 +253,7 @@ export default function FinancialsPage() {
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white font-mono">FINANCIAL CENTER</h1>
                     <p className="text-sm text-zinc-500 font-mono">Revenue, expenses, receivables & portfolio performance</p>
+                    <RateStamp fx={fx} className="mt-1 block" />
                 </div>
                 {activeTab === 'overview' && <div className="flex items-center gap-2">
                         <Select value={period} onValueChange={setPeriod}>
@@ -238,9 +268,9 @@ export default function FinancialsPage() {
                                     <SelectItem value="this_year">This Year</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase">
-                                <Download className="mr-2 h-3 w-3" />
-                                Export
+                            <Button onClick={handleExport} disabled={isExporting} variant="outline" className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase disabled:opacity-60">
+                                {isExporting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Download className="mr-2 h-3 w-3" />}
+                                {isExporting ? 'Generating…' : 'Export PDF'}
                             </Button>
                 </div>}
             </div>

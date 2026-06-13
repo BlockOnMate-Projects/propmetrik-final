@@ -9,7 +9,7 @@
  * - Availability management
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { 
   teamService, 
   GhanaTeamRole, 
@@ -17,7 +17,7 @@ import {
 } from '../services/project-management/teamService';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
-import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, requirePMWrite, isOrgAdmin, getProjectMembership, getAuthUserId, getAuthOrgId } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { addTeamMemberSchema, updateTeamMemberSchema } from '../middleware/pmProjectValidation';
 import { notificationService } from '../../shared-services/notifications/unified';
@@ -49,10 +49,25 @@ function splitFullName(fullName?: string): { firstName?: string; lastName?: stri
   };
 }
 
+// Map an external project role (ghana_team_role) → a scoped 'projects' customer
+// service-role. Construction-side roles get site_supervisor; design/advisory get
+// quantity_surveyor; everyone else (government, stakeholders, vendors) gets viewer.
+function customerProjectServiceRole(roleType?: string): string {
+  const rt = (roleType || '').toLowerCase();
+  if (/contractor|foreman|site_supervisor|site_manager|safety_officer/.test(rt)) return 'site_supervisor';
+  if (/architect|engineer|quantity_surveyor|surveyor|consultant|designer|legal/.test(rt)) return 'quantity_surveyor';
+  return 'viewer';
+}
+
 async function ensureTeamMemberInvitation(params: {
   member: any;
   organizationId: string;
   invitedById: string;
+  /** Explicit relationship override. When omitted it's inferred from role_category.
+   *  'staff' = internal employee (full RBAC); 'external' = invited collaborator
+   *  (scoped customer). This is INDEPENDENT of the member's discipline/role — a
+   *  firm's in-house architect is 'staff'; an outside architect is 'external'. */
+  memberType?: 'staff' | 'external';
 }): Promise<{ created: boolean; inviteUrl: string }> {
   const normalizedEmail = String(params.member.email || '').trim().toLowerCase();
 
@@ -80,10 +95,24 @@ async function ensureTeamMemberInvitation(params: {
     invitation = await inviteService.resendInvitation(pendingInvitation.rows[0].id, params.invitedById);
   } else {
     const nameParts = splitFullName(params.member.fullName || params.member.full_name || params.member.name);
+    // Internal team (project_category 'internal') → staff accounts (full RBAC).
+    // External parties (contractor/consultant/government/stakeholder/vendor) →
+    // a scoped 'projects' customer account so they get a limited, project-only
+    // view rather than internal staff access.
+    const roleCategory = params.member.roleCategory || params.member.role_category;
+    const roleType = params.member.roleType || params.member.role_type;
+    // Explicit override wins; otherwise infer from the discipline's category.
+    const isInternal = params.memberType
+      ? params.memberType === 'staff'
+      : (roleCategory === 'internal' || !roleCategory);
     invitation = await inviteService.createInvitation({
       email: normalizedEmail,
       role: params.member.role,
-      userType: 'staff',
+      userType: isInternal ? 'staff' : 'customer',
+      ...(isInternal ? {} : {
+        serviceKey: 'projects',
+        serviceRole: customerProjectServiceRole(roleType),
+      }),
       organizationId: params.organizationId,
       invitedById: params.invitedById,
       firstName: nameParts.firstName,
@@ -154,6 +183,26 @@ function teamInvitationEmail(data: {
 
 // Register UUID parameter validation
 registerPMParamValidation(router);
+// Routes keyed by /projects/:projectId/... are gated by project membership.
+registerProjectAccessParams(router, ['projectId']);
+// ':id' here is a team-member record (all :id routes are writes). Resolve the
+// member's project and require can_manage_team. Org-admins + owners/PMs pass.
+router.param('id', async (req: Request, res: Response, next: NextFunction, value: string) => {
+  try {
+    if (isOrgAdmin(req)) return next();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) return next();
+    const orgId = getAuthOrgId(req);
+    const m = await pool.query('SELECT project_id FROM project_team_members WHERE id = $1 AND organization_id = $2', [value, orgId]);
+    if (m.rows.length === 0 || !m.rows[0].project_id) return next(); // let handler 404
+    const access = await getProjectMembership(getAuthUserId(req), m.rows[0].project_id, orgId);
+    if (!access.hasAccess || !access.permissions.can_manage_team) {
+      return res.status(403).json({ success: false, error: 'Insufficient permission to manage this team member' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ============================================================================
 // TEAM MEMBERS
@@ -176,6 +225,17 @@ router.post('/members', requirePMWrite, validate(addTeamMemberSchema), async (re
       return res.status(400).json({ success: false, error: 'At least one project is required' });
     }
 
+    // can_manage_team enforcement: a non-admin may only add members to projects
+    // they manage. Org-admins + project owners/PMs pass (getProjectMembership).
+    if (!isOrgAdmin(req)) {
+      for (const pid of projectIds) {
+        const access = await getProjectMembership(getAuthUserId(req), pid, organizationId);
+        if (!access.hasAccess || !access.permissions.can_manage_team) {
+          return res.status(403).json({ success: false, error: `Insufficient permission to manage the team on project ${pid}` });
+        }
+      }
+    }
+
     const created: any[] = [];
     for (const pid of projectIds) {
       const member = await teamService.addTeamMember({
@@ -188,6 +248,25 @@ router.post('/members', requirePMWrite, validate(addTeamMemberSchema), async (re
         invitedBy: userId,
       });
       created.push(member);
+    }
+
+    // Auto-create a login invite (one-step onboarding) for members with an email.
+    // member_type chooses internal-staff vs external-collaborator; when omitted
+    // it's inferred from the discipline's category. Best-effort — a failure here
+    // (e.g. already a member) doesn't undo the add.
+    let inviteUrl: string | null = null;
+    if (req.body.email && created[0]) {
+      try {
+        const inv = await ensureTeamMemberInvitation({
+          member: created[0],
+          organizationId,
+          invitedById: userId,
+          memberType: req.body.member_type,
+        });
+        inviteUrl = inv.inviteUrl;
+      } catch (inviteErr: any) {
+        logger.warn('Auto-invite on team add skipped', { email: req.body.email, error: inviteErr.message });
+      }
     }
 
     // Send invitation email
@@ -207,7 +286,9 @@ router.post('/members', requirePMWrite, validate(addTeamMemberSchema), async (re
         const inviter = inviterRow.rows[0];
         const inviterName = inviter?.display_name || [inviter?.first_name, inviter?.last_name].filter(Boolean).join(' ') || '';
         const roleName = (req.body.role || 'team member').replace(/_/g, ' ');
-        const dashboardUrl = `${config.app.frontendUrl}/dashboard/projects`;
+        // Point the CTA at the accept-invite (set-password) link when we created
+        // one, so the member can actually finish onboarding; else the dashboard.
+        const dashboardUrl = inviteUrl || `${config.app.frontendUrl}/dashboard/projects`;
 
         const emailResult = await notificationService.sendEmail({
           to: req.body.email,
@@ -444,10 +525,17 @@ router.get('/projects/:projectId/members', async (req: Request, res: Response) =
     const { projectId } = req.params;
     
     const members = await teamService.getProjectTeam(projectId);
-    
+
+    // Tell the client whether the caller may manage this team, so the UI can
+    // hide Add/Edit for members who lack can_manage_team. Org-admins bypass;
+    // the projectId param guard set req.projectAccess (owners/PMs get all perms).
+    const access = (req as any).projectAccess;
+    const canManageTeam = isOrgAdmin(req) || !!access?.permissions?.can_manage_team;
+
     res.json({
       success: true,
       data: members,
+      can_manage_team: canManageTeam,
     });
   } catch (error) {
     logger.error('Error getting project team', { error });

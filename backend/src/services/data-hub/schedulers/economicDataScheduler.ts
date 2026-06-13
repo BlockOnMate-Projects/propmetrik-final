@@ -19,6 +19,7 @@ import cron, { ScheduledTask } from 'node-cron';
 import { logger } from '../../../utils/logger';
 import { economicDataSyncService, SyncSource } from '../scrapers/syncService';
 import { fxFeedService } from '../scrapers/fxFeedService';
+import { bogDailyFxScraper } from '../scrapers/bogDailyFxScraper';
 import { constructionCostService } from '../constructionCostService';
 import { baseCostCalculationService } from '../baseCostCalculationService';
 import { specializedCostService } from '../specializedCostService';
@@ -36,7 +37,9 @@ export interface SchedulerConfig {
   fxUpdateCron: string;
   /** Cron expression for daily FX persistence (default: 5 PM weekdays) */
   fxDailyCron: string;
-  
+  /** Cron expression for the official Bank of Ghana daily interbank FX scrape (default: 9:30 AM weekdays) */
+  bogFxDailyCron: string;
+
   // === Construction Data ===
   /** Cron expression for NPA fuel prices (default: 9 AM every Monday) */
   fuelSyncCron: string;
@@ -71,7 +74,8 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   wdiSyncCron: process.env.WDI_SYNC_CRON || '0 0 1 */3 *',         // Midnight on 1st of Jan, Apr, Jul, Oct
   fxUpdateCron: process.env.FX_UPDATE_CRON || '*/5 * * * *',       // Every 5 minutes
   fxDailyCron: process.env.FX_DAILY_CRON || '0 17 * * 1-5',        // 5 PM on weekdays
-  
+  bogFxDailyCron: process.env.BOG_FX_DAILY_CRON || '30 9 * * 1-5', // 9:30 AM weekdays (after BoG publishes the day's interbank rate)
+
   // Construction data - weekly on Mondays (Ghana NPA updates fuel prices bi-weekly)
   fuelSyncCron: process.env.FUEL_SYNC_CRON || '0 9 * * 1',          // 9 AM every Monday
   materialSyncCron: process.env.MATERIAL_SYNC_CRON || '0 10 * * 1', // 10 AM every Monday
@@ -164,6 +168,11 @@ export class EconomicDataScheduler {
     // Daily FX close - save to database
     this.scheduleJob('fx-daily-save', this.config.fxDailyCron, async () => {
       await this.runFXDailySave();
+    });
+
+    // Official Bank of Ghana daily interbank FX scrape (the settlement source of truth)
+    this.scheduleJob('bog-fx-daily', this.config.bogFxDailyCron, async () => {
+      await this.runBOGDailyFX();
     });
 
     // =====================================================
@@ -547,6 +556,20 @@ export class EconomicDataScheduler {
       });
     } catch (error) {
       logger.error('[Scheduler] Daily FX save failed', { error });
+      throw error;
+    }
+  }
+
+  private async runBOGDailyFX(): Promise<void> {
+    logger.info('[Scheduler] Scraping Bank of Ghana daily interbank FX rates...');
+    try {
+      const result = await bogDailyFxScraper.syncDailyRates();
+      logger.info('[Scheduler] BoG daily interbank FX synced', {
+        saved: result.saved,
+        currencies: result.currencies,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] BoG daily FX scrape failed', { error });
       throw error;
     }
   }

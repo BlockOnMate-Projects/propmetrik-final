@@ -95,10 +95,22 @@ export class EnvelopeService {
                     : 'pending';
                 const signerSignedAt = signerStatus === 'signed' ? new Date() : null;
 
+                // Link the signer to a platform account when their email matches one,
+                // so the permanent PMT id keys off the immutable user/tenant id.
+                let signerUserId: string | null = null;
+                if (signer.email) {
+                    const acct = await client.query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`, [signer.email]).catch(() => ({ rows: [] as any[] }));
+                    signerUserId = acct.rows[0]?.id ?? null;
+                    if (!signerUserId) {
+                        const ten = await client.query(`SELECT id FROM tenants WHERE LOWER(email) = LOWER($1) LIMIT 1`, [signer.email]).catch(() => ({ rows: [] as any[] }));
+                        signerUserId = ten.rows[0]?.id ?? null;
+                    }
+                }
+
                 await client.query(
                     `INSERT INTO esign_signers (
-                        id, envelope_id, name, email, role, signing_order, status, access_token, signed_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                        id, envelope_id, name, email, role, signing_order, status, access_token, signed_at, user_id
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                     [
                         signerId,
                         envelopeId,
@@ -108,7 +120,8 @@ export class EnvelopeService {
                         signer.order,
                         signerStatus,
                         accessToken,
-                        signerSignedAt
+                        signerSignedAt,
+                        signerUserId
                     ]
                 );
 

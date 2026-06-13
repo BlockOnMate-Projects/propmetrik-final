@@ -248,7 +248,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
         doc.switchToPage(i);
         const footY = 841.89 - 24;
         doc.fontSize(6).fillColor(C.muted).font('Helvetica');
-        doc.text('PROPMETRIK — Powered by Cedyn Group', M, footY, { ...NB, width: CW / 2, align: 'left' });
+        doc.text('PROPMETRIK Ghana Ltd.', M, footY, { ...NB, width: CW / 2, align: 'left' });
         doc.text(`Page ${i + 1} of ${pages.count}`, M + CW / 2, footY, { ...NB, width: CW / 2, align: 'right' });
       }
 

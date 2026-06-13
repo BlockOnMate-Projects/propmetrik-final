@@ -5,9 +5,12 @@ import { Page, expect } from '@playwright/test';
  */
 export async function login(
   page: Page,
-  email = 'admin@cedynhq.com',
-  password = 'Delta0246@'
+  email = process.env.E2E_USER ?? 'admin@cedynhq.com',
+  password = process.env.E2E_PASSWORD ?? ''
 ) {
+  if (!password) {
+    throw new Error('E2E_PASSWORD env var is required for the login helper (no credential is hardcoded).');
+  }
   await page.goto('/');
 
   // If redirected to Keycloak login

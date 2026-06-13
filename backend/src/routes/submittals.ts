@@ -11,7 +11,7 @@ import submittalService, {
   SubmittalFilters,
   SubmittalReviewInput 
 } from '../services/project-management/submittalService';
-import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, requirePMWrite, getAuthUserId } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { createSubmittalSchema, updateSubmittalSchema, submittalReviewSchema } from '../middleware/pmProjectValidation';
 
@@ -32,6 +32,11 @@ router.get('/', async (req: Request, res: Response) => {
       submittal_type: req.query.submittal_type as any,
       contractor_id: req.query.contractor_id as string,
       assigned_reviewer: req.query.assigned_reviewer as string,
+      // ?ballInCourt=me → submittals awaiting the current user (their drafts/
+      // resubmits, or items in review assigned to them / their PM projects).
+      ball_in_court: req.query.ballInCourt === 'me'
+        ? getAuthUserId(req)
+        : (req.query.ballInCourt as string) || undefined,
       spec_section: req.query.spec_section as string,
       priority: req.query.priority as string,
       overdue_only: req.query.overdue_only === 'true',

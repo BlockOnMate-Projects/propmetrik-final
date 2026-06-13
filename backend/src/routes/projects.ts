@@ -16,7 +16,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { registerPMParamValidation, getAuthUserId, getAuthOrgId, getAuthContext, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, requireProjectAccess, requireProjectPermission, getAuthUserId, getAuthOrgId, getAuthContext, requirePMWrite } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhaseSchema, createMilestoneSchema, updateMilestoneSchema, createDailyLogSchema, createPunchItemSchema, updatePunchItemSchema } from '../middleware/pmProjectValidation';
 import projectService from '../services/project-management/projectService';
@@ -25,6 +25,7 @@ import unitService from '../services/project-management/unitService';
 import projectCostService from '../services/project-management/projectCostService';
 import contractorService from '../services/project-management/contractorService';
 import drawService from '../services/project-management/drawService';
+import { esignConfigService, PmEsignDocType } from '../services/project-management/esignConfigService';
 import dailyLogService from '../services/project-management/dailyLogService';
 import paymentPlanService from '../services/project-management/paymentPlanService';
 import punchListService, { PunchListService } from '../services/project-management/punchListService';
@@ -43,6 +44,7 @@ import {
 } from '../services/project-management/projectDefaults';
 // Data Hub Services (construction costs, FX, etc.)
 import { constructionCostService } from '../services/data-hub/constructionCostService';
+import { economicDataService } from '../services/data-hub/economicDataService';
 // Phase 2: Dashboard & Gantt Services
 import dashboardAnalyticsService from '../services/project-management/dashboardAnalyticsService';
 import milestoneService from '../services/project-management/milestoneService';
@@ -70,6 +72,11 @@ const router = Router();
 
 // Register UUID parameter validation for all PM param names
 registerPMParamValidation(router);
+// Enforce project membership on every route keyed by a project id. In this
+// router ':id' and ':projectId' both reference a development project, so any
+// non-admin hitting /:id/* or /:projectId/* must be the owner/PM or an active
+// team member. Org-admins bypass. (Runs after the UUID validator above.)
+registerProjectAccessParams(router, ['id', 'projectId']);
 
 // Secure helpers — always use authenticated user context (never raw headers)
 const getOrgId = (req: Request): string => getAuthOrgId(req);
@@ -265,7 +272,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Update project
-router.put('/:id', requirePMWrite, validate(updateProjectSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, requireProjectPermission('can_edit'), validate(updateProjectSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -346,8 +353,30 @@ router.get('/:id/gantt', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
+// Generate a phase + milestone plan for a project that has none yet (back-fills
+// older projects so the Gantt has something to show). Idempotent: no-op if the
+// project already has phases unless ?force=1.
+router.post('/:id/gantt/generate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const force = req.query.force === '1' || req.body?.force === true;
+    const result = await projectLocationService.generateScheduleForProject(req.params.id, orgId, {
+      templateId: req.body?.templateId,
+      createdBy: userId,
+      force,
+    });
+    if (!result.seeded && result.reason === 'not_found') {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Create phase
-router.post('/:id/phases', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/phases', requirePMWrite, requireProjectPermission('can_add_tasks'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -366,7 +395,7 @@ router.post('/:id/phases', requirePMWrite, async (req: Request, res: Response, n
 });
 
 // Bulk create phases
-router.post('/:id/phases/bulk', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/phases/bulk', requirePMWrite, requireProjectPermission('can_add_tasks'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1381,12 +1410,57 @@ router.post('/assignments/:assignmentId/pay', requirePMWrite, async (req: Reques
 router.post('/assignments/:assignmentId/complete', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const assignment = await contractorService.completeAssignment(req.params.assignmentId);
-    
+
     if (!assignment) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
-    
+
     res.json(assignment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Request e-signature for a contractor agreement (generates the branded agreement + sends for signature)
+router.post('/assignments/:assignmentId/request-esign', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    const assignment = await contractorService.requestEsign(req.params.assignmentId, userId);
+    res.json({
+      success: true,
+      data: assignment,
+      message: assignment.esign_envelope_id
+        ? 'Contractor agreement sent for e-signature'
+        : 'No signers could be resolved — ensure the contractor has an email and the project has an owner/PM',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// E-SIGN CONFIGURATION (per-org, per document type)
+// ============================================================================
+
+router.get('/esign-config', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const configs = await esignConfigService.getAll(getOrgId(req));
+    res.json({ success: true, data: configs });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/esign-config', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { doc_type, enabled, min_amount_threshold, signer_roles, auto_action } = req.body;
+    if (!['change_order', 'draw_request', 'contractor_contract'].includes(doc_type)) {
+      return res.status(400).json({ success: false, message: 'Invalid doc_type' });
+    }
+    const updated = await esignConfigService.upsert(getOrgId(req), doc_type as PmEsignDocType, {
+      enabled, min_amount_threshold, signer_roles, auto_action,
+    });
+    res.json({ success: true, data: updated, message: 'E-sign settings saved' });
   } catch (error) {
     next(error);
   }
@@ -1463,12 +1537,29 @@ router.post('/draws/:drawId/submit', requirePMWrite, async (req: Request, res: R
   try {
     const userId = getUserId(req);
     const draw = await drawService.submit(req.params.drawId, userId);
-    
+
     if (!draw) {
       return res.status(404).json({ error: 'Draw request not found' });
     }
-    
+
     res.json(draw);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Request e-signature for a draw request (branded draw document + signers from project team)
+router.post('/draws/:drawId/request-esign', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    const draw = await drawService.requestEsign(req.params.drawId, userId);
+    res.json({
+      success: true,
+      data: draw,
+      message: draw.esign_envelope_id
+        ? 'Draw request sent for e-signature'
+        : 'No signers could be resolved — add project team members (PM, contractor) with emails first',
+    });
   } catch (error) {
     next(error);
   }
@@ -4084,15 +4175,27 @@ router.get('/exchange-rates', async (req: Request, res: Response, next: NextFunc
 // ============================================================================
 router.get('/cost-estimator/market-data', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // 1. FX rates (real-time from fxFeedService via projectCostCurrencyService)
-    const fxData = await projectCostCurrencyService.getAllExchangeRates();
-
-    // FX rates are stored as  currency → GHS (e.g. USD → GHS = 16)
-    // Frontend needs GHS → currency (e.g. GHS → USD = 1/16 = 0.0625)
+    // 1. FX rates — from the SAME authoritative live source as the payment system
+    //    (economicDataService.getExchangeRate, which getGHSPerUSD uses). NO hardcoded
+    //    fallback: a currency we can't price live is simply omitted (the older path used
+    //    a separate fxFeedService instance with a stale cache + a hardcoded 15.5/16.8/19.5
+    //    fallback, which is why the estimator showed a stale/wrong USD rate).
+    //    getExchangeRate returns `rate` = GHS per 1 unit; the frontend needs GHS → currency.
     const fxRates: Record<string, number> = { GHS: 1 };
-    for (const [currency, rateToGhs] of Object.entries(fxData.rates)) {
-      if (currency === 'GHS') continue;
-      fxRates[currency] = Math.round((1 / (rateToGhs as number)) * 1_000_000) / 1_000_000;
+    const fxSources: Record<string, string> = { GHS: 'base' };
+    let fxTimestamp: Date = new Date();
+    for (const cur of ['USD', 'EUR', 'GBP'] as const) {
+      try {
+        const r = await economicDataService.getExchangeRate(cur);
+        const ghsPerUnit = Number(r.rate);
+        if (ghsPerUnit > 0 && Number.isFinite(ghsPerUnit)) {
+          fxRates[cur] = Math.round((1 / ghsPerUnit) * 1_000_000) / 1_000_000;
+          fxSources[cur] = r.source;
+          if (r.date) fxTimestamp = new Date(r.date);
+        }
+      } catch {
+        // Live rate unavailable for this currency → omit it (never a hardcoded fallback).
+      }
     }
 
     // 2. Regional multipliers (from constructionCostService DB)
@@ -4173,8 +4276,8 @@ router.get('/cost-estimator/market-data', async (req: Request, res: Response, ne
 
     res.json({
       fx_rates: fxRates,
-      fx_sources: fxData.sources,
-      fx_timestamp: fxData.timestamp,
+      fx_sources: fxSources,
+      fx_timestamp: fxTimestamp,
       regional_multipliers: regionalMultipliers,
       base_costs: baseCosts,
       material_prices: materialPrices,
@@ -4403,17 +4506,67 @@ router.get('/config/epa-requirements', async (req: Request, res: Response) => {
 router.get('/dashboard/metrics', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
-    const { projectTypes, statuses, regions } = req.query;
-    
-    const filters = {
-      organizationId: orgId,
-      projectTypes: projectTypes ? (projectTypes as string).split(',') : undefined,
-      statuses: statuses ? (statuses as string).split(',') : undefined,
-      regions: regions ? (regions as string).split(',') : undefined
+    const userId = getUserId(req);
+    const { roles } = getAuthContext(req);
+    const hasFullAccess = roles.some(r => FULL_ACCESS_ROLES.includes(r));
+    const assignedUserId = hasFullAccess ? undefined : userId;
+
+    // Return the FLAT PortfolioMetrics contract the analytics + costs pages consume,
+    // FX-normalized to GHS via the SAME projectService.getStats the overview uses —
+    // so Overview, Financials, and Analytics all report identical totals.
+    // (The legacy dashboardAnalyticsService returned a nested, non-FX shape, which
+    //  left every flat field undefined → "0 projects" / a divergent budget total.)
+    const s: any = await projectService.getStats(orgId, assignedUserId);
+    const totalBudget = Number(s.total_budget) || 0;
+    const totalSpent = Number(s.total_spent) || 0;
+    const currency = s.display_currency || 'GHS';
+    const bs = s.by_status || {};
+    const projectsByStatus = Object.fromEntries(
+      Object.entries(bs).filter(([, v]) => (Number(v) || 0) > 0)
+    );
+
+    // budget-health distribution (per-project budget vs spent; same-currency comparison,
+    // so FX normalization is irrelevant to the counts). Reports page reads this.
+    const { pool } = await import('../database');
+    const bh = await pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE total_budget > 0 AND COALESCE(total_spent,0) < total_budget) AS under_budget,
+         COUNT(*) FILTER (WHERE total_budget > 0 AND COALESCE(total_spent,0) = total_budget) AS on_budget,
+         COUNT(*) FILTER (WHERE total_budget > 0 AND COALESCE(total_spent,0) > total_budget) AS over_budget
+       FROM development_projects
+       WHERE organization_id = $1 AND deleted_at IS NULL`,
+      [orgId]
+    ).catch(() => ({ rows: [{ under_budget: 0, on_budget: 0, over_budget: 0 }] }));
+    const budgetHealth = {
+      underBudget: Number(bh.rows[0]?.under_budget) || 0,
+      onBudget: Number(bh.rows[0]?.on_budget) || 0,
+      overBudget: Number(bh.rows[0]?.over_budget) || 0,
     };
-    
-    const metrics = await dashboardAnalyticsService.getPortfolioMetrics(orgId, filters);
-    res.json(metrics);
+
+    // Single response that satisfies BOTH consumer contracts:
+    //  • FLAT fields → analytics + costs + portfolio pages
+    //  • nested `summary` + `budgetHealth` → reports page
+    res.json({
+      totalProjects: s.total_projects || 0,
+      projectsByStatus,
+      totalBudget: { amount: totalBudget, currency },
+      totalSpent: { amount: totalSpent, currency },
+      budgetUtilization: totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 1000) / 10 : 0,
+      avgProgress: Number(s.avg_progress) || 0,
+      projectsAtRisk: Number(bs.on_hold) || 0,
+      monthOverMonthChange: 0,
+      budgetHealth,
+      summary: {
+        totalProjects: s.total_projects || 0,
+        activeProjects: (Number(bs.under_construction) || 0) + (Number(bs.pre_construction) || 0) + (Number(bs.finishing) || 0),
+        completedProjects: Number(bs.completed) || 0,
+        onHoldProjects: Number(bs.on_hold) || 0,
+        totalBudget,
+        totalSpent,
+        totalUnits: Number(s.total_units) || 0,
+        averageProgress: Number(s.avg_progress) || 0,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -4625,7 +4778,7 @@ router.get('/:projectId/milestones/:milestoneId', async (req: Request, res: Resp
 });
 
 // Create milestone
-router.post('/:id/milestones', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/milestones', requirePMWrite, requireProjectPermission('can_add_tasks'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -5489,7 +5642,7 @@ router.get('/:id/documents/stats', async (req: Request, res: Response, next: Nex
 });
 
 // Create a document (supports both JSON and multipart/form-data file uploads)
-router.post('/:id/documents', requirePMWrite, documentUpload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/documents', requirePMWrite, requireProjectPermission('can_upload_documents'), documentUpload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);

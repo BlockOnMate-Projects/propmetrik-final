@@ -380,6 +380,18 @@ router.post('/payments/initiate', paymentInitiateRateLimiter, paymentIdempotency
     }
 
     const { paymentProcessor } = await import('../../services/property-management/payment/paymentProcessor');
+    const { pool } = await import('../../database');
+
+    // Resolve the deal's native currency server-side (never trust the client for FX).
+    // A USD-denominated deal is charged in its GHS equivalent at a live, locked rate.
+    const dealRow = await pool.query(
+        `SELECT currency FROM deals WHERE id = $1 AND organization_id = $2`,
+        [dealId, organizationId]
+    );
+    if (dealRow.rows.length === 0) {
+        return res.status(404).json({ error: 'Deal not found' });
+    }
+    const obligationCurrency = dealRow.rows[0].currency || 'GHS';
 
     const result = await paymentProcessor.initializeGenericPayment({
         entityId: dealId,
@@ -387,6 +399,7 @@ router.post('/payments/initiate', paymentInitiateRateLimiter, paymentIdempotency
         recipientId: organizationId,
         recipientType: 'organization',
         amount: parseFloat(amount),
+        obligationCurrency,
         email,
         description: description || 'Deal payment',
         channel: channel || 'mobile_money',

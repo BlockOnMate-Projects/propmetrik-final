@@ -12,6 +12,7 @@
 
 import db from '../../../database';
 import { AppError } from '../../../middleware/errorHandler';
+import { getGhsRateMap, fxMeta, FxMeta } from '../utils/currencyFx';
 
 // ============================================
 // Types
@@ -128,6 +129,8 @@ export interface PortfolioFinancialSummary {
     cashOnCash: number;
     contribution: number; // % of portfolio NOI
   }>;
+  /** Base currency + live rates used to normalize all monetary values to GHS. */
+  fx?: FxMeta;
 }
 
 // ============================================
@@ -267,7 +270,9 @@ export class AdvancedFinancialService {
   async calculateCapRate(
     organizationId: string,
     propertyId: string,
-    marketValue?: number
+    marketValue?: number,
+    precomputedNoi?: NOIAnalysis,
+    precomputedMarketCapRate?: number
   ): Promise<CapRateAnalysis> {
     // Get property value
     const propRes = await db.query(
@@ -278,23 +283,26 @@ export class AdvancedFinancialService {
 
     const propertyValue = marketValue || parseFloat(propRes.rows[0].price);
 
-    // Calculate annual NOI (last 12 months)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(startDate.getFullYear() - 1);
-
-    const noi = await this.calculateNOI(
-      organizationId, 
-      propertyId, 
-      startDate.toISOString().split('T')[0],
-      endDate.toISOString().split('T')[0]
-    );
+    // Calculate annual NOI (last 12 months) — reuse a precomputed one when the caller
+    // already has it (the portfolio summary), to avoid recomputing NOI per metric.
+    let noi = precomputedNoi;
+    if (!noi) {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setFullYear(startDate.getFullYear() - 1);
+      noi = await this.calculateNOI(
+        organizationId,
+        propertyId,
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+    }
 
     const annualNOI = noi.netOperatingIncome;
     const capRate = propertyValue > 0 ? (annualNOI / propertyValue) * 100 : 0;
 
     // Get market cap rate from comparable sales (Ghana market benchmarks)
-    const marketCapRate = await this.getMarketCapRate(organizationId, propertyId);
+    const marketCapRate = precomputedMarketCapRate ?? await this.getMarketCapRate(organizationId, propertyId);
 
     // Calculate implied value using market cap rate
     const impliedValue = marketCapRate > 0 ? (annualNOI / (marketCapRate / 100)) : propertyValue;
@@ -575,19 +583,22 @@ export class AdvancedFinancialService {
   async calculateDSCR(
     organizationId: string,
     propertyId: string,
-    annualDebtService: number
+    annualDebtService: number,
+    precomputedNoi?: NOIAnalysis
   ): Promise<DSCRAnalysis> {
-    // Get annual NOI
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(startDate.getFullYear() - 1);
-
-    const noi = await this.calculateNOI(
-      organizationId,
-      propertyId,
-      startDate.toISOString().split('T')[0],
-      endDate.toISOString().split('T')[0]
-    );
+    // Get annual NOI (last 12 months) — reuse a precomputed one when available.
+    let noi = precomputedNoi;
+    if (!noi) {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setFullYear(startDate.getFullYear() - 1);
+      noi = await this.calculateNOI(
+        organizationId,
+        propertyId,
+        startDate.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+    }
 
     const dscr = annualDebtService > 0 
       ? noi.netOperatingIncome / annualDebtService 
@@ -647,15 +658,17 @@ export class AdvancedFinancialService {
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 1);
 
-    const [noi, capRate] = await Promise.all([
-      this.calculateNOI(
-        organizationId,
-        propertyId,
-        startDate.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0]
-      ),
-      this.calculateCapRate(organizationId, propertyId)
-    ]);
+    // Compute NOI and the market cap rate ONCE, then reuse across every dependent metric
+    // (cap rate, DSCR, benchmark). Previously each of those recomputed NOI + market cap
+    // rate independently — ~16 redundant queries per property in the portfolio loop.
+    const noi = await this.calculateNOI(
+      organizationId,
+      propertyId,
+      startDate.toISOString().split('T')[0],
+      endDate.toISOString().split('T')[0]
+    );
+    const marketCapRate = await this.getMarketCapRate(organizationId, propertyId);
+    const capRate = await this.calculateCapRate(organizationId, propertyId, undefined, noi, marketCapRate);
 
     const defaults = {
       downPayment: capRate.marketValue * 0.3,
@@ -674,11 +687,8 @@ export class AdvancedFinancialService {
 
     let dscr: DSCRAnalysis | undefined;
     if (investment.annualDebtService > 0) {
-      dscr = await this.calculateDSCR(organizationId, propertyId, investment.annualDebtService);
+      dscr = await this.calculateDSCR(organizationId, propertyId, investment.annualDebtService, noi);
     }
-
-    // Get benchmarks
-    const marketCapRate = await this.getMarketCapRate(organizationId, propertyId);
 
     // Get occupancy rate (based on tenancies directly linked to property)
     const occQuery = `
@@ -722,6 +732,8 @@ export class AdvancedFinancialService {
    * Get portfolio-level financial summary
    */
   async getPortfolioFinancialSummary(organizationId: string): Promise<PortfolioFinancialSummary> {
+    // Computed live on every request (no result cache) so financial KPIs always reflect
+    // the latest data. Kept fast by computing NOI/market cap rate once per property.
     // Get all properties
     const propsRes = await db.query(
       `SELECT id, title, price FROM properties WHERE organization_id = $1 AND status = 'active'`,
@@ -730,6 +742,17 @@ export class AdvancedFinancialService {
 
     const properties = propsRes.rows;
     const performanceByProperty: PortfolioFinancialSummary['performanceByProperty'] = [];
+
+    // Each property summary is computed in its native currency; convert every monetary
+    // field to GHS (× live rate) before aggregating. Ratios (cap rate %, occupancy %,
+    // cash-on-cash %) are currency-independent and pass through unchanged.
+    const fx = await getGhsRateMap();
+    const rate = (cur?: string): number => {
+      const c = (cur || 'GHS').toUpperCase();
+      if (c === 'GHS') return 1;
+      const r = fx.rates[c];
+      return Number.isFinite(r) && r > 0 ? r : 1;
+    };
 
     let totalValue = 0;
     let aggregateNOI = 0;
@@ -744,21 +767,22 @@ export class AdvancedFinancialService {
     for (const prop of properties) {
       try {
         const summary = await this.getPropertyFinancialSummary(organizationId, prop.id);
-        
-        const propValue = summary.capRate.marketValue;
+        const fxR = rate(summary.currency);
+
+        const propValue = summary.capRate.marketValue * fxR;
         totalValue += propValue;
-        aggregateNOI += summary.noi.netOperatingIncome;
-        
-        // Track monthly income & expenses from NOI breakdown
-        totalMonthlyIncome += (summary.noi.effectiveGrossIncome || 0) / 12;
-        totalMonthlyExpenses += (summary.noi.operatingExpenses?.total || 0) / 12;
+        aggregateNOI += summary.noi.netOperatingIncome * fxR;
+
+        // Track monthly income & expenses from NOI breakdown (normalized to GHS)
+        totalMonthlyIncome += ((summary.noi.effectiveGrossIncome || 0) / 12) * fxR;
+        totalMonthlyExpenses += ((summary.noi.operatingExpenses?.total || 0) / 12) * fxR;
 
         if (summary.dscr) {
-          totalDebtService += summary.dscr.annualDebtService;
+          totalDebtService += summary.dscr.annualDebtService * fxR;
         }
 
         weightedCapRateSum += summary.capRate.capRate * propValue;
-        weightedCashOnCashSum += summary.cashOnCash.cashOnCashReturn * summary.cashOnCash.totalCashInvested;
+        weightedCashOnCashSum += summary.cashOnCash.cashOnCashReturn * (summary.cashOnCash.totalCashInvested * fxR);
 
         // Track occupancy from actual benchmarks
         if (summary.benchmarks?.occupancyRate !== undefined) {
@@ -769,7 +793,7 @@ export class AdvancedFinancialService {
         performanceByProperty.push({
           propertyId: prop.id,
           propertyName: prop.title,
-          noi: summary.noi.netOperatingIncome,
+          noi: summary.noi.netOperatingIncome * fxR,
           capRate: summary.capRate.capRate,
           cashOnCash: summary.cashOnCash.cashOnCashReturn,
           contribution: 0 // Will calculate after getting totals
@@ -795,7 +819,7 @@ export class AdvancedFinancialService {
     const averageOccupancy = occupancyCount > 0 ? occupancySum / occupancyCount : 0;
     const netMonthlyCashFlow = totalMonthlyIncome - totalMonthlyExpenses;
 
-    return {
+    const result: PortfolioFinancialSummary = {
       organizationId,
       totalProperties: properties.length,
       totalValue,
@@ -810,8 +834,11 @@ export class AdvancedFinancialService {
       totalMonthlyIncome: parseFloat(totalMonthlyIncome.toFixed(2)),
       totalMonthlyExpenses: parseFloat(totalMonthlyExpenses.toFixed(2)),
       netMonthlyCashFlow: parseFloat(netMonthlyCashFlow.toFixed(2)),
-      performanceByProperty
+      performanceByProperty,
+      fx: fxMeta(fx)
     };
+
+    return result;
   }
 }
 

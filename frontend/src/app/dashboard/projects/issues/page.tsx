@@ -13,9 +13,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, AlertTriangle, ShieldAlert, Download, Filter, Loader2 } from 'lucide-react';
+import { Plus, Search, AlertTriangle, ShieldAlert, Download, Filter, Loader2, LayoutGrid, List, Calendar as CalendarIcon } from 'lucide-react';
+import { PmKanbanBoard, type KanbanColumnDef } from '@/components/projects/PmKanbanBoard';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
+
+// Columns for the issue task board (status drives the column).
+const ISSUE_COLUMNS: KanbanColumnDef[] = [
+  { id: 'open', title: 'Open', accent: 'bg-blue-500' },
+  { id: 'in_progress', title: 'In Progress', accent: 'bg-amber-500' },
+  { id: 'resolved', title: 'Resolved', accent: 'bg-green-500' },
+  { id: 'closed', title: 'Closed', accent: 'bg-zinc-500' },
+];
 
 interface Issue {
   id: string; issue_number: string; title: string; description: string; category: string;
@@ -53,6 +62,7 @@ export default function IssuesPage() {
   const [risks, setRisks] = useState<Risk[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [issuesView, setIssuesView] = useState<'board' | 'table'>('board');
   const [showCreateIssue, setShowCreateIssue] = useState(false);
   const [showCreateRisk, setShowCreateRisk] = useState(false);
 
@@ -115,11 +125,20 @@ export default function IssuesPage() {
   };
 
   const updateIssueStatus = async (id: string, status: string) => {
-    await authedFetch(`${API}/projects/${selectedProject}/issues/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    fetchData();
+    // Optimistic: move the card immediately, then persist + reconcile.
+    const prev = issues;
+    setIssues((cur) => cur.map((i) => (i.id === id ? { ...i, status } : i)));
+    try {
+      const res = await authedFetch(`${API}/projects/${selectedProject}/issues/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('update failed');
+      fetchData();
+    } catch {
+      setIssues(prev); // rollback on failure
+      toast({ title: 'Could not update status', description: 'Please try again.', variant: 'destructive' });
+    }
   };
 
   const exportData = (type: 'issues' | 'risks') => {
@@ -188,6 +207,18 @@ export default function IssuesPage() {
             <TabsTrigger value="risks" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-500"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Risks ({risks.length})</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
+            {tab === 'issues' && (
+              <div className="flex items-center rounded-md border border-zinc-800 bg-zinc-900 p-0.5">
+                <Button size="sm" variant="ghost" onClick={() => setIssuesView('board')}
+                  className={`h-7 px-2 text-xs ${issuesView === 'board' ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400'}`}>
+                  <LayoutGrid className="h-3.5 w-3.5 mr-1" />Board
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setIssuesView('table')}
+                  className={`h-7 px-2 text-xs ${issuesView === 'table' ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400'}`}>
+                  <List className="h-3.5 w-3.5 mr-1" />Table
+                </Button>
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
               <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 w-[200px] bg-zinc-900 border-zinc-800" />
@@ -199,9 +230,35 @@ export default function IssuesPage() {
           </div>
         </div>
 
-        {/* Issues Table */}
+        {/* Issues — Board or Table */}
         <TabsContent value="issues" className="mt-4">
-          {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-amber-500" /></div> : (
+          {loading ? <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-amber-500" /></div> : issuesView === 'board' ? (
+            issues.length === 0 ? (
+              <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="py-12 text-center text-zinc-500">No issues found. Create one to get started.</CardContent></Card>
+            ) : (
+              <PmKanbanBoard
+                columns={ISSUE_COLUMNS}
+                items={issues.map((i) => ({ ...i, columnId: i.status }))}
+                onMove={(id, toColumnId) => updateIssueStatus(id, toColumnId)}
+                renderCard={(issue) => (
+                  <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[10px] text-zinc-500">{issue.issue_number}</span>
+                      <Badge variant="outline" className={`${severityColors[issue.severity] || 'border-zinc-700'} text-[10px] px-1.5 py-0`}>{issue.severity}</Badge>
+                    </div>
+                    <p className="text-sm text-white leading-snug line-clamp-2">{issue.title}</p>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                      <span className="flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {issue.due_date ? new Date(issue.due_date).toLocaleDateString('en-GB') : '—'}
+                      </span>
+                      {issue.priority && <Badge variant="outline" className={`${severityColors[issue.priority] || 'border-zinc-700'} text-[10px] px-1.5 py-0`}>{issue.priority}</Badge>}
+                    </div>
+                  </Card>
+                )}
+              />
+            )
+          ) : (
             <Card className="bg-zinc-900/80 border-zinc-800">
               <Table>
                 <TableHeader><TableRow className="border-zinc-800 hover:bg-transparent">

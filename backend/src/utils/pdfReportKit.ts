@@ -105,9 +105,17 @@ export const PDF = {
     for (let i = pages.start; i < pages.start + pages.count; i++) {
       doc.switchToPage(i);
       const cw = PAGE.contentWidth;
-      doc.fontSize(7).fillColor(COLORS.muted)
-        .text(leftText, PAGE.margin, PAGE.height - 30, { width: cw / 2, align: 'left' })
-        .text(`Page ${i + 1} of ${pages.count}`, PAGE.margin + cw / 2, PAGE.height - 30, { width: cw / 2, align: 'right' });
+      // CRITICAL: the footer sits at PAGE.height - 30, which is BELOW the page's bottom
+      // margin (height - 40). Writing text past the bottom margin makes PDFKit auto-add
+      // a page per footer write → ~2 blank pages per page (the "12-page mostly-empty
+      // report" bug). Zero the bottom margin (and disable line-break) so the footer is
+      // drawn in place without triggering pagination; restore afterwards.
+      const savedBottom = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
+      doc.fontSize(7).fillColor(COLORS.muted);
+      doc.text(leftText, PAGE.margin, PAGE.height - 30, { width: cw / 2, align: 'left', lineBreak: false });
+      doc.text(`Page ${i + 1} of ${pages.count}`, PAGE.margin + cw / 2, PAGE.height - 30, { width: cw / 2, align: 'right', lineBreak: false });
+      doc.page.margins.bottom = savedBottom;
     }
   },
 };

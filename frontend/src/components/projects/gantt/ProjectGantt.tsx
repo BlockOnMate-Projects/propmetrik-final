@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import {
@@ -9,7 +9,10 @@ import {
   History,
   Plus,
   RefreshCw,
+  CalendarRange,
+  Sparkles,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -21,7 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ganttApi, phasesApi, type ProjectBaseline } from '@/lib/projects-api'
+import { ganttApi, phasesApi, milestonesApi, type ProjectBaseline } from '@/lib/projects-api'
 import { type ProjectPhase } from '@/types/projects'
 import { GanttChart, GanttData, GanttPhase, GanttMilestone } from './GanttChart'
 import { WorkBreakdownStructure } from '../WorkBreakdownStructure'
@@ -288,7 +291,14 @@ export function ProjectGantt({
     }
 
     return {
-      phases: ganttData.phases || [],
+      // Normalize phase dates to camelCase so the WBS table and the timeline read
+      // the same fields (the API returns snake_case start_date/end_date; the WBS
+      // read startDate/endDate and showed "—" while the timeline still drew bars).
+      phases: (ganttData.phases || []).map((p: any) => ({
+        ...p,
+        startDate: p.startDate ?? p.start_date,
+        endDate: p.endDate ?? p.end_date,
+      })),
       milestones: ganttData.milestones || [],
       dependencies: ganttData.dependencies || [],
       criticalPath: criticalPathData?.criticalPath || ganttData.criticalPath || [],
@@ -326,6 +336,39 @@ export function ProjectGantt({
     },
   })
 
+  // Reschedule a milestone by dragging its diamond on the timeline.
+  const milestoneDateMutation = useMutation({
+    mutationFn: (v: { milestoneId: string; date: string }) =>
+      milestonesApi.setDate(projectId, v.milestoneId, v.date),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
+      refetch()
+    },
+    onError: () => toast.error('Failed to move milestone'),
+  })
+
+  // Stable refs — gantt-task-react re-syncs its internal state from the `tasks`
+  // prop on every change, so an unstable callback (→ new tasks array each render)
+  // causes an infinite update loop. useCallback keeps the references constant.
+  const handleMilestoneDragEnd = useCallback((milestoneId: string, newDate: string) => {
+    milestoneDateMutation.mutate({ milestoneId, date: newDate.split('T')[0] })
+  }, [milestoneDateMutation])
+
+  // Generate a default phase + milestone plan for a project that has none yet.
+  const generateScheduleMutation = useMutation({
+    mutationFn: () => ganttApi.generateSchedule(projectId),
+    onSuccess: (res) => {
+      if (res.seeded) {
+        toast.success(`Schedule generated — ${res.phases} phases, ${res.milestones} milestones`)
+      } else if (res.reason === 'already_has_phases') {
+        toast.info('This project already has a schedule')
+      }
+      queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
+      refetch()
+    },
+    onError: () => toast.error('Failed to generate schedule'),
+  })
+
   const handleAddPhase = () => {
     // Generate default dates
     let start_date = new Date()
@@ -355,7 +398,7 @@ export function ProjectGantt({
     }
   }
 
-  const handlePhaseDragEnd = (phaseId: string, newStart: string, newEnd: string) => {
+  const handlePhaseDragEnd = useCallback((phaseId: string, newStart: string, newEnd: string) => {
     updatePhaseMutation.mutate({
       phaseId,
       updates: {
@@ -363,7 +406,7 @@ export function ProjectGantt({
         planned_end_date: newEnd,
       },
     })
-  }
+  }, [updatePhaseMutation])
 
   const handlePhaseClick = (phase: GanttPhase) => {
     onPhaseEdit?.(phase)
@@ -436,6 +479,27 @@ export function ProjectGantt({
         </TabsList>
 
         <TabsContent value="timeline" className="space-y-3 mt-0">
+          {/* Empty state — no phases yet (older projects). Offer to generate one. */}
+          {!isLoading && chartData && chartData.phases.length === 0 && (
+            <div className="border border-dashed border-zinc-700 bg-zinc-900/40 rounded-lg p-10 flex flex-col items-center justify-center text-center">
+              <CalendarRange className="h-10 w-10 text-zinc-600 mb-3" />
+              <h4 className="text-white font-medium mb-1">No schedule yet</h4>
+              <p className="text-zinc-400 text-sm max-w-md mb-4">
+                This project has no phases. Generate a structured Ghana construction plan
+                (phases + statutory milestones) you can then drag to reschedule.
+              </p>
+              <Button
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={() => generateScheduleMutation.mutate()}
+                disabled={generateScheduleMutation.isPending}
+              >
+                {generateScheduleMutation.isPending
+                  ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Generating…</>
+                  : <><Sparkles className="h-4 w-4 mr-2" />Generate Schedule</>}
+              </Button>
+            </div>
+          )}
+
           {/* Critical Path Summary */}
           {chartData && chartData.criticalPath.length > 0 && (
             <CriticalPathSummary
@@ -451,6 +515,7 @@ export function ProjectGantt({
             onPhaseClick={handlePhaseClick}
             onMilestoneClick={handleMilestoneClick}
             onPhaseDragEnd={handlePhaseDragEnd}
+            onMilestoneDragEnd={handleMilestoneDragEnd}
             showBaseline={showBaseline}
             showDependencies={showDependencies}
             showMilestones={showMilestones}

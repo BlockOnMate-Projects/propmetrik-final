@@ -1,0 +1,37 @@
+# CODEOWNERS — review ownership for PROPMETRIK
+#
+# Each line maps a path to its required reviewer(s). Last matching pattern wins.
+# Replace the placeholder owners below with real GitHub handles/teams
+# (e.g. @your-handle, or create teams like @CedynGroup/engineering).
+# Until then, GitHub ignores unknown owners — these serve as documentation of intent.
+
+# ---- Default ----
+*                                   @CedynGroup/engineering
+
+# ---- Security / auth-sensitive (require careful review) ----
+/backend/src/middleware/            @CedynGroup/engineering
+/backend/src/middleware/auth.ts     @CedynGroup/engineering
+/backend/src/middleware/auditMutations.ts   @CedynGroup/engineering
+/backend/src/middleware/ingestionAuth.ts    @CedynGroup/engineering
+/backend/src/config/                @CedynGroup/engineering
+/frontend/src/auth.ts               @CedynGroup/engineering
+
+# ---- Database: schema changes need DB-owner review ----
+/backend/database/migrations/       @CedynGroup/engineering
+
+# ---- Backend product domains ----
+/backend/src/services/valuation-engine/        @CedynGroup/engineering
+/backend/src/services/property-management/      @CedynGroup/engineering
+/backend/src/services/project-management/       @CedynGroup/engineering
+/backend/src/services/crm-deal-management/      @CedynGroup/engineering
+/backend/src/services/data-hub/                 @CedynGroup/engineering
+/backend/src/services/analytics/                @CedynGroup/engineering
+/backend/shared-services/                       @CedynGroup/engineering
+
+# ---- Frontend ----
+/frontend/src/app/(marketing)/      @CedynGroup/engineering
+/frontend/src/lib/                  @CedynGroup/engineering
+
+# ---- Strategy & governance docs ----
+/docs/                              @CedynGroup/engineering
+/ARCHITECTURE.md                    @CedynGroup/engineering

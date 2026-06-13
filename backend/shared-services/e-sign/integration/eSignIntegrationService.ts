@@ -63,15 +63,21 @@ class ESignIntegrationService implements IESignIntegrationService {
       documentCount: input.documents.length,
     });
 
-    // For now, we'll store documents as base64 in the envelope
-    // TODO: In production, upload to MinIO and store URLs
-    const documentPdfUrl = input.documents.length > 0 
+    // Store the document inline as a data: URL. The envelope/signing/completion
+    // pipeline accepts either a data: URL or a storage key; the final SIGNED PDF is
+    // persisted to object storage on completion.
+    const documentPdfUrl = input.documents.length > 0
       ? `data:${input.documents[0].mimeType};base64,${input.documents[0].content.toString('base64')}`
       : undefined;
 
-    // Use a default organization ID - in practice this would come from the authenticated context
-    const organizationId = input.sourceEntityId.split('-')[0] || 'default-org';
-    const userId = 'system';
+    // Real organization + user from the business context (no longer derived from a
+    // fragment of the entity UUID — that produced a garbage org id).
+    const organizationId = input.organizationId;
+    // created_by is a UUID FK — fall back to NULL (not a 'system' string) when no user.
+    const userId = (input.createdByUserId || null) as unknown as string;
+    if (!organizationId) {
+      throw new Error('createEnvelope: organizationId is required');
+    }
 
     const envelope = await this.envelopeService.createAndSendEnvelope(organizationId, userId, {
       name: input.subject,

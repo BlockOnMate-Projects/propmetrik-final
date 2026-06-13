@@ -13,6 +13,8 @@ import { checkHealth as checkMinioHealth, initializeBuckets, getPresignedDownloa
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { requestIdMiddleware } from './middleware/requestId';
+import { auditMutations } from './middleware/auditMutations';
+import { requireIngestionAuth } from './middleware/ingestionAuth';
 import { authenticate, optionalAuth, requireAdmin } from './middleware/auth';
 import { requirePMAccess } from './middleware/pmAuth';
 import { requireServiceAccess } from './middleware/serviceAccess';
@@ -183,6 +185,11 @@ app.use(pinoHttp({
 // Rate limiting
 app.use(rateLimiter);
 
+// Platform-wide mutation audit — records every write into the immutable audit_logs trail.
+// Runs after body-parsing/request-id and before the routers (auth runs inside each router,
+// so req.user is populated by the time the response 'finish' handler reads it).
+app.use(auditMutations);
+
 // API routes
 app.use('/health', healthRoutes);
 app.use('/api/docs', docsRoutes);  // OpenAPI documentation (PM + CRM)
@@ -191,10 +198,10 @@ app.use('/api/v1/valuations', optionalAuth, valuationRoutes);
 app.use('/api/valuations', optionalAuth, valuationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/public/properties', propertyRoutes);  // Also mount at public path for frontend compatibility
-app.use('/api/v1/ingestion', ingestionRouter);
+app.use('/api/v1/ingestion', requireIngestionAuth, ingestionRouter);
 app.use('/api/v1/contributions', authenticate, contributionRoutes);
-app.use('/api/v1/pull-integrations', pullIntegrationRoutes);
-app.use('/api/pull-integrations', pullIntegrationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/pull-integrations', requireIngestionAuth, pullIntegrationRoutes);
+app.use('/api/pull-integrations', requireIngestionAuth, pullIntegrationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/reports', reportRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/valuers', authenticate, requireServiceAccess('valuations'), valuersRoutes);
@@ -286,14 +293,15 @@ app.get('/api/v1/pm-invoices/public/:id/verify-payment/:reference', async (req, 
       return res.json({ success: false, error: 'Payment not confirmed', paystackStatus: verifyData.data?.status });
     }
 
-    // Mark the PM invoice as paid
+    // Mark the PM invoice as paid + link the ledger (idempotent — the Paystack
+    // webhook may also reconcile this same reference).
     const { invoiceService } = await import('./services/project-management/invoiceService');
-    const invoice = await invoiceService.markAsPaid(
-      invoiceId,
-      new Date(),
-      reference,
-      verifyData.data.channel || 'paystack'
-    );
+    const { invoice } = await invoiceService.confirmPayment(invoiceId, reference, {
+      method: verifyData.data.channel || 'paystack',
+      channel: verifyData.data.channel || 'paystack',
+      provider: 'paystack',
+      isPaystack: true,
+    });
 
     logger.info('PM invoice payment verified', { invoiceId, reference, amount: verifyData.data.amount });
     res.json({ success: true, status: 'paid', invoiceId: invoice.id });
@@ -363,28 +371,25 @@ app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
       logger.warn('Failed to link NOWPayments record to PM invoice:', dbErr.message);
     }
 
-    // Record in payment_transactions ledger
+    // Record in payment_transactions ledger (pending until the NOWPayments IPN
+    // confirms). Uses the real schema columns + the 'project' payment_type enum.
     try {
       await pool.query(`
         INSERT INTO payment_transactions (
-          reference, payment_type, domain_record_type,
-          entity_id, entity_type,
-          gross_amount_pesewas, principal_amount_pesewas, service_fee_pesewas,
-          currency, channel, status,
+          reference, payment_type, domain_record_type, domain_record_id,
+          gross_amount, principal_amount, service_fee,
+          currency, channel, provider, status,
           metadata, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+        ) VALUES ($1, 'project', 'project_invoice', $2, $3, $4, $5, $6, $7, 'nowpayments', 'pending', $8, NOW())
+        ON CONFLICT (reference) DO NOTHING
       `, [
         reference,
-        'project_management',
-        'pm_invoice_payment',
         invoice.id,
-        'project_invoice',
         Math.round(invoice.totalAmount * 100),
         Math.round(invoice.amount * 100),
         Math.round(((invoice as any).platformFee || 0) * 100),
         invoice.currency || 'GHS',
         `crypto_${ticker}`,
-        'pending',
         JSON.stringify({
           invoice_id: invoice.id,
           invoice_number: invoice.invoiceNumber,
@@ -430,35 +435,41 @@ app.post('/api/v1/pm-invoices/public/:id/confirm-crypto', async (req, res) => {
       return res.status(400).json({ success: false, error: 'paymentReference required' });
     }
 
-    // Verify this payment reference exists and is for this invoice
+    // Verify this payment reference exists and is for this invoice.
     const txRow = await pool.query(
-      `SELECT status FROM payment_transactions WHERE reference = $1 AND entity_id = $2`,
+      `SELECT status FROM payment_transactions WHERE reference = $1 AND domain_record_id = $2`,
       [paymentReference, invoiceId]
     );
     if (txRow.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Payment not found' });
     }
 
-    // Mark payment_transactions as success
-    await pool.query(
-      `UPDATE payment_transactions SET status = 'success', verified_at = NOW() WHERE reference = $1 AND status = 'pending'`,
+    // Trust the gateway, not the client: only confirm if NOWPayments actually
+    // reports the payment finished, or the IPN already reconciled it to success.
+    const npRow = await pool.query(
+      `SELECT status, settled_at FROM nowpayments_payments WHERE payment_reference = $1`,
       [paymentReference]
     );
+    const npStatus = (npRow.rows[0]?.status || '').toLowerCase();
+    const gatewayConfirmed = ['finished', 'confirmed', 'sending'].includes(npStatus)
+      || !!npRow.rows[0]?.settled_at
+      || txRow.rows[0].status === 'success';
 
-    // Mark the PM invoice as paid
-    await pool.query(
-      `UPDATE project_invoices SET status = 'paid', paid_date = NOW(), payment_reference = $1, payment_method = 'crypto' WHERE id = $2 AND status != 'paid'`,
-      [paymentReference, invoiceId]
-    );
+    if (!gatewayConfirmed) {
+      // Not paid yet — let the client keep polling. Never mark paid on request alone.
+      return res.json({ success: false, status: 'pending', gatewayStatus: npStatus || 'unknown' });
+    }
 
-    // Settle nowpayments_payments
+    // Settle nowpayments_payments + reconcile the invoice idempotently.
     await pool.query(
       `UPDATE nowpayments_payments SET settled_at = COALESCE(settled_at, NOW()) WHERE payment_reference = $1`,
       [paymentReference]
     );
+    const { invoiceService } = await import('./services/project-management/invoiceService');
+    await invoiceService.confirmPayment(invoiceId, paymentReference, { method: 'crypto', channel: 'crypto', provider: 'nowpayments' });
 
-    logger.info('PM invoice crypto payment confirmed', { invoiceId, paymentReference });
-    res.json({ success: true });
+    logger.info('PM invoice crypto payment confirmed', { invoiceId, paymentReference, gatewayStatus: npStatus });
+    res.json({ success: true, status: 'paid' });
   } catch (error: any) {
     logger.error('Error confirming PM crypto payment', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to confirm payment' });

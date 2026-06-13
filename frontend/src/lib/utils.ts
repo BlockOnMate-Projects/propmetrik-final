@@ -33,6 +33,24 @@ export function formatCurrency(amount: number, currency = 'GHS'): string {
   }).format(amount);
 }
 
+/**
+ * Compact currency for tight UI cards (e.g. GH₵5.0M, GH₵250K, GH₵1.2B).
+ * Abbreviates large amounts so they fit; small amounts render in full.
+ * Pair with title={formatCurrency(...)} so the exact value shows on hover.
+ */
+export function formatCurrencyCompact(amount: number, currency = 'GHS'): string {
+  const value = Number(amount) || 0;
+  if (Math.abs(value) < 10_000) {
+    return formatCurrency(value, currency);
+  }
+  return new Intl.NumberFormat('en-GH', {
+    style: 'currency',
+    currency: currency === 'GHS' ? 'GHS' : currency,
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 export function formatDate(date: Date | string): string {
   try {
     const d = new Date(date);
@@ -117,4 +135,17 @@ export function getTierColor(tier: string): string {
     tier5_public_web: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   };
   return colors[tier] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+}
+
+/**
+ * Humanize an enum/slug value for display: turns "greater_accra" → "Greater Accra",
+ * "Super_admin" → "Super Admin". Safe on undefined/empty.
+ */
+export function humanize(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value)
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }

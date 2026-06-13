@@ -66,7 +66,12 @@ function MessagesContent() {
     if (pollRef.current) clearInterval(pollRef.current);
     if (activeConversation) {
       loadMessages(activeConversation);
-      pollRef.current = setInterval(() => loadMessages(activeConversation), 5000);
+      // Skip polling while the tab is hidden — no point fetching messages in a background tab.
+      pollRef.current = setInterval(() => {
+        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+          loadMessages(activeConversation);
+        }
+      }, 5000);
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeConversation]);

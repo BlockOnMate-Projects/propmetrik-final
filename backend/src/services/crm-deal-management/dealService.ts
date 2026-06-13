@@ -937,6 +937,7 @@ export class DealService {
                     order: s.order || idx + 1,
                 })),
                 fields,
+                organizationId,
                 sourceModule: 'crm',
                 sourceEntityType: 'deal',
                 sourceEntityId: dealId,

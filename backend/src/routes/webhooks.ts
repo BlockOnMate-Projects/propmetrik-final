@@ -12,6 +12,8 @@
 import { Router, Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { whatsappService, WebhookPayload } from '../../shared-services/messaging/whatsappService';
+import { paystackService } from '../services/property-management/payment/paystackService';
+import { paymentProcessor } from '../services/property-management/payment/paymentProcessor';
 import { logger } from '../utils/logger';
 import { CompletionEvent, ESignSourceModule } from '../../shared-services/e-sign/integration/types';
 
@@ -329,6 +331,34 @@ router.post('/nowpayments/ipn', async (req: Request, res: Response) => {
       }
     }
 
+    // 6. For completed PM invoice crypto payments, mark the invoice paid + link
+    //    the ledger. The IPN is the source of truth (the client confirm-crypto
+    //    call only mirrors this).
+    if (result.action === 'completed' || result.action === 'escrow_deposit') {
+      try {
+        const { pool } = await import('../database');
+        const link = await pool.query(
+          `SELECT domain_record_id FROM nowpayments_payments
+             WHERE payment_reference = $1 AND domain_record_type = 'project_invoice'`,
+          [result.paymentReference]
+        );
+        const invoiceId = link.rows[0]?.domain_record_id;
+        if (invoiceId) {
+          const { invoiceService } = await import('../services/project-management/invoiceService');
+          const { alreadyPaid } = await invoiceService.confirmPayment(invoiceId, result.paymentReference, {
+            method: 'crypto', channel: 'crypto', provider: 'nowpayments',
+          });
+          logger.info('PM invoice reconciled via NOWPayments IPN', {
+            paymentReference: result.paymentReference, invoiceId, alreadyPaid,
+          });
+        }
+      } catch (invErr: any) {
+        logger.error('PM invoice crypto reconciliation failed (IPN, non-blocking)', {
+          paymentReference: result.paymentReference, error: invErr.message,
+        });
+      }
+    }
+
     // Always return 200 to NOWPayments (they retry on non-200)
     res.status(200).json({ status: 'ok', action: result.action });
   } catch (error: any) {
@@ -353,10 +383,32 @@ router.post('/nowpayments/ipn', async (req: Request, res: Response) => {
  */
 router.post('/paystack', async (req: Request, res: Response) => {
   try {
-    // TODO: Verify Paystack signature
-    // TODO: Process payment events
-    
-    logger.info('Paystack webhook received', { event: req.body.event });
+    // 1. Verify the request genuinely came from Paystack (HMAC-SHA512 of the body)
+    const signature = req.headers['x-paystack-signature'] as string;
+    if (!signature || !paystackService.verifyWebhookSignature(signature, req.body)) {
+      logger.warn('Paystack webhook rejected: invalid or missing signature');
+      return res.status(401).send('Invalid signature');
+    }
+
+    const event = req.body?.event as string;
+    const reference = req.body?.data?.reference as string | undefined;
+    logger.info('Paystack webhook received', { event, reference });
+
+    // 2. On a successful charge, record + reconcile via the idempotent verify path.
+    //    verifyAndRecordPayment re-verifies with Paystack, is safe to call twice
+    //    (ledger/rent_payment idempotency), and carries the locked FX through metadata.
+    if (event === 'charge.success' && reference) {
+      paymentProcessor
+        .verifyAndRecordPayment(reference)
+        .catch((err) =>
+          logger.error('Paystack webhook: verifyAndRecordPayment failed', {
+            reference,
+            error: (err as Error).message,
+          })
+        );
+    }
+
+    // Acknowledge immediately so Paystack does not retry; processing is async above.
     res.status(200).send('OK');
   } catch (error) {
     logger.error('Paystack webhook error', { error });

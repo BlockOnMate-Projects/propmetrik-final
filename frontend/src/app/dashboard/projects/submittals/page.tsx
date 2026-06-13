@@ -127,11 +127,12 @@ export default function SubmittalsPage() {
     setLoading(true);
     try {
       const [submittalsResponse, statsResponse] = await Promise.allSettled([
-        submittalsApi.getAll({ 
-          projectId, 
+        submittalsApi.getAll({
+          projectId,
           status: statusFilter !== 'all' ? statusFilter : undefined,
           type: typeFilter !== 'all' ? typeFilter : undefined,
           search: searchQuery || undefined,
+          ballInCourt: activeTab === 'awaiting-me' ? 'me' : undefined,
           limit: 20,
           offset: (page - 1) * 20,
         }),
@@ -159,7 +160,7 @@ export default function SubmittalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, statusFilter, typeFilter, searchQuery, page]);
+  }, [projectId, statusFilter, typeFilter, searchQuery, page, activeTab]);
 
   useEffect(() => {
     fetchData();
@@ -214,7 +215,8 @@ export default function SubmittalsPage() {
   const getFilteredSubmittals = () => {
     let filtered = [...submittals];
     
-    if (activeTab !== 'all') {
+    if (activeTab !== 'all' && activeTab !== 'awaiting-me') {
+      // 'awaiting-me' is filtered server-side (ball-in-court) — don't re-filter.
       if (activeTab === 'pending') {
         filtered = filtered.filter(s => s.status === 'submitted' || s.status === 'under_review');
       } else if (activeTab === 'approved') {
@@ -317,6 +319,7 @@ export default function SubmittalsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-zinc-800 border-zinc-700">
           <TabsTrigger value="all">All ({submittals.length})</TabsTrigger>
+          <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
           <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
           <TabsTrigger value="action" className={actionCount > 0 ? 'text-orange-400' : ''}>Action Required ({actionCount})</TabsTrigger>
@@ -345,6 +348,7 @@ export default function SubmittalsPage() {
                       <TableHead className="text-zinc-400">Type</TableHead>
                       <TableHead className="text-zinc-400">Spec Section</TableHead>
                       <TableHead className="text-zinc-400">Status</TableHead>
+                      <TableHead className="text-zinc-400">Ball in Court</TableHead>
                       <TableHead className="text-zinc-400">Rev</TableHead>
                       <TableHead className="text-zinc-400">Due Date</TableHead>
                     </TableRow>
@@ -364,6 +368,11 @@ export default function SubmittalsPage() {
                           <TableCell className="text-zinc-300 text-sm">{typeLabels[submittal.type] || submittal.type}</TableCell>
                           <TableCell className="text-zinc-400 font-mono text-sm">{submittal.spec_section || '—'}</TableCell>
                           <TableCell><Badge className={`${status.bg} ${status.text} border-0`}>{status.label}</Badge></TableCell>
+                          <TableCell className="text-sm">
+                            {submittal.ball_in_court_name
+                              ? <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-300 px-2 py-0.5 text-xs">{submittal.ball_in_court_name}</span>
+                              : <span className="text-zinc-600">—</span>}
+                          </TableCell>
                           <TableCell className="text-zinc-400">{submittal.revision_number || 0}</TableCell>
                           <TableCell className="text-zinc-400 text-sm">{formatDate(submittal.due_date)}</TableCell>
                         </TableRow>

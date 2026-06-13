@@ -564,7 +564,12 @@ export interface ContractorAssignment {
   // Related data
   contractor?: Contractor;
   project_name?: string;
-  
+
+  // E-sign
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: string | null;
+
   // Audit
   created_at: string;
   updated_at: string;
@@ -625,7 +630,12 @@ export interface DrawRequest {
   // Documents
   supporting_documents?: string[];
   notes?: string;
-  
+
+  // E-sign
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: string | null;
+
   // Audit
   created_at: string;
   updated_at: string;

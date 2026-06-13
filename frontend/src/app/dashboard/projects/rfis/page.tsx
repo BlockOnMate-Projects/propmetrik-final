@@ -132,11 +132,12 @@ export default function RFIsPage() {
     setLoading(true);
     try {
       const [rfisResponse, statsResponse] = await Promise.allSettled([
-        rfisApi.getAll({ 
-          projectId, 
+        rfisApi.getAll({
+          projectId,
           status: statusFilter !== 'all' ? statusFilter : undefined,
           priority: priorityFilter !== 'all' ? priorityFilter : undefined,
           search: searchQuery || undefined,
+          ballInCourt: activeTab === 'awaiting-me' ? 'me' : undefined,
           limit: 20,
           offset: (page - 1) * 20,
         }),
@@ -166,7 +167,7 @@ export default function RFIsPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, statusFilter, priorityFilter, searchQuery, page]);
+  }, [projectId, statusFilter, priorityFilter, searchQuery, page, activeTab]);
 
   useEffect(() => {
     fetchData();
@@ -248,7 +249,8 @@ export default function RFIsPage() {
   const getFilteredRfis = () => {
     let filtered = [...rfis];
     
-    if (activeTab !== 'all') {
+    if (activeTab !== 'all' && activeTab !== 'awaiting-me') {
+      // 'awaiting-me' is filtered server-side (ball-in-court) — don't re-filter here.
       if (activeTab === 'open') {
         filtered = filtered.filter(r => r.status === 'open' || r.status === 'pending_response');
       } else if (activeTab === 'overdue') {
@@ -402,6 +404,7 @@ export default function RFIsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-zinc-800 border-zinc-700">
           <TabsTrigger value="all">All ({rfis.length})</TabsTrigger>
+          <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
           <TabsTrigger value="open">Open ({openCount})</TabsTrigger>
           <TabsTrigger value="overdue" className={overdueCount > 0 ? 'text-red-400' : ''}>
             Overdue ({overdueCount})
@@ -439,6 +442,7 @@ export default function RFIsPage() {
                       <TableHead className="text-zinc-400">Category</TableHead>
                       <TableHead className="text-zinc-400">Priority</TableHead>
                       <TableHead className="text-zinc-400">Status</TableHead>
+                      <TableHead className="text-zinc-400">Ball in Court</TableHead>
                       <TableHead className="text-zinc-400">Due Date</TableHead>
                       <TableHead className="text-zinc-400">Submitted</TableHead>
                     </TableRow>
@@ -459,6 +463,13 @@ export default function RFIsPage() {
                           <TableCell className="text-zinc-300 text-sm">{categoryLabels[rfi.category] || rfi.category}</TableCell>
                           <TableCell><Badge className={`${priority.bg} ${priority.text} border-0`}>{priority.label}</Badge></TableCell>
                           <TableCell><Badge className={`${status.bg} ${status.text} border-0`}>{status.label}</Badge></TableCell>
+                          <TableCell className="text-sm">
+                            {rfi.ball_in_court_name ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 text-amber-300 px-2 py-0.5 text-xs">
+                                {rfi.ball_in_court_name}
+                              </span>
+                            ) : <span className="text-zinc-600">—</span>}
+                          </TableCell>
                           <TableCell className="text-zinc-400 text-sm">{formatDate(rfi.due_date)}</TableCell>
                           <TableCell className="text-zinc-500 text-sm">{rfi.created_at ? formatDistanceToNow(new Date(rfi.created_at), { addSuffix: true }) : '—'}</TableCell>
                         </TableRow>

@@ -28,8 +28,10 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { getFile, buckets } from '../../database/minio';
 import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { generateChangeOrderPdf, changeOrderSignatureSlots } from '../../utils/changeOrderPdfGenerator';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 
 // =====================================================
@@ -125,6 +127,11 @@ export interface ChangeOrder {
   phase_id?: string;
   related_rfi_id?: string;
   attachments: Attachment[];
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_triggered_at?: Date | null;
+  esign_completed_at?: Date | null;
+  signed_document_url?: string | null;
   created_at: Date;
   updated_at: Date;
   created_by?: string;
@@ -143,6 +150,9 @@ export interface ChangeOrderWithDetails extends ChangeOrder {
   signatures?: ChangeOrderSignature[];
   pending_signatures?: number;
   history?: ChangeOrderHistoryEntry[];
+  /** User who currently owes the next action (submitter for drafts, PM/approver while pending). */
+  ball_in_court?: string | null;
+  ball_in_court_name?: string | null;
 }
 
 export interface ChangeOrderHistoryEntry {
@@ -199,6 +209,8 @@ export interface ChangeOrderFilters {
   co_type?: ChangeOrderType | ChangeOrderType[];
   submitted_by?: string;
   approved_by?: string;
+  /** Filter to COs currently awaiting this user's action (ball-in-court). */
+  ball_in_court?: string;
   phase_id?: string;
   created_from?: Date;
   created_to?: Date;
@@ -506,6 +518,19 @@ class ChangeOrderService {
       paramIndex++;
     }
 
+    // Ball-in-court: COs awaiting this user — their own drafts, or (as the
+    // project's PM/approver) COs pending review/approval. Uses a subquery for
+    // project_manager_id so the count query (no development_projects join) works.
+    if (filters.ball_in_court) {
+      whereClause += ` AND (CASE
+          WHEN co.status = 'draft' THEN COALESCE(co.submitted_by, co.created_by)
+          WHEN co.status IN ('pending_review', 'pending_approval')
+            THEN (SELECT project_manager_id FROM development_projects WHERE id = co.project_id)
+          ELSE NULL
+        END) = $${paramIndex++}`;
+      params.push(filters.ball_in_court);
+    }
+
     // Count total
     const countResult = await pool.query(`
       SELECT COUNT(*) FROM change_orders co ${whereClause}
@@ -531,11 +556,17 @@ class ChangeOrderService {
         executor.full_name AS executed_by_name,
         ph.name AS phase_name,
         rfi.rfi_number AS related_rfi_number,
+        pm.full_name AS ball_pm_name,
+        CASE
+          WHEN co.status = 'draft' THEN COALESCE(co.submitted_by, co.created_by)
+          WHEN co.status IN ('pending_review', 'pending_approval') THEN p.project_manager_id
+          ELSE NULL
+        END AS ball_in_court,
         (
-          SELECT COUNT(*) 
-          FROM change_order_signatures 
-          WHERE change_order_id = co.id 
-            AND is_required = true 
+          SELECT COUNT(*)
+          FROM change_order_signatures
+          WHERE change_order_id = co.id
+            AND is_required = true
             AND signed = false
         ) AS pending_signatures
       FROM change_orders co
@@ -543,6 +574,7 @@ class ChangeOrderService {
       LEFT JOIN users submitter ON co.submitted_by = submitter.id
       LEFT JOIN users approver ON co.approved_by = approver.id
       LEFT JOIN users executor ON co.executed_by = executor.id
+      LEFT JOIN users pm ON p.project_manager_id = pm.id
       LEFT JOIN project_phases ph ON co.phase_id = ph.id
       LEFT JOIN rfis rfi ON co.related_rfi_id = rfi.id
       ${whereClause}
@@ -1195,6 +1227,31 @@ class ChangeOrderService {
   }
 
   /**
+   * Manually request e-signature for a change order (the "Request E-Signature"
+   * button). Uses the org's config when present, else sensible defaults — so it
+   * works even before an org has configured e-sign. Returns the updated CO.
+   */
+  async requestEsign(changeOrderId: string, userId: string): Promise<ChangeOrderWithDetails> {
+    const co = await this.getById(changeOrderId);
+    if (!co) throw new Error('Change order not found');
+
+    const cfgRes = await pool.query(
+      `SELECT * FROM change_order_esign_config WHERE organization_id = $1`,
+      [co.organization_id]
+    );
+    const config = cfgRes.rows[0] || {
+      signer_roles: ['project_manager', 'owner_representative', 'contractor'],
+      field_placements: [],
+      auto_execute_on_complete: false,
+    };
+
+    await this.triggerChangeOrderEsign(co, config, userId);
+    const updated = await this.getById(changeOrderId);
+    if (!updated) throw new Error('Change order not found after e-sign trigger');
+    return updated;
+  }
+
+  /**
    * Trigger e-sign workflow for a change order
    */
   async triggerChangeOrderEsign(
@@ -1207,10 +1264,8 @@ class ChangeOrderService {
       coNumber: changeOrder.co_number,
     });
 
-    // Generate or fetch change order document PDF
-    const changeOrderPdf = await this.generateChangeOrderPdf(changeOrder);
-
-    // Resolve signers based on config
+    // Resolve signers FIRST so the PDF signature blocks and the e-sign fields
+    // are generated against the same signer set (and line up on the page).
     const signers = await this.resolveChangeOrderSigners(
       changeOrder,
       config.signer_roles || ['project_manager', 'owner_representative', 'contractor']
@@ -1223,7 +1278,10 @@ class ChangeOrderService {
       return;
     }
 
-    // Build field placements
+    // Generate the branded change-order document with matching signature blocks
+    const changeOrderPdf = await this.generateChangeOrderPdf(changeOrder, signers.map((s) => s.name));
+
+    // Build field placements aligned to the document's signature slots
     const fields = this.buildChangeOrderFields(signers, config.field_placements);
 
     // Create envelope
@@ -1238,6 +1296,8 @@ class ChangeOrderService {
       }],
       signers,
       fields,
+      organizationId: changeOrder.organization_id,
+      createdByUserId: userId,
       sourceModule: 'project_management',
       sourceEntityType: 'change_order',
       sourceEntityId: changeOrder.id,
@@ -1297,61 +1357,50 @@ class ChangeOrderService {
 
       const changeOrder = coResult.rows[0];
 
-      // Update change order with signed document
       const signedDocUrl = documents[0]?.signedUrl || null;
-      
+
+      // The collected signatures ARE the approval. Advance a still-pending change
+      // order to 'approved' on completion (and to 'executed' if the org auto-executes).
+      const configResult = await client.query(`
+        SELECT auto_execute_on_complete FROM change_order_esign_config
+        WHERE organization_id = $1
+      `, [changeOrder.organization_id]);
+      const autoExecute = configResult.rows[0]?.auto_execute_on_complete ?? false;
+
+      const preApproval = ['draft', 'pending_review', 'pending_approval', 'approved'].includes(changeOrder.status);
+      const newStatus = autoExecute && preApproval
+        ? 'executed'
+        : preApproval ? 'approved' : changeOrder.status;
+      const setApprovedAt = newStatus === 'approved' || newStatus === 'executed';
+      const setExecutedAt = newStatus === 'executed';
+
       await client.query(`
         UPDATE change_orders
         SET esign_status = 'completed',
             esign_completed_at = NOW(),
-            signed_document_url = $2
+            signed_document_url = $2,
+            status = $3,
+            approved_at = CASE WHEN $4 AND approved_at IS NULL THEN NOW() ELSE approved_at END,
+            executed_at = CASE WHEN $5 AND executed_at IS NULL THEN NOW() ELSE executed_at END
         WHERE id = $1
-      `, [sourceContext.entityId, signedDocUrl]);
+      `, [sourceContext.entityId, signedDocUrl, newStatus, setApprovedAt, setExecutedAt]);
 
-      // Log completion
       await this.logHistory(
         client,
         sourceContext.entityId,
-        'esign_completed',
+        autoExecute ? 'esign_completed_executed' : 'esign_completed_approved',
         changeOrder.status,
-        changeOrder.status,
+        newStatus,
         { signers: signers.map(s => ({ email: s.email, signedAt: s.signedAt })) },
         undefined,
-        'All signatures collected via e-sign'
+        autoExecute
+          ? 'Approved & executed via e-signature (all parties signed)'
+          : 'Approved via e-signature (all parties signed)'
       );
 
-      // Check if auto-execute is enabled
-      const configResult = await client.query(`
-        SELECT auto_execute_on_complete FROM change_order_esign_config 
-        WHERE organization_id = $1
-      `, [changeOrder.organization_id]);
-
-      const autoExecute = configResult.rows[0]?.auto_execute_on_complete ?? true;
-
-      if (autoExecute && changeOrder.status === 'approved') {
-        // Auto-execute the change order
-        await client.query(`
-          UPDATE change_orders
-          SET status = 'executed',
-              executed_at = NOW()
-          WHERE id = $1
-        `, [sourceContext.entityId]);
-
-        await this.logHistory(
-          client,
-          sourceContext.entityId,
-          'auto_executed',
-          'approved',
-          'executed',
-          null,
-          undefined,
-          'Auto-executed after e-sign completion'
-        );
-
-        logger.info('Change order auto-executed after e-sign', {
-          coId: sourceContext.entityId,
-        });
-      }
+      logger.info('Change order advanced after e-sign completion', {
+        coId: sourceContext.entityId, from: changeOrder.status, to: newStatus, autoExecute,
+      });
 
       await client.query('COMMIT');
 
@@ -1380,9 +1429,95 @@ class ChangeOrderService {
   /**
    * Generate PDF for change order (stub - integrate with document service)
    */
-  private async generateChangeOrderPdf(changeOrder: ChangeOrderWithDetails): Promise<Buffer> {
-    // TODO: Integrate with actual document generation service
-    // For now, check if there's an existing attachment
+  /**
+   * Return the change order as a PDF for viewing/downloading. If the order has
+   * been e-signed, the stored signed PDF (with signatures + certificate) is
+   * returned; otherwise the branded document is generated on the fly.
+   */
+  async getDocument(id: string, organizationId?: string): Promise<{ buffer: Buffer; filename: string; signed: boolean } | null> {
+    const co = await this.getById(id);
+    // Scope by org only when the caller resolved one (mirrors getAll / approve,
+    // which don't hard-require an org claim on the session).
+    if (!co || (organizationId && co.organization_id !== organizationId)) return null;
+
+    const stored = (co as any).signed_document_url as string | null | undefined;
+    if (stored) {
+      const buffer = await this.fetchStoredDocument(stored);
+      if (buffer) {
+        return { buffer, filename: `${co.co_number || 'change-order'}-signed.pdf`, signed: true };
+      }
+    }
+
+    const buffer = await this.generateChangeOrderPdf(co);
+    return { buffer, filename: `${co.co_number || 'change-order'}.pdf`, signed: false };
+  }
+
+  /**
+   * Resolve a stored document reference (s3://bucket/key, a bare MinIO key,
+   * a data: URL, or an http(s) URL) to its bytes.
+   */
+  private async fetchStoredDocument(ref: string): Promise<Buffer | null> {
+    try {
+      if (ref.startsWith('data:')) {
+        const base64 = ref.substring(ref.indexOf(',') + 1);
+        return Buffer.from(base64, 'base64');
+      }
+      if (/^https?:\/\//.test(ref)) {
+        const response = await fetch(ref);
+        return Buffer.from(await response.arrayBuffer());
+      }
+      // s3://bucket/key  OR  bucket/key  OR  bare key (defaults to documents bucket)
+      let bucket = buckets.documents;
+      let key = ref.replace(/^s3:\/\//, '');
+      const parts = key.split('/');
+      if (parts.length > 1 && (parts[0] === buckets.documents || parts[0] === buckets.uploads)) {
+        bucket = parts[0];
+        key = parts.slice(1).join('/');
+      }
+      const file = await getFile(bucket, key);
+      return Buffer.from(file.body);
+    } catch (error) {
+      logger.warn('Failed to fetch stored change-order document', { ref, error });
+      return null;
+    }
+  }
+
+  /**
+   * Permanently delete a change order (and its line items). Executed change
+   * orders are binding and cannot be deleted — they must be voided instead.
+   */
+  async delete(id: string, organizationId?: string): Promise<{ deleted: boolean; reason?: string }> {
+    const co = await this.getById(id);
+    // Scope by org only when the caller resolved one (mirrors getAll / approve,
+    // which don't hard-require an org claim on the session).
+    if (!co || (organizationId && co.organization_id !== organizationId)) {
+      return { deleted: false, reason: 'not_found' };
+    }
+    if (co.status === 'executed') {
+      return { deleted: false, reason: 'executed_orders_cannot_be_deleted' };
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM change_order_items WHERE change_order_id = $1', [id]);
+      await client.query('DELETE FROM change_order_signatures WHERE change_order_id = $1', [id]);
+      await client.query('DELETE FROM change_orders WHERE id = $1', [id]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    logger.info('Change order deleted', { changeOrderId: id, organizationId, status: co.status });
+    return { deleted: true };
+  }
+
+  private async generateChangeOrderPdf(changeOrder: ChangeOrderWithDetails, signerLabels?: string[]): Promise<Buffer> {
+    // A user-uploaded PDF attachment takes precedence (the e-sign fields still
+    // overlay it). Otherwise generate the branded document below.
     if (changeOrder.attachments && changeOrder.attachments.length > 0) {
       const pdfAttachment = changeOrder.attachments.find(
         a => a.type === 'application/pdf' || a.filename?.endsWith('.pdf')
@@ -1398,28 +1533,27 @@ class ChangeOrderService {
       }
     }
 
-    // Return a minimal placeholder PDF (this should be replaced with actual generation)
-    const placeholderPdf = Buffer.from(
-      `%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj
-4 0 obj << /Length 44 >> stream
-BT /F1 12 Tf 100 700 Td (Change Order ${changeOrder.co_number}) Tj ET
-endstream endobj
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000214 00000 n 
-trailer << /Size 5 /Root 1 0 R >>
-startxref
-307
-%%EOF`
-    );
-    return placeholderPdf;
+    // Generate the branded change-order document.
+    const labels = signerLabels && signerLabels.length ? signerLabels : ['Authorised Signatory'];
+    return generateChangeOrderPdf({
+      co_number: changeOrder.co_number,
+      title: changeOrder.title,
+      description: changeOrder.description,
+      reason: changeOrder.reason,
+      reason_details: changeOrder.reason_details,
+      co_type: changeOrder.co_type,
+      status: changeOrder.status,
+      currency: changeOrder.currency || 'GHS',
+      original_contract_amount: changeOrder.original_contract_amount,
+      previous_changes_amount: changeOrder.previous_changes_amount,
+      this_change_amount: changeOrder.this_change_amount,
+      new_contract_amount: changeOrder.new_contract_amount,
+      schedule_impact_days: changeOrder.schedule_impact_days,
+      new_completion_date: changeOrder.new_completion_date,
+      project_name: (changeOrder as any).project_name,
+      created_at: changeOrder.created_at,
+      signerLabels: labels,
+    });
   }
 
   /**
@@ -1431,17 +1565,19 @@ startxref
   ): Promise<ESignSigner[]> {
     const signers: ESignSigner[] = [];
 
-    // Get project team members
+    // Get project team members (full_name/email are stored inline on the row)
     const teamResult = await pool.query(`
-      SELECT pt.*, u.full_name, u.email
-      FROM project_team pt
-      JOIN users u ON pt.user_id = u.id
-      WHERE pt.project_id = $1 AND pt.is_active = true
+      SELECT full_name, email, role, role_type, role_category
+      FROM project_team_members
+      WHERE project_id = $1 AND is_active = true AND email IS NOT NULL AND email <> ''
     `, [changeOrder.project_id]);
 
     const teamByRole = new Map<string, any>();
     for (const member of teamResult.rows) {
-      teamByRole.set(member.role?.toLowerCase(), member);
+      // Index by any role-ish field so the configured signer roles resolve.
+      for (const key of [member.role, member.role_type, member.role_category]) {
+        if (key) teamByRole.set(String(key).toLowerCase(), member);
+      }
     }
 
     // Resolve each signer role
@@ -1462,8 +1598,13 @@ startxref
           }
           break;
 
+        case 'owner':
         case 'owner_representative':
-          const ownerRep = teamByRole.get('owner_representative') || teamByRole.get('owner');
+          // Owner identity comes from the project team in the DB — never hardcoded.
+          const ownerRep = teamByRole.get('owner_representative')
+            || teamByRole.get('owner')
+            || teamByRole.get('client')
+            || teamByRole.get('owner_rep');
           if (ownerRep) {
             signer = {
               name: ownerRep.full_name,
@@ -1530,37 +1671,23 @@ startxref
       }));
     }
 
-    // Default: Stack signatures on the last page
+    // Default: place each signer's signature + date on the document's signature
+    // slots. Coordinates are PERCENT of the page (0-100) — the same scale the
+    // renderer/designer use — and align with the lines drawn by the PDF generator.
     const fields: ESignField[] = [];
-    let yPosition = 0.7;
-
-    for (const signer of signers) {
+    const slots = changeOrderSignatureSlots(signers.map((s) => s.name));
+    signers.forEach((signer, i) => {
+      const slot = slots[i];
+      if (!slot) return;
       fields.push({
-        type: 'signature',
-        recipientEmail: signer.email,
-        documentIndex: 0,
-        page: 1, // Last page would require page count
-        x: 0.1,
-        y: yPosition,
-        width: 0.3,
-        height: 0.08,
-        required: true,
+        type: 'signature', recipientEmail: signer.email, documentIndex: 0, page: 1,
+        x: slot.sigX, y: slot.sigY, width: slot.sigW, height: slot.sigH, required: true,
       });
-      
       fields.push({
-        type: 'date',
-        recipientEmail: signer.email,
-        documentIndex: 0,
-        page: 1,
-        x: 0.5,
-        y: yPosition,
-        width: 0.2,
-        height: 0.05,
-        required: true,
+        type: 'date_signed', recipientEmail: signer.email, documentIndex: 0, page: 1,
+        x: slot.dateX, y: slot.dateY, width: slot.dateW, height: slot.dateH, required: true,
       });
-
-      yPosition -= 0.12;
-    }
+    });
 
     return fields;
   }
@@ -1641,9 +1768,14 @@ startxref
       executed_at: row.executed_at,
       phase_id: row.phase_id,
       related_rfi_id: row.related_rfi_id,
-      attachments: typeof row.attachments === 'string' 
-        ? JSON.parse(row.attachments) 
+      attachments: typeof row.attachments === 'string'
+        ? JSON.parse(row.attachments)
         : row.attachments || [],
+      esign_envelope_id: row.esign_envelope_id ?? null,
+      esign_status: row.esign_status ?? null,
+      esign_triggered_at: row.esign_triggered_at ?? null,
+      esign_completed_at: row.esign_completed_at ?? null,
+      signed_document_url: row.signed_document_url ?? null,
       created_at: row.created_at,
       updated_at: row.updated_at,
       created_by: row.created_by,
@@ -1661,7 +1793,12 @@ startxref
       executed_by_name: row.executed_by_name,
       phase_name: row.phase_name,
       related_rfi_number: row.related_rfi_number,
-      pending_signatures: row.pending_signatures ? parseInt(row.pending_signatures, 10) : 0
+      pending_signatures: row.pending_signatures ? parseInt(row.pending_signatures, 10) : 0,
+      ball_in_court: row.ball_in_court ?? null,
+      // Drafts await the submitter; pending COs await the project PM/approver.
+      ball_in_court_name: row.ball_in_court
+        ? (row.status === 'draft' ? row.submitted_by_name : row.ball_pm_name)
+        : null,
     };
   }
 

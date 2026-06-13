@@ -991,8 +991,8 @@ class TeamService {
   ): Promise<Vendor[]> {
     try {
       let query = `
-        SELECT * FROM vendors 
-        WHERE organization_id = $1 AND is_approved = true AND is_active = true
+        SELECT * FROM vendors
+        WHERE organization_id = $1 AND is_approved = true AND is_active = true AND deleted_at IS NULL
       `;
       const params: any[] = [organizationId];
       
@@ -1017,7 +1017,7 @@ class TeamService {
   async getVendorById(id: string): Promise<Vendor | null> {
     try {
       const result = await pool.query(
-        'SELECT * FROM vendors WHERE id = $1',
+        'SELECT * FROM vendors WHERE id = $1 AND deleted_at IS NULL',
         [id]
       );
       return result.rows[0] ? this.mapVendor(result.rows[0]) : null;
@@ -1037,9 +1037,10 @@ class TeamService {
   ): Promise<Vendor[]> {
     try {
       const result = await pool.query(
-        `SELECT * FROM vendors 
-         WHERE organization_id = $1 
+        `SELECT * FROM vendors
+         WHERE organization_id = $1
            AND is_active = true
+           AND deleted_at IS NULL
            AND (
              name ILIKE $2 OR
              trading_name ILIKE $2 OR
@@ -1624,7 +1625,8 @@ class TeamService {
   }
 
   async deleteVendor(id: string): Promise<void> {
-    await pool.query(`DELETE FROM vendors WHERE id = $1`, [id]);
+    // Soft delete — financial/operational history must remain auditable. Reads filter deleted_at IS NULL.
+    await pool.query(`UPDATE vendors SET deleted_at = NOW() WHERE id = $1`, [id]);
   }
 
   async getVendorRatings(vendorId: string): Promise<any[]> {

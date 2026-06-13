@@ -26,7 +26,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { scanUploadedFile } from '../middleware/virusScan';
 import { rfiService, RfiFilters, CreateRfiInput, UpdateRfiInput, RespondToRfiInput } from '../services/project-management/rfiService';
 import { logger } from '../utils/logger';
-import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, enforceChildProjectAccess, requireProjectQueryAccess, requirePMWrite } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { createRfiSchema, updateRfiSchema, respondRfiSchema, rfiQuerySchema } from '../middleware/pmProjectValidation';
 
@@ -77,6 +77,11 @@ const router = Router();
 
 // Register UUID parameter validation
 registerPMParamValidation(router);
+// ':id' here is an RFI id — resolve its project and enforce membership so a
+// non-admin can only open RFIs on projects they belong to. '/stats/:projectId'
+// is gated by project membership directly.
+router.param('id', enforceChildProjectAccess('rfis'));
+registerProjectAccessParams(router, ['projectId']);
 
 // Helper to extract user ID from authenticated request (no header fallback)
 const getUserId = (req: Request): string | undefined => {
@@ -92,7 +97,7 @@ const getOrganizationId = (req: Request): string | undefined => {
  * GET /api/rfis
  * List RFIs with filters and pagination
  */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requireProjectQueryAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters: RfiFilters = {
       organization_id: getOrganizationId(req),
@@ -102,6 +107,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       category: req.query.category as any,
       assigned_to: req.query.assignedTo as string,
       submitted_by: req.query.submittedBy as string,
+      // ?ballInCourt=me → only RFIs awaiting the current user's action.
+      ball_in_court: req.query.ballInCourt === 'me'
+        ? getUserId(req)
+        : (req.query.ballInCourt as string) || undefined,
       phase_id: req.query.phaseId as string,
       is_overdue: req.query.isOverdue === 'true',
       due_date_from: req.query.dueDateFrom ? new Date(req.query.dueDateFrom as string) : undefined,

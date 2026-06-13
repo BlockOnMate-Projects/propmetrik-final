@@ -50,7 +50,12 @@
       "WebFetch(domain:aequoros.com)",
       "Bash(curl -sSL -m 15 -A \"Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/126.0 Safari/537.36\" \"https://aequoros.com\")",
       "Bash(curl -sS -m 15 -o /dev/null -w \"%{http_code}\\\\n\" -A \"Mozilla/5.0\" \"https://aequoros.com\")",
-      "Bash(node -e \"require\\('dotenv'\\).config\\({path:'.env.local'}\\); console.log\\('deck:', JSON.stringify\\(process.env.NEXT_PUBLIC_INVESTOR_PITCH_DECK_URL\\)\\); console.log\\('model:', JSON.stringify\\(process.env.NEXT_PUBLIC_INVESTOR_FINANCIAL_MODEL_URL\\)\\)\")"
+      "Bash(node -e \"require\\('dotenv'\\).config\\({path:'.env.local'}\\); console.log\\('deck:', JSON.stringify\\(process.env.NEXT_PUBLIC_INVESTOR_PITCH_DECK_URL\\)\\); console.log\\('model:', JSON.stringify\\(process.env.NEXT_PUBLIC_INVESTOR_FINANCIAL_MODEL_URL\\)\\)\")",
+      "Bash(ls -d */)",
+      "Bash(find maintenance *)",
+      "Bash(find tenants *)",
+      "Bash(find financials *)",
+      "Bash(find . -type d \\\\\\( -iname \"*lease*\" -o -iname \"*report*\" -o -iname \"*payment*\" \\\\\\))"
     ]
   }
 }

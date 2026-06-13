@@ -55,7 +55,9 @@ export default function ProjectsCostsPage() {
 
   const totalBudget = metrics?.totalBudget?.amount || budgetOverview?.totalBudget || 0
   const totalSpent = metrics?.totalSpent?.amount || budgetOverview?.totalSpent || 0
-  const totalRemaining = budgetOverview?.totalRemaining ?? (totalBudget - totalSpent)
+  // Derive remaining from the FX-normalized totals so it stays consistent with the
+  // headline budget (the legacy budgetOverview.totalRemaining was a raw, non-FX sum).
+  const totalRemaining = totalBudget - totalSpent
   // Derive portfolio currency from the first project that has one, or from metrics/overview
   const currency = metrics?.totalBudget?.currency || budgetOverview?.currency || projects.find(p => p.currency)?.currency || 'GHS'
   const utilization = metrics?.budgetUtilization ?? (totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0)

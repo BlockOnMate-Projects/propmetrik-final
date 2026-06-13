@@ -310,6 +310,12 @@ export const teamApi = {
     return response.data || [];
   },
 
+  // Project team + whether the current user may manage it (add/edit/remove).
+  getProjectTeamWithAccess: async (projectId: string): Promise<{ members: TeamMember[]; canManageTeam: boolean }> => {
+    const response = await fetchApi<{ success: boolean; data: TeamMember[]; can_manage_team?: boolean }>(`${TEAM_BASE}/projects/${projectId}/members`);
+    return { members: response.data || [], canManageTeam: !!response.can_manage_team };
+  },
+
   // Update team member
   updateMember: async (id: string, data: Partial<TeamMember>): Promise<TeamMember> => {
     const response = await fetchApi<{ success: boolean; data: TeamMember }>(`${TEAM_BASE}/members/${id}`, {

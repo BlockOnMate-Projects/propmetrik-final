@@ -18,7 +18,10 @@ const navigation: { name: string; href: string; key: string; fKey: string; tabKe
   { name: 'PROJECTS', href: '/dashboard/projects', key: 'F4', fKey: 'F4', tabKey: 'projects' },
   { name: 'ANALYTICS', href: '/dashboard/analytics', key: 'F5', fKey: 'F5', tabKey: 'analytics' },
   { name: 'MANAGEMENT', href: '/dashboard/property-management', key: 'F6', fKey: 'F6', tabKey: 'property-management' },
-  { name: 'E-SIGN', href: '/dashboard/e-sign', key: 'F7', fKey: 'F7', tabKey: 'e-sign' },
+  // E-SIGN removed as a standalone shared-service surface — signing is initiated in-context
+  // from each domain (lease, valuation, project, deal). The /dashboard/e-sign/* pages remain
+  // (the lease flow routes into the envelope designer) but are staff-gated via their layout,
+  // and external signers use the public /sign/[token] link.
   { name: 'ADMIN', href: '/dashboard/admin', key: 'F8', fKey: 'F8', tabKey: 'admin', badge: 'ADMIN', adminOnly: true },
 ]
 

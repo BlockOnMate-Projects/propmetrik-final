@@ -364,15 +364,16 @@ export async function getPortfolioMetrics(
     
     const typeResult = await client.query(typeQuery, params);
     
-    // By region
+    // By region — normalize so "Greater Accra" and "greater_accra" collapse into one
+    // group (previously they appeared as two separate rows with the same display name).
     const regionQuery = `
-      SELECT 
-        dp.region,
+      SELECT
+        INITCAP(REPLACE(LOWER(TRIM(dp.region)), '_', ' ')) AS region,
         COUNT(*) as count,
         COALESCE(SUM(dp.total_budget), 0) as total_budget
       FROM development_projects dp
-      WHERE ${whereClause} AND dp.region IS NOT NULL
-      GROUP BY dp.region
+      WHERE ${whereClause} AND dp.region IS NOT NULL AND TRIM(dp.region) <> ''
+      GROUP BY INITCAP(REPLACE(LOWER(TRIM(dp.region)), '_', ' '))
       ORDER BY count DESC
       LIMIT 10
     `;
@@ -1450,7 +1451,10 @@ export async function getActiveAlerts(
   const client = await pool.connect();
   
   try {
-    const conditions = ['pa.organization_id = $1', "pa.status = 'active'"];
+    // Exclude alerts whose project has been soft-deleted (so stale alerts from
+    // removed/test projects don't keep surfacing). The LEFT JOIN keeps project-less
+    // org alerts (dp.deleted_at is NULL when no project row matched).
+    const conditions = ['pa.organization_id = $1', "pa.status = 'active'", 'dp.deleted_at IS NULL'];
     const params: any[] = [organizationId];
     let paramIndex = 2;
     

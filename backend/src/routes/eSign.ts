@@ -8,6 +8,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { createHash } from 'crypto';
+import { resolvePermanentSignerId } from '../../shared-services/e-sign/permanentSignerId';
 import { scanUploadedFile } from '../middleware/virusScan';
 import { authenticate } from '../middleware/auth';
 import {
@@ -163,35 +164,22 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
             const fieldsResult = await dbQuery(
                 `SELECT ef.id, ef.field_type, ef.value, ef.page, ef.x_position, ef.y_position,
                         ef.width, ef.height, ef.signed_at, ef.signer_id,
-                        es.name as signer_name, es.email as signer_email
+                        es.name as signer_name, es.email as signer_email, es.user_id as signer_user_id
                  FROM esign_fields ef
                  LEFT JOIN esign_signers es ON es.id = ef.signer_id
-                 WHERE ef.envelope_id = $1 AND ef.field_type IN ('signature', 'date_signed') AND ef.value IS NOT NULL`,
+                 WHERE ef.envelope_id = $1 AND ef.field_type IN ('signature', 'date_signed', 'date') AND ef.value IS NOT NULL`,
                 [envelopeId]
             );
 
             const sigRows = fieldsResult.rows.filter((f: any) => f.field_type === 'signature');
-            const dateRows = fieldsResult.rows.filter((f: any) => f.field_type === 'date_signed');
+            // PM/config flows store the date field as 'date'; the designer uses 'date_signed'. Accept both.
+            const dateRows = fieldsResult.rows.filter((f: any) => f.field_type === 'date_signed' || f.field_type === 'date');
 
             if (sigRows.length > 0) {
-                // Resolve PMT signer IDs when permanent_signer_id is empty
-                const resolveSignerId = async (email: string, existingId: string | null): Promise<string> => {
-                    if (existingId) return existingId;
-                    if (!email) return '';
-                    const userRes = await dbQuery(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
-                    if (userRes.rows.length > 0) {
-                        const raw = userRes.rows[0].id.replace(/-/g, '');
-                        return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-                    }
-                    const tenantRes = await dbQuery(`SELECT id FROM tenants WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
-                    if (tenantRes.rows.length > 0) {
-                        const raw = tenantRes.rows[0].id.replace(/-/g, '');
-                        return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-                    }
-                    // Last resort: deterministic PMT id from the email (so external signers still get one).
-                    const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
-                    return `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
-                };
+                // Resolve the signer's permanent PMT id — keyed off the account user_id
+                // when known (so it's consistent across services), else the email.
+                const resolveSignerId = async (email: string, userId: string | null): Promise<string> =>
+                    resolvePermanentSignerId(email, undefined, userId);
 
                 const signatureFields = await Promise.all(sigRows.map(async (f: any) => ({
                     signatureData: f.value,
@@ -200,7 +188,7 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                     y: f.y_position,
                     width: f.width,
                     height: f.height,
-                    signatureId: await resolveSignerId(f.signer_email, f.permanent_signer_id),
+                    signatureId: await resolveSignerId(f.signer_email, f.signer_user_id),
                     signedAt: f.signed_at ? new Date(f.signed_at) : undefined,
                     signerName: f.signer_name,
                     signerEmail: f.signer_email,
@@ -366,6 +354,70 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         logger.info('Sent completion emails to signers', { envelopeId, recipients: allSigners.rows.length });
     } catch (emailError: any) {
         logger.error('Failed to send completion emails', { envelopeId, error: emailError?.message || 'Unknown error' });
+    }
+
+    // ── Project Management dispatch (change orders, draw requests, contractor contracts) ──
+    // The signed PDF + certificate are already generated above; here we route the
+    // completion to the owning PM service so it updates entity status, stores the
+    // signed document, writes the project_esign_audit row, and runs any auto-action
+    // (auto-execute change order / auto-fund draw).
+    if (
+        envelopeRow.context_type === 'project_management' &&
+        envelopeRow.context_entity_id &&
+        ['change_order', 'draw_request', 'contractor_contract'].includes(envelopeRow.context_entity_name)
+    ) {
+        try {
+            const pmSigners = await dbQuery(
+                `SELECT id, email, name, signed_at FROM esign_signers
+                 WHERE envelope_id = $1 AND status = 'signed' ORDER BY signing_order ASC`,
+                [envelopeId]
+            );
+            const pmCompletedAt = envelopeRow.completed_at || new Date();
+            const pmHash = createHash('sha256')
+                .update([envelopeId, signedDocumentUrl || '', new Date(pmCompletedAt).toISOString()].join('|'))
+                .digest('hex');
+            // Normalize the signed PDF (a bare MinIO key) to an s3:// object ref.
+            let pmSignedRef = signedDocumentUrl;
+            if (signedDocumentUrl && !/^(data:|https?:|s3:\/\/)/.test(signedDocumentUrl)) {
+                let bucket = buckets.documents;
+                let key = signedDocumentUrl;
+                const parts = signedDocumentUrl.split('/');
+                if (parts.length > 1 && (parts[0] === buckets.documents || parts[0] === buckets.uploads)) {
+                    bucket = parts[0];
+                    key = parts.slice(1).join('/');
+                }
+                pmSignedRef = `s3://${bucket}/${key}`;
+            }
+            const entityType = envelopeRow.context_entity_name as 'change_order' | 'draw_request' | 'contractor_contract';
+            const pmEvent = {
+                event: 'envelope.completed' as const,
+                timestamp: new Date(),
+                envelope: { id: envelopeId, subject: envelopeRow.name || 'Signed Document', completedAt: new Date(pmCompletedAt) },
+                sourceContext: { module: 'project_management' as const, entityType, entityId: envelopeRow.context_entity_id },
+                documents: [{ id: envelopeId, name: envelopeRow.name || 'Signed Document', signedUrl: pmSignedRef, certificateUrl: undefined }],
+                signers: pmSigners.rows.map((row: any) => ({
+                    email: row.email,
+                    name: row.name,
+                    pmtId: row.id,
+                    signedAt: row.signed_at ? new Date(row.signed_at) : new Date(pmCompletedAt),
+                })),
+                security: { hash: pmHash, algorithm: 'SHA-256' as const, verifyUrl: `/api/v1/esign/envelopes/${envelopeId}/certificate` },
+            };
+            if (entityType === 'change_order') {
+                const { changeOrderService } = await import('../services/project-management/changeOrderService');
+                await changeOrderService.handleEsignCompletion(pmEvent);
+            } else if (entityType === 'draw_request') {
+                const { drawService } = await import('../services/project-management/drawService');
+                await drawService.handleEsignCompletion(pmEvent);
+            } else {
+                const { contractorService } = await import('../services/project-management/contractorService');
+                await contractorService.handleEsignCompletion(pmEvent);
+            }
+            logger.info('PM e-sign completion dispatched', { envelopeId, entityType, entityId: envelopeRow.context_entity_id });
+        } catch (e: any) {
+            logger.error('PM e-sign completion dispatch failed', { envelopeId, error: e?.message });
+        }
+        return;
     }
 
     let tenancyId: string | null = null;
@@ -920,12 +972,6 @@ router.post('/users/get-or-create-signer-id', asyncHandler(async (req: Request, 
         return res.status(400).json({ success: false, error: 'Email is required' });
     }
 
-    // Helper: generate PMT ID from UUID — takes first 8 hex chars of the UUID (first section)
-    const pmtFromUuid = (uuid: string) => {
-        const raw = uuid.replace(/-/g, '');
-        return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-    };
-
     // Resolve the user ID — prefer real JWT userId, then lookup by email
     // IMPORTANT: Do NOT use the dev-fallback getUserId() here — only real JWT
     let resolvedUserId: string | null = null;
@@ -997,35 +1043,9 @@ router.post('/users/get-or-create-signer-id', asyncHandler(async (req: Request, 
         return res.json({ success: true, signer_pmt_id: existingIdentity.permanent_id });
     }
 
-    // ── Step 2: Generate new PMT ID and persist it ──
-    let pmtId: string;
-
-    if (resolvedUserId) {
-        // Derive from UUID first section — stable and deterministic
-        pmtId = pmtFromUuid(resolvedUserId);
-    } else {
-        // External signer with no user/tenant record — hash the email
-        const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
-        pmtId = `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
-    }
-
-    // Persist in esign_signer_identities so it follows the user forever
-    try {
-        await dbQuery(
-            `INSERT INTO esign_signer_identities (id, email, user_id, permanent_id, display_name, total_signatures, first_signed_at, last_signed_at, created_at)
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, 0, NOW(), NOW(), NOW())
-             ON CONFLICT (email) DO UPDATE SET
-               permanent_id = COALESCE(esign_signer_identities.permanent_id, $3),
-               user_id = COALESCE(esign_signer_identities.user_id, $2),
-               display_name = COALESCE(NULLIF($4, ''), esign_signer_identities.display_name)`,
-            [email, resolvedUserId, pmtId, name || email.split('@')[0]]
-        );
-        logger.info('Persisted PMT signer ID', { email, pmtId, userId: resolvedUserId });
-    } catch (persistErr: any) {
-        // Log but don't fail — the PMT ID is still valid even if persistence fails
-        logger.warn('Could not persist PMT signer ID', { email, pmtId, error: persistErr?.message });
-    }
-
+    // ── Step 2: Derive + persist via the shared resolver, keyed off the
+    // authenticated/resolved ACCOUNT id (not just the email) when we have one. ──
+    const pmtId = await resolvePermanentSignerId(email, name, resolvedUserId);
     return res.json({ success: true, signer_pmt_id: pmtId });
 }));
 
@@ -1580,44 +1600,11 @@ router.post('/envelopes/create', esignUpload.single('files'), scanUploadedFile, 
 
         if (isSelfSigned && pdfBuffer) {
             try {
-                // Generate PMT IDs for signers using the same DB-lookup logic
-                // as the /users/get-or-create-signer-id endpoint
+                // Resolve each signer's PERMANENT id (persisted, never changes) via the
+                // shared resolver — derived from the user/tenant DB id or an email hash.
                 for (const r of recipients) {
-                    const email = r.email;
-                    if (email) {
-                        let pmtId: string | null = null;
-                        
-                        // 1. Look up in users table first (use user UUID first section)
-                        const userRes = await dbQuery(
-                            'SELECT id FROM users WHERE email = $1 LIMIT 1',
-                            [email]
-                        ).catch(() => ({ rows: [] }));
-                        
-                        if (userRes.rows.length > 0) {
-                            const raw = userRes.rows[0].id.replace(/-/g, '');
-                            pmtId = `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-                        }
-                        
-                        // 2. Fall back to tenants table
-                        if (!pmtId) {
-                            const tenantRes = await dbQuery(
-                                'SELECT id FROM tenants WHERE email = $1 LIMIT 1',
-                                [email]
-                            ).catch(() => ({ rows: [] }));
-                            
-                            if (tenantRes.rows.length > 0) {
-                                const raw = tenantRes.rows[0].id.replace(/-/g, '');
-                                pmtId = `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-                            }
-                        }
-                        
-                        // 3. Last resort: deterministic hash from email
-                        if (!pmtId) {
-                            const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
-                            pmtId = `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
-                        }
-                        
-                        signerPmtIds.push(pmtId);
+                    if (r.email) {
+                        signerPmtIds.push(await resolvePermanentSignerId(r.email, r.name));
                     }
                 }
 
@@ -2369,20 +2356,7 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
         // Resolve PMT IDs for signers
         const resolveSignerId = async (email: string, existingId: string | undefined): Promise<string> => {
             if (existingId) return existingId;
-            if (!email) return '';
-            const userRes = await dbQuery(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
-            if (userRes.rows.length > 0) {
-                const raw = userRes.rows[0].id.replace(/-/g, '');
-                return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-            }
-            const tenantRes = await dbQuery(`SELECT id FROM tenants WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
-            if (tenantRes.rows.length > 0) {
-                const raw = tenantRes.rows[0].id.replace(/-/g, '');
-                return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
-            }
-            // Last resort: deterministic PMT id from the email (so external signers still get one).
-            const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
-            return `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
+            return resolvePermanentSignerId(email);
         };
 
         // Resolve PMT IDs in signature fields

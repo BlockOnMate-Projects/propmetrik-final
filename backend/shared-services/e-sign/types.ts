@@ -284,7 +284,7 @@ export interface EnvelopeField {
     id: string;
     envelopeId: string;
     signerId: string;
-    type: 'signature' | 'initials' | 'date' | 'text';
+    type: 'signature' | 'initials' | 'date' | 'date_signed' | 'text';
     page: number;
     x: number;
     y: number;
@@ -343,7 +343,7 @@ export interface CreateTemplateDto {
         order: number;
     }>;
     defaultFields?: Array<{
-        type: 'signature' | 'initials' | 'date' | 'text';
+        type: 'signature' | 'initials' | 'date' | 'date_signed' | 'text';
         page: number;
         x: number;
         y: number;
@@ -443,7 +443,7 @@ export interface CreateEnvelopeDto {
     }>;
     fields?: Array<{
         signerEmail: string;
-        type: 'signature' | 'initials' | 'date' | 'text';
+        type: 'signature' | 'initials' | 'date' | 'date_signed' | 'text';
         page: number;
         x: number;
         y: number;

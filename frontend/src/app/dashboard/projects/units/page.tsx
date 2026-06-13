@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { projectsApi } from '@/lib/projects-api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, humanize } from '@/lib/utils'
 
 interface ProjectSummaryRow {
     id: string
@@ -214,7 +214,7 @@ export default function ProjectsUnitsPage() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <p className="text-xs font-mono text-zinc-400">
-                                                    {[project.city, project.region].filter(Boolean).join(', ') || '—'}
+                                                    {[project.city, project.region].filter(Boolean).map(humanize).join(', ') || '—'}
                                                 </p>
                                             </td>
                                             <td className="text-right px-4 py-3">
