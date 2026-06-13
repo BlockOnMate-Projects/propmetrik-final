@@ -24,7 +24,7 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import { fetchApi } from '@/lib/api'
+import { fetchApi, fetchApiBlob } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import {
   Plus,
@@ -235,6 +235,19 @@ const CURRENCY_SUBUNITS: Record<CurrencyCode, number> = {
   EUR: 100, // cents
 }
 
+const CURRENCY_NAMES: Record<CurrencyCode, string> = {
+  GHS: 'Ghana Cedis',
+  USD: 'US Dollars',
+  GBP: 'Pounds Sterling',
+  EUR: 'Euros',
+}
+
+// The "All amounts are in <currency>" clause kept in sync with the invoice currency.
+const TERMS_CURRENCY_CLAUSE = /All amounts are in [^.]*? unless otherwise stated\./
+function defaultTerms(currency: CurrencyCode): string {
+  return `Payment is due within 30 days of invoice date. Late payments attract a 1.5% monthly surcharge as per the Ghana Construction Industry Standards. All amounts are in ${CURRENCY_NAMES[currency]} unless otherwise stated.`
+}
+
 function generateInvoiceNumber(): string {
   const year = new Date().getFullYear()
   const seq = String(Math.floor(Math.random() * 9000) + 1000)
@@ -328,8 +341,7 @@ function createSeedInvoice(): InvoiceData {
     },
     notes: 'Payment preferred via Paystack or bank transfer. Mobile money accepted.',
     customMessage: '',
-    terms:
-      'Payment is due within 30 days of invoice date. Late payments attract a 1.5% monthly surcharge as per the Ghana Construction Industry Standards. All amounts are in Ghana Cedis unless otherwise stated.',
+    terms: defaultTerms('GHS'),
     latePaymentEnabled: true,
     latePaymentPercent: 1.5,
     paymentInfo: {
@@ -366,6 +378,7 @@ export default function InvoiceBuilder() {
   const [milestones, setMilestones] = useState<PaymentMilestone[]>([])
   const [selectedMilestones, setSelectedMilestones] = useState<Set<string>>(new Set())
   const [loadingMilestones, setLoadingMilestones] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
 
   // Generate invoice number on client only (avoids hydration mismatch from Math.random)
@@ -398,6 +411,21 @@ export default function InvoiceBuilder() {
       })
       .catch(() => {})
   }, [])
+
+  // Keep the "All amounts are in <currency>" terms clause aligned with the selected
+  // currency (picking a USD project switches currency → amounts show $, so the terms
+  // must say US Dollars, not Ghana Cedis). Only rewrites the clause if it's still
+  // present — respects the user editing or removing that sentence.
+  useEffect(() => {
+    setInv(prev => {
+      if (!TERMS_CURRENCY_CLAUSE.test(prev.terms)) return prev
+      const updated = prev.terms.replace(
+        TERMS_CURRENCY_CLAUSE,
+        `All amounts are in ${CURRENCY_NAMES[prev.currency]} unless otherwise stated.`
+      )
+      return updated === prev.terms ? prev : { ...prev, terms: updated }
+    })
+  }, [inv.currency])
 
   // =====================================================
   // CALCULATIONS
@@ -722,26 +750,63 @@ export default function InvoiceBuilder() {
     }
   }
 
-  const handleDownloadPDF = () => {
-    if (previewRef.current) {
-      const printWindow = window.open('', '_blank')
-      if (!printWindow) return
-      printWindow.document.write(`
-        <html>
-        <head>
-          <title>Invoice ${inv.invoiceNumber}</title>
-          <style>
-            @page { size: A4; margin: 15mm; }
-            body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
-            * { box-sizing: border-box; }
-          </style>
-        </head>
-        <body>${previewRef.current.innerHTML}</body>
-        </html>
-      `)
-      printWindow.document.close()
-      printWindow.focus()
-      setTimeout(() => printWindow.print(), 300)
+  // Download a real .pdf in one click. We POST the live invoice data to the backend,
+  // which renders it with the same PDFKit generator that attaches the invoice to the
+  // client email (generateInvoicePdf) — so the downloaded file is byte-for-byte what the
+  // client receives. This replaces the old window.open()+print() workaround, which dumped
+  // unstyled HTML into the browser's "Save as PDF" dialog.
+  const handleDownloadPDF = async () => {
+    if (calculations.lineItems.length === 0) {
+      alert('Add at least one line item before downloading the invoice.')
+      return
+    }
+    setIsDownloading(true)
+    try {
+      const payload = {
+        invoiceNumber: inv.invoiceNumber,
+        issueDate: inv.invoiceDate,
+        dueDate: inv.dueDate,
+        currency: inv.currency,
+        vendorCompany: inv.billFrom.companyName,
+        vendorEmail: inv.billFrom.email,
+        clientName: inv.billTo.companyName,
+        clientEmail: inv.billTo.email,
+        projectName: inv.projectName,
+        lineItems: calculations.lineItems.map((li) => ({
+          description: li.description,
+          qty: li.qty,
+          unit: li.unit,
+          unitRate: li.unitRate,
+          amount: li.qty * li.unitRate,
+        })),
+        subtotal: calculations.subtotal,
+        taxAmount: calculations.totalTax,
+        discount: calculations.discount,
+        retention: calculations.retention,
+        platformFee: calculations.platformFee,
+        totalDue: calculations.totalDue,
+        notes: inv.notes,
+        terms: inv.terms,
+        paymentLink: inv.paymentInfo.paystackUrl || undefined,
+      }
+
+      const blob = await fetchApiBlob('/budget/invoices/render-pdf', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Invoice-${(inv.invoiceNumber || 'draft').replace(/[^a-zA-Z0-9_-]/g, '-')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e: any) {
+      alert(`Could not generate the invoice PDF: ${e?.message || 'Unknown error'}`)
+    } finally {
+      setIsDownloading(false)
     }
   }
 
@@ -1628,9 +1693,10 @@ export default function InvoiceBuilder() {
           </button>
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-[#8B949E] border border-[#30363D] rounded-sm hover:bg-[#161B22] transition-colors"
+            disabled={isDownloading}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-[#8B949E] border border-[#30363D] rounded-sm hover:bg-[#161B22] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="h-3.5 w-3.5" /> Download PDF
+            <Download className="h-3.5 w-3.5" /> {isDownloading ? 'Generating…' : 'Download PDF'}
           </button>
           <button
             onClick={handleDuplicate}

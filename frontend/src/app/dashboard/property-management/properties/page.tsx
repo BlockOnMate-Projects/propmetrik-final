@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { Property } from '@/types/property-management'
+import { useExchangeRates } from '@/lib/use-exchange-rates'
+import { RateStamp } from '@/components/property-management/RateStamp'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
     DropdownMenuSeparator, DropdownMenuTrigger
@@ -46,6 +48,10 @@ export default function PropertiesPage() {
     const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set())
     const [buildingUnits, setBuildingUnits] = useState<Record<string, Property[]>>({})
     const [loadingUnitsFor, setLoadingUnitsFor] = useState<string | null>(null)
+
+    // Live FX rates: properties keep their listed currency, but the portfolio total
+    // must be normalized to GHS before summing (can't add USD + GHS as raw numbers).
+    const { fx, toGHS } = useExchangeRates()
 
     const toggleBuilding = async (buildingId: string) => {
         const next = new Set(expandedBuildings)
@@ -125,10 +131,17 @@ export default function PropertiesPage() {
     const residentialCount = properties.filter(p => p.propertyType === 'residential_house' || p.propertyType === 'apartment_flat').length
     const commercialCount = properties.filter(p => p.propertyType === 'commercial_office' || p.propertyType === 'industrial').length
     const activeCount = properties.filter(p => p.status === 'active').length
-    const totalValue = properties.reduce((sum, p) => sum + (p.price || 0), 0)
+    // Normalize each property to GHS (native amount × live rate) before summing.
+    const totalValue = properties.reduce((sum, p) => sum + toGHS(p.price || 0, p.priceCurrency), 0)
 
     const formatCurrency = (val: number, currency: string = 'GHS') => {
         return new Intl.NumberFormat('en-GH', { style: 'currency', currency, maximumFractionDigits: 0 }).format(val)
+    }
+
+    // GHS equivalent shown beneath a non-GHS native price; null when already in GHS.
+    const ghsEquivalent = (price: number, currency?: string | null) => {
+        if ((currency || 'GHS').toUpperCase() === 'GHS') return null
+        return `≈ ${formatCurrency(toGHS(price || 0, currency), 'GHS')}`
     }
 
     return (
@@ -163,7 +176,7 @@ export default function PropertiesPage() {
                 <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Residential</p><h2 className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : residentialCount}</h2></div><div className="h-10 w-10 rounded-lg bg-sky-500/10 flex items-center justify-center"><Home className="h-5 w-5 text-sky-500" /></div></div></CardContent></Card>
                 <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Commercial</p><h2 className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : commercialCount}</h2></div><div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-violet-500" /></div></div></CardContent></Card>
                 <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Active</p><h2 className="text-2xl font-bold text-emerald-500 font-mono">{isLoading ? '-' : activeCount}</h2></div><div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-emerald-500" /></div></div></CardContent></Card>
-                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Total Value</p><h2 className="text-lg font-bold text-primary font-mono">{isLoading ? '-' : formatCurrency(totalValue)}</h2></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><DollarSign className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
+                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Total Value</p><h2 className="text-lg font-bold text-primary font-mono">{isLoading ? '-' : formatCurrency(totalValue)}</h2>{!isLoading && <RateStamp fx={fx} />}</div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><DollarSign className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
             </div>
 
             <Card className="bg-card border-border">
@@ -235,6 +248,9 @@ export default function PropertiesPage() {
                                         <div className="flex items-center gap-3 ml-auto">
                                             <div className="text-right mr-2">
                                                 <p className="text-sm font-bold text-primary font-mono">{isBuilding && <span className="text-[10px] text-muted-foreground font-normal mr-1">from</span>}{formatCurrency(property.price, property.priceCurrency || 'GHS')}</p>
+                                                {ghsEquivalent(property.price, property.priceCurrency) && (
+                                                    <p className="text-[9px] text-muted-foreground/70 font-mono">{ghsEquivalent(property.price, property.priceCurrency)}</p>
+                                                )}
                                                 <p className="text-[9px] text-muted-foreground font-mono">{property.referenceNumber}</p>
                                             </div>
                                             <Badge variant="outline" className={`text-[10px] font-mono uppercase ${property.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : property.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : property.status === 'maintenance' ? 'border-destructive/50 text-destructive bg-destructive/10' : 'border-border text-muted-foreground'}`}>{property.status}</Badge>
@@ -276,7 +292,12 @@ export default function PropertiesPage() {
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-3 flex-shrink-0">
-                                                            <span className="text-xs font-bold text-primary font-mono">{formatCurrency(unit.price, unit.priceCurrency || 'GHS')}</span>
+                                                            <span className="text-xs font-bold text-primary font-mono flex flex-col items-end">
+                                                                <span>{formatCurrency(unit.price, unit.priceCurrency || 'GHS')}</span>
+                                                                {ghsEquivalent(unit.price, unit.priceCurrency) && (
+                                                                    <span className="text-[9px] font-normal text-muted-foreground/70">{ghsEquivalent(unit.price, unit.priceCurrency)}</span>
+                                                                )}
+                                                            </span>
                                                             <Badge variant="outline" className={`text-[9px] font-mono uppercase ${unit.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : unit.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}>{unit.status}</Badge>
                                                         </div>
                                                     </Link>
@@ -299,7 +320,10 @@ export default function PropertiesPage() {
                     {filteredProperties.length > 0 && (
                         <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-800">
                             <p className="text-[10px] font-mono text-zinc-500">Showing {filteredProperties.length} of {properties.length} properties</p>
-                            <p className="text-[10px] font-mono text-zinc-500">Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + (p.price || 0), 0))}</span></p>
+                            <div className="flex items-center gap-3">
+                                <RateStamp fx={fx} />
+                                <p className="text-[10px] font-mono text-zinc-500">Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + toGHS(p.price || 0, p.priceCurrency), 0))}</span></p>
+                            </div>
                         </div>
                     )}
                 </CardContent>

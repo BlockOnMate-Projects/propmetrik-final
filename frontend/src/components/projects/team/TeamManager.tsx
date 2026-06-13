@@ -22,6 +22,9 @@ import {
   ChevronDown,
   CheckCircle,
   XCircle,
+  Info,
+  UserCheck,
+  Globe,
   Building2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -68,6 +71,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   teamApi,
   rolesApi,
@@ -359,29 +368,96 @@ function AddMemberForm({
   })
 
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [fullName, setFullName] = useState('')
+  // Relationship to the org — independent of discipline. Defaults from the
+  // chosen role's category (only 'internal' roles default to staff); overridable.
+  const [memberType, setMemberType] = useState<'staff' | 'external'>('external')
+
+  const handleRoleSelect = (role: string) => {
+    setFormData(prev => ({ ...prev, role: role as GhanaTeamRole }))
+    const cat = roles.find(r => r.role === role)?.category
+    if (cat) setMemberType(cat === 'internal' ? 'staff' : 'external')
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    // Map to the fields the backend expects (name/email/phone/member_type),
+    // not the TeamMember display field names.
     onSubmit({
-      ...formData,
-      userId: selectedUserId,
-    })
+      name: fullName,
+      email: formData.contactEmail,
+      phone: formData.contactPhone,
+      role: formData.role,
+      member_type: memberType,
+      title: formData.title,
+      department: formData.department,
+      permissions: formData.permissions,
+      notes: formData.notes,
+      userId: selectedUserId || undefined,
+    } as any)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
+      {/* Member type: internal staff vs external collaborator */}
       <div className="space-y-2">
-        <Label htmlFor="userId">User ID *</Label>
+        <div className="flex items-center gap-1.5">
+          <Label>Member type *</Label>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="What's the difference?">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs text-xs leading-relaxed">
+                <p className="mb-1"><span className="font-semibold text-amber-400">Internal staff</span> — an employee of your firm. Gets a full staff login, scoped to the projects they're on.</p>
+                <p><span className="font-semibold text-cyan-400">External collaborator</span> — an outside party (contractor, architect, consultant). Gets a limited, invite-based login that shows only their assigned project(s) and the items awaiting them.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMemberType('staff')}
+            className={cn(
+              'flex items-center gap-2 rounded-lg border p-3 text-left transition-colors',
+              memberType === 'staff' ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-700 hover:border-zinc-500'
+            )}
+          >
+            <UserCheck className={cn('h-4 w-4', memberType === 'staff' ? 'text-amber-400' : 'text-zinc-400')} />
+            <div>
+              <div className="text-sm font-medium">Internal staff</div>
+              <div className="text-[11px] text-muted-foreground">Employee · full access</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMemberType('external')}
+            className={cn(
+              'flex items-center gap-2 rounded-lg border p-3 text-left transition-colors',
+              memberType === 'external' ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700 hover:border-zinc-500'
+            )}
+          >
+            <Globe className={cn('h-4 w-4', memberType === 'external' ? 'text-cyan-400' : 'text-zinc-400')} />
+            <div>
+              <div className="text-sm font-medium">External collaborator</div>
+              <div className="text-[11px] text-muted-foreground">Invited · scoped view</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="fullName">Full name *</Label>
         <Input
-          id="userId"
-          placeholder="Enter user ID or email"
-          value={selectedUserId}
-          onChange={(e) => setSelectedUserId(e.target.value)}
+          id="fullName"
+          placeholder="e.g., Ama Mensah"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
           required
         />
-        <p className="text-xs text-muted-foreground">
-          Search for an existing user or enter their ID
-        </p>
       </div>
 
       <div className="space-y-2">
@@ -390,9 +466,19 @@ function AddMemberForm({
           <RoleSelector
             roles={roles}
             selectedRole={formData.role}
-            onSelect={(role) => setFormData(prev => ({ ...prev, role }))}
+            onSelect={handleRoleSelect}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="userId">Link to existing user (optional)</Label>
+        <Input
+          id="userId"
+          placeholder="User ID — leave blank to invite by email"
+          value={selectedUserId}
+          onChange={(e) => setSelectedUserId(e.target.value)}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -418,7 +504,7 @@ function AddMemberForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="contactEmail">Contact Email</Label>
+          <Label htmlFor="contactEmail">Email{memberType === 'external' ? ' *' : ''}</Label>
           <Input
             id="contactEmail"
             type="email"
@@ -426,6 +512,11 @@ function AddMemberForm({
             value={formData.contactEmail}
             onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
           />
+          <p className="text-[11px] text-muted-foreground">
+            {memberType === 'external'
+              ? 'An invite to set a password + access this project is sent here.'
+              : 'Used to send their account invite (optional for a contact-only record).'}
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="contactPhone">Contact Phone</Label>
@@ -462,9 +553,9 @@ function AddMemberForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting || !formData.role || !selectedUserId}>
+        <Button type="submit" disabled={isSubmitting || !formData.role || !fullName || (memberType === 'external' && !formData.contactEmail)}>
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Add Member
+          {memberType === 'external' ? 'Add & Send Invite' : 'Add Member'}
         </Button>
       </DialogFooter>
     </form>
@@ -651,6 +742,10 @@ export function TeamManager({
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Whether the current user may manage this project's team (add/edit/remove).
+  // Resolved server-side: org-admins + the project owner/PM + members granted
+  // can_manage_team. Drives whether the Add/management controls are shown.
+  const [canManageTeam, setCanManageTeam] = useState(false)
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -658,12 +753,13 @@ export function TeamManager({
       setIsLoading(true)
       setError(null)
 
-      const [membersData, rolesData] = await Promise.all([
-        teamApi.getProjectTeam(projectId),
+      const [teamData, rolesData] = await Promise.all([
+        teamApi.getProjectTeamWithAccess(projectId),
         rolesApi.getAll(),
       ])
 
-      setMembers(membersData)
+      setMembers(teamData.members)
+      setCanManageTeam(teamData.canManageTeam)
       setRoles(rolesData)
     } catch (err) {
       console.error('Error fetching team:', err)
@@ -702,15 +798,15 @@ export function TeamManager({
     return acc
   }, {} as Record<RoleCategory, TeamMember[]>)
 
-  // Add member
+  // Add member — sends the backend's field names (project_id snake-case; the
+  // route auto-creates the login invite when an email is present).
   const handleAddMember = async (data: Partial<TeamMember>) => {
     try {
       setIsSubmitting(true)
       await teamApi.addMember({
         ...data,
-        projectId,
-        organizationId,
-      })
+        project_id: projectId,
+      } as any)
       setShowAddDialog(false)
       await fetchData()
     } catch (err) {
@@ -791,12 +887,14 @@ export function TeamManager({
         </div>
 
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Member
-            </Button>
-          </DialogTrigger>
+          {canManageTeam && (
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Member
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add Team Member</DialogTitle>
@@ -864,12 +962,14 @@ export function TeamManager({
             <Users className="h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 font-medium">No Team Members</h3>
             <p className="text-sm text-muted-foreground">
-              Add team members to get started
+              {canManageTeam ? 'Add team members to get started' : 'No team members have been added to this project yet'}
             </p>
-            <Button className="mt-4" onClick={() => setShowAddDialog(true)}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add First Member
-            </Button>
+            {canManageTeam && (
+              <Button className="mt-4" onClick={() => setShowAddDialog(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add First Member
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

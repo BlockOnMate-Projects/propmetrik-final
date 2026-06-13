@@ -282,7 +282,8 @@ export const COMMERCIAL_PHASES: PhaseTemplate[] = [
     weight: 10,
     duration_days: 120,
     color: '#6B7280',
-    milestones: ['Site secured', 'EIA submitted', 'Building permit issued'],
+    description: 'Site acquisition, statutory approvals and permits',
+    milestones: ['Site secured', 'EPA permit / EIA approved', 'Development permit issued', 'Building permit issued'],
   },
   {
     phase_number: 2,
@@ -290,6 +291,8 @@ export const COMMERCIAL_PHASES: PhaseTemplate[] = [
     weight: 10,
     duration_days: 60,
     color: '#3B82F6',
+    description: 'Schematic to detailed design and tendering',
+    milestones: ['Schematic design approved', 'Detailed design complete', 'Tender documents issued'],
   },
   {
     phase_number: 3,
@@ -297,6 +300,8 @@ export const COMMERCIAL_PHASES: PhaseTemplate[] = [
     weight: 10,
     duration_days: 45,
     color: '#F59E0B',
+    description: 'Site clearance, excavation and foundations',
+    milestones: ['Site cleared', 'Excavation complete', 'Foundation inspection passed'],
   },
   {
     phase_number: 4,
@@ -304,6 +309,8 @@ export const COMMERCIAL_PHASES: PhaseTemplate[] = [
     weight: 30,
     duration_days: 150,
     color: '#8B5CF6',
+    description: 'Substructure and superstructure construction',
+    milestones: ['Substructure complete', 'Superstructure complete', 'Topping out complete'],
   },
   {
     phase_number: 5,
@@ -311,6 +318,8 @@ export const COMMERCIAL_PHASES: PhaseTemplate[] = [
     weight: 20,
     duration_days: 90,
     color: '#10B981',
+    description: 'MEP, vertical transport and fire systems',
+    milestones: ['MEP rough-in complete', 'Lifts installed', 'Fire systems installed'],
   },
   {
     phase_number: 6,
@@ -318,13 +327,17 @@ export const COMMERCIAL_PHASES: PhaseTemplate[] = [
     weight: 15,
     duration_days: 60,
     color: '#EC4899',
+    description: 'Internal and external finishes, fit-out',
+    milestones: ['Internal finishes complete', 'External cladding complete', 'Fit-out complete'],
   },
   {
     phase_number: 7,
-    name: 'Commissioning',
+    name: 'Commissioning & Handover',
     weight: 5,
     duration_days: 30,
     color: '#14B8A6',
+    description: 'Testing, statutory certification and handover',
+    milestones: ['Services commissioned', 'Fire certificate obtained', 'Certificate of occupancy obtained', 'Handover complete'],
   },
 ];
 
@@ -335,6 +348,8 @@ export const SINGLE_HOUSE_PHASES: PhaseTemplate[] = [
     weight: 10,
     duration_days: 45,
     color: '#3B82F6',
+    description: 'Title verification, design and permitting',
+    milestones: ['Title verified', 'Building permit issued'],
   },
   {
     phase_number: 2,
@@ -342,6 +357,8 @@ export const SINGLE_HOUSE_PHASES: PhaseTemplate[] = [
     weight: 20,
     duration_days: 21,
     color: '#EF4444',
+    description: 'Site clearance and foundation works',
+    milestones: ['Site cleared', 'Foundation poured', 'Foundation inspection passed'],
   },
   {
     phase_number: 3,
@@ -349,6 +366,8 @@ export const SINGLE_HOUSE_PHASES: PhaseTemplate[] = [
     weight: 30,
     duration_days: 45,
     color: '#8B5CF6',
+    description: 'Walls, lintels and roofing',
+    milestones: ['Walls complete', 'Roofing complete'],
   },
   {
     phase_number: 4,
@@ -356,6 +375,8 @@ export const SINGLE_HOUSE_PHASES: PhaseTemplate[] = [
     weight: 15,
     duration_days: 21,
     color: '#10B981',
+    description: 'Electrical and plumbing rough-in',
+    milestones: ['Electrical rough-in', 'Plumbing rough-in'],
   },
   {
     phase_number: 5,
@@ -363,6 +384,8 @@ export const SINGLE_HOUSE_PHASES: PhaseTemplate[] = [
     weight: 20,
     duration_days: 30,
     color: '#EC4899',
+    description: 'Plastering, painting and fixtures',
+    milestones: ['Plastering & painting complete', 'Fixtures installed'],
   },
   {
     phase_number: 6,
@@ -370,6 +393,8 @@ export const SINGLE_HOUSE_PHASES: PhaseTemplate[] = [
     weight: 5,
     duration_days: 14,
     color: '#14B8A6',
+    description: 'External works, snagging and handover',
+    milestones: ['Snagging complete', 'Safety certificate obtained', 'Handover complete'],
   },
 ];
 
@@ -382,6 +407,39 @@ export const PHASE_TEMPLATES_BY_TYPE: Record<string, PhaseTemplate[]> = {
   land_development: SINGLE_HOUSE_PHASES.slice(0, 3),
   renovation: SINGLE_HOUSE_PHASES.slice(2),
 };
+
+/**
+ * Resolve the default phase+milestone framework for a project type. Used to
+ * auto-apply a structured plan when the user doesn't pick one explicitly.
+ * Falls back to the multi-residential template (the richest) for unknown types.
+ */
+export function getDefaultPhasesForType(projectType?: string): PhaseTemplate[] {
+  if (projectType && PHASE_TEMPLATES_BY_TYPE[projectType]) {
+    return PHASE_TEMPLATES_BY_TYPE[projectType];
+  }
+  return RESIDENTIAL_MULTI_PHASES;
+}
+
+/**
+ * Classify a milestone label into a type + whether it's a Ghana statutory item,
+ * so seeded milestones get the right reminders/treatment without manual tagging.
+ */
+export function classifyMilestone(label: string): { milestone_type: string; is_ghana_specific: boolean } {
+  const l = label.toLowerCase();
+  if (/(permit|epa|eia|indenture|certificate of occupancy|habitation|title)/.test(l)) {
+    return { milestone_type: 'permit', is_ghana_specific: true };
+  }
+  if (/(fire certificate|fire cert|safety certificate)/.test(l)) {
+    return { milestone_type: 'inspection', is_ghana_specific: true };
+  }
+  if (/(inspection|snagging|commission|test)/.test(l)) {
+    return { milestone_type: 'inspection', is_ghana_specific: false };
+  }
+  if (/(handover|habitation|occupancy)/.test(l)) {
+    return { milestone_type: 'handover', is_ghana_specific: true };
+  }
+  return { milestone_type: 'construction', is_ghana_specific: false };
+}
 
 // ============================================================================
 // AMENITIES

@@ -72,6 +72,7 @@ interface GanttChartProps {
   onPhaseClick?: (phase: GanttPhase) => void
   onMilestoneClick?: (milestone: GanttMilestone) => void
   onPhaseDragEnd?: (phaseId: string, newStart: string, newEnd: string) => void
+  onMilestoneDragEnd?: (milestoneId: string, newDate: string) => void
   showBaseline?: boolean
   showDependencies?: boolean
   showMilestones?: boolean
@@ -181,6 +182,7 @@ export function GanttChart({
   onPhaseClick,
   onMilestoneClick,
   onPhaseDragEnd,
+  onMilestoneDragEnd,
   showBaseline = false,
   showDependencies = true,
   showMilestones = true,
@@ -269,7 +271,7 @@ export function GanttChart({
             progressColor: msColor,
             progressSelectedColor: msColor,
           },
-          isDisabled: true,
+          isDisabled: !onMilestoneDragEnd,
         }
         ;(t as any).__milestone = ms
         items.push(t)
@@ -302,7 +304,7 @@ export function GanttChart({
     }
 
     return items
-  }, [data, depsByTarget, showMilestones, showBaseline, onPhaseDragEnd])
+  }, [data, depsByTarget, showMilestones, showBaseline, onPhaseDragEnd, onMilestoneDragEnd])
 
   // Column width varies by zoom
   const columnWidth = useMemo(() => {
@@ -315,16 +317,23 @@ export function GanttChart({
 
   // Event handlers
   const handleDateChange = useCallback((task: Task) => {
-    if (!onPhaseDragEnd) return
-    if (task.type === 'milestone') return
-    if (task.id.startsWith('bl-') || task.id.startsWith('ms-')) return
+    if (task.id.startsWith('bl-')) return
 
+    // Milestone dragged → persist its new target date.
+    if (task.type === 'milestone' || task.id.startsWith('ms-')) {
+      if (onMilestoneDragEnd) {
+        onMilestoneDragEnd(task.id.replace('ms-', ''), task.start.toISOString())
+      }
+      return
+    }
+
+    if (!onPhaseDragEnd) return
     onPhaseDragEnd(
       task.id,
       task.start.toISOString(),
       task.end.toISOString(),
     )
-  }, [onPhaseDragEnd])
+  }, [onPhaseDragEnd, onMilestoneDragEnd])
 
   const handleClick = useCallback((task: Task) => {
     if (task.id.startsWith('ms-')) {

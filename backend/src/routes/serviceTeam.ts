@@ -30,7 +30,19 @@ function normKey(serviceKey: string): string {
   return serviceKey === 'deals' ? 'crm' : serviceKey;
 }
 
+/**
+ * Platform/org admins manage teams across services without holding a personal service
+ * subscription, so they bypass the per-user subscription gate (org scoping still applies).
+ */
+function isPrivileged(req: Request): boolean {
+  const roles: string[] = (req as any).user?.realmRoles || [];
+  const single: string | undefined = (req as any).user?.role;
+  return roles.includes('super_admin') || roles.includes('admin') || single === 'super_admin' || single === 'admin';
+}
+
 async function requireServiceAdmin(req: Request, serviceKey: string): Promise<void> {
+  if (isPrivileged(req)) return;
+
   const userId = getUserId(req);
 
   const result = await pool.query(
@@ -48,8 +60,10 @@ async function requireServiceAdmin(req: Request, serviceKey: string): Promise<vo
   }
 }
 
-/** Get caller's service_role (null if not subscribed). */
+/** Get caller's service_role (null if not subscribed). Admins always count as service_admin. */
 async function getCallerRole(req: Request, serviceKey: string): Promise<string | null> {
+  if (isPrivileged(req)) return 'service_admin';
+
   const userId = getUserId(req);
 
   const result = await pool.query(

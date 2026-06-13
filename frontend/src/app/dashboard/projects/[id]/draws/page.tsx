@@ -64,6 +64,9 @@ interface DrawRequest {
   rejected_by?: string;
   rejected_at?: Date;
   rejection_reason?: string;
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: string | null;
   created_at: Date;
 }
 
@@ -715,7 +718,24 @@ function DrawDetailModal({
                 </button>
               </>
             )}
-            
+
+            {draw.esign_status === 'completed' ? (
+              <span className="px-3 py-2 rounded-lg bg-green-600/15 text-green-400 border border-green-600/30 text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" /> E-signed
+              </span>
+            ) : draw.esign_status === 'sent' ? (
+              <span className="px-3 py-2 rounded-lg bg-blue-600/15 text-blue-400 border border-blue-600/30 text-sm flex items-center gap-2">
+                <Send className="w-4 h-4" /> Out for signature
+              </span>
+            ) : (draw.status === 'submitted' || draw.status === 'under_review' || draw.status === 'approved') ? (
+              <button
+                onClick={() => onAction('request-esign')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Request E-Signature
+              </button>
+            ) : null}
+
             {draw.status === 'approved' && (
               <button
                 onClick={() => setShowFundingForm(true)}

@@ -425,6 +425,20 @@ class InviteService {
         }
       }
 
+      // 6b) Link any project team-member records for this email to the new
+      // account so project-scoped access (membership) recognizes them — this is
+      // what lets an invited external party (contractor/architect) actually see
+      // their project once they log in.
+      await client.query(
+        `UPDATE project_team_members
+         SET user_id = $1,
+             accepted_at = COALESCE(accepted_at, NOW()),
+             status = CASE WHEN status = 'pending' THEN 'active' ELSE status END,
+             updated_at = NOW()
+         WHERE LOWER(email) = LOWER($2) AND organization_id = $3 AND user_id IS NULL`,
+        [userId, inv.email, inv.organization_id],
+      );
+
       // 7) Mark invitation as accepted
       await client.query(
         `UPDATE unified_invitations
@@ -441,8 +455,11 @@ class InviteService {
         role: inv.role, userType: inv.user_type,
       });
 
+      // Customers invited to a service land in that service's app (e.g. a
+      // contractor/architect on 'projects' → the scoped PM module), not the
+      // tenant portal (which is for property tenants).
       const redirectUrl = inv.user_type === 'customer'
-        ? '/tenant-portal'
+        ? (inv.service_key === 'projects' ? '/dashboard/projects' : '/tenant-portal')
         : '/dashboard';
 
       return { userId, redirectUrl };

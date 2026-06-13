@@ -615,6 +615,15 @@ export async function initiatePayment(tenancyId: string, amount: number, schedul
   return res.json();
 }
 
+export interface FxBreakdown {
+  obligationCurrency: string;   // native lease currency, e.g. 'USD'
+  obligationAmount: number;     // amount owed in the native currency
+  rate: number;                 // GHS per 1 native unit, locked live
+  source: string;               // rate provenance
+  lockedAt: string;             // ISO timestamp
+  chargedGhs: number;           // GHS principal actually charged
+}
+
 export interface FeeBreakdown {
   principalAmount: number;
   serviceFee: number;
@@ -622,6 +631,8 @@ export interface FeeBreakdown {
   feeMode: string;
   feeDescription: string;
   currency: string;
+  /** Present only when the lease currency differs from GHS (the settlement currency). */
+  fx?: FxBreakdown;
 }
 
 export async function calculateFee(tenancyId: string, amount: number): Promise<FeeBreakdown> {

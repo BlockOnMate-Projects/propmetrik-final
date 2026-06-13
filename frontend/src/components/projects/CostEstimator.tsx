@@ -509,7 +509,10 @@ function computeCategories(
 ): ComputedCategory[] {
   const categories: ComputedCategory[] = CATEGORY_DEFINITIONS.map((cat) => {
     const items: ComputedLineItem[] = cat.items.map((item) => {
-      const quantity = item.getQty(gfa, floors)
+      // No floor area → no estimate. Several line items use Math.max(min, …) floors
+      // and a fixed minimum construction period, so they'd otherwise produce a large
+      // (and misleading) cost even with GFA = 0 — and cost/sqm would divide by zero.
+      const quantity = gfa > 0 ? item.getQty(gfa, floors) : 0
       // Scale the reference baseRate by the Data Hub scale factor, then apply region + tier multipliers
       const scaledRate = item.baseRate * scaleFactor
       const defaultRate = scaledRate * regionMult * (item.tierAffected ? specMult : 1)
@@ -611,7 +614,10 @@ function computeLaborCategory(
     const crewSize = item.phaseKeys.includes('supervision')
       ? item.baseCrewSize
       : Math.max(1, Math.round(item.baseCrewSize * crewScale))
-    const quantity = crewSize * workingDays // man-days
+    // No floor area → no labor (estimateConstructionPeriod returns a fixed 8-month
+    // minimum and crewScale floors at 1, so this would otherwise bill full crews for
+    // 8 months with GFA = 0).
+    const quantity = gfa > 0 ? crewSize * workingDays : 0 // man-days
     const total = quantity * dailyRate
     return {
       id: item.id,
@@ -1855,36 +1861,47 @@ export function CostEstimator({ className, onBack, initialEstimate }: CostEstima
     return () => { cancelled = true }
   }, [])
 
-  // ─── Restore draft from localStorage on mount ───
+  // ─── Detect a saved draft on mount (do NOT auto-apply) ───
+  // "New Estimate" should start blank; the user can resume an in-progress draft
+  // explicitly via the banner. Skip entirely when opening an existing estimate to edit.
+  const [pendingDraft, setPendingDraft] = useState<any | null>(null)
   useEffect(() => {
+    if (initialEstimate) return
     try {
       const raw = localStorage.getItem(DRAFT_KEY)
-      if (!raw) return
-      const draft = JSON.parse(raw)
-      if (draft.projectType) setProjectType(draft.projectType)
-      if (draft.gfa) setGfa(draft.gfa)
-      if (draft.areaUnit) setAreaUnit(draft.areaUnit)
-      if (draft.floors) setFloors(draft.floors)
-      if (draft.region) setRegion(draft.region)
-      if (draft.specTier) setSpecTier(draft.specTier)
-      if (draft.includeLand !== undefined) setIncludeLand(draft.includeLand)
-      if (draft.landPricePerSqm) setLandPricePerSqm(draft.landPricePerSqm)
-      if (draft.currency) setCurrency(draft.currency)
-      if (draft.fees) setFees(draft.fees)
-      if (draft.contingencies) setContingencies(draft.contingencies)
-      if (draft.financial) setFinancial(draft.financial)
-      if (draft.rateOverrides) setRateOverrides(draft.rateOverrides)
-      if (draft.materialPriceOverrides) setMaterialPriceOverrides(draft.materialPriceOverrides)
-      if (draft.clientInfo) setClientInfo(draft.clientInfo)
-      if (draft.includeLaborCosts !== undefined) setIncludeLaborCosts(draft.includeLaborCosts)
-      if (draft.includeElectrical !== undefined) setIncludeElectrical(draft.includeElectrical)
-      if (draft.includePlumbing !== undefined) setIncludePlumbing(draft.includePlumbing)
-      if (draft.includeHvac !== undefined) setIncludeHvac(draft.includeHvac)
-      if (draft.isGenerated) {
-        // Auto-regenerate after restoring
-        setIsGenerated(true)
-      }
+      if (raw) setPendingDraft(JSON.parse(raw))
     } catch { /* ignore corrupt draft */ }
+  }, [initialEstimate])
+
+  const resumeDraft = useCallback(() => {
+    const draft = pendingDraft
+    if (!draft) return
+    if (draft.projectType) setProjectType(draft.projectType)
+    if (draft.gfa) setGfa(draft.gfa)
+    if (draft.areaUnit) setAreaUnit(draft.areaUnit)
+    if (draft.floors) setFloors(draft.floors)
+    if (draft.region) setRegion(draft.region)
+    if (draft.specTier) setSpecTier(draft.specTier)
+    if (draft.includeLand !== undefined) setIncludeLand(draft.includeLand)
+    if (draft.landPricePerSqm) setLandPricePerSqm(draft.landPricePerSqm)
+    if (draft.currency) setCurrency(draft.currency)
+    if (draft.fees) setFees(draft.fees)
+    if (draft.contingencies) setContingencies(draft.contingencies)
+    if (draft.financial) setFinancial(draft.financial)
+    if (draft.rateOverrides) setRateOverrides(draft.rateOverrides)
+    if (draft.materialPriceOverrides) setMaterialPriceOverrides(draft.materialPriceOverrides)
+    if (draft.clientInfo) setClientInfo(draft.clientInfo)
+    if (draft.includeLaborCosts !== undefined) setIncludeLaborCosts(draft.includeLaborCosts)
+    if (draft.includeElectrical !== undefined) setIncludeElectrical(draft.includeElectrical)
+    if (draft.includePlumbing !== undefined) setIncludePlumbing(draft.includePlumbing)
+    if (draft.includeHvac !== undefined) setIncludeHvac(draft.includeHvac)
+    if (draft.isGenerated) setIsGenerated(true)
+    setPendingDraft(null)
+  }, [pendingDraft])
+
+  const dismissDraft = useCallback(() => {
+    setPendingDraft(null)
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
   }, [])
 
   // ─── Live FX rates from Data Hub ───
@@ -1893,10 +1910,11 @@ export function CostEstimator({ className, onBack, initialEstimate }: CostEstima
     return { GHS: 1 }
   }, [marketData])
 
-  // Keep the module-level _liveFxRates in sync so fmtCurrency / fmtCompact use real rates
-  useEffect(() => {
-    _liveFxRates = fxRates
-  }, [fxRates])
+  // Keep the module-level _liveFxRates in sync so fmtCurrency / fmtCompact use real rates.
+  // This MUST run synchronously during render (not in a useEffect): those formatters are
+  // called while rendering THIS pass, so an effect (which runs afterwards) leaves the very
+  // first render after rates load showing unconverted values — raw GHS with a foreign symbol.
+  _liveFxRates = fxRates
 
   // ─── Derived from Data Hub ───
   const gfaSqm = areaUnit === 'sqft' ? gfa * SQFT_TO_SQM : gfa
@@ -2121,6 +2139,12 @@ export function CostEstimator({ className, onBack, initialEstimate }: CostEstima
   const [isSavingToApi, setIsSavingToApi] = useState(false)
   const [savedToastVisible, setSavedToastVisible] = useState(false)
   const saveEstimate = async () => {
+    // A cost estimate is meaningless without a floor area — block saving a GFA-less
+    // estimate (which would persist gfa_sqm = 0 and cost/sqm = 0, the bug users hit).
+    if (gfa <= 0) {
+      alert('Enter a Gross Floor Area (GFA) before saving — the estimate needs a floor area to compute cost per sqm.')
+      return
+    }
     const name = saveName.trim() || `Estimate ${savedEstimates.length + 1}`
     const saved: SavedEstimate = {
       id: Date.now().toString(),
@@ -3156,6 +3180,23 @@ export function CostEstimator({ className, onBack, initialEstimate }: CostEstima
           </div>
         </div>
 
+        {/* Resume-draft banner — "New Estimate" starts blank; offer explicit resume */}
+        {pendingDraft && !initialEstimate && (
+          <div style={{ margin: '12px 32px 0', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)' }}>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: '#C9A84C' }}>
+              You have an unsaved draft from a previous session.
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={resumeDraft} style={{ padding: '5px 12px', background: '#C9A84C', border: 'none', color: '#0D1117', cursor: 'pointer', fontFamily: '"JetBrains Mono", monospace', fontSize: 11, fontWeight: 600 }}>
+                Resume draft
+              </button>
+              <button onClick={dismissDraft} style={{ padding: '5px 12px', background: '#161B22', border: '1px solid #21262D', color: '#8B949E', cursor: 'pointer', fontFamily: '"JetBrains Mono", monospace', fontSize: 11 }}>
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ════════════ INPUTS ════════════ */}
         <div style={{ padding: '28px 32px', borderBottom: '1px solid #21262D' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 20 }}>
@@ -3345,7 +3386,7 @@ export function CostEstimator({ className, onBack, initialEstimate }: CostEstima
                       type="text"
                       value={clientInfo.clientCompany}
                       onChange={(e) => setClientInfo((p) => ({ ...p, clientCompany: e.target.value }))}
-                      placeholder="e.g. Cedyn Group"
+                      placeholder="e.g. Accra Properties Ltd"
                       style={{ width: '100%', background: '#161B22', border: '1px solid #21262D', color: '#C9D1D9', padding: '8px 12px', fontFamily: '"JetBrains Mono", monospace', fontSize: 12, outline: 'none' }}
                     />
                   </div>

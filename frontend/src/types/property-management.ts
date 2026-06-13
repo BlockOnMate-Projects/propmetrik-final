@@ -387,6 +387,18 @@ export interface FinancialRecord {
     [key: string]: any;
 }
 
+/**
+ * FX metadata returned alongside any GHS-normalized aggregate. Lets the UI stamp
+ * "rates as of HH:MM (USD 15.50)" and warn when a rate fell back to 1:1.
+ */
+export interface PortfolioFxMeta {
+    baseCurrency: string;
+    rates: Record<string, number>;
+    ratesAsOf: string;
+    ratesSource: string;
+    ratesDegraded: boolean;
+}
+
 export interface PortfolioMetrics {
     totalProperties: number;
     propertyGrowth: number;
@@ -401,6 +413,7 @@ export interface PortfolioMetrics {
     pendingWorkOrders: number;
     overduePayments: number;
     collectionRate: number;
+    fx?: PortfolioFxMeta;
 }
 
 export interface PortfolioValue {
@@ -411,6 +424,7 @@ export interface PortfolioValue {
     appreciationPercentage: number;
     lastUpdated: string;
     valuationConfidence: number;
+    fx?: PortfolioFxMeta;
 }
 
 export interface PortfolioComposition {
@@ -429,6 +443,7 @@ export interface PortfolioComposition {
         count: number;
         value: number;
     }[];
+    fx?: PortfolioFxMeta;
 }
 
 export interface LeasePortfolioSummary {
@@ -442,6 +457,7 @@ export interface LeasePortfolioSummary {
     };
     totalMonthlyRevenue: number;
     revenueCurrency: string;
+    fx?: PortfolioFxMeta;
 }
 
 export interface Property {

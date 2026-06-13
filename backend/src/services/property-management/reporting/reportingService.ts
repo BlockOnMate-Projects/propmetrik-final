@@ -9,6 +9,7 @@
 
 import db from '../../../database';
 import { logger } from '../../../utils/logger';
+import { getGhsRateMap, ghsValueSql, ghsHistoricalValueSql } from '../utils/currencyFx';
 
 export interface AgedReceivable {
     tenantId: string;
@@ -92,13 +93,19 @@ export class ReportingService {
             tenantsWithArrears: number;
         };
     }> {
+        // Outstanding receivables are a current monetary asset, so they are remeasured at
+        // the live rate (IAS 21), normalized per tenancy by its rent currency.
+        const fx = await getGhsRateMap();
+        const owedGhs = ghsValueSql('er.expected_amount - er.total_paid', 'er.rent_currency', fx);
+        const rentRowGhs = ghsValueSql('er.monthly_rent', 'er.rent_currency', fx);
         const query = `
             WITH payment_summary AS (
-                SELECT 
+                SELECT
                     t.id as tenancy_id,
                     t.tenant_id,
                     t.property_id,
                     t.monthly_rent,
+                    t.rent_currency,
                     t.lease_start_date,
                     t.lease_end_date,
                     COALESCE(SUM(rp.payment_amount), 0) as total_paid,
@@ -124,30 +131,30 @@ export class ReportingService {
                     ) as expected_amount
                 FROM payment_summary ps
             )
-            SELECT 
+            SELECT
                 er.*,
                 tn.full_name as tenant_name,
                 p.title as property_title,
-                er.expected_amount - er.total_paid as total_owed,
-                CASE 
-                    WHEN er.last_payment_date IS NULL THEN er.expected_amount - er.total_paid
-                    WHEN EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) <= 30 THEN er.expected_amount - er.total_paid
-                    ELSE 0 
+                ${owedGhs} as total_owed,
+                CASE
+                    WHEN er.last_payment_date IS NULL THEN ${owedGhs}
+                    WHEN EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) <= 30 THEN ${owedGhs}
+                    ELSE 0
                 END as current_amount,
-                CASE 
-                    WHEN er.last_payment_date IS NOT NULL AND EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) BETWEEN 31 AND 60 
-                    THEN er.monthly_rent 
-                    ELSE 0 
+                CASE
+                    WHEN er.last_payment_date IS NOT NULL AND EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) BETWEEN 31 AND 60
+                    THEN ${rentRowGhs}
+                    ELSE 0
                 END as days_30_60,
-                CASE 
-                    WHEN er.last_payment_date IS NOT NULL AND EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) BETWEEN 61 AND 90 
-                    THEN er.monthly_rent 
-                    ELSE 0 
+                CASE
+                    WHEN er.last_payment_date IS NOT NULL AND EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) BETWEEN 61 AND 90
+                    THEN ${rentRowGhs}
+                    ELSE 0
                 END as days_60_90,
-                CASE 
-                    WHEN er.last_payment_date IS NOT NULL AND EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) > 90 
-                    THEN er.expected_amount - er.total_paid 
-                    ELSE 0 
+                CASE
+                    WHEN er.last_payment_date IS NOT NULL AND EXTRACT(DAY FROM (CURRENT_DATE - er.last_payment_date)) > 90
+                    THEN ${owedGhs}
+                    ELSE 0
                 END as over_90
             FROM expected_rent er
             JOIN tenants tn ON er.tenant_id = tn.id
@@ -205,13 +212,15 @@ export class ReportingService {
             vacancyRate: number;
         };
     }> {
+        // Projected rent is a present-day figure -> live rate, by the property's currency.
+        const fx = await getGhsRateMap();
         const query = `
-            SELECT 
+            SELECT
                 p.id as property_id,
                 p.title as property_title,
                 p.property_type,
                 p.region,
-                p.price as monthly_rent,
+                ${ghsValueSql('p.price', 'p.price_currency', fx)} as monthly_rent,
                 p.status,
                 (
                     SELECT MAX(lease_end_date) 
@@ -276,13 +285,21 @@ export class ReportingService {
         startDate: string,
         endDate: string
     ): Promise<PropertyPerformance[]> {
+        // Normalize per-record amounts and per-property value/rent to GHS so the report
+        // (and the portfolio totals the frontend derives from it) never mix currencies.
+        // Realized income/expense -> rate as of the record's transaction date; property
+        // value and current rent are present-day figures -> live rate.
+        const fx = await getGhsRateMap();
+        const frGhs = ghsHistoricalValueSql('fr.amount', 'fr.currency', 'fr.transaction_date', fx);
+        const priceGhs = ghsValueSql('p.price', 'p.price_currency', fx);
+        const rentGhs = ghsValueSql('t.monthly_rent', 't.rent_currency', fx);
         const query = `
             WITH property_income AS (
-                SELECT 
+                SELECT
                     p.id as property_id,
-                    COALESCE(SUM(CASE WHEN fr.record_type = 'income' THEN fr.amount ELSE 0 END), 0) as total_income,
-                    COALESCE(SUM(CASE WHEN fr.record_type = 'expense' THEN fr.amount ELSE 0 END), 0) as total_expenses,
-                    COALESCE(SUM(CASE WHEN fr.record_type = 'expense' AND fr.expense_category = 'maintenance_repairs' THEN fr.amount ELSE 0 END), 0) as maintenance_costs
+                    COALESCE(SUM(CASE WHEN fr.record_type = 'income' THEN ${frGhs} ELSE 0 END), 0) as total_income,
+                    COALESCE(SUM(CASE WHEN fr.record_type = 'expense' THEN ${frGhs} ELSE 0 END), 0) as total_expenses,
+                    COALESCE(SUM(CASE WHEN fr.record_type = 'expense' AND fr.expense_category = 'maintenance_repairs' THEN ${frGhs} ELSE 0 END), 0) as maintenance_costs
                 FROM properties p
                 LEFT JOIN property_financial_records fr ON p.id = fr.property_id
                     AND fr.transaction_date BETWEEN $2 AND $3
@@ -306,17 +323,17 @@ export class ReportingService {
                 SELECT 
                     p.id as property_id,
                     COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'active') as active_tenancies,
-                    AVG(t.monthly_rent) as average_rent
+                    AVG(${rentGhs}) as average_rent
                 FROM properties p
                 LEFT JOIN tenancies t ON p.id = t.property_id
                 WHERE p.organization_id = $1
                 GROUP BY p.id
             )
-            SELECT 
+            SELECT
                 p.id as property_id,
                 p.title as property_title,
                 p.region,
-                p.price as property_value,
+                ${priceGhs} as property_value,
                 pi.total_income,
                 pi.total_expenses + COALESCE(ue.utility_total, 0) as total_expenses,
                 pi.total_income - (pi.total_expenses + COALESCE(ue.utility_total, 0)) as noi,
@@ -352,6 +369,142 @@ export class ReportingService {
                 capRate: propertyValue > 0 ? Math.round((noi / propertyValue) * 100 * 100) / 100 : 0
             };
         });
+    }
+
+    /**
+     * Building-level performance: one row per ACTIVE top-level property (building or
+     * standalone), with the financials of its units rolled up. This is the "individual
+     * property" drill-down — e.g. a 12-unit building shows as a single property whose
+     * income/expenses aggregate across all its units. Excludes withdrawn/sold rows.
+     */
+    async getBuildingPerformanceReport(
+        organizationId: string,
+        startDate: string,
+        endDate: string
+    ): Promise<{
+        buildings: Array<{ id: string; title: string; region: string; units: number; occupied: number; income: number; expenses: number; noi: number; occupancyRate: number }>;
+        propertyCount: number;
+        unitCount: number;
+        monthly: Array<{ month: string; income: number; expenses: number; net: number }>;
+        totals: { income: number; expenses: number; net: number };
+        byType: Array<{ type: string; value: number }>;
+        byRegion: Array<{ region: string; count: number; value: number }>;
+    }> {
+        const fx = await getGhsRateMap();
+        const frGhs = ghsHistoricalValueSql('fr.amount', 'fr.currency', 'fr.transaction_date', fx);
+        const priceGhs = ghsValueSql('p.price', 'p.price_currency', fx);
+        const query = `
+            WITH buildings AS (
+                SELECT p.id, p.title, p.region,
+                    (SELECT COUNT(*) FROM properties u WHERE u.parent_property_id = p.id AND u.status NOT IN ('withdrawn', 'sold')) AS unit_count
+                FROM properties p
+                WHERE p.organization_id = $1 AND p.parent_property_id IS NULL AND p.status NOT IN ('withdrawn', 'sold')
+            ),
+            fin AS (
+                SELECT COALESCE(p.parent_property_id, p.id) AS bid,
+                    SUM(CASE WHEN fr.record_type = 'income' THEN ${frGhs} ELSE 0 END) AS income,
+                    SUM(CASE WHEN fr.record_type = 'expense' THEN ${frGhs} ELSE 0 END) AS expenses
+                FROM properties p
+                JOIN property_financial_records fr ON fr.property_id = p.id AND fr.transaction_date BETWEEN $2 AND $3
+                WHERE p.organization_id = $1
+                GROUP BY COALESCE(p.parent_property_id, p.id)
+            ),
+            occ AS (
+                SELECT COALESCE(p.parent_property_id, p.id) AS bid,
+                    COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM tenancies t WHERE t.property_id = p.id AND t.status = 'active')) AS occupied
+                FROM properties p
+                WHERE p.organization_id = $1 AND p.status NOT IN ('withdrawn', 'sold')
+                    AND (p.parent_property_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM properties c WHERE c.parent_property_id = p.id))
+                GROUP BY COALESCE(p.parent_property_id, p.id)
+            )
+            SELECT b.id, b.title, b.region, b.unit_count,
+                COALESCE(f.income, 0) AS income,
+                COALESCE(f.expenses, 0) AS expenses,
+                COALESCE(o.occupied, 0) AS occupied
+            FROM buildings b
+            LEFT JOIN fin f ON f.bid = b.id
+            LEFT JOIN occ o ON o.bid = b.id
+            ORDER BY (COALESCE(f.income, 0) - COALESCE(f.expenses, 0)) DESC, COALESCE(f.income, 0) DESC
+        `;
+        const res = await db.query(query, [organizationId, startDate, endDate]);
+        const buildings = res.rows.map(r => {
+            const units = parseInt(r.unit_count) || 0;
+            const denom = units > 0 ? units : 1;
+            const income = parseFloat(r.income) || 0;
+            const expenses = parseFloat(r.expenses) || 0;
+            const occupied = parseInt(r.occupied) || 0;
+            return {
+                id: r.id, title: r.title, region: r.region, units, occupied, income, expenses,
+                noi: income - expenses,
+                occupancyRate: Math.min(100, (occupied / denom) * 100),
+            };
+        });
+
+        const countRes = await db.query(`
+            SELECT
+                COUNT(*) FILTER (WHERE parent_property_id IS NULL AND status NOT IN ('withdrawn', 'sold')) AS properties,
+                COUNT(*) FILTER (WHERE status NOT IN ('withdrawn', 'sold')
+                    AND (parent_property_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM properties c WHERE c.parent_property_id = properties.id))) AS units
+            FROM properties
+            WHERE organization_id = $1
+        `, [organizationId]);
+
+        // Monthly cash flow scoped to the SAME active buildings, so the cash-flow chart and
+        // the drill-down totals reconcile (no income from withdrawn/test properties leaking in).
+        const monthlyRes = await db.query(`
+            SELECT TO_CHAR(fr.transaction_date, 'YYYY-MM') AS month,
+                SUM(CASE WHEN fr.record_type = 'income' THEN ${frGhs} ELSE 0 END) AS income,
+                SUM(CASE WHEN fr.record_type = 'expense' THEN ${frGhs} ELSE 0 END) AS expenses
+            FROM property_financial_records fr
+            JOIN properties p ON p.id = fr.property_id
+            JOIN properties b ON b.id = COALESCE(p.parent_property_id, p.id)
+            WHERE p.organization_id = $1
+                AND fr.transaction_date BETWEEN $2 AND $3
+                AND b.parent_property_id IS NULL AND b.status NOT IN ('withdrawn', 'sold')
+            GROUP BY month
+            ORDER BY month
+        `, [organizationId, startDate, endDate]);
+
+        const monthly = monthlyRes.rows.map(r => {
+            const income = parseFloat(r.income) || 0;
+            const expenses = parseFloat(r.expenses) || 0;
+            return { month: r.month, income, expenses, net: income - expenses };
+        });
+        const totals = monthly.reduce((a, m) => ({ income: a.income + m.income, expenses: a.expenses + m.expenses, net: a.net + m.net }), { income: 0, expenses: 0, net: 0 });
+
+        // Composition over ACTIVE rentable units (leaves) only, so the by-type/by-region
+        // breakdown reconciles with the active property/unit counts above.
+        const compRes = await db.query(`
+            SELECT p.property_type AS type, p.region,
+                COUNT(*) AS cnt,
+                SUM(${priceGhs}) AS value
+            FROM properties p
+            WHERE p.organization_id = $1 AND p.status NOT IN ('withdrawn', 'sold')
+                AND (p.parent_property_id IS NOT NULL OR NOT EXISTS (SELECT 1 FROM properties c WHERE c.parent_property_id = p.id))
+            GROUP BY p.property_type, p.region
+        `, [organizationId]);
+        const typeMap: Record<string, number> = {};
+        const regionMap: Record<string, { count: number; value: number }> = {};
+        for (const r of compRes.rows) {
+            const v = parseFloat(r.value) || 0;
+            const c = parseInt(r.cnt) || 0;
+            typeMap[r.type] = (typeMap[r.type] || 0) + v;
+            if (!regionMap[r.region]) regionMap[r.region] = { count: 0, value: 0 };
+            regionMap[r.region].count += c;
+            regionMap[r.region].value += v;
+        }
+        const byType = Object.entries(typeMap).map(([type, value]) => ({ type, value }));
+        const byRegion = Object.entries(regionMap).map(([region, o]) => ({ region, count: o.count, value: o.value }));
+
+        return {
+            buildings,
+            propertyCount: parseInt(countRes.rows[0]?.properties) || buildings.length,
+            unitCount: parseInt(countRes.rows[0]?.units) || 0,
+            monthly,
+            totals,
+            byType,
+            byRegion,
+        };
     }
 
     /**

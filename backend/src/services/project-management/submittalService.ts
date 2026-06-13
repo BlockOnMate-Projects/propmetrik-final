@@ -117,6 +117,8 @@ export interface SubmittalFilters {
   submittal_type?: SubmittalType | SubmittalType[];
   contractor_id?: string;
   assigned_reviewer?: string;
+  /** Filter to submittals currently awaiting this user's action (ball-in-court). */
+  ball_in_court?: string;
   spec_section?: string;
   priority?: string;
   overdue_only?: boolean;
@@ -283,8 +285,25 @@ class SubmittalService {
       params.push(`%${filters.search}%`);
       paramIndex++;
     }
-    
-    const whereClause = whereConditions.length > 0 
+
+    // Ball-in-court derivation (no stored column): drafts/resubmits await the
+    // submitter; items in review await the assigned reviewer, falling back to
+    // the project's PM. Approved/rejected/etc → no one.
+    // Columns are fully qualified so the CASE still binds to submittal_details
+    // (not users) when reused inside the ball_in_court_name subquery below.
+    const BALL = `CASE
+        WHEN submittal_details.status IN ('draft', 'revise_resubmit') THEN COALESCE(submittal_details.submitted_by, submittal_details.created_by)
+        WHEN submittal_details.status IN ('pending_review', 'under_review')
+          THEN COALESCE(submittal_details.assigned_reviewer, (SELECT project_manager_id FROM development_projects WHERE id = submittal_details.project_id))
+        ELSE NULL
+      END`;
+
+    if (filters.ball_in_court) {
+      whereConditions.push(`(${BALL}) = $${paramIndex++}`);
+      params.push(filters.ball_in_court);
+    }
+
+    const whereClause = whereConditions.length > 0
       ? `WHERE ${whereConditions.join(' AND ')}` 
       : '';
     
@@ -299,9 +318,12 @@ class SubmittalService {
     const countResult = await pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count);
     
-    // Data query
+    // Data query — include the derived ball-in-court id + holder name.
     const dataQuery = `
-      SELECT * FROM submittal_details 
+      SELECT *,
+        (${BALL}) AS ball_in_court,
+        (SELECT full_name FROM users WHERE id = (${BALL})) AS ball_in_court_name
+      FROM submittal_details
       ${whereClause}
       ORDER BY ${safeSort} ${sortOrder}
       LIMIT $${paramIndex++} OFFSET $${paramIndex}

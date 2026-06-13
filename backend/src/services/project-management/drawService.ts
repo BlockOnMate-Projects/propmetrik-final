@@ -17,6 +17,8 @@ import { logger } from '../../utils/logger';
 import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { generateDrawRequestPdf } from '../../utils/pmDocumentPdfGenerators';
+import { changeOrderSignatureSlots } from '../../utils/changeOrderPdfGenerator';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 import { notify, resolveOrgStaff, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
 
@@ -79,7 +81,11 @@ export interface DrawRequest {
   // Documents
   supporting_documents?: string[];
   notes?: string;
-  
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: Date | null;
+  signed_draw_url?: string | null;
+
   // Audit
   created_at: Date;
   updated_at: Date;
@@ -665,6 +671,28 @@ class DrawService extends BaseService {
   }
 
   /**
+   * Manually request e-signature for a draw request (the "Request E-Signature"
+   * button). Uses the org's config when present, else sensible defaults.
+   */
+  async requestEsign(drawId: string, userId: string): Promise<DrawRequest> {
+    const draw = await this.getById(drawId);
+    if (!draw) throw new Error('Draw request not found');
+    const cfgRes = await pool.query(
+      `SELECT * FROM draw_request_esign_config WHERE organization_id = $1`,
+      [draw.organization_id]
+    );
+    const config = cfgRes.rows[0] || {
+      signer_roles: ['project_manager', 'general_contractor', 'lender_representative'],
+      field_placements: [],
+      auto_fund_on_complete: false,
+    };
+    await this.triggerDrawEsign(draw, config, userId);
+    const updated = await this.getById(drawId);
+    if (!updated) throw new Error('Draw request not found after e-sign trigger');
+    return updated;
+  }
+
+  /**
    * Trigger e-sign workflow for a draw request
    */
   async triggerDrawEsign(
@@ -674,7 +702,7 @@ class DrawService extends BaseService {
   ): Promise<void> {
     // Get project info
     const projectResult = await pool.query(
-      'SELECT * FROM projects WHERE id = $1',
+      'SELECT * FROM development_projects WHERE id = $1',
       [draw.project_id]
     );
     const project = projectResult.rows[0];
@@ -685,10 +713,7 @@ class DrawService extends BaseService {
       projectId: draw.project_id,
     });
 
-    // Generate draw request document PDF
-    const drawPdf = await this.generateDrawPdf(draw, project);
-
-    // Resolve signers based on config
+    // Resolve signers FIRST so the PDF blocks and e-sign fields align.
     const signers = await this.resolveDrawSigners(
       draw,
       project,
@@ -702,7 +727,10 @@ class DrawService extends BaseService {
       return;
     }
 
-    // Build field placements
+    // Generate the branded draw-request document with matching signature blocks
+    const drawPdf = await this.generateDrawPdf(draw, project, signers.map((s) => s.name));
+
+    // Build field placements aligned to the document's signature slots
     const fields = this.buildDrawFields(signers, config.field_placements);
 
     const amount = draw.approved_amount || draw.total_amount;
@@ -719,6 +747,8 @@ class DrawService extends BaseService {
       }],
       signers,
       fields,
+      organizationId: draw.organization_id,
+      createdByUserId: userId,
       sourceModule: 'project_management',
       sourceEntityType: 'draw_request',
       sourceEntityId: draw.id,
@@ -767,41 +797,37 @@ class DrawService extends BaseService {
       throw new Error(`Draw request not found: ${sourceContext.entityId}`);
     }
 
-    // Update draw request with signed document
     const signedDocUrl = documents[0]?.signedUrl || null;
+
+    const configResult = await pool.query(`
+      SELECT auto_fund_on_complete FROM draw_request_esign_config
+      WHERE organization_id = $1
+    `, [draw.organization_id]);
+    const autoFund = configResult.rows[0]?.auto_fund_on_complete ?? false;
+
+    // The collected signatures ARE the approval. Advance a still-pending draw to
+    // 'approved' on completion (and to 'funded' if the org auto-funds).
+    const preApproval = ['draft', 'submitted', 'under_review', 'approved'].includes(draw.status);
+    const newStatus = autoFund && preApproval ? 'funded' : preApproval ? 'approved' : draw.status;
+    const amount = draw.approved_amount || draw.total_amount;
+    const setApproved = newStatus === 'approved' || newStatus === 'funded';
+    const setFunded = newStatus === 'funded';
 
     await pool.query(`
       UPDATE draw_requests
       SET esign_status = 'completed',
           esign_completed_at = NOW(),
-          signed_draw_url = $2
+          signed_draw_url = $2,
+          status = $3,
+          approved_date = CASE WHEN $4 AND approved_date IS NULL THEN NOW() ELSE approved_date END,
+          funded_amount = CASE WHEN $5 THEN $6 ELSE funded_amount END,
+          funded_date = CASE WHEN $5 AND funded_date IS NULL THEN NOW() ELSE funded_date END
       WHERE id = $1
-    `, [sourceContext.entityId, signedDocUrl]);
+    `, [sourceContext.entityId, signedDocUrl, newStatus, setApproved, setFunded, amount]);
 
-    // Check if auto-fund is enabled
-    const configResult = await pool.query(`
-      SELECT auto_fund_on_complete FROM draw_request_esign_config 
-      WHERE organization_id = $1
-    `, [draw.organization_id]);
-
-    const autoFund = configResult.rows[0]?.auto_fund_on_complete ?? false;
-
-    if (autoFund && draw.status === 'approved') {
-      // Auto-fund the draw request
-      const amount = draw.approved_amount || draw.total_amount;
-      await pool.query(`
-        UPDATE draw_requests
-        SET status = 'funded',
-            funded_amount = $2,
-            funded_date = NOW()
-        WHERE id = $1
-      `, [sourceContext.entityId, amount]);
-
-      logger.info('Draw request auto-funded after e-sign', {
-        drawId: sourceContext.entityId,
-        amount,
-      });
-    }
+    logger.info('Draw request advanced after e-sign completion', {
+      drawId: sourceContext.entityId, to: newStatus, autoFund,
+    });
 
     // Log audit event
     await this.logEsignAudit(
@@ -829,9 +855,8 @@ class DrawService extends BaseService {
   /**
    * Generate PDF for draw request (stub - integrate with document service)
    */
-  private async generateDrawPdf(draw: DrawRequest, project: any): Promise<Buffer> {
-    // TODO: Integrate with actual document generation service
-    // For now, check if there's a supporting document
+  private async generateDrawPdf(draw: DrawRequest, project: any, signerLabels?: string[]): Promise<Buffer> {
+    // A supporting PDF takes precedence; otherwise generate the branded document.
     if (draw.supporting_documents && draw.supporting_documents.length > 0) {
       const pdfDoc = draw.supporting_documents.find(
         d => typeof d === 'string' && d.endsWith('.pdf')
@@ -847,28 +872,22 @@ class DrawService extends BaseService {
       }
     }
 
-    // Return a minimal placeholder PDF
-    const placeholderPdf = Buffer.from(
-      `%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj
-4 0 obj << /Length 44 >> stream
-BT /F1 12 Tf 100 700 Td (Draw Request ${draw.draw_number}) Tj ET
-endstream endobj
-xref
-0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000214 00000 n 
-trailer << /Size 5 /Root 1 0 R >>
-startxref
-307
-%%EOF`
-    );
-    return placeholderPdf;
+    const labels = signerLabels && signerLabels.length ? signerLabels : ['Authorised Signatory'];
+    return generateDrawRequestPdf({
+      draw_number: draw.draw_number,
+      project_name: project?.name,
+      status: draw.status,
+      currency: (project?.currency as string) || 'GHS',
+      total_amount: draw.total_amount,
+      approved_amount: draw.approved_amount,
+      retention_percentage: draw.retention_percentage,
+      retention_held: draw.retention_held,
+      net_amount: draw.net_amount,
+      notes: draw.notes,
+      submitted_date: draw.submitted_date,
+      created_at: draw.created_at,
+      signerLabels: labels,
+    });
   }
 
   /**
@@ -881,25 +900,35 @@ startxref
   ): Promise<ESignSigner[]> {
     const signers: ESignSigner[] = [];
 
-    // Get project team members
+    // Get project team members (full_name/email stored inline on the row)
     const teamResult = await pool.query(`
-      SELECT pt.*, u.full_name, u.email
-      FROM project_team pt
-      JOIN users u ON pt.user_id = u.id
-      WHERE pt.project_id = $1 AND pt.is_active = true
+      SELECT full_name, email, role, role_type, role_category
+      FROM project_team_members
+      WHERE project_id = $1 AND is_active = true AND email IS NOT NULL AND email <> ''
     `, [draw.project_id]);
 
     const teamByRole = new Map<string, any>();
     for (const member of teamResult.rows) {
-      teamByRole.set(member.role?.toLowerCase(), member);
+      for (const key of [member.role, member.role_type, member.role_category]) {
+        if (key) teamByRole.set(String(key).toLowerCase(), member);
+      }
     }
 
-    // Get project lender info if available
-    const lenderResult = await pool.query(`
-      SELECT * FROM project_contacts
-      WHERE project_id = $1 AND contact_type = 'lender' AND is_active = true
-      LIMIT 1
-    `, [draw.project_id]);
+    // Get project lender info only if a lender signer is configured (the contacts
+    // table is optional and may not exist in every deployment).
+    let lenderResult: { rows: any[] } = { rows: [] };
+    if (signerRoles.some((r) => /lender/i.test(r))) {
+      try {
+        lenderResult = await pool.query(`
+          SELECT * FROM project_team_members
+          WHERE project_id = $1 AND is_active = true
+            AND (LOWER(COALESCE(role::text, role_type::text, role_category::text)) LIKE '%lender%')
+          LIMIT 1
+        `, [draw.project_id]);
+      } catch {
+        lenderResult = { rows: [] };
+      }
+    }
 
     // Resolve each signer role
     let order = 1;
@@ -990,37 +1019,22 @@ startxref
       }));
     }
 
-    // Default: Stack signatures on the document
+    // Default: place each signer's signature + date on the document's signature
+    // slots (PERCENT 0-100, aligned with the lines drawn in the PDF).
     const fields: ESignField[] = [];
-    let yPosition = 0.7;
-
-    for (const signer of signers) {
+    const slots = changeOrderSignatureSlots(signers.map((s) => s.name));
+    signers.forEach((signer, i) => {
+      const slot = slots[i];
+      if (!slot) return;
       fields.push({
-        type: 'signature',
-        recipientEmail: signer.email,
-        documentIndex: 0,
-        page: 1,
-        x: 0.1,
-        y: yPosition,
-        width: 0.3,
-        height: 0.08,
-        required: true,
+        type: 'signature', recipientEmail: signer.email, documentIndex: 0, page: 1,
+        x: slot.sigX, y: slot.sigY, width: slot.sigW, height: slot.sigH, required: true,
       });
-
       fields.push({
-        type: 'date',
-        recipientEmail: signer.email,
-        documentIndex: 0,
-        page: 1,
-        x: 0.5,
-        y: yPosition,
-        width: 0.2,
-        height: 0.05,
-        required: true,
+        type: 'date_signed', recipientEmail: signer.email, documentIndex: 0, page: 1,
+        x: slot.dateX, y: slot.dateY, width: slot.dateW, height: slot.dateH, required: true,
       });
-
-      yPosition -= 0.12;
-    }
+    });
 
     return fields;
   }
@@ -1073,6 +1087,10 @@ startxref
       line_items: typeof row.line_items === 'string' ? JSON.parse(row.line_items) : (row.line_items || []),
       supporting_documents: row.supporting_documents,
       notes: row.notes,
+      esign_envelope_id: row.esign_envelope_id ?? null,
+      esign_status: row.esign_status ?? null,
+      esign_completed_at: row.esign_completed_at ?? null,
+      signed_draw_url: row.signed_draw_url ?? null,
       created_at: row.created_at,
       updated_at: row.updated_at,
       created_by: row.created_by,

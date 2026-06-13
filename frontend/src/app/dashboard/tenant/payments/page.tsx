@@ -132,7 +132,7 @@ function PaymentsContent() {
       } else {
         setTimeout(() => {
           setPaymentStep('success');
-          addToast('success', 'Payment Received!', `GHS ${parseFloat(paymentAmount).toLocaleString()} paid successfully.`);
+          addToast('success', 'Payment Received!', feeBreakdown ? `${feeBreakdown.currency} ${feeBreakdown.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })} paid successfully.` : 'Payment completed successfully.');
         }, 3000);
       }
     } catch (err: any) {
@@ -567,8 +567,21 @@ function PaymentsContent() {
 
                 {paymentMethod !== 'usdt' && feeBreakdown && parseFloat(paymentAmount) > 0 && (
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-2 animate-fade-in">
+                    {feeBreakdown.fx && (
+                      <div className="bg-cyan-50 border border-cyan-100 rounded-lg p-3 -mt-1 mb-1 space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Listed Rent</span>
+                          <span className="font-medium text-gray-900">{feeBreakdown.fx.obligationCurrency} {feeBreakdown.fx.obligationAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Exchange Rate (live)</span>
+                          <span className="font-medium text-cyan-700">1 {feeBreakdown.fx.obligationCurrency} = GHS {feeBreakdown.fx.rate.toLocaleString(undefined, { minimumFractionDigits: 4 })}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400">Rate locked {new Date(feeBreakdown.fx.lockedAt).toLocaleTimeString()} · you pay the GHS equivalent below</p>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Rent Amount</span>
+                      <span className="text-gray-600">{feeBreakdown.fx ? 'Rent (GHS equivalent)' : 'Rent Amount'}</span>
                       <span className="font-medium text-gray-900">{feeBreakdown.currency} {feeBreakdown.principalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
@@ -593,7 +606,7 @@ function PaymentsContent() {
                 {paymentMethod !== 'usdt' && (
                 <button onClick={handleInitiatePayment} disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || feeLoading}
                   className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl font-semibold hover:from-cyan-600 hover:to-cyan-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all">
-                  Pay {currency} {feeBreakdown ? feeBreakdown.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 }) : (paymentAmount ? parseFloat(paymentAmount).toLocaleString() : '0')}
+                  Pay {feeBreakdown ? `${feeBreakdown.currency} ${feeBreakdown.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `${currency} ${paymentAmount ? parseFloat(paymentAmount).toLocaleString() : '0'}`}
                 </button>
                 )}
               </div>

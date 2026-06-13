@@ -39,6 +39,21 @@ async function buildConfig(): Promise<RbacConfigPayload> {
     return cachedConfig;
   }
 
+  try {
+    return await refreshConfig(now);
+  } catch (err: any) {
+    // The config is static and cached; a transient DB hiccup (e.g. pool saturation under
+    // a page-load query storm) shouldn't 500 the whole RBAC sync. Serve the last-known
+    // config when we have one, and only surface the error on a genuine cold start.
+    if (cachedConfig) {
+      logger.warn('RBAC config refresh failed — serving stale cache', { error: err?.message });
+      return cachedConfig;
+    }
+    throw err;
+  }
+}
+
+async function refreshConfig(now: number): Promise<RbacConfigPayload> {
   const { pool } = await import('../database');
 
   // 1. Load authorization policies

@@ -710,6 +710,19 @@ export interface CreateFinancialRecordDto {
 // PORTFOLIO INTERFACES
 // =====================================================
 
+/**
+ * FX metadata attached to aggregate responses. Aggregates are normalized to a single
+ * base currency (GHS) before summing; this records the rates used so the UI can show
+ * "rates as of HH:MM" and flag when a rate had to fall back to 1:1.
+ */
+export interface PortfolioFxMeta {
+    baseCurrency: string;
+    rates: Record<string, number>;
+    ratesAsOf: string;
+    ratesSource: string;
+    ratesDegraded: boolean;
+}
+
 export interface PortfolioMetrics {
     totalProperties: number;
     propertyGrowth: number;
@@ -724,6 +737,8 @@ export interface PortfolioMetrics {
     pendingWorkOrders: number;
     overduePayments: number;
     collectionRate: number;
+    /** Base currency + live rates used to normalize totalValue/monthlyIncome to GHS. */
+    fx?: PortfolioFxMeta;
 }
 
 export interface PortfolioValue {
@@ -734,6 +749,8 @@ export interface PortfolioValue {
     appreciationPercentage: number;
     lastUpdated: Date;
     valuationConfidence: number;
+    /** Base currency + live rates used to normalize all values to GHS. */
+    fx?: PortfolioFxMeta;
 }
 
 export interface PortfolioComposition {
@@ -752,6 +769,8 @@ export interface PortfolioComposition {
         count: number;
         value: number;
     }[];
+    /** Base currency + live rates used to normalize all values to GHS. */
+    fx?: PortfolioFxMeta;
 }
 
 export interface LeasePortfolioSummary {
@@ -765,6 +784,8 @@ export interface LeasePortfolioSummary {
     };
     totalMonthlyRevenue: number;
     revenueCurrency: string;
+    /** Base currency + live rates used to normalize totalMonthlyRevenue to GHS. */
+    fx?: PortfolioFxMeta;
 }
 
 export interface CashFlowAnalysis {

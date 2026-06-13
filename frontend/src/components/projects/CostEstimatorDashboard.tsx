@@ -518,7 +518,10 @@ export function CostEstimatorDashboard({ onNewEstimate, onViewEstimate, onEditEs
                 {/* Total cost */}
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#C9A84C', fontFamily: '"JetBrains Mono", monospace' }}>
-                    {fmtCurrency(Number(est.total_cost), est.currency)}
+                    {/* Stored values are canonical GHS (the BoQ base); the dashboard's fmtCurrency
+                        does NOT convert, so always show GH₵ — never the per-estimate display
+                        currency, which would slap a $/€ on the raw GHS number. */}
+                    {fmtCurrency(Number(est.total_cost), 'GHS')}
                   </span>
                   <div style={{ fontSize: 9, color: '#30363D', fontFamily: '"JetBrains Mono", monospace' }}>
                     H:{fmtCompact(Number(est.hard_cost))}  S:{fmtCompact(Number(est.soft_cost))}
@@ -528,7 +531,7 @@ export function CostEstimatorDashboard({ onNewEstimate, onViewEstimate, onEditEs
                 {/* Cost/sqm */}
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#3FB950', fontFamily: '"JetBrains Mono", monospace' }}>
-                    {fmtCurrency(Number(est.cost_per_sqm), est.currency)}
+                    {fmtCurrency(Number(est.cost_per_sqm), 'GHS')}
                   </span>
                   <span style={{ fontSize: 9, color: '#484F58' }}>/sqm</span>
                 </div>

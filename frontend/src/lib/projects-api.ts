@@ -610,6 +610,34 @@ export const contractorsApi = {
       method: 'DELETE',
     });
   },
+
+  // Request e-signature for a contractor agreement (per assignment)
+  requestEsign: (assignmentId: string): Promise<{ success: boolean; data: ContractorAssignment; message: string }> => {
+    return fetchApi(`${PROJECTS_BASE}/assignments/${assignmentId}/request-esign`, {
+      method: 'POST',
+    });
+  },
+};
+
+export interface PmEsignConfig {
+  doc_type: 'change_order' | 'draw_request' | 'contractor_contract';
+  enabled: boolean;
+  min_amount_threshold: number;
+  signer_roles: string[];
+  auto_action: boolean;
+  configured: boolean;
+}
+
+export const esignConfigApi = {
+  getAll: (): Promise<{ success: boolean; data: PmEsignConfig[] }> => {
+    return fetchApi(`${PROJECTS_BASE}/esign-config`);
+  },
+  save: (cfg: { doc_type: string; enabled: boolean; min_amount_threshold?: number; signer_roles: string[]; auto_action?: boolean }): Promise<{ success: boolean; data: PmEsignConfig }> => {
+    return fetchApi(`${PROJECTS_BASE}/esign-config`, {
+      method: 'PUT',
+      body: JSON.stringify(cfg),
+    });
+  },
 };
 
 // =====================================================
@@ -919,6 +947,15 @@ export const milestonesApi = {
     });
   },
 
+  // Set a milestone's target date (used by Gantt drag — hits the project-scoped
+  // route so the project_milestones row actually updates).
+  setDate: (projectId: string, milestoneId: string, targetDate: string): Promise<ProjectMilestone> => {
+    return fetchApi(`${PROJECTS_BASE}/${projectId}/milestones/${milestoneId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ target_date: targetDate }),
+    });
+  },
+
   // Complete milestone
   complete: (milestoneId: string, actualDate?: string): Promise<ProjectMilestone> => {
     return fetchApi(`${PROJECTS_BASE}/milestones/${milestoneId}/complete`, {
@@ -1045,6 +1082,13 @@ export const ganttApi = {
   // Calculate critical path
   calculateCriticalPath: (projectId: string): Promise<{ criticalPath: string[]; totalDuration: number }> => {
     return fetchApi(`${PROJECTS_BASE}/${projectId}/gantt/calculate-critical-path`, {
+      method: 'POST',
+    });
+  },
+
+  // Generate a phase + milestone plan for a project that has none yet.
+  generateSchedule: (projectId: string, force = false): Promise<{ success: boolean; seeded: boolean; phases: number; milestones: number; reason?: string }> => {
+    return fetchApi(`${PROJECTS_BASE}/${projectId}/gantt/generate${force ? '?force=1' : ''}`, {
       method: 'POST',
     });
   },

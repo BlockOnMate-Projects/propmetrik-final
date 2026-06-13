@@ -57,12 +57,21 @@ export class FXFeedService {
   private readonly forexRateApiClient: AxiosInstance;
   private readonly yahooClient: AxiosInstance;
   private readonly apiKey: string | undefined;
+  private readonly polygonApiKey: string | undefined;
+  private readonly polygonApiUrl: string;
+  // Sliding-window rate limiter for Polygon's free tier (max 5 calls / 60s).
+  private polygonCallTimestamps: number[] = [];
   private sourceHealth: Record<string, { healthy: boolean; lastCheck: Date }>;
 
   constructor(customConfig?: Partial<FXFeedConfig>) {
     this.config = { ...DEFAULT_FX_CONFIG, ...customConfig };
     this.apiKey = process.env.FOREXRATE_API_KEY;
+    // Polygon.io / Massive forex API. Free tier (5 calls/min) serves end-of-day
+    // closes — fine for a backstop under BoG's daily official rate. Gated on its key.
+    this.polygonApiKey = process.env.POLYGON_FX_API_KEY;
+    this.polygonApiUrl = process.env.POLYGON_FX_API_URL || 'https://api.polygon.io';
     this.sourceHealth = {
+      polygon: { healthy: true, lastCheck: new Date() },
       forexrate_api: { healthy: true, lastCheck: new Date() },
       yahoo_finance: { healthy: true, lastCheck: new Date() },
       fallback: { healthy: true, lastCheck: new Date() },
@@ -110,6 +119,65 @@ export class FXFeedService {
    */
   private getCacheKey(currency: string): string {
     return `${FX_CONFIG.cache_key_prefix}${currency}_GHS`;
+  }
+
+  /**
+   * Fetch rate from Polygon.io / Massive forex API. Gated on POLYGON_FX_API_KEY;
+   * returns null (silent skip) when no key is set. Uses the previous-close aggregate
+   * (works on the free 5-calls/min tier) — GHS per 1 unit of `currency`.
+   * Endpoint: GET {base}/v2/aggs/ticker/C:{CCY}GHS/prev?apiKey=…  → results[0].c
+   * NOTE: GHS pair coverage is provider-dependent; on any failure this falls through.
+   */
+  private async fetchFromPolygon(currency: string): Promise<ExchangeRateFeed | null> {
+    if (!this.polygonApiKey) return null; // not configured — skip without flipping health
+
+    // Hard cap at 5 calls / rolling 60s (free-tier limit). If exhausted, skip and let
+    // the chain fall through rather than risk a 429. This block is synchronous (no
+    // await) so concurrent callers can't race past the cap on Node's event loop.
+    const now = Date.now();
+    this.polygonCallTimestamps = this.polygonCallTimestamps.filter((t) => now - t < 60_000);
+    if (this.polygonCallTimestamps.length >= 5) {
+      logger.warn('Polygon rate limit reached (5/min) — skipping, falling through', { currency });
+      return null;
+    }
+    this.polygonCallTimestamps.push(now);
+
+    try {
+      const ticker = `C:${currency.toUpperCase()}GHS`;
+      const response = await axios.get(
+        `${this.polygonApiUrl}/v2/aggs/ticker/${ticker}/prev`,
+        { params: { adjusted: true, apiKey: this.polygonApiKey }, timeout: FX_CONFIG.timeout_ms }
+      );
+
+      const close = response.data?.results?.[0]?.c; // close = GHS per 1 unit
+      if (!close || close <= 0 || isNaN(Number(close))) {
+        logger.warn('Polygon returned no usable GHS close (pair may be unsupported)', { currency, ticker });
+        this.sourceHealth.polygon.healthy = false;
+        return null;
+      }
+
+      this.sourceHealth.polygon.healthy = true;
+      this.sourceHealth.polygon.lastCheck = new Date();
+
+      return {
+        pair: `${currency}/GHS`,
+        from_currency: currency,
+        to_currency: 'GHS',
+        rate: Math.round(Number(close) * 10000) / 10000,
+        source: 'Polygon.io',
+        timestamp: new Date(),
+        is_official: false, // market data — only BoG rates are "official"
+      };
+    } catch (error: any) {
+      logger.error('Polygon fetch failed', {
+        currency,
+        status: error.response?.status,
+        error: error.message,
+      });
+      this.sourceHealth.polygon.healthy = false;
+      this.sourceHealth.polygon.lastCheck = new Date();
+      return null;
+    }
   }
 
   /**
@@ -206,9 +274,12 @@ export class FXFeedService {
         from_currency: currency,
         to_currency: 'GHS',
         rate: Math.round(rate * 10000) / 10000,
-        source: 'Bank of Ghana',
+        // Real provenance — was previously (incorrectly) stamped 'Bank of Ghana'
+        // is_official:true, which let market data masquerade as the official
+        // central-bank rate on settled invoices. Only genuine BoG rates are official.
+        source: 'Yahoo Finance',
         timestamp: new Date(),
-        is_official: true,
+        is_official: false,
       };
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -309,24 +380,33 @@ export class FXFeedService {
 
     let rate: ExchangeRateFeed | null = null;
 
-    // Try ForexRate-API first (primary source per user request)
-    if (this.apiKey && this.sourceHealth.forexrate_api.healthy) {
+    // Source priority (live chain). The official Bank of Ghana DAILY rate, when a
+    // fresh scrape exists, is preferred upstream in economicDataService.getExchangeRate
+    // (DB-first) and also re-enters here via getLastKnownRate. Within the live chain:
+    //
+    // 1. Polygon.io / Massive — preferred real-time backstop (when configured)
+    if (this.sourceHealth.polygon.healthy) {
+      rate = await this.fetchFromPolygon(currency);
+    }
+
+    // 2. ForexRate-API
+    if (!rate && this.apiKey && this.sourceHealth.forexrate_api.healthy) {
       rate = await this.fetchFromForexRateAPI(currency);
     }
 
-    // Fallback to Yahoo Finance
+    // 3. Yahoo Finance
     if (!rate && this.sourceHealth.yahoo_finance.healthy) {
       rate = await this.fetchFromYahooFinance(currency);
     }
 
-    // Fallback to free Currency API (no key needed, daily updates)
+    // 4. Free Currency API (no key needed, daily updates)
     if (!rate) {
       rate = await this.fetchFromFreeCurrencyAPI(currency);
     }
 
-    // Fallback to last known rate from economic_indicators (BOG-scraped)
+    // 5. Last known rate from economic_indicators (incl. scraped Bank of Ghana rows)
     if (!rate) {
-      logger.info('Using last known BOG rate from database', { currency });
+      logger.info('Using last known rate from database', { currency });
       rate = await this.getLastKnownRate(currency);
     }
 
@@ -405,14 +485,15 @@ export class FXFeedService {
           uuid_generate_v4(), $1, $2, $3, $4, $5, $6, 'daily', $7,
           'ghs_per_unit', $8, NOW(), NOW()
         )
-        ON CONFLICT (indicator_type, effective_date) 
+        ON CONFLICT (indicator_type, effective_date)
         DO UPDATE SET
           value = EXCLUDED.value,
           previous_value = EXCLUDED.previous_value,
           change_percentage = EXCLUDED.change_percentage,
           source_name = EXCLUDED.source_name,
           metadata = EXCLUDED.metadata,
-          updated_at = NOW()`,
+          updated_at = NOW()
+        WHERE economic_indicators.source_name NOT ILIKE 'Bank of Ghana%'`,
         [
           indicatorType,
           `${currency}/GHS Exchange Rate`,

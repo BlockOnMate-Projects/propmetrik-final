@@ -22,6 +22,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { generateContractorContractPdf } from '../../utils/pmDocumentPdfGenerators';
+import { changeOrderSignatureSlots } from '../../utils/changeOrderPdfGenerator';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 import { logger } from '../../utils/logger';
 
@@ -107,9 +109,15 @@ export interface ContractorAssignment {
   is_active: boolean;
   start_date?: Date;
   completion_date?: Date;
-  
+
   notes?: string;
-  
+
+  esign_envelope_id?: string | null;
+  esign_status?: string | null;
+  esign_completed_at?: Date | null;
+  signed_contract_url?: string | null;
+  contract_status?: string | null;
+
   created_by?: string;
   created_at: Date;
   updated_at: Date;
@@ -623,6 +631,18 @@ class ContractorService extends BaseService {
   /**
    * Trigger e-sign workflow for contractor contract
    */
+  /**
+   * Manually request e-signature for a contractor assignment (the "Request
+   * E-Signature" button). Generates the branded agreement (no uploaded doc) and
+   * sends it for signature. Returns the updated assignment.
+   */
+  async requestEsign(assignmentId: string, userId: string): Promise<ContractorAssignment> {
+    await this.triggerContractEsign(assignmentId, '', userId);
+    const updated = await this.getAssignment(assignmentId);
+    if (!updated) throw new Error('Assignment not found after e-sign trigger');
+    return updated;
+  }
+
   async triggerContractEsign(
     assignmentId: string,
     contractDocumentUrl: string,
@@ -640,7 +660,7 @@ class ContractorService extends BaseService {
 
     // Get project info
     const projectResult = await pool.query(
-      'SELECT * FROM projects WHERE id = $1',
+      'SELECT * FROM development_projects WHERE id = $1',
       [assignment.project_id]
     );
     const project = projectResult.rows[0];
@@ -651,10 +671,7 @@ class ContractorService extends BaseService {
       projectId: assignment.project_id,
     });
 
-    // Fetch contract document
-    const contractPdf = await this.fetchContractDocument(contractDocumentUrl);
-
-    // Resolve signers
+    // Resolve signers FIRST so the generated document's blocks align with fields.
     const signers = await this.resolveContractSigners(assignment, contractor);
 
     if (signers.length === 0) {
@@ -664,7 +681,12 @@ class ContractorService extends BaseService {
       return;
     }
 
-    // Build field placements
+    // Use an uploaded contract if one was provided, otherwise generate the branded agreement.
+    const contractPdf = contractDocumentUrl
+      ? await this.fetchContractDocument(contractDocumentUrl)
+      : await this.generateContractPdf(assignment, contractor, project, signers.map((s) => s.name));
+
+    // Build field placements aligned to the document's signature slots
     const fields = this.buildContractFields(signers);
 
     // Create envelope
@@ -679,6 +701,8 @@ class ContractorService extends BaseService {
       }],
       signers,
       fields,
+      organizationId: contractor.organization_id,
+      createdByUserId: userId,
       sourceModule: 'project_management',
       sourceEntityType: 'contractor_contract',
       sourceEntityId: assignmentId,
@@ -780,6 +804,28 @@ class ContractorService extends BaseService {
     }
   }
 
+  /** Generate a branded contractor agreement document from the assignment data. */
+  private async generateContractPdf(
+    assignment: any,
+    contractor: any,
+    project: any,
+    signerLabels?: string[]
+  ): Promise<Buffer> {
+    const labels = signerLabels && signerLabels.length ? signerLabels : ['Authorised Signatory'];
+    return generateContractorContractPdf({
+      contractor_company: contractor?.company_name || 'Contractor',
+      project_name: project?.name,
+      trade: contractor?.trade || contractor?.specialization,
+      currency: (project?.currency as string) || 'GHS',
+      contract_value: Number(assignment?.contract_value) || 0,
+      scope_of_work: assignment?.scope_of_work || assignment?.scope,
+      start_date: assignment?.start_date,
+      end_date: assignment?.end_date,
+      created_at: assignment?.created_at,
+      signerLabels: labels,
+    });
+  }
+
   /**
    * Resolve signers for contractor contract
    */
@@ -789,17 +835,17 @@ class ContractorService extends BaseService {
   ): Promise<ESignSigner[]> {
     const signers: ESignSigner[] = [];
 
-    // Get project owner/representative
+    // Get project owner/representative (full_name/email stored inline)
     const teamResult = await pool.query(`
-      SELECT pt.*, u.full_name, u.email
-      FROM project_team pt
-      JOIN users u ON pt.user_id = u.id
-      WHERE pt.project_id = $1 
-        AND pt.is_active = true
-        AND pt.role IN ('owner', 'owner_representative', 'project_manager')
-      ORDER BY CASE 
-        WHEN pt.role = 'owner' THEN 1
-        WHEN pt.role = 'owner_representative' THEN 2
+      SELECT full_name, email, role
+      FROM project_team_members
+      WHERE project_id = $1
+        AND is_active = true
+        AND email IS NOT NULL AND email <> ''
+        AND LOWER(COALESCE(role::text, role_type::text, role_category::text)) IN ('owner', 'owner_representative', 'project_manager', 'project_owner')
+      ORDER BY CASE
+        WHEN LOWER(COALESCE(role::text, role_type::text, role_category::text)) IN ('owner', 'project_owner') THEN 1
+        WHEN LOWER(COALESCE(role::text, role_type::text, role_category::text)) = 'owner_representative' THEN 2
         ELSE 3
       END
       LIMIT 1
@@ -832,38 +878,22 @@ class ContractorService extends BaseService {
    * Build signature field placements for contract
    */
   private buildContractFields(signers: ESignSigner[]): ESignField[] {
+    // Place each signer's signature + date on the document's signature slots
+    // (PERCENT 0-100, aligned with the lines drawn in the PDF).
     const fields: ESignField[] = [];
-    let yPosition = 0.75;
-
-    for (const signer of signers) {
-      // Signature field
+    const slots = changeOrderSignatureSlots(signers.map((s) => s.name));
+    signers.forEach((signer, i) => {
+      const slot = slots[i];
+      if (!slot) return;
       fields.push({
-        type: 'signature',
-        recipientEmail: signer.email,
-        documentIndex: 0,
-        page: 1, // Typically last page
-        x: 0.1,
-        y: yPosition,
-        width: 0.3,
-        height: 0.08,
-        required: true,
+        type: 'signature', recipientEmail: signer.email, documentIndex: 0, page: 1,
+        x: slot.sigX, y: slot.sigY, width: slot.sigW, height: slot.sigH, required: true,
       });
-
-      // Date field
       fields.push({
-        type: 'date',
-        recipientEmail: signer.email,
-        documentIndex: 0,
-        page: 1,
-        x: 0.5,
-        y: yPosition,
-        width: 0.2,
-        height: 0.05,
-        required: true,
+        type: 'date_signed', recipientEmail: signer.email, documentIndex: 0, page: 1,
+        x: slot.dateX, y: slot.dateY, width: slot.dateW, height: slot.dateH, required: true,
       });
-
-      yPosition -= 0.12;
-    }
+    });
 
     return fields;
   }
@@ -980,9 +1010,15 @@ class ContractorService extends BaseService {
       is_active: row.is_active,
       start_date: row.start_date,
       completion_date: row.completion_date,
-      
+
       notes: row.notes,
-      
+
+      esign_envelope_id: row.esign_envelope_id ?? null,
+      esign_status: row.esign_status ?? null,
+      esign_completed_at: row.esign_completed_at ?? null,
+      signed_contract_url: row.signed_contract_url ?? null,
+      contract_status: row.contract_status ?? null,
+
       created_by: row.created_by,
       created_at: row.created_at,
       updated_at: row.updated_at

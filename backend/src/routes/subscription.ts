@@ -170,16 +170,33 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
           email = userRow.rows[0]?.email;
         }
 
+        // Settle in GHS — Paystack Ghana cannot settle foreign currencies. A
+        // USD-priced plan is charged in its GHS equivalent at a LIVE, locked rate
+        // (no fallback: normalizeToGhs throws if no live rate, caught below → no
+        // payment_url, rather than billing a guessed amount).
+        const { exchangeRateService } = await import('../../shared-services/payments/crypto/exchangeRateService');
+        const obligationCurrency = (invoice.currency || 'GHS').toUpperCase();
+        const isForeign = obligationCurrency !== 'GHS';
+        const fxConv = await exchangeRateService.normalizeToGhs(invoice.total, obligationCurrency);
+        const chargeGhs = fxConv.ghsAmount;
+
         const paystackRes = await paystack.initializeTransaction({
           email,
-          amount: Math.round(invoice.total * 100), // GHS → pesewas
-          currency: invoice.currency || 'GHS',
+          amount: Math.round(chargeGhs * 100), // GHS → pesewas
+          currency: 'GHS',
           reference: `sub_${subscription.id}_inv_${invoice.id}`,
           callback_url: `${config.app.frontendUrl}/dashboard?welcome=true&payment=success`,
           metadata: {
             subscription_id: subscription.id,
             invoice_id: invoice.id,
             plan_slug,
+            ...(isForeign ? {
+              obligation_currency: obligationCurrency,
+              obligation_amount: invoice.total,
+              fx_rate: fxConv.rate,
+              fx_source: fxConv.source,
+              fx_locked_at: fxConv.fetchedAt.toISOString(),
+            } : {}),
           },
           channels: ['card', 'mobile_money'],
         });

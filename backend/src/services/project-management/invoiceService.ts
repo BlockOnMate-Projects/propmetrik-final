@@ -615,6 +615,65 @@ class InvoiceService {
   }
 
   /**
+   * Idempotently confirm a payment against a PM invoice: mark it paid (if not
+   * already) AND ensure a payment_transactions ledger row exists/links to it for
+   * reconciliation. Safe to call multiple times — both the gateway webhook and
+   * the client return-redirect call this, and they must converge to one result.
+   */
+  async confirmPayment(
+    invoiceId: string,
+    reference: string,
+    opts: { method?: string; channel?: string; provider?: string; isPaystack?: boolean; paidDate?: Date } = {}
+  ): Promise<{ invoice: ProjectInvoice; alreadyPaid: boolean }> {
+    const cur = await pool.query(
+      `SELECT id, status, organization_id, amount, total_amount, currency, platform_fee
+         FROM project_invoices WHERE id = $1`,
+      [invoiceId]
+    );
+    if (!cur.rows[0]) throw new Error(`Invoice not found: ${invoiceId}`);
+    const row = cur.rows[0];
+    const alreadyPaid = row.status === 'paid';
+
+    const invoice = alreadyPaid
+      ? (await this.getById(invoiceId))!
+      : await this.markAsPaid(invoiceId, opts.paidDate || new Date(), reference, opts.method || opts.channel || 'paystack');
+
+    // Upsert the ledger row (reference is UNIQUE) so reporting/reconciliation has
+    // a single linked record regardless of which path confirmed the payment.
+    const gross = Math.round(Number(row.total_amount || row.amount || 0) * 100);
+    const principal = Math.round(Number(row.amount || row.total_amount || 0) * 100);
+    const fee = Math.round(Number(row.platform_fee || 0) * 100);
+    try {
+      await pool.query(
+        `INSERT INTO payment_transactions (
+           reference, paystack_reference, payment_type, domain_record_type, domain_record_id,
+           gross_amount, principal_amount, service_fee, currency, channel, provider, status, verified_at, metadata
+         ) VALUES ($1, $2, 'project', 'project_invoice', $3, $4, $5, $6, $7, $8, $9, 'success', NOW(), $10)
+         ON CONFLICT (reference) DO UPDATE SET
+           status = 'success',
+           verified_at = NOW(),
+           domain_record_type = 'project_invoice',
+           domain_record_id = EXCLUDED.domain_record_id,
+           channel = COALESCE(EXCLUDED.channel, payment_transactions.channel)`,
+        [
+          reference,
+          opts.isPaystack ? reference : null,
+          invoiceId,
+          gross, principal, fee,
+          row.currency || 'GHS',
+          opts.channel || null,
+          opts.provider || (opts.isPaystack ? 'paystack' : null),
+          JSON.stringify({ invoice_id: invoiceId, invoice_number: invoice.invoiceNumber }),
+        ]
+      );
+    } catch (err: any) {
+      logger.warn('Failed to upsert invoice payment ledger row', { invoiceId, reference, error: err.message });
+    }
+
+    return { invoice, alreadyPaid };
+  }
+
+  /**
    * Notify org staff that a project invoice has been paid. Best-effort.
    */
   private async dispatchPaidNotification(invoice: ProjectInvoice): Promise<void> {
@@ -688,6 +747,11 @@ class InvoiceService {
     let accessCode: string | null = null;
     let platformFeePesewas = 0;
     let platformFeeAmount = 0;
+    // FX settlement context (populated for non-GHS invoices)
+    let chargedGhs: number | null = null;
+    let fxRateStored: number | null = null;
+    let fxSourceStored: string | null = null;
+    let fxLockedAtStored: Date | null = null;
 
     // ── Paystack split-payment ──────────────────────────────────
     // Paystack Ghana only supports GHS. For non-GHS invoices, convert
@@ -696,27 +760,27 @@ class InvoiceService {
       const { paystackService } = await import('../property-management/payment/paystackService').catch(() => ({ paystackService: null }));
 
       if (paystackService && clientEmail) {
-        // ── FX conversion: always charge in GHS on Paystack ──
+        // ── FX: always settle in GHS on Paystack (Ghana settles GHS only) ──
+        // A non-GHS invoice is charged in its GHS equivalent at a LIVE, locked
+        // rate. NO fallback: if the rate can't be locked, normalizeToGhs throws
+        // and we skip the charge (outer catch) rather than bill the raw foreign
+        // number as GHS. (Previously this fell back to the raw amount — a mischarge.)
+        const { exchangeRateService } = await import('../../../shared-services/payments/crypto/exchangeRateService');
         const invoiceCcy = (invoice.currency || 'GHS').toUpperCase();
-        let paystackAmountGHS = invoice.totalAmount;
-        let fxRate = 1;
-        let fxSource = 'N/A';
-
-        if (invoiceCcy !== 'GHS') {
-          try {
-            const fx = await fxFeedService.convertToGHS(invoice.totalAmount, invoiceCcy);
-            paystackAmountGHS = fx.converted_amount;
-            fxRate = fx.rate;
-            fxSource = fx.source;
-            logger.info('PM invoice: FX conversion for Paystack', {
-              from: invoiceCcy, to: 'GHS',
-              originalAmount: invoice.totalAmount,
-              convertedAmount: paystackAmountGHS,
-              rate: fxRate, source: fxSource,
-            });
-          } catch (fxErr: any) {
-            logger.warn('PM invoice: FX conversion failed, using raw amount', { error: fxErr.message });
-          }
+        const isForeign = invoiceCcy !== 'GHS';
+        const fxConv = await exchangeRateService.normalizeToGhs(invoice.totalAmount, invoiceCcy);
+        const paystackAmountGHS = fxConv.ghsAmount;
+        const fxRate = isForeign ? fxConv.rate : 1;
+        const fxSource = isForeign ? fxConv.source : 'N/A';
+        chargedGhs = paystackAmountGHS;
+        if (isForeign) {
+          fxRateStored = fxConv.rate; fxSourceStored = fxConv.source; fxLockedAtStored = fxConv.fetchedAt;
+          logger.info('PM invoice: FX conversion for Paystack', {
+            from: invoiceCcy, to: 'GHS',
+            originalAmount: invoice.totalAmount,
+            convertedAmount: paystackAmountGHS,
+            rate: fxRate, source: fxSource,
+          });
         }
 
         const paystackPesewas = Math.round(paystackAmountGHS * 100);
@@ -839,13 +903,18 @@ class InvoiceService {
         client_email = COALESCE($7, client_email),
         total_due = COALESCE($8, total_due),
         vendor_company = COALESCE($9, vendor_company),
+        charged_amount_ghs = $10,
+        fx_rate = $11,
+        fx_source = $12,
+        fx_locked_at = $13,
         sent_at = NOW(),
         updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
       [id, reference, accessCode, paymentLink, platformFeeAmount,
        clientName || null, clientEmail || null,
-       sendData?.totalAmount || null, sendData?.vendorCompany || null]
+       sendData?.totalAmount || null, sendData?.vendorCompany || null,
+       chargedGhs, fxRateStored, fxSourceStored, fxLockedAtStored]
     );
 
     const sentInvoice = this.mapInvoice(result.rows[0]);

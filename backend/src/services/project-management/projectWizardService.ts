@@ -92,6 +92,7 @@ export interface Step1Data {
   developer_name?: string;
   developer_contact?: string;
   developer_email?: string;
+  milestone_framework_id?: string;
   completed_at?: string;
 }
 
@@ -846,7 +847,10 @@ class ProjectWizardService extends BaseService {
       funding_sources: step5.funding_sources,
       planned_start_date: step5.planned_start_date ? new Date(step5.planned_start_date) : undefined,
       planned_completion_date: step5.planned_completion_date ? new Date(step5.planned_completion_date) : undefined,
-      phase_template_id: step5.phase_template_id,
+      // The framework selector lives on step 1 (milestone_framework_id); honour it
+      // as the explicit phase/milestone template, falling back to a step-5 override.
+      // When neither is set, creation auto-applies the default plan for the type.
+      phase_template_id: step5.phase_template_id || step1.milestone_framework_id,
       auto_create_deals: step5.auto_create_deals,
       default_pipeline_id: step5.default_pipeline_id,
       

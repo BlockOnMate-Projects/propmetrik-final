@@ -22,7 +22,9 @@ import {
     CryptoPaymentInitParams,
     CryptoPaymentInitResult,
     CryptoVerifyResult,
+    exchangeRateService,
 } from '../../../../shared-services/payments/crypto';
+import type { FxConversion } from '../../../../shared-services/payments/crypto/exchangeRateService';
 import { logger } from '../../../utils/logger';
 import { pool } from '../../../database';
 import { notify, resolveOrgStaff, resolveTenantByTenancy } from '../../../../shared-services/notifications/in-mail';
@@ -46,12 +48,13 @@ export interface GenericPaymentInitParams {
     entityType: 'deal' | 'project';
     recipientId: string;    // recipient entity_id in payment_accounts
     recipientType: string;  // 'deal_manager' | 'project_manager'
-    amount: number;         // principal in GHS
+    amount: number;         // principal in the obligation currency (defaults GHS)
     email: string;
     description?: string;
     channel?: 'mobile_money' | 'card';
     callbackUrl?: string;
     metadata?: Record<string, any>;
+    obligationCurrency?: string;  // native currency of `amount` (e.g. 'USD'); converted to GHS at a live rate
 }
 
 export interface PaymentResult {
@@ -67,6 +70,18 @@ export interface PaymentInitResult {
     accessCode: string;
     reference: string;
     feeBreakdown: FeeCalculation;
+    /**
+     * FX breakdown — present only when the obligation currency differs from GHS.
+     * Lets the UI show "Rent USD 1,000 ≈ GHS 15,500 (1 USD = GHS 15.50, locked …)".
+     */
+    fx?: {
+        obligationCurrency: string;   // e.g. 'USD'
+        obligationAmount: number;     // native amount owed (e.g. 1000)
+        rate: number;                 // GHS per 1 native unit, locked at checkout
+        source: string;               // rate provenance
+        lockedAt: string;             // ISO timestamp
+        chargedGhs: number;           // GHS principal actually charged for the rent
+    };
 }
 
 // =====================================================
@@ -88,6 +103,67 @@ export class PaymentProcessor {
         entityType?: string
     ): Promise<FeeCalculation> {
         return feeEngine.calculate(paymentType, principalGHS, entityId, entityType);
+    }
+
+    /**
+     * Preview the rent fee the tenant will actually be charged — runs the SAME
+     * FX normalization as `initializeRentPayment`, so what's shown pre-pay equals
+     * what's charged. For a non-GHS lease it converts the native amount to GHS at
+     * the live rate and returns the FX breakdown; if no live rate is available it
+     * throws (no hardcoded fallback) and the UI shows that the quote is unavailable.
+     */
+    async previewRentFee(
+        tenancyId: string,
+        organizationId: string,
+        amount: number
+    ): Promise<FeeCalculation & { fx?: PaymentInitResult['fx'] }> {
+        const tenancy = await tenancyService.getTenancyById(tenancyId, organizationId);
+        if (!tenancy) throw new Error('Tenancy not found');
+
+        const { obligationCurrency, fx, principalGhs, isForeign } =
+            await this.lockObligationToGhs(amount, tenancy.rentCurrency, { tenancyId });
+
+        const fee = await feeEngine.calculate('rent', principalGhs, organizationId, 'organization');
+
+        return {
+            ...fee,
+            fx: isForeign ? {
+                obligationCurrency,
+                obligationAmount: amount,
+                rate: fx.rate,
+                source: fx.source,
+                lockedAt: fx.fetchedAt.toISOString(),
+                chargedGhs: principalGhs,
+            } : undefined,
+        };
+    }
+
+    /**
+     * Lock a (possibly foreign-currency) obligation to GHS at the live rate.
+     * Shared by every charge path so the FX policy is identical everywhere:
+     * GHS passes through; USD converts at a live, audited rate; anything else
+     * throws. There is NO hardcoded fallback — if no live rate is available this
+     * throws a user-friendly error and the caller MUST abort the charge.
+     */
+    private async lockObligationToGhs(
+        amount: number,
+        currency: string | undefined,
+        ctx: Record<string, any> = {}
+    ): Promise<{ obligationCurrency: string; fx: FxConversion; principalGhs: number; isForeign: boolean }> {
+        const obligationCurrency = (currency || 'GHS').toUpperCase();
+        let fx: FxConversion;
+        try {
+            fx = await exchangeRateService.normalizeToGhs(amount, obligationCurrency);
+        } catch (err) {
+            logger.error('FX conversion failed — aborting charge (no fallback rate by policy)', {
+                ...ctx, obligationCurrency, amount, err: (err as Error).message
+            });
+            throw new Error(
+                `Unable to lock a live ${obligationCurrency}/GHS exchange rate right now, so this ` +
+                `payment cannot be processed. Please try again shortly.`
+            );
+        }
+        return { obligationCurrency, fx, principalGhs: fx.ghsAmount, isForeign: obligationCurrency !== 'GHS' };
     }
 
     // ─── Rent Payments ─────────────────────────────────────────
@@ -122,17 +198,29 @@ export class PaymentProcessor {
             );
         }
 
-        // 3. Calculate fee via FeeEngine
-        const fee = await feeEngine.calculate('rent', amount, organizationId, 'organization');
+        // 2b. Normalize the obligation to GHS — the only currency Paystack (Ghana) can settle.
+        //     A property may be leased in USD; the tenant pays the GHS equivalent at a LIVE,
+        //     locked market rate (no hardcoded fallback — see lockObligationToGhs).
+        const { obligationCurrency, fx, principalGhs, isForeign } =
+            await this.lockObligationToGhs(amount, tenancy.rentCurrency, { tenancyId });
+
+        // 3. Calculate fee via FeeEngine — always on the GHS principal (fees are denominated in GHS)
+        const fee = await feeEngine.calculate('rent', principalGhs, organizationId, 'organization');
 
         // 4. Build metadata
         const metadata: Record<string, any> = {
             tenancy_id: tenancyId,
             organization_id: organizationId,
             payment_type: 'rent',
-            principal_amount: amount,
+            principal_amount: principalGhs,              // GHS charged for the rent principal
             service_fee: fee.serviceFee,
             fee_mode: fee.feeMode,
+            // FX context (present only when the lease is in a non-GHS currency)
+            obligation_currency: obligationCurrency,
+            obligation_amount: amount,                   // native amount owed (e.g. USD 1000)
+            fx_rate: isForeign ? fx.rate : undefined,    // GHS per 1 native unit, locked now
+            fx_source: isForeign ? fx.source : undefined,
+            fx_locked_at: isForeign ? fx.fetchedAt.toISOString() : undefined,
             schedule_ids: scheduleIds || [],
             custom_fields: [
                 {
@@ -182,12 +270,14 @@ export class PaymentProcessor {
             metadata.schedule_ids = schedulesToPay;
         }
 
-        // 6. Initialize with Paystack — total charged = principal + fee
+        // 6. Initialize with Paystack — total charged = GHS principal + fee.
+        //    Always GHS: Paystack Ghana settles GHS only; foreign obligations were
+        //    already converted to GHS above at a locked live rate.
         const response = await paystackService.initializeWithSubaccount(
             {
                 email,
                 amount: fee.totalChargeSubunits,     // Total the payer pays (pesewas)
-                currency: tenancy.rentCurrency || 'GHS',
+                currency: 'GHS',
                 metadata,
                 channels: channel === 'mobile_money' ? ['mobile_money'] : ['card'],
                 callback_url: callbackUrl
@@ -203,16 +293,22 @@ export class PaymentProcessor {
             entityId: tenancyId,
             recipientEntityId: organizationId,
             recipientEntityType: 'organization',
-            principalAmount: amount,
+            principalAmount: principalGhs,           // GHS charged & routed
             serviceFee: fee.serviceFee,
             totalAmount: fee.totalCharge,
-            currency: tenancy.rentCurrency || 'GHS',
+            currency: 'GHS',                          // settlement currency
             feeMode: fee.feeMode,
             percentageRateApplied: fee.percentageRateApplied,
             flatAmountApplied: fee.flatAmountApplied,
             subaccountCode: paymentConfig.subaccountCode,
             payerEmail: email,
-            metadata
+            metadata,
+            // FX (recorded only when the lease is non-GHS)
+            obligationCurrency,
+            obligationAmount: amount,
+            fxRate: isForeign ? fx.rate : undefined,
+            fxSource: isForeign ? fx.source : undefined,
+            fxLockedAt: isForeign ? fx.fetchedAt : undefined,
         });
 
         logger.info('Initialized rent payment with fee', {
@@ -228,7 +324,15 @@ export class PaymentProcessor {
             authorizationUrl: response.data.authorization_url,
             accessCode: response.data.access_code,
             reference: response.data.reference,
-            feeBreakdown: fee
+            feeBreakdown: fee,
+            fx: isForeign ? {
+                obligationCurrency,
+                obligationAmount: amount,
+                rate: fx.rate,
+                source: fx.source,
+                lockedAt: fx.fetchedAt.toISOString(),
+                chargedGhs: principalGhs,
+            } : undefined,
         };
     }
 
@@ -249,7 +353,8 @@ export class PaymentProcessor {
             description,
             channel = 'mobile_money',
             callbackUrl,
-            metadata: extraMeta
+            metadata: extraMeta,
+            obligationCurrency: obligationCurrencyParam,
         } = params;
 
         // Map entity type to payment_accounts service_type
@@ -270,8 +375,12 @@ export class PaymentProcessor {
             );
         }
 
-        // 2. Calculate fee
-        const fee = await feeEngine.calculate(entityType as PaymentType, amount, recipientId, recipientType);
+        // 1b. Normalize a foreign obligation to GHS at a live, locked rate (no fallback).
+        const { obligationCurrency, fx, principalGhs, isForeign } =
+            await this.lockObligationToGhs(amount, obligationCurrencyParam, { entityId, entityType });
+
+        // 2. Calculate fee — always on the GHS principal
+        const fee = await feeEngine.calculate(entityType as PaymentType, principalGhs, recipientId, recipientType);
 
         // 3. Metadata
         const metadata: Record<string, any> = {
@@ -280,10 +389,15 @@ export class PaymentProcessor {
             recipient_id: recipientId,
             recipient_type: recipientType,
             payment_type: entityType,
-            principal_amount: amount,
+            principal_amount: principalGhs,            // GHS charged
             service_fee: fee.serviceFee,
             fee_mode: fee.feeMode,
             description: description || `${entityType} payment`,
+            obligation_currency: obligationCurrency,
+            obligation_amount: amount,                 // native amount owed
+            fx_rate: isForeign ? fx.rate : undefined,
+            fx_source: isForeign ? fx.source : undefined,
+            fx_locked_at: isForeign ? fx.fetchedAt.toISOString() : undefined,
             ...(extraMeta || {}),
             custom_fields: [
                 {
@@ -320,7 +434,7 @@ export class PaymentProcessor {
             entityId,
             recipientEntityId: recipientId,
             recipientEntityType: recipientType,
-            principalAmount: amount,
+            principalAmount: principalGhs,
             serviceFee: fee.serviceFee,
             totalAmount: fee.totalCharge,
             currency: 'GHS',
@@ -329,12 +443,19 @@ export class PaymentProcessor {
             flatAmountApplied: fee.flatAmountApplied,
             subaccountCode: paymentConfig.subaccountCode,
             payerEmail: email,
-            metadata
+            metadata,
+            obligationCurrency,
+            obligationAmount: amount,
+            fxRate: isForeign ? fx.rate : undefined,
+            fxSource: isForeign ? fx.source : undefined,
+            fxLockedAt: isForeign ? fx.fetchedAt : undefined,
         });
 
         logger.info(`Initialized ${entityType} payment with fee`, {
             entityId,
-            principal: amount,
+            principal: principalGhs,
+            obligationCurrency,
+            obligationAmount: amount,
             serviceFee: fee.serviceFee,
             totalCharge: fee.totalCharge
         });
@@ -343,7 +464,43 @@ export class PaymentProcessor {
             authorizationUrl: response.data.authorization_url,
             accessCode: response.data.access_code,
             reference: response.data.reference,
-            feeBreakdown: fee
+            feeBreakdown: fee,
+            fx: isForeign ? {
+                obligationCurrency,
+                obligationAmount: amount,
+                rate: fx.rate,
+                source: fx.source,
+                lockedAt: fx.fetchedAt.toISOString(),
+                chargedGhs: principalGhs,
+            } : undefined,
+        };
+    }
+
+    /**
+     * Preview the fee + FX for a deal/project payment — same normalization as the
+     * charge, so the quote shown equals what's billed. Throws (no fallback) if no
+     * live rate is available for a foreign obligation.
+     */
+    async previewGenericFee(
+        entityType: 'deal' | 'project',
+        recipientId: string,
+        recipientType: string,
+        amount: number,
+        obligationCurrency?: string
+    ): Promise<FeeCalculation & { fx?: PaymentInitResult['fx'] }> {
+        const { obligationCurrency: oblCcy, fx, principalGhs, isForeign } =
+            await this.lockObligationToGhs(amount, obligationCurrency, { entityType, recipientId });
+        const fee = await feeEngine.calculate(entityType as PaymentType, principalGhs, recipientId, recipientType);
+        return {
+            ...fee,
+            fx: isForeign ? {
+                obligationCurrency: oblCcy,
+                obligationAmount: amount,
+                rate: fx.rate,
+                source: fx.source,
+                lockedAt: fx.fetchedAt.toISOString(),
+                chargedGhs: principalGhs,
+            } : undefined,
         };
     }
 
@@ -424,8 +581,17 @@ export class PaymentProcessor {
                     else if (bank.includes('airtel') || bank.includes('tigo')) paymentMethod = PaymentMethod.MOBILE_MONEY_AIRTELTIGO;
                 }
 
-                // The principal_amount is what the landlord receives (amount minus fee)
+                // The principal_amount is the GHS that was charged & routed (amount minus fee)
                 const principalAmount = metadata.principal_amount || (amount / 100);
+
+                // FX context: if the lease is non-GHS, the obligation is recorded in its
+                // native currency (so it reconciles against the native rent schedule) while
+                // the GHS actually collected + the locked rate are stored alongside it.
+                const obligationCurrency: string | undefined = metadata.obligation_currency;
+                const obligationAmount: number | undefined = metadata.obligation_amount;
+                const isForeign = !!obligationCurrency && obligationCurrency.toUpperCase() !== 'GHS';
+                const recordedAmount = isForeign ? (obligationAmount as number) : principalAmount;
+                const recordedCurrency = isForeign ? (obligationCurrency as string) : currency;
 
                 // Determine period dates
                 let periodStartDate = new Date();
@@ -443,18 +609,23 @@ export class PaymentProcessor {
                     }
                 }
 
-                // Record in legacy rent_payments (uses principal, not total with fee)
+                // Record in legacy rent_payments (uses principal, not total with fee).
+                // For a non-GHS lease the amount/currency are the NATIVE obligation so the
+                // schedule (also native) reconciles; the GHS collected is stamped below.
+                const fxNote = isForeign
+                    ? ` | Charged GHS ${principalAmount.toFixed(2)} @ ${Number(metadata.fx_rate).toFixed(4)} GHS/${obligationCurrency}`
+                    : '';
                 const paymentData = {
                     tenancyId: metadata.tenancy_id,
-                    paymentAmount: principalAmount,
-                    currency,
+                    paymentAmount: recordedAmount,
+                    currency: recordedCurrency,
                     paymentDate: new Date().toISOString(),
                     paymentMethod,
                     mobileMoneyReference: channel === 'mobile_money' ? reference : undefined,
                     bankReference: channel === 'card' ? reference : undefined,
                     periodStartDate: periodStartDate.toISOString(),
                     periodEndDate: periodEndDate.toISOString(),
-                    notes: `Paystack: ${reference} | Fee: GHS ${Number(metadata.service_fee || 0).toFixed(2)}`,
+                    notes: `Paystack: ${reference} | Fee: GHS ${Number(metadata.service_fee || 0).toFixed(2)}${fxNote}`,
                     otherCharges: []
                 };
 
@@ -463,6 +634,24 @@ export class PaymentProcessor {
                     paymentData,
                     undefined
                 );
+
+                // Stamp the GHS collected + locked rate onto the rent_payment (non-GHS leases only)
+                if (isForeign) {
+                    await pool.query(
+                        `UPDATE rent_payments
+                         SET charged_amount_ghs = $1, fx_rate = $2, fx_source = $3, fx_locked_at = $4
+                         WHERE id = $5`,
+                        [
+                            principalAmount,
+                            metadata.fx_rate ?? null,
+                            metadata.fx_source ?? null,
+                            metadata.fx_locked_at ?? null,
+                            recordedPayment.id,
+                        ]
+                    ).catch((err) => logger.error('Failed to stamp FX on rent_payment', {
+                        reference, paymentId: recordedPayment.id, error: err.message
+                    }));
+                }
 
                 // Apply to rent schedules
                 const appliedPayments = await rentScheduleService.applyPayment(
@@ -492,6 +681,24 @@ export class PaymentProcessor {
                     verification: verifyResponse.data,
                     schedulesUpdated
                 };
+            }
+
+            // PM project invoices: reconcile the invoice itself (mark paid + link
+            // ledger). This is the reliable webhook path — it no longer depends on
+            // the client returning to the verify-redirect page.
+            if (metadata?.type === 'pm_invoice' && metadata?.invoiceId) {
+                try {
+                    const { invoiceService } = await import('../../project-management/invoiceService');
+                    const { alreadyPaid } = await invoiceService.confirmPayment(metadata.invoiceId, reference, {
+                        method: channel || 'paystack',
+                        channel: channel || 'paystack',
+                        provider: 'paystack',
+                        isPaystack: true,
+                    });
+                    logger.info('PM invoice reconciled via Paystack webhook', { reference, invoiceId: metadata.invoiceId, alreadyPaid });
+                } catch (invErr: any) {
+                    logger.error('Failed to reconcile PM invoice from webhook', { reference, invoiceId: metadata.invoiceId, error: invErr.message });
+                }
             }
 
             // Non-rent payments (deal/project) — ledger already updated
@@ -1024,6 +1231,12 @@ export class PaymentProcessor {
         subaccountCode: string;
         payerEmail: string;
         metadata: Record<string, any>;
+        // FX (present only when the obligation currency differs from the GHS charge)
+        obligationCurrency?: string;
+        obligationAmount?: number;
+        fxRate?: number;
+        fxSource?: string;
+        fxLockedAt?: Date;
     }): Promise<void> {
         try {
             // Convert GHS amounts to pesewas (integers) for DB storage
@@ -1034,6 +1247,9 @@ export class PaymentProcessor {
             // Derive domain_record_type from payment_type
             const domainRecordType = `${params.paymentType}_payment`;
 
+            // FX fields: store only for genuine cross-currency charges
+            const isForeign = !!params.obligationCurrency && params.obligationCurrency.toUpperCase() !== params.currency.toUpperCase();
+
             await pool.query(
                 `INSERT INTO payment_transactions (
                     reference, paystack_reference, payment_type,
@@ -1042,8 +1258,9 @@ export class PaymentProcessor {
                     gross_amount, principal_amount, service_fee, currency,
                     fee_mode, fee_percentage_applied, fee_flat_applied,
                     subaccount_code, payer_email,
+                    obligation_currency, obligation_amount, fx_rate, fx_source, fx_locked_at,
                     status, metadata
-                ) VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', $16)
+                ) VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $17, $18, $19, $20, $21, 'pending', $16)
                 ON CONFLICT (reference) DO NOTHING`,
                 [
                     params.reference,
@@ -1061,7 +1278,12 @@ export class PaymentProcessor {
                     params.flatAmountApplied,
                     params.subaccountCode,
                     params.payerEmail,
-                    JSON.stringify(params.metadata)
+                    JSON.stringify(params.metadata),
+                    isForeign ? params.obligationCurrency!.toUpperCase() : null,
+                    isForeign ? params.obligationAmount ?? null : null,
+                    isForeign ? params.fxRate ?? null : null,
+                    isForeign ? params.fxSource ?? null : null,
+                    isForeign ? params.fxLockedAt ?? null : null,
                 ]
             );
         } catch (error: any) {

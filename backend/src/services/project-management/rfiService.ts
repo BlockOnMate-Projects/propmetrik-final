@@ -114,6 +114,9 @@ export interface RfiWithDetails extends Rfi {
   is_overdue?: boolean;
   days_overdue?: number;
   comment_count?: number;
+  /** User who currently owes the next action (derived from status + roles). */
+  ball_in_court?: string | null;
+  ball_in_court_name?: string | null;
 }
 
 export interface RfiComment {
@@ -198,6 +201,8 @@ export interface RfiFilters {
   category?: RfiCategory | RfiCategory[];
   assigned_to?: string;
   submitted_by?: string;
+  /** Filter to RFIs currently awaiting action by this user (ball-in-court). */
+  ball_in_court?: string;
   phase_id?: string;
   is_overdue?: boolean;
   due_date_from?: Date;
@@ -361,6 +366,12 @@ class RfiService {
           ELSE false
         END AS is_overdue,
         GREATEST(CURRENT_DATE - r.due_date, 0) AS days_overdue,
+        CASE
+          WHEN r.status IN ('open', 'pending_response') THEN r.assigned_to
+          WHEN r.status = 'answered' THEN r.submitted_by
+          WHEN r.status = 'draft' THEN COALESCE(r.submitted_by, r.created_by)
+          ELSE NULL
+        END AS ball_in_court,
         (SELECT COUNT(*) FROM rfi_comments WHERE rfi_id = r.id) AS comment_count
       FROM rfis r
       LEFT JOIN development_projects p ON r.project_id = p.id
@@ -476,6 +487,18 @@ class RfiService {
       paramIndex++;
     }
 
+    // Ball-in-court filter: RFIs currently awaiting action by this user
+    // (responder while open/pending, or submitter once answered/draft).
+    if (filters.ball_in_court) {
+      whereClause += ` AND (CASE
+          WHEN r.status IN ('open', 'pending_response') THEN r.assigned_to
+          WHEN r.status = 'answered' THEN r.submitted_by
+          WHEN r.status = 'draft' THEN COALESCE(r.submitted_by, r.created_by)
+          ELSE NULL
+        END) = $${paramIndex++}`;
+      params.push(filters.ball_in_court);
+    }
+
     // Count total
     const countResult = await pool.query(`
       SELECT COUNT(*) FROM rfis r ${whereClause}
@@ -505,6 +528,12 @@ class RfiService {
           ELSE false
         END AS is_overdue,
         GREATEST(CURRENT_DATE - r.due_date, 0) AS days_overdue,
+        CASE
+          WHEN r.status IN ('open', 'pending_response') THEN r.assigned_to
+          WHEN r.status = 'answered' THEN r.submitted_by
+          WHEN r.status = 'draft' THEN COALESCE(r.submitted_by, r.created_by)
+          ELSE NULL
+        END AS ball_in_court,
         (SELECT COUNT(*) FROM rfi_comments WHERE rfi_id = r.id) AS comment_count
       FROM rfis r
       LEFT JOIN development_projects p ON r.project_id = p.id
@@ -694,6 +723,30 @@ class RfiService {
 
       logger.info(`RFI assigned: ${result.rows[0].rfi_number} to ${assigneeId}`, { rfiId: id });
 
+      // Ball-in-court → the new assignee now owes a response. Notify them.
+      if (assigneeId && assigneeId !== assignedBy) {
+        try {
+          const recipient = await resolveStaffUser(assigneeId);
+          if (recipient) {
+            await notify({
+              recipients: recipient,
+              category: 'project',
+              type: 'rfi.assigned',
+              title: 'RFI awaiting your response',
+              body: `RFI ${result.rows[0].rfi_number} "${result.rows[0].subject}" has been assigned to you — the ball is in your court.`,
+              priority: result.rows[0].priority === 'critical' ? 'high' : 'normal',
+              organizationId: result.rows[0].organization_id,
+              sourceType: 'rfi',
+              sourceId: id,
+              sourceUrl: `/dashboard/projects/${result.rows[0].project_id}/rfis`,
+              channels: { inApp: true, email: true },
+            });
+          }
+        } catch (notifyError: any) {
+          logger.warn('Failed to notify RFI assignee on assign', { rfiId: id, error: notifyError.message });
+        }
+      }
+
       return this.mapRfi(result.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');
@@ -746,6 +799,31 @@ class RfiService {
       await client.query('COMMIT');
 
       logger.info(`RFI responded: ${result.rows[0].rfi_number}`, { rfiId: id });
+
+      // Ball-in-court → answering returns the ball to the submitter to review/close.
+      const submitterId = result.rows[0].submitted_by;
+      if (submitterId && submitterId !== input.answered_by) {
+        try {
+          const recipient = await resolveStaffUser(submitterId);
+          if (recipient) {
+            await notify({
+              recipients: recipient,
+              category: 'project',
+              type: 'rfi.answered',
+              title: 'Your RFI was answered',
+              body: `RFI ${result.rows[0].rfi_number} "${result.rows[0].subject}" has been answered — please review and close it.`,
+              priority: result.rows[0].priority === 'critical' ? 'high' : 'normal',
+              organizationId: result.rows[0].organization_id,
+              sourceType: 'rfi',
+              sourceId: id,
+              sourceUrl: `/dashboard/projects/${result.rows[0].project_id}/rfis`,
+              channels: { inApp: true, email: true },
+            });
+          }
+        } catch (notifyError: any) {
+          logger.warn('Failed to notify RFI submitter on response', { rfiId: id, error: notifyError.message });
+        }
+      }
 
       return this.mapRfi(result.rows[0]);
     } catch (error) {
@@ -1085,7 +1163,12 @@ class RfiService {
       phase_name: row.phase_name,
       is_overdue: row.is_overdue,
       days_overdue: row.days_overdue ? parseInt(row.days_overdue, 10) : 0,
-      comment_count: row.comment_count ? parseInt(row.comment_count, 10) : 0
+      comment_count: row.comment_count ? parseInt(row.comment_count, 10) : 0,
+      ball_in_court: row.ball_in_court ?? null,
+      // Name of the ball-holder: assignee while awaiting response, else submitter.
+      ball_in_court_name: row.ball_in_court
+        ? (['open', 'pending_response'].includes(row.status) ? row.assigned_to_name : row.submitted_by_name)
+        : null,
     };
   }
 

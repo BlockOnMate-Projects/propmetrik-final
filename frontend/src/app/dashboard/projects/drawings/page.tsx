@@ -17,7 +17,7 @@ import { Plus, Search, Pencil, Download, Loader2, Eye, GitCompare, FileText, Che
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
 interface Drawing {
-  id: string; drawing_number: string; title: string; discipline: string;
+  id: string; project_id: string; drawing_number: string; title: string; discipline: string;
   current_revision: string; status: string; description: string | null;
   sheet_size: string; scale: string | null; created_at: string;
   revision_count: number; recent_revisions: any[] | null;
@@ -53,11 +53,13 @@ const statusColors: Record<string, string> = {
 export default function DrawingsPage() {
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedProject, setSelectedProject] = useState('all'); // 'all' = every project; or a project id
+  const [createProject, setCreateProject] = useState(''); // the project a NEW drawing is assigned to
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [selectedDrawing, setSelectedDrawing] = useState<(Drawing & { revisions: Revision[] }) | null>(null);
   const [showCompare, setShowCompare] = useState(false);
@@ -74,7 +76,8 @@ export default function DrawingsPage() {
         const json = await res.json();
         const list = json.data?.projects || json.data || json.projects || [];
         setProjects(list);
-        if (list.length > 0 && !selectedProject) setSelectedProject(list[0].id);
+        // List stays on "All Projects"; the create dialog needs a concrete default project.
+        if (list.length > 0) setCreateProject(prev => prev || list[0].id);
       } catch (e) { console.error('Failed to load projects', e); }
     })();
   }, []);
@@ -83,7 +86,11 @@ export default function DrawingsPage() {
     if (!selectedProject) return;
     setLoading(true);
     try {
-      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings?search=${search}`);
+      const q = encodeURIComponent(search);
+      const url = selectedProject === 'all'
+        ? `${API}/drawings?search=${q}`
+        : `${API}/projects/${selectedProject}/drawings?search=${q}`;
+      const res = await authedFetch(url);
       const json = await res.json();
       setDrawings(json.data || []);
     } catch (e) { console.error('Failed to load drawings', e); }
@@ -92,14 +99,16 @@ export default function DrawingsPage() {
 
   useEffect(() => { fetchDrawings(); }, [fetchDrawings]);
 
-  const viewDrawing = async (id: string) => {
-    const res = await authedFetch(`${API}/projects/${selectedProject}/drawings/${id}`);
+  const viewDrawing = async (id: string, projectId: string) => {
+    const res = await authedFetch(`${API}/projects/${projectId}/drawings/${id}`);
     const json = await res.json();
     setSelectedDrawing(json.data);
     setShowDetail(true);
   };
 
   const createDrawing = async () => {
+    if (creating) return;
+    setCreating(true);
     try {
       const fd = new FormData();
       fd.append('drawing_number', form.drawing_number || '');
@@ -110,14 +119,21 @@ export default function DrawingsPage() {
       fd.append('scale', form.scale || '');
       if (drawingFile) fd.append('file', drawingFile);
 
-      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings`, {
+      const res = await authedFetch(`${API}/projects/${createProject}/drawings`, {
         method: 'POST',
         body: fd,
       });
       if (res.ok) {
         toast({ title: 'Drawing created' }); setShowCreate(false); setForm({}); setDrawingFile(null); fetchDrawings();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: 'Could not create drawing', description: err?.error || err?.message || `Server returned ${res.status}`, variant: 'destructive' });
       }
-    } catch (e) { toast({ title: 'Failed to create drawing', variant: 'destructive' }); }
+    } catch (e: any) {
+      toast({ title: 'Failed to create drawing', description: e?.message || 'Network error — please try again.', variant: 'destructive' });
+    } finally {
+      setCreating(false);
+    }
   };
 
   const addRevision = async () => {
@@ -128,40 +144,44 @@ export default function DrawingsPage() {
       fd.append('change_description', form.change_description || '');
       if (revisionFile) fd.append('file', revisionFile);
 
-      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings/${selectedDrawing.id}/revisions`, {
+      const res = await authedFetch(`${API}/projects/${selectedDrawing.project_id}/drawings/${selectedDrawing.id}/revisions`, {
         method: 'POST',
         body: fd,
       });
       if (res.ok) {
         toast({ title: 'Revision added' }); setShowAddRevision(false); setForm({}); setRevisionFile(null);
-        viewDrawing(selectedDrawing.id);
+        viewDrawing(selectedDrawing.id, selectedDrawing.project_id); fetchDrawings();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: 'Could not add revision', description: err?.error || err?.message || `Server returned ${res.status}`, variant: 'destructive' });
       }
-    } catch (e) { toast({ title: 'Failed to add revision', variant: 'destructive' }); }
+    } catch (e: any) { toast({ title: 'Failed to add revision', description: e?.message || 'Network error', variant: 'destructive' }); }
   };
 
   const reviewRevision = async (revisionId: string, action: 'review' | 'approve') => {
     if (!selectedDrawing) return;
-    await authedFetch(`${API}/projects/${selectedProject}/drawings/${selectedDrawing.id}/revisions/${revisionId}/review`, {
+    await authedFetch(`${API}/projects/${selectedDrawing.project_id}/drawings/${selectedDrawing.id}/revisions/${revisionId}/review`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     });
     toast({ title: action === 'approve' ? 'Revision approved' : 'Revision reviewed' });
-    viewDrawing(selectedDrawing.id);
+    viewDrawing(selectedDrawing.id, selectedDrawing.project_id);
+    fetchDrawings();
   };
 
-  const deleteDrawing = async (id: string) => {
+  const deleteDrawing = async (id: string, projectId: string) => {
     if (!confirm('Delete this drawing and all its revisions?')) return;
     try {
-      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings/${id}`, { method: 'DELETE' });
+      const res = await authedFetch(`${API}/projects/${projectId}/drawings/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Drawing deleted' }); setShowDetail(false); setSelectedDrawing(null); fetchDrawings();
       } else { toast({ title: 'Failed to delete drawing', variant: 'destructive' }); }
     } catch (e) { toast({ title: 'Failed to delete drawing', variant: 'destructive' }); }
   };
 
-  const previewFile = async (drawingId: string) => {
+  const previewFile = async (drawingId: string, projectId: string) => {
     try {
-      const r = await authedFetch(`${API}/projects/${selectedProject}/drawings/${drawingId}/download`);
+      const r = await authedFetch(`${API}/projects/${projectId}/drawings/${drawingId}/download`);
       const data = await r.json();
       if (data.url) window.open(data.url, '_blank');
       else toast({ title: data.error || 'No file available', variant: 'destructive' });
@@ -188,7 +208,10 @@ export default function DrawingsPage() {
         </div>
         <Select value={selectedProject} onValueChange={setSelectedProject}>
           <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800 text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
-          <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+          </SelectContent>
         </Select>
       </div>
 
@@ -217,7 +240,7 @@ export default function DrawingsPage() {
           <Input placeholder="Search drawings..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 w-[250px] bg-zinc-900 border-zinc-800" />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportDrawings}><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
+          <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportDrawings} disabled={selectedProject === 'all'} title={selectedProject === 'all' ? 'Pick a specific project to export' : 'Export drawings (CSV)'}><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
           <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => { setForm({}); setDrawingFile(null); setShowCreate(true); }}><Plus className="h-3.5 w-3.5 mr-1.5" />New Drawing</Button>
         </div>
       </div>
@@ -241,7 +264,7 @@ export default function DrawingsPage() {
               {drawings.length === 0 ? (
                 <TableRow><TableCell colSpan={10} className="text-center text-zinc-500 py-8">No drawings found. Create one to get started.</TableCell></TableRow>
               ) : drawings.map(d => (
-                <TableRow key={d.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => viewDrawing(d.id)}>
+                <TableRow key={d.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => viewDrawing(d.id, d.project_id)}>
                   <TableCell className="font-mono text-xs text-amber-500">{d.drawing_number}</TableCell>
                   <TableCell className="text-sm text-white max-w-[200px] truncate">{d.title}</TableCell>
                   <TableCell><Badge variant="outline" className={disciplineColors[d.discipline] || 'border-zinc-700'}>{d.discipline}</Badge></TableCell>
@@ -253,9 +276,9 @@ export default function DrawingsPage() {
                   <TableCell className="text-xs text-zinc-400">{d.revision_count || 0}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="View" onClick={(e) => { e.stopPropagation(); viewDrawing(d.id); }}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="Download" onClick={(e) => { e.stopPropagation(); previewFile(d.id); }}><Download className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" title="Delete" onClick={(e) => { e.stopPropagation(); deleteDrawing(d.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="View" onClick={(e) => { e.stopPropagation(); viewDrawing(d.id, d.project_id); }}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="Download" onClick={(e) => { e.stopPropagation(); previewFile(d.id, d.project_id); }}><Download className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" title="Delete" onClick={(e) => { e.stopPropagation(); deleteDrawing(d.id, d.project_id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -272,7 +295,7 @@ export default function DrawingsPage() {
           <div className="space-y-4">
             <div>
               <Label className="text-zinc-400 text-xs">Assign to Project *</Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
+              <Select value={createProject} onValueChange={setCreateProject}>
                 <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
@@ -306,8 +329,10 @@ export default function DrawingsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)} className="border-zinc-700">Cancel</Button>
-            <Button onClick={createDrawing} className="bg-amber-600 hover:bg-amber-700" disabled={!form.title || !form.drawing_number || !selectedProject}>Create</Button>
+            <Button variant="outline" onClick={() => setShowCreate(false)} className="border-zinc-700" disabled={creating}>Cancel</Button>
+            <Button onClick={createDrawing} className="bg-amber-600 hover:bg-amber-700" disabled={creating || !form.title || !form.drawing_number || !createProject}>
+              {creating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Creating…</> : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -333,7 +358,7 @@ export default function DrawingsPage() {
               {selectedDrawing.description && <p className="text-sm text-zinc-400">{selectedDrawing.description}</p>}
 
               <div className="flex justify-end">
-                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => deleteDrawing(selectedDrawing.id)}><Trash2 className="h-3 w-3 mr-1" />Delete Drawing</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => deleteDrawing(selectedDrawing.id, selectedDrawing.project_id)}><Trash2 className="h-3 w-3 mr-1" />Delete Drawing</Button>
               </div>
 
               {/* Revisions */}
@@ -360,7 +385,7 @@ export default function DrawingsPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       {rev.file_url && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-400" onClick={() => previewFile(selectedDrawing.id)} title="Preview file">
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-400" onClick={() => previewFile(selectedDrawing.id, selectedDrawing.project_id)} title="Preview file">
                           <Eye className="h-3 w-3 mr-1" />Preview
                         </Button>
                       )}

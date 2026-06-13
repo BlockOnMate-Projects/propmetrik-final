@@ -18,6 +18,7 @@ import {
     PortfolioValue,
     PortfolioComposition,
     LeasePortfolioSummary,
+    PortfolioFxMeta,
     Property,
     VaultDocument,
     VaultSummary
@@ -58,6 +59,9 @@ export const propertyManagementApi = {
     },
 
     getPropertyById: (id: string) => fetchApi<Property>(`${PM_BASE}/properties/${id}`),
+
+    // Live GHS conversion rates (USD/EUR/GBP -> GHS) for client-side aggregates.
+    getFxRates: () => fetchApi<PortfolioFxMeta>(`${PM_BASE}/fx/rates`),
 
     getPropertyUnits: (id: string) => fetchApi<Property[]>(`${PM_BASE}/properties/${id}/units`),
 

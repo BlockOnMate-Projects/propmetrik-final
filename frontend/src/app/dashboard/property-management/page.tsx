@@ -37,6 +37,8 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { PortfolioMetrics, PortfolioComposition, LeasePortfolioSummary } from '@/types/property-management'
+import { useExchangeRates } from '@/lib/use-exchange-rates'
+import { RateStamp } from '@/components/property-management/RateStamp'
 import {
     AreaChart,
     Area,
@@ -132,6 +134,8 @@ export default function PropertyManagementDashboard() {
     const [portfolioFinancials, setPortfolioFinancials] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    // Financial metrics below are normalized to GHS server-side; surface the rate used.
+    const { fx } = useExchangeRates()
 
     useEffect(() => {
         const load = async () => {
@@ -147,22 +151,23 @@ export default function PropertyManagementDashboard() {
                 const startDateNext = `${nextYear}-01-01`
                 const endDateNext = `${nextYear}-12-31`
 
-                const [metrics, composition, leases, workOrders, cashFlowCurrent, cashFlowNext, applications, receivables, portfolioFin] = await Promise.all([
+                const [metrics, composition, leases, workOrders, cashFlowCurrent, applications, receivables, portfolioFin] = await Promise.all([
                     propertyManagementApi.getPortfolioOverview().catch(() => null),
                     propertyManagementApi.getPortfolioComposition().catch(() => null),
                     propertyManagementApi.getLeasePortfolioSummary().catch(() => null),
                     propertyManagementApi.getWorkOrderStats().catch(() => null),
                     propertyManagementApi.getCashFlow({ startDate, endDate }).catch(() => null),
-                    propertyManagementApi.getCashFlow({ startDate: startDateNext, endDate: endDateNext }).catch(() => null),
                     propertyManagementApi.getApplicationStats().catch(() => null),
                     propertyManagementApi.getAgedReceivablesReport().catch(() => null),
                     propertyManagementApi.getPortfolioFinancialSummary().catch(() => null),
                 ])
 
-                // Pick whichever year has data
-                const cashFlow = (cashFlowCurrent?.totalIncome > 0 || cashFlowCurrent?.totalExpenses > 0)
-                    ? cashFlowCurrent
-                    : cashFlowNext
+                // Use the current year; only fetch next year as a fallback when the current
+                // year has no activity yet (avoids a second expensive cash-flow call on every load).
+                let cashFlow = cashFlowCurrent
+                if (!(cashFlowCurrent?.totalIncome > 0 || cashFlowCurrent?.totalExpenses > 0)) {
+                    cashFlow = await propertyManagementApi.getCashFlow({ startDate: startDateNext, endDate: endDateNext }).catch(() => null)
+                }
 
                 setData({ metrics, composition, leases, workOrders, cashFlow, applications, receivables })
                 setPortfolioFinancials(portfolioFin)
@@ -416,7 +421,10 @@ export default function PropertyManagementDashboard() {
                 {/* Aged Receivables + Lease Alerts */}
                 <Card className="lg:col-span-3 bg-black border border-zinc-800">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-mono uppercase text-amber-500">Financial Health</CardTitle>
+                        <div className="flex items-center justify-between gap-2">
+                            <CardTitle className="text-sm font-mono uppercase text-amber-500">Financial Health</CardTitle>
+                            <RateStamp fx={fx} />
+                        </div>
                         <CardDescription className="text-[10px] font-mono text-zinc-600 uppercase">Receivables & lease status</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5">
@@ -539,7 +547,12 @@ export default function PropertyManagementDashboard() {
                                             <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
                                             <XAxis type="number" tick={{ fontSize: 10, fill: '#71717a', fontFamily: 'monospace' }} axisLine={false} tickLine={false} allowDecimals={false} />
                                             <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#a1a1aa', fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={70} />
-                                            <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #27272a', borderRadius: 8, fontFamily: 'monospace', fontSize: 11 }} />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #27272a', borderRadius: 8, fontFamily: 'monospace', fontSize: 11 }}
+                                                itemStyle={{ color: '#e4e4e7' }}
+                                                labelStyle={{ color: '#f59e0b', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 10 }}
+                                                cursor={{ fill: '#ffffff10' }}
+                                            />
                                             <Bar dataKey="count" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={16} />
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -586,7 +599,11 @@ export default function PropertyManagementDashboard() {
                                                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #27272a', borderRadius: 8, fontFamily: 'monospace', fontSize: 11 }} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #27272a', borderRadius: 8, fontFamily: 'monospace', fontSize: 11 }}
+                                            itemStyle={{ color: '#e4e4e7' }}
+                                            labelStyle={{ color: '#f59e0b', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 10 }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="flex flex-wrap gap-2 mt-1 justify-center">
@@ -599,17 +616,31 @@ export default function PropertyManagementDashboard() {
                                 </div>
 
                                 {/* Region breakdown */}
-                                {data.composition?.byRegion && data.composition.byRegion.length > 0 && (
-                                    <div className="mt-4 pt-3 border-t border-zinc-800">
-                                        <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">By Region</p>
-                                        {data.composition.byRegion.map(r => (
-                                            <div key={r.region} className="flex items-center justify-between py-1">
-                                                <span className="text-[10px] font-mono text-zinc-400">{r.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                                                <Badge variant="outline" className="text-[9px] font-mono">{r.count}</Badge>
+                                {data.composition?.byRegion && data.composition.byRegion.length > 0 && (() => {
+                                    const regionTotal = data.composition.byRegion.reduce((sum, r) => sum + r.count, 0) || 1
+                                    return (
+                                        <div className="mt-4 pt-3 border-t border-zinc-800">
+                                            <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">By Region</p>
+                                            <div className="space-y-2">
+                                                {data.composition.byRegion.map((r, i) => {
+                                                    const pct = Math.round((r.count / regionTotal) * 100)
+                                                    const color = CHART_COLORS[i % CHART_COLORS.length]
+                                                    return (
+                                                        <div key={r.region}>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-[10px] font-mono text-zinc-400">{r.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                                                                <span className="text-[9px] font-mono text-zinc-500">{r.count} · {pct}%</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full rounded-full bg-zinc-900 overflow-hidden">
+                                                                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                        </div>
+                                    )
+                                })()}
                             </div>
                         ) : (
                             <div className="h-[200px] flex items-center justify-center">
@@ -699,10 +730,10 @@ export default function PropertyManagementDashboard() {
                         {[
                             { label: 'Add Property', href: '/dashboard/property-management/properties/new', icon: Plus },
                             { label: 'Register Tenant', href: '/dashboard/property-management/tenants/new', icon: UserPlus },
-                            { label: 'Create Lease', href: '/dashboard/property-management/tenants', icon: ClipboardList },
-                            { label: 'New Work Order', href: '/dashboard/property-management/maintenance', icon: Wrench },
+                            { label: 'Create Lease', href: '/dashboard/property-management/leases/new', icon: ClipboardList },
+                            { label: 'New Work Order', href: '/dashboard/property-management/maintenance/new', icon: Wrench },
                             { label: 'Record Payment', href: '/dashboard/property-management/financials', icon: Receipt },
-                            { label: 'View Reports', href: '/dashboard/property-management/financials', icon: BarChart3 },
+                            { label: 'View Reports', href: '/dashboard/property-management/reports', icon: BarChart3 },
                         ].map((action) => (
                             <Link key={action.label} href={action.href}>
                                 <Button

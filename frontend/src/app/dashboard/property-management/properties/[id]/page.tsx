@@ -65,6 +65,7 @@ import {
     SelectValue
 } from '@/components/ui/select'
 import { propertyManagementApi } from '@/lib/property-management-api'
+import { useExchangeRates } from '@/lib/use-exchange-rates'
 import {
     Property,
     Tenancy,
@@ -83,6 +84,7 @@ export default function PropertyDetailPage() {
     const propertyId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : String(params.id)
 
     const [property, setProperty] = useState<Property | null>(null)
+    const { toGHS } = useExchangeRates()
     const [units, setUnits] = useState<Property[]>([])
     const [tenancies, setTenancies] = useState<Tenancy[]>([])
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
@@ -644,6 +646,11 @@ export default function PropertyDetailPage() {
                             <p className="text-lg font-bold text-primary font-mono">
                                 {property.priceCurrency} {property.price.toLocaleString()}
                             </p>
+                            {(property.priceCurrency || 'GHS').toUpperCase() !== 'GHS' && (
+                                <p className="text-[10px] font-mono text-muted-foreground/70">
+                                    ≈ GH₵{toGHS(property.price, property.priceCurrency).toLocaleString('en-GH', { maximumFractionDigits: 0 })}
+                                </p>
+                            )}
                             <div className="mt-4 flex items-center gap-1 text-[9px] font-mono text-green-500">
                                 <TrendingUp className="h-3 w-3" />
                                 +2.4% VS LAST QTR

@@ -70,8 +70,9 @@ export interface ESignSigner {
  * Field placement for signatures/initials/dates
  */
 export interface ESignField {
-  /** Type of field */
-  type: 'signature' | 'initials' | 'date' | 'text';
+  /** Type of field. 'date_signed' auto-stamps the signing date (preferred for a
+   *  date block); 'date' is a free date input. */
+  type: 'signature' | 'initials' | 'date' | 'date_signed' | 'text';
   /** Email of the recipient who should fill this field */
   recipientEmail: string;
   /** Which document (0-indexed) */
@@ -106,6 +107,11 @@ export interface CreateEnvelopeInput {
   signers: ESignSigner[];
   /** Field placements */
   fields: ESignField[];
+  /** Organization that owns this envelope (REQUIRED — the real org id from the
+   *  authenticated/business context, never derived from the entity id). */
+  organizationId: string;
+  /** User who triggered the envelope (defaults to 'system' for automated flows). */
+  createdByUserId?: string;
   /** Source module triggering the e-sign */
   sourceModule: ESignSourceModule;
   /** Type of entity in the source module */

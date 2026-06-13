@@ -705,7 +705,12 @@ export default function EnhancedProjectWizard() {
               />
             </Panel>
 
-            <Panel title="MILESTONE FRAMEWORK (GOVERNANCE)">
+            <Panel title="PROJECT PLAN — PHASES & MILESTONES">
+              <p className="text-xs text-zinc-400 mb-3">
+                A structured Ghana construction plan (phases + statutory milestones like EPA/building permits,
+                inspections and the habitation certificate) is applied automatically based on the project type.
+                Pick a different framework below to override it — you can edit every phase and milestone after setup.
+              </p>
               <FrameworkSelector
                 organizationId="default"
                 projectType={formData.projectType}

@@ -31,6 +31,8 @@ import {
     Percent
 } from 'lucide-react'
 import { propertyManagementApi } from '@/lib/property-management-api'
+import { RateStamp } from '@/components/property-management/RateStamp'
+import { useExchangeRates } from '@/lib/use-exchange-rates'
 import {
     PortfolioMetrics,
     PortfolioComposition,
@@ -75,6 +77,8 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function PortfoliosPage() {
+    // Properties keep their listed currency in the registry; the footer total normalizes to GHS.
+    const { fx, toGHS } = useExchangeRates();
     const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
     const [composition, setComposition] = useState<PortfolioComposition | null>(null);
     const [leaseSummary, setLeaseSummary] = useState<LeasePortfolioSummary | null>(null);
@@ -155,6 +159,18 @@ export default function PortfoliosPage() {
         return `GH₵${val}`;
     };
 
+    // Per-property amounts stay in their listed currency (e.g. US$1,200).
+    const formatNative = (val: number, currency?: string | null) =>
+        new Intl.NumberFormat('en-GH', {
+            style: 'currency',
+            currency: (currency || 'GHS').toUpperCase(),
+            maximumFractionDigits: 0
+        }).format(val);
+
+    // GH₵ equivalent shown beneath a non-GHS native amount; null when already GHS.
+    const ghsEquivalent = (price: number, currency?: string | null) =>
+        (currency || 'GHS').toUpperCase() === 'GHS' ? null : `≈ ${formatCurrency(toGHS(price || 0, currency))}`;
+
     // Calculate additional metrics
     const avgPropertyValue = metrics?.totalValue && metrics?.totalProperties
         ? metrics.totalValue / metrics.totalProperties
@@ -208,6 +224,7 @@ export default function PortfoliosPage() {
                             <div>
                                 <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Total Portfolio Value</p>
                                 <h2 className="text-3xl font-black text-white font-mono tracking-tight">{formatCurrency(metrics?.totalValue || 0)}</h2>
+                                <RateStamp fx={metrics?.fx} className="mt-1 block" />
                                 <div className="flex items-center gap-2 mt-2">
                                     {(metrics?.valueTrend || 0) >= 0 ? (
                                         <span className="text-xs text-emerald-500 font-mono inline-flex items-center bg-emerald-500/10 px-2 py-0.5 rounded">
@@ -687,7 +704,10 @@ export default function PortfoliosPage() {
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <span className="font-semibold text-zinc-200">{formatCurrency(property.price)}</span>
+                                            <span className="font-semibold text-zinc-200">{formatNative(property.price, property.priceCurrency)}</span>
+                                            {ghsEquivalent(property.price, property.priceCurrency) && (
+                                                <span className="block text-[9px] text-zinc-500 font-normal">{ghsEquivalent(property.price, property.priceCurrency)}</span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-zinc-800/50">
@@ -746,7 +766,8 @@ export default function PortfoliosPage() {
                                 Showing {filteredProperties.length} of {properties.length} properties
                             </p>
                             <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-500">
-                                <span>Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + (p.price || 0), 0))}</span></span>
+                                <RateStamp fx={fx} />
+                                <span>Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + toGHS(p.price || 0, p.priceCurrency), 0))}</span></span>
                             </div>
                         </div>
                     )}

@@ -328,6 +328,9 @@ export const addTeamMemberSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().max(20).optional(),
   role: z.string().max(50),
+  // Relationship to the org, independent of discipline: 'staff' = internal
+  // employee, 'external' = invited outside collaborator. Omitted → inferred.
+  member_type: z.enum(['staff', 'external']).optional(),
   permissions: z.array(z.string()).optional(),
   hourly_rate: z.number().positive().optional(),
   currency: z.enum(['GHS', 'USD', 'EUR', 'GBP']).default('GHS'),

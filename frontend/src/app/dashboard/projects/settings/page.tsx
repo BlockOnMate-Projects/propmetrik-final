@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
+import { humanize } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { useI18n } from '@/providers/i18n-provider'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,7 +19,9 @@ import {
     Palette,
     Globe,
     Columns,
+    PenLine,
 } from 'lucide-react'
+import { EsignSettingsManager } from '@/components/projects/EsignSettingsManager'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -212,6 +215,7 @@ export default function ProjectSettingsPage() {
                     <TabsTrigger value="security" className="font-mono text-xs"><Shield className="h-3 w-3 mr-1" />Security</TabsTrigger>
                     <TabsTrigger value="display" className="font-mono text-xs"><Palette className="h-3 w-3 mr-1" />Display</TabsTrigger>
                     <TabsTrigger value="custom-fields" className="font-mono text-xs"><Columns className="h-3 w-3 mr-1" />Custom Fields</TabsTrigger>
+                    <TabsTrigger value="esign" className="font-mono text-xs"><PenLine className="h-3 w-3 mr-1" />E-Signature</TabsTrigger>
                 </TabsList>
 
                 {/* General Tab */}
@@ -258,7 +262,7 @@ export default function ProjectSettingsPage() {
                                     <div><p className="text-[10px] font-mono text-zinc-500">EMAIL</p><p className="text-sm text-white">{profile?.email}</p></div>
                                 </div>
                                 <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                                    <div><p className="text-[10px] font-mono text-zinc-500">ROLE</p><p className="text-sm text-white capitalize">{profile?.role || 'user'}</p></div>
+                                    <div><p className="text-[10px] font-mono text-zinc-500">ROLE</p><p className="text-sm text-white">{humanize(profile?.role) || 'User'}</p></div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -418,6 +422,11 @@ export default function ProjectSettingsPage() {
                 {/* Custom Fields Tab */}
                 <TabsContent value="custom-fields" className="space-y-6 mt-6">
                     <CustomFieldsManager />
+                </TabsContent>
+
+                {/* E-Signature Tab */}
+                <TabsContent value="esign" className="space-y-6 mt-6">
+                    <EsignSettingsManager />
                 </TabsContent>
             </Tabs>
         </div>

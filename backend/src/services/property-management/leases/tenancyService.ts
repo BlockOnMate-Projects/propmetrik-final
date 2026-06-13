@@ -493,6 +493,8 @@ export class TenancyService {
             }],
             signers,
             fields: eSignFields,
+            organizationId,
+            createdByUserId: userId,
             sourceModule: 'property_management',
             sourceEntityType: 'tenancy',
             sourceEntityId: tenancy.id,

@@ -59,6 +59,37 @@ export function clearApiTokenCache() {
   _tokenFetchedAt = 0;
 }
 
+/**
+ * Like fetchApi but returns the raw response Blob (e.g. for PDF/file downloads).
+ * Shares the same auth-token + base-URL logic; throws on non-2xx with the
+ * server's error message when available.
+ */
+export async function fetchApiBlob(
+  endpoint: string,
+  options?: RequestInit
+): Promise<Blob> {
+  const url = `${API_BASE}${endpoint}`;
+  const token = await getAuthToken();
+  const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: { ...authHeaders, ...options?.headers },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Network error' }));
+    const message = error.error?.message || error.error || error.message || `HTTP ${response.status}`;
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+  }
+
+  return response.blob();
+}
+
 export async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit

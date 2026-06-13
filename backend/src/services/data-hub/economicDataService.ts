@@ -158,12 +158,40 @@ export class EconomicDataService {
    */
   async getLatest(indicatorType: EconomicIndicatorType): Promise<EconomicIndicator | null> {
     const result = await query<EconomicIndicator>(
-      `SELECT * FROM economic_indicators 
+      `SELECT * FROM economic_indicators
        WHERE indicator_type = $1
        ORDER BY effective_date DESC LIMIT 1`,
       [indicatorType]
     );
     return result.rows[0] || null;
+  }
+
+  /**
+   * Latest official Bank of Ghana DAILY interbank rate for a currency, if any.
+   * Restricted to period_type='daily' + a Bank of Ghana source: the monthly
+   * end-period series (period 'monthly') is excluded as too stale for settlement,
+   * and the daily-save writer is guarded never to overwrite these rows.
+   */
+  private async getLatestDailyBankOfGhanaRate(
+    fromCurrency: string
+  ): Promise<EconomicIndicator | null> {
+    const indicatorType = `exchange_rate_${fromCurrency.toLowerCase()}`;
+    const result = await query<EconomicIndicator>(
+      `SELECT * FROM economic_indicators
+       WHERE indicator_type = $1
+         AND period_type = 'daily'
+         AND source_name ILIKE 'Bank of Ghana%'
+         AND value > 0
+       ORDER BY effective_date DESC LIMIT 1`,
+      [indicatorType]
+    );
+    return result.rows[0] || null;
+  }
+
+  /** True if `date` is within the last `days` days (tolerates same-day/just-future). */
+  private isWithinDays(date: Date, days: number): boolean {
+    const diffDays = (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays < days;
   }
 
   /**
@@ -251,11 +279,25 @@ export class EconomicDataService {
    * Get current exchange rate - LIVE DATA ONLY, no fallback to mock/default values
    */
   async getExchangeRate(fromCurrency: string, toCurrency: string = 'GHS'): Promise<ExchangeRate> {
-    // Try to get from database first (cached from previous live fetches)
-    const indicator = await this.getLatest(
-      `exchange_rate_${fromCurrency.toLowerCase()}` as EconomicIndicatorType
-    );
+    const indicatorType = `exchange_rate_${fromCurrency.toLowerCase()}` as EconomicIndicatorType;
 
+    // 1. Source of truth: the official Bank of Ghana DAILY interbank rate, when a
+    //    recent one has been scraped. BoG publishes business-daily, so allow a few
+    //    days to bridge weekends/holidays. (period 'daily' + a Bank of Ghana source;
+    //    the live daily-save is guarded never to overwrite these rows.)
+    const bogDaily = await this.getLatestDailyBankOfGhanaRate(fromCurrency);
+    if (bogDaily && this.isWithinDays(bogDaily.effective_date, 5)) {
+      return {
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        rate: bogDaily.value,
+        date: bogDaily.effective_date,
+        source: bogDaily.source_name,
+      };
+    }
+
+    // 2. Any recent rate cached from a prior live fetch.
+    const indicator = await this.getLatest(indicatorType);
     if (indicator && this.isRecent(indicator.effective_date, 'daily')) {
       return {
         from_currency: fromCurrency,
@@ -266,7 +308,7 @@ export class EconomicDataService {
       };
     }
 
-    // Get live rate from FX Feed Service (Yahoo Finance / ForexRate-API)
+    // 3. Live chain (Polygon → ForexRate-API → Yahoo → free Currency API → DB last-known)
     const liveRate = await fxFeedService.getCurrentRate(fromCurrency.toUpperCase());
     
     if (liveRate && liveRate.rate > 0) {

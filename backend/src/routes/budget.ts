@@ -15,7 +15,8 @@ import { budgetAnalyticsService } from '../services/project-management/budgetAna
 import { invoiceService, InvoiceStatus } from '../services/project-management/invoiceService';
 import { expenseLogService, ExpenseType, ExpenseStatus } from '../services/project-management/expenseLogService';
 import { logger } from '../utils/logger';
-import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, enforceFinancialsParamAccess, requirePMWrite } from '../middleware/pmAuth';
+import { generateInvoicePdf, InvoicePdfData } from '../utils/invoicePdfGenerator';
 import { validate } from '../middleware/validation';
 import { createExpenseSchema, updateExpenseSchema, createBudgetInvoiceSchema } from '../middleware/pmProjectValidation';
 
@@ -23,6 +24,12 @@ const router = Router();
 
 // Register UUID parameter validation
 registerPMParamValidation(router);
+// Budget routes keyed by :projectId are financial — gate by project membership
+// AND can_view_financials. Membership param guard runs first (attaches
+// req.projectAccess), then the financials-permission guard. Owners/PMs + org
+// admins pass automatically.
+registerProjectAccessParams(router, ['projectId']);
+router.param('projectId', enforceFinancialsParamAccess);
 
 // ============================================================================
 // BUDGET ANALYTICS
@@ -666,13 +673,15 @@ router.post('/invoices/:id/pay', requirePMWrite, async (req: Request, res: Respo
       });
     }
     
-    const invoice = await invoiceService.markAsPaid(
-      req.params.id,
-      paidDate ? new Date(paidDate) : new Date(),
-      paymentReference,
-      paymentMethod
-    );
-    
+    // Route through confirmPayment so a manual "mark paid" also writes a linked
+    // ledger row (reconciliation parity with gateway-confirmed payments).
+    const { invoice } = await invoiceService.confirmPayment(req.params.id, paymentReference, {
+      method: paymentMethod || 'manual',
+      channel: paymentMethod || 'manual',
+      provider: 'manual',
+      paidDate: paidDate ? new Date(paidDate) : new Date(),
+    });
+
     res.json({
       success: true,
       data: invoice,
@@ -734,6 +743,67 @@ router.post('/invoices/:id/send', requirePMWrite, async (req: Request, res: Resp
     res.status(error.message?.includes('not found') ? 404 : 500).json({
       success: false,
       error: error.message || 'Failed to send invoice',
+    });
+  }
+});
+
+/**
+ * POST /budget/invoices/render-pdf
+ * Render an invoice as a downloadable PDF (PDFKit) and stream it back.
+ * Accepts the live invoice payload so it works BEFORE the invoice is saved
+ * (the builder lets users download while drafting). Produces the same
+ * artifact that sendInvoice() attaches to the client email.
+ */
+router.post('/invoices/render-pdf', async (req: Request, res: Response) => {
+  try {
+    const b = req.body || {};
+    const lineItems = Array.isArray(b.lineItems) ? b.lineItems : [];
+    if (lineItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one line item is required to generate a PDF',
+      });
+    }
+
+    const pdfData: InvoicePdfData = {
+      invoiceNumber: b.invoiceNumber || 'DRAFT',
+      issueDate: b.issueDate || b.invoiceDate || '',
+      dueDate: b.dueDate || '',
+      currency: b.currency || 'GHS',
+      vendorCompany: b.vendorCompany || 'PROPMETRIK',
+      vendorEmail: b.vendorEmail,
+      clientName: b.clientName || 'Client',
+      clientEmail: b.clientEmail,
+      lineItems: lineItems.map((li: any) => ({
+        description: li.description || 'Line item',
+        qty: Number(li.qty ?? li.quantity ?? 1),
+        unit: li.unit,
+        unitRate: Number(li.unitRate ?? li.unit_price ?? 0),
+        amount: li.amount != null ? Number(li.amount) : undefined,
+      })),
+      subtotal: Number(b.subtotal || 0),
+      taxAmount: b.taxAmount != null ? Number(b.taxAmount) : undefined,
+      discount: b.discount != null ? Number(b.discount) : undefined,
+      retention: b.retention != null ? Number(b.retention) : undefined,
+      platformFee: b.platformFee != null ? Number(b.platformFee) : undefined,
+      totalDue: Number(b.totalDue || 0),
+      projectName: b.projectName,
+      notes: b.notes,
+      terms: b.terms,
+      paymentLink: b.paymentLink,
+    };
+
+    const pdf = await generateInvoicePdf(pdfData);
+    const safeNumber = String(pdfData.invoiceNumber).replace(/[^a-zA-Z0-9_-]/g, '-');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${safeNumber}.pdf"`);
+    res.setHeader('Content-Length', pdf.length);
+    res.send(pdf);
+  } catch (error: any) {
+    logger.error('Error rendering invoice PDF', { error });
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to render invoice PDF',
     });
   }
 });

@@ -12,6 +12,7 @@ import {
     ROIAnalysis
 } from '../../../types/property-management.types';
 import { AppError } from '../../../middleware/errorHandler';
+import { getGhsRateMap, ghsHistoricalValueSql } from '../utils/currencyFx';
 
 export class FinancialService {
     /**
@@ -175,12 +176,17 @@ export class FinancialService {
         startDate: string,
         endDate: string
     ): Promise<CashFlowAnalysis> {
+        // Normalize mixed-currency records to GHS before summing. These are realized
+        // transactions, so each row converts at the rate as of its own transaction date.
+        const fx = await getGhsRateMap();
+        const amountGhs = ghsHistoricalValueSql('amount', 'currency', 'transaction_date', fx);
+
         // 1. Get Totals from financial records
         const query = `
-      SELECT 
-        record_type, 
+      SELECT
+        record_type,
         COALESCE(income_category::text, expense_category::text) as category,
-        SUM(amount) as total
+        SUM(${amountGhs}) as total
       FROM property_financial_records
       WHERE organization_id = $1
       AND transaction_date BETWEEN $2 AND $3
@@ -231,10 +237,10 @@ export class FinancialService {
         // 2. Get Monthly Breakdown (financial records + utility charges combined)
         const monthlyQuery = `
       WITH financial_monthly AS (
-        SELECT 
+        SELECT
           TO_CHAR(transaction_date, 'YYYY-MM') as month,
-          SUM(CASE WHEN record_type = 'income' THEN amount ELSE 0 END) as income,
-          SUM(CASE WHEN record_type = 'expense' THEN amount ELSE 0 END) as expenses
+          SUM(CASE WHEN record_type = 'income' THEN ${amountGhs} ELSE 0 END) as income,
+          SUM(CASE WHEN record_type = 'expense' THEN ${amountGhs} ELSE 0 END) as expenses
         FROM property_financial_records
         WHERE organization_id = $1
         AND transaction_date BETWEEN $2 AND $3

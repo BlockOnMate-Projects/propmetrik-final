@@ -22,6 +22,31 @@ registerPMParamValidation(router);
 // DRAWINGS
 // ============================================================================
 
+// List ALL drawings across every project in the org (the "All Projects" view).
+router.get('/drawings', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getAuthOrgId(req);
+    const { status, discipline, search, limit = '200' } = req.query;
+
+    let query = `SELECT d.*,
+      (SELECT COUNT(*) FROM drawing_revisions WHERE drawing_id = d.id) as revision_count,
+      (SELECT p.name FROM development_projects p WHERE p.id = d.project_id) as project_name,
+      (SELECT dr.created_at FROM drawing_revisions dr WHERE dr.drawing_id = d.id ORDER BY dr.created_at DESC LIMIT 1) as submitted_at,
+      (SELECT COALESCE(dr.approved_at, dr.reviewed_at) FROM drawing_revisions dr WHERE dr.drawing_id = d.id AND (dr.approved_at IS NOT NULL OR dr.reviewed_at IS NOT NULL) ORDER BY COALESCE(dr.approved_at, dr.reviewed_at) DESC LIMIT 1) as reviewed_at
+      FROM project_drawings d WHERE d.organization_id = $1`;
+    const params: any[] = [orgId];
+    let idx = 2;
+    if (status) { query += ` AND d.status = $${idx++}`; params.push(status); }
+    if (discipline) { query += ` AND d.discipline = $${idx++}`; params.push(discipline); }
+    if (search) { query += ` AND (d.title ILIKE $${idx} OR d.drawing_number ILIKE $${idx})`; params.push(`%${search}%`); idx++; }
+    query += ` ORDER BY d.created_at DESC LIMIT $${idx++}`;
+    params.push(parseInt(limit as string, 10));
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows, total: result.rows.length });
+  } catch (error) { next(error); }
+});
+
 // List drawings for a project
 router.get('/projects/:projectId/drawings', async (req: Request, res: Response, next: NextFunction) => {
   try {

@@ -20,6 +20,7 @@ import { FinancialService } from '../services/property-management/financial-repo
 import { advancedFinancialService } from '../services/property-management/financial-reporting/advancedFinancialService';
 import { PortfolioService } from '../services/property-management/portfolios/portfolioService';
 import { propertyService } from '../services/property-management/properties/propertyService';
+import { getGhsRateMap, fxMeta } from '../services/property-management/utils/currencyFx';
 import {
     validate,
     clampPagination,
@@ -1654,6 +1655,16 @@ router.get('/financials/roi/:propertyId', asyncHandler(async (req: Request, res:
 // =====================================================
 
 /**
+ * GET /api/v1/pm/fx/rates
+ * Live GHS conversion rates (USD/EUR/GBP -> GHS) for currency-aware client aggregates.
+ * Used by pages that compute totals client-side (e.g. the Property Assets registry).
+ */
+router.get('/fx/rates', asyncHandler(async (_req: Request, res: Response) => {
+    const map = await getGhsRateMap();
+    res.json(fxMeta(map));
+}));
+
+/**
  * GET /api/v1/pm/portfolio/overview
  * Get Portfolio Overview Metrics
  */
@@ -1724,41 +1735,16 @@ router.post('/payments/initialize', paymentRateLimit, validate(pmInitializePayme
 }));
 
 /**
- * POST /api/v1/pm/payments/webhook
- * Paystack Webhook Handler
+ * Paystack webhook — INTENTIONALLY REMOVED from this router.
+ *
+ * This router is mounted behind `authenticate` + `requireServiceAccess` (see
+ * index.ts: `app.use('/api/v1/pm', authenticate, …)`), so an unauthenticated
+ * Paystack callback to `/api/v1/pm/payments/webhook` was 401'd before reaching
+ * the handler — it never worked in production. The canonical, PUBLIC webhook is
+ *   POST /api/v1/webhooks/paystack   (src/routes/webhooks.ts)
+ * which verifies the HMAC signature and records via the same
+ * idempotent `verifyAndRecordPayment`. Point the Paystack dashboard there.
  */
-router.post('/payments/webhook', asyncHandler(async (req: Request, res: Response) => {
-    const signature = req.headers['x-paystack-signature'] as string;
-    if (!signature) {
-        return res.status(401).json({ error: 'No signature provided' });
-    }
-
-    // Import dynamically
-    const { paystackService } = await import('../services/property-management/payment/paystackService');
-    const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
-
-    // Verify signature
-    if (!paystackService.verifyWebhookSignature(signature, req.body)) {
-        return res.status(401).json({ error: 'Invalid signature' });
-    }
-
-    // Handle event
-    const event = req.body;
-    if (event.event === 'charge.success') {
-        try {
-            await paymentProcessor.verifyAndRecordPayment(event.data.reference);
-            // Respond 200 OK to Paystack
-            res.status(200).send();
-        } catch (error) {
-            console.error('Webhook processing failed:', error);
-            // Still return 200 to acknowledge receipt, otherwise Paystack retries
-            res.status(200).send();
-        }
-    } else {
-        // Ignore other events for now
-        res.status(200).send();
-    }
-}));
 
 // =====================================================
 // ENTERPRISE FEATURES: PROPERTY CRUD EXTENSIONS
@@ -1903,6 +1889,21 @@ router.get('/reports/aged-receivables', asyncHandler(async (req: Request, res: R
 
     const result = await reportingService.getAgedReceivablesReport(organizationId);
     res.json(result);
+}));
+
+/**
+ * GET /api/v1/pm/reports/portfolio-financial
+ * Generate the branded portfolio-level financial report as a PDF download.
+ */
+router.get('/reports/portfolio-financial', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const period = typeof req.query.period === 'string' ? req.query.period : undefined;
+    const { generatePortfolioFinancialReportPdf } = await import('../services/property-management/reporting/portfolioFinancialReportService');
+
+    const pdf = await generatePortfolioFinancialReportPdf(organizationId, { period });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="portfolio-financial-report.pdf"');
+    res.send(pdf);
 }));
 
 /**

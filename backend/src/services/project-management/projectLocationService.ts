@@ -31,6 +31,7 @@ import { geocodingService } from '../data-hub/geocodingService';
 
 // Import project service types
 import { CreateProjectInput, DevelopmentProject, ProjectType } from './projectService';
+import { getDefaultPhasesForType, classifyMilestone, PhaseTemplate } from './projectDefaults';
 
 // ============================================================================
 // TYPES
@@ -546,17 +547,16 @@ class ProjectLocationService {
       
       const project = this.mapRowExtended(result.rows[0]);
       
-      // If phase template specified, create phases from template
-      if (enrichedInput.phase_template_id) {
-        await this.createPhasesFromTemplate(
-          client, 
-          id, 
-          enrichedInput.organization_id, 
-          enrichedInput.phase_template_id,
-          enrichedInput.planned_start_date,
-          enrichedInput.created_by
-        );
-      }
+      // Seed a structured phase + milestone plan. Use the explicitly chosen
+      // template when present, otherwise auto-apply the sensible default for the
+      // project type so every new project starts with a real plan (not blank).
+      const seeded = await this.seedPhasesAndMilestones(client, id, enrichedInput.organization_id, {
+        templateId: enrichedInput.phase_template_id,
+        projectType: enrichedInput.project_type,
+        startDate: enrichedInput.planned_start_date,
+        createdBy: enrichedInput.created_by,
+      });
+      logger.info('Seeded project plan', { projectId: id, phases: seeded.phases, milestones: seeded.milestones });
       
       await client.query('COMMIT');
       
@@ -1068,48 +1068,140 @@ class ProjectLocationService {
   // HELPER METHODS
   // --------------------------------------------------------------------------
 
-  private async createPhasesFromTemplate(
+  /**
+   * Generate a phase + milestone plan for an EXISTING project (one created
+   * before auto-seeding, or that was left blank). No-op if the project already
+   * has phases, unless `force` is set. Used by the Gantt "Generate Schedule"
+   * action so old projects get a real, draggable schedule.
+   */
+  async generateScheduleForProject(
+    projectId: string,
+    organizationId: string,
+    opts: { templateId?: string; createdBy?: string; force?: boolean } = {}
+  ): Promise<{ seeded: boolean; phases: number; milestones: number; reason?: string }> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const proj = await client.query(
+        `SELECT id, organization_id, project_type, planned_start_date
+           FROM development_projects WHERE id = $1`,
+        [projectId]
+      );
+      if (proj.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return { seeded: false, phases: 0, milestones: 0, reason: 'not_found' };
+      }
+      const row = proj.rows[0];
+      if (organizationId && row.organization_id !== organizationId) {
+        await client.query('ROLLBACK');
+        return { seeded: false, phases: 0, milestones: 0, reason: 'not_found' };
+      }
+
+      const existing = await client.query(
+        'SELECT COUNT(*)::int AS n FROM project_phases WHERE project_id = $1',
+        [projectId]
+      );
+      if (existing.rows[0].n > 0 && !opts.force) {
+        await client.query('ROLLBACK');
+        return { seeded: false, phases: existing.rows[0].n, milestones: 0, reason: 'already_has_phases' };
+      }
+
+      const result = await this.seedPhasesAndMilestones(client, projectId, row.organization_id, {
+        templateId: opts.templateId,
+        projectType: row.project_type,
+        startDate: row.planned_start_date ? new Date(row.planned_start_date) : undefined,
+        createdBy: opts.createdBy,
+      });
+
+      await client.query('COMMIT');
+      logger.info('Generated schedule for existing project', { projectId, ...result });
+      return { seeded: true, ...result };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      logger.error('generateScheduleForProject failed', { projectId, error });
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Seed a project's phases AND their statutory/construction milestones.
+   * Resolves the phase set from an explicit template id when given, otherwise
+   * from the default framework for the project type. Each phase's embedded
+   * milestone labels become real project_milestones rows (typed + Ghana-tagged),
+   * targeted at the phase's planned end date.
+   */
+  private async seedPhasesAndMilestones(
     client: any,
     projectId: string,
     organizationId: string,
-    templateId: string,
-    startDate?: Date,
-    createdBy?: string
-  ): Promise<void> {
-    const templateResult = await client.query(
-      'SELECT phases FROM project_phase_templates WHERE id = $1',
-      [templateId]
-    );
-    
-    if (templateResult.rows.length === 0) {
-      return;
+    opts: { templateId?: string; projectType?: string; startDate?: Date; createdBy?: string }
+  ): Promise<{ phases: number; milestones: number }> {
+    // Resolve the phase set.
+    let phases: PhaseTemplate[] = [];
+    if (opts.templateId) {
+      const tpl = await client.query('SELECT phases FROM project_phase_templates WHERE id = $1', [opts.templateId]);
+      if (tpl.rows.length > 0 && Array.isArray(tpl.rows[0].phases)) {
+        phases = tpl.rows[0].phases as PhaseTemplate[];
+      }
     }
-    
-    const phases = templateResult.rows[0].phases as any[];
-    let currentDate = startDate ? new Date(startDate) : new Date();
-    
+    if (phases.length === 0) {
+      phases = getDefaultPhasesForType(opts.projectType);
+    }
+    if (phases.length === 0) {
+      return { phases: 0, milestones: 0 };
+    }
+
+    let currentDate = opts.startDate ? new Date(opts.startDate) : new Date();
+    let milestoneCount = 0;
+
     for (const phase of phases) {
       const plannedEndDate = new Date(currentDate);
       plannedEndDate.setDate(plannedEndDate.getDate() + (phase.duration_days || 30));
-      
+      const phaseId = uuidv4();
+      const milestoneLabels: string[] = Array.isArray(phase.milestones) ? phase.milestones : [];
+
       await client.query(
         `INSERT INTO project_phases (
           id, project_id, organization_id,
-          phase_number, name, weight, duration_days,
+          phase_number, name, description, weight, duration_days,
           planned_start_date, planned_end_date,
-          color, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          color, milestones, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
-          uuidv4(), projectId, organizationId,
-          phase.phase_number, phase.name, phase.weight, phase.duration_days,
+          phaseId, projectId, organizationId,
+          phase.phase_number, phase.name, phase.description || null, phase.weight, phase.duration_days,
           currentDate, plannedEndDate,
-          phase.color || '#3B82F6', createdBy
+          phase.color || '#3B82F6', JSON.stringify(milestoneLabels), opts.createdBy
         ]
       );
-      
+
+      // Each milestone label → a real, dated, typed milestone on this phase.
+      for (let i = 0; i < milestoneLabels.length; i++) {
+        const label = milestoneLabels[i];
+        const { milestone_type, is_ghana_specific } = classifyMilestone(label);
+        await client.query(
+          `INSERT INTO project_milestones (
+            project_id, phase_id, organization_id,
+            name, target_date, status, milestone_type,
+            is_ghana_specific, is_from_template, milestone_code, created_by
+          ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, true, $8, $9)`,
+          [
+            projectId, phaseId, organizationId,
+            label, plannedEndDate, milestone_type,
+            is_ghana_specific, `M${phase.phase_number}-${i + 1}`, opts.createdBy
+          ]
+        );
+        milestoneCount++;
+      }
+
       currentDate = new Date(plannedEndDate);
       currentDate.setDate(currentDate.getDate() + 1);
     }
+
+    return { phases: phases.length, milestones: milestoneCount };
   }
 
   private inferCityFromDistrict(district?: string, region?: string): string | undefined {

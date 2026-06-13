@@ -762,7 +762,8 @@ router.post('/payments/calculate-fee', requireTenantAuth, asyncHandler(async (re
     const organizationId = tenancyResult.rows[0].organization_id;
 
     try {
-        const fee = await paymentProcessor.calculateFee('rent', amount, organizationId, 'organization');
+        // Uses the same FX normalization as the charge, so the quote matches what's billed.
+        const fee = await paymentProcessor.previewRentFee(tenancyId, organizationId, amount);
         res.json(fee);
     } catch (error: any) {
         res.status(400).json({ error: error.message });
