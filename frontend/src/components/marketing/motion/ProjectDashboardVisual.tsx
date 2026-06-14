@@ -57,7 +57,7 @@ export default function ProjectDashboardVisual() {
     }, []);
 
     return (
-        <div className="relative w-full rounded-xl overflow-hidden bg-background border border-border p-6">
+        <div className="dark relative w-full rounded-xl overflow-hidden bg-background border border-border p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>

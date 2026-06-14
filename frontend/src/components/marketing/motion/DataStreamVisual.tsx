@@ -7,7 +7,7 @@ export default function DataStreamVisual() {
     const dataPoints = Array.from({ length: 8 }, (_, i) => i);
 
     return (
-        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gradient-to-br from-zinc-950 to-zinc-900">
+        <div className="dark relative w-full aspect-video rounded-lg overflow-hidden bg-gradient-to-br from-background to-background">
             {/* Flowing Data Streams */}
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 450">
                 {streams.map((_, index) => {
@@ -88,7 +88,7 @@ export default function DataStreamVisual() {
                         >
                             <motion.div
                                 animate={{
-                                    opacity: [0.5, 1, 0.5],
+                                    opacity: [0.75, 1, 0.75],
                                 }}
                                 transition={{
                                     duration: 2,
@@ -96,7 +96,7 @@ export default function DataStreamVisual() {
                                     repeat: Infinity,
                                     ease: "easeInOut"
                                 }}
-                                className="text-xs text-primary uppercase tracking-wider"
+                                className="text-xs text-indigo-300 font-semibold uppercase tracking-wider"
                             >
                                 {label}
                             </motion.div>

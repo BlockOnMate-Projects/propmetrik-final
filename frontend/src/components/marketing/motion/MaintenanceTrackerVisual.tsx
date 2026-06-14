@@ -36,7 +36,7 @@ export default function MaintenanceTrackerVisual() {
     }, []);
 
     return (
-        <div className="bg-background border border-border rounded-xl overflow-hidden">
+        <div className="dark bg-background border border-border rounded-xl overflow-hidden">
             {/* Header */}
             <div className="px-5 py-3 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">

@@ -33,7 +33,7 @@ export default function ResourcesPage() {
             {/* Hero */}
             <section className="relative pt-32 pb-20 overflow-hidden">
                 {/* Background glow */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/20 via-zinc-950 to-zinc-950" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/20 via-background to-background" />
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-3xl" />
 
                 <div className="relative max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">

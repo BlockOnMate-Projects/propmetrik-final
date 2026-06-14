@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 export default function MarketTrendsVisual() {
     return (
-        <div className="relative w-full h-[400px] bg-card rounded-xl border border-border p-6 overflow-hidden flex flex-col shadow-2xl">
+        <div className="dark relative w-full h-[400px] bg-card rounded-xl border border-border p-6 overflow-hidden flex flex-col shadow-2xl">
             {/* Header */}
             <div className="flex justify-between items-center mb-6 z-10">
                 <div>

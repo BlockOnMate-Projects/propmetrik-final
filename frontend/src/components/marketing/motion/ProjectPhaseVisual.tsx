@@ -56,7 +56,7 @@ export default function ProjectPhaseVisual() {
     }, [activePhase]);
 
     return (
-        <div className="relative w-full rounded-xl overflow-hidden bg-background border border-border p-8">
+        <div className="dark relative w-full rounded-xl overflow-hidden bg-background border border-border p-8">
             {/* Phase selector */}
             <div className="flex gap-1 mb-8">
                 {PHASES.map((phase, i) => (

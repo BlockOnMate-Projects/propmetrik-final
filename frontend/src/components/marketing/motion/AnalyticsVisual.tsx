@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 export default function AnalyticsVisual() {
     return (
-        <div className="relative w-full h-[400px] bg-card rounded-xl border border-border p-6 overflow-hidden flex flex-col gap-6 shadow-2xl">
+        <div className="dark relative w-full h-[400px] bg-card rounded-xl border border-border p-6 overflow-hidden flex flex-col gap-6 shadow-2xl">
             {/* Header UI */}
             <div className="flex justify-between items-center mb-2">
                 <div className="h-4 w-32 bg-muted rounded animate-pulse" />

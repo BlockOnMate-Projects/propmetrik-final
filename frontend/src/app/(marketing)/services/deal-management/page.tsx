@@ -97,7 +97,7 @@ export default function DealManagementPage() {
     return (
         <main>
             {/* ====== Hero ====== */}
-            <section className="relative pt-32 pb-24 overflow-hidden dark bg-background">
+            <section className="relative pt-32 pb-24 overflow-hidden bg-background">
                 <div className="absolute inset-0">
                     <motion.div
                         animate={{ scale: [1, 1.06, 1] }}
@@ -110,7 +110,7 @@ export default function DealManagementPage() {
                             className="w-full h-full object-cover opacity-15"
                         />
                     </motion.div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/90 to-zinc-950/70" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background/70" />
                 </div>
 
                 <div className="container mx-auto px-4 md:px-6 relative z-10">

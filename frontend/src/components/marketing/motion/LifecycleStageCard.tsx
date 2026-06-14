@@ -100,8 +100,8 @@ export default function LifecycleStageCard({ stage, depth, isActive }: Lifecycle
                     }}
                 />
                 {/* Gradient overlays */}
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/30 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-transparent to-transparent" />
             </div>
 
             {/* Border frame */}

@@ -10,12 +10,20 @@ export default function Footer() {
                     {/* Brand Column */}
                     <div className="lg:col-span-2 min-w-0">
                         <Link href="/" className="inline-block mb-8">
+                            {/* Theme-aware: dark-text logo on the light footer, white-text logo on the dark footer */}
+                            <Image
+                                src="/branding/logo-transparent.svg"
+                                alt="PROPMETRIK Logo"
+                                width={180}
+                                height={50}
+                                className="h-12 w-auto object-contain dark:hidden"
+                            />
                             <Image
                                 src="/branding/logo-dark-bg.svg"
                                 alt="PROPMETRIK Logo"
                                 width={180}
                                 height={50}
-                                className="h-12 w-auto object-contain"
+                                className="h-12 w-auto object-contain hidden dark:block"
                             />
                         </Link>
                         <p className="text-muted-foreground text-lg leading-relaxed max-w-sm mb-8">

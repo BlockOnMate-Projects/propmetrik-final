@@ -5,10 +5,10 @@ import Link from 'next/link';
 
 export default function HeroSection() {
     return (
-        <section className="relative h-screen w-full overflow-hidden flex items-center justify-center dark bg-background text-foreground">
+        <section className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-background text-foreground">
             {/* Background with abstract motion */}
             <div className="absolute inset-0 z-0">
-                <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 to-zinc-950/50 z-10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background/90 to-background/50 z-10" />
                 <motion.div
                     animate={{
                         scale: [1, 1.1, 1],

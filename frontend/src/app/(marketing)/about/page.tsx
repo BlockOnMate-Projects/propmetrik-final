@@ -14,7 +14,6 @@ import {
     Building2,
     TrendingUp,
     Database,
-    Linkedin,
 } from 'lucide-react';
 
 const fade = {
@@ -59,13 +58,9 @@ const values = [
     { icon: <Lightbulb className="w-5 h-5" />, title: 'Impact', body: 'Success measured by how many people and institutions trust the market.' },
 ];
 
-const milestones = [
-    { year: '2026 Q1', title: 'Founded in Accra', body: 'PROPMETRIK launches to formalise Ghana\'s real estate data.' },
-    { year: '2026 Q1', title: 'Data Hub', body: 'Verified property data, standardised and accessible via API.' },
-    { year: '2026 Q2', title: 'AI Valuation Engine', body: 'Automated Valuation Model with professional review.' },
-    { year: '2026 Q3', title: 'Deal Management', body: 'End-to-end CRM for brokers, developers, and property managers.' },
-    { year: '2026 Q4', title: 'Blockchain Title Registry', body: 'Immutable on-chain records for ownership and transaction history.' },
-    { year: '2027 · Goal', title: 'West Africa Expansion', body: 'Planned: extending coverage to Nigeria, Côte d\'Ivoire, and Kenya.' },
+const roadmap = [
+    { tag: 'In development', title: 'Blockchain Title Registry', body: 'Immutable, on-chain records for ownership and transaction history — making title verification instant and fraud far harder.' },
+    { tag: '2027 target', title: 'West Africa Expansion', body: 'Extending verified coverage beyond Ghana to Nigeria, Côte d\'Ivoire, and Kenya.' },
 ];
 
 export default function AboutPage() {
@@ -146,23 +141,24 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Our journey */}
+            {/* Roadmap */}
             <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
-                        <Eyebrow>Our journey</Eyebrow>
-                        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-14 max-w-3xl">
-                            From founding to West Africa.
+                        <Eyebrow>Roadmap</Eyebrow>
+                        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 max-w-3xl">
+                            What we&apos;re building next.
                         </h2>
+                        <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mb-14">
+                            The platform formalising Ghana&apos;s real estate today is the foundation for what comes next.
+                        </p>
                     </motion.div>
-                    <div className="space-y-px bg-card border border-border rounded-xl overflow-hidden">
-                        {milestones.map((m) => (
-                            <motion.div key={m.title} {...fade} className="bg-background grid sm:grid-cols-[160px_1fr] gap-2 sm:gap-8 p-7">
-                                <div className="text-sm font-bold text-amber-500 uppercase tracking-wider">{m.year}</div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-foreground mb-1">{m.title}</h3>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">{m.body}</p>
-                                </div>
+                    <div className="grid sm:grid-cols-2 gap-px bg-card border border-border rounded-xl overflow-hidden">
+                        {roadmap.map((r) => (
+                            <motion.div key={r.title} {...fade} className="bg-background p-7">
+                                <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 rounded-full px-3 py-1 mb-4">{r.tag}</span>
+                                <h3 className="text-lg font-bold text-foreground mb-1.5">{r.title}</h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed">{r.body}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -186,51 +182,6 @@ export default function AboutPage() {
                                 </div>
                                 <h3 className="text-lg font-bold text-foreground mb-2">{v.title}</h3>
                                 <p className="text-sm text-muted-foreground leading-relaxed">{v.body}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Founder */}
-            <section className="py-24 border-b border-border">
-                <div className="container mx-auto px-6 max-w-5xl">
-                    <motion.div {...fade}>
-                        <Eyebrow>Who&apos;s building it</Eyebrow>
-                        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 max-w-3xl">
-                            Two founders, one mission.
-                        </h2>
-                        <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mb-12">
-                            Standardising how property is valued, recorded, and transacted across Ghana and West Africa.
-                        </p>
-                    </motion.div>
-                    <div className="grid sm:grid-cols-2 gap-6">
-                        {[
-                            { initials: 'ED', name: 'Eric Inkoom Danso', role: 'Co-founder', linkedin: 'https://linkedin.com/in/eidanso' },
-                            { initials: 'DA', name: 'Dela Anthonio', role: 'Co-founder', linkedin: '' },
-                        ].map((f) => (
-                            <motion.div
-                                key={f.name}
-                                {...fade}
-                                className="bg-card border border-border rounded-lg p-7 flex items-center gap-5"
-                            >
-                                <div className="w-16 h-16 shrink-0 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-400 flex items-center justify-center text-xl font-black text-zinc-950">
-                                    {f.initials}
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-foreground">{f.name}</h3>
-                                    <div className="text-amber-500 font-medium text-sm mb-2">{f.role}</div>
-                                    {f.linkedin && (
-                                        <a
-                                            href={f.linkedin}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-500 transition-colors"
-                                        >
-                                            <Linkedin className="w-3.5 h-3.5" /> LinkedIn
-                                        </a>
-                                    )}
-                                </div>
                             </motion.div>
                         ))}
                     </div>

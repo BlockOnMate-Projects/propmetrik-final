@@ -148,7 +148,7 @@ export default function BlogPage() {
                                                 transition={{ delay: index * 0.05 }}
                                                 className="group bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors h-full"
                                             >
-                                                <div className="aspect-video bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                                                <div className="aspect-video bg-gradient-to-br from-zinc-800 to-background flex items-center justify-center">
                                                     {post.cover_image_url ? (
                                                         // eslint-disable-next-line @next/next/no-img-element
                                                         <img src={post.cover_image_url} alt={post.title} className="w-full h-full object-cover" />

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 export default function DealWorkflow() {
     return (
-        <div className="relative w-full h-[400px] bg-card rounded-xl border border-border p-8 flex items-center justify-center overflow-hidden">
+        <div className="dark relative w-full h-[400px] bg-card rounded-xl border border-border p-8 flex items-center justify-center overflow-hidden">
             {/* Background Grid */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
 

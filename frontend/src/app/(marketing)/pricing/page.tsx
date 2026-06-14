@@ -252,7 +252,7 @@ export default function PricingPage() {
                                     transition={{ delay: idx * 0.1 }}
                                     className={`relative rounded-2xl p-6 flex flex-col ${
                                         isHighlighted
-                                            ? 'bg-gradient-to-b from-amber-500/10 to-zinc-900 border-2 border-amber-500/40 shadow-lg shadow-amber-500/5'
+                                            ? 'bg-gradient-to-b from-amber-500/10 to-background border-2 border-amber-500/40 shadow-lg shadow-amber-500/5'
                                             : 'bg-card border border-border hover:border-border'
                                     }`}
                                 >
