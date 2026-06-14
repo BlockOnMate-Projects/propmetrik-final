@@ -46,7 +46,7 @@ export default function PremiumCTASection({
                         className="w-full h-full object-cover opacity-20"
                     />
                 </motion.div>
-                <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/95 to-zinc-950" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background" />
             </div>
 
             {/* Content */}

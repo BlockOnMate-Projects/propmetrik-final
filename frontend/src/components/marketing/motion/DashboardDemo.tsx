@@ -15,7 +15,7 @@ export default function DashboardDemo() {
     }, [tabs.length]);
 
     return (
-        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-card border border-border">
+        <div className="dark relative w-full aspect-video rounded-lg overflow-hidden bg-card border border-border">
             {/* Dashboard Header */}
             <div className="bg-background border-b border-border p-4">
                 <div className="flex items-center justify-between">

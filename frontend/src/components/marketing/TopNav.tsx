@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useTheme } from 'next-themes';
+import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function TopNav() {
@@ -12,9 +14,14 @@ export default function TopNav() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const { scrollY } = useScroll();
     const pathname = usePathname();
+    const { theme, resolvedTheme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
     // Detect if we're on a white background page (marketplace or property detail)
     const isWhiteBackground = pathname?.startsWith('/marketplace') || pathname?.startsWith('/apply');
+    // Light nav (white bg) OR light theme → use the dark-text logo so it's readable.
+    const useLightLogo = isWhiteBackground || (mounted && resolvedTheme !== 'dark');
 
     useMotionValueEvent(scrollY, "change", (latest) => {
         setIsScrolled(latest > 50);
@@ -31,7 +38,6 @@ export default function TopNav() {
         { name: 'Services', href: '/services' },
         { name: 'About', href: '/about' },
         { name: 'Pricing', href: '/pricing' },
-        { name: 'Contact', href: '/contact' },
         {
             name: 'Insights',
             href: '/insights',
@@ -69,7 +75,7 @@ export default function TopNav() {
             <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2">
                     <Image
-                        src={isWhiteBackground ? "/branding/logo-transparent.svg" : "/branding/logo-dark-bg.svg"}
+                        src={useLightLogo ? "/branding/logo-transparent.svg" : "/branding/logo-dark-bg.svg"}
                         alt="PROPMETRIK Logo"
                         width={200}
                         height={55}
@@ -123,6 +129,31 @@ export default function TopNav() {
                 </nav>
 
                 <div className="flex items-center gap-3 sm:gap-6">
+                    {mounted && (
+                        <div className="flex items-center gap-0.5 rounded-full bg-muted p-0.5">
+                            {([
+                                { id: 'light', icon: Sun, label: 'Light' },
+                                { id: 'dark', icon: Moon, label: 'Dark' },
+                                { id: 'system', icon: Monitor, label: 'System' },
+                            ] as const).map(({ id, icon: Icon, label }) => (
+                                <button
+                                    key={id}
+                                    onClick={() => setTheme(id)}
+                                    aria-label={`${label} theme`}
+                                    aria-pressed={theme === id}
+                                    title={label}
+                                    className={cn(
+                                        "p-1.5 rounded-full transition-colors",
+                                        theme === id
+                                            ? "bg-background text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Icon className="w-3.5 h-3.5" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     <Link
                         href="/login"
                         className={cn(

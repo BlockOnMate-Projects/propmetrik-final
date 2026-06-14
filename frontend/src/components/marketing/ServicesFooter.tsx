@@ -94,7 +94,7 @@ export default function ServicesFooter() {
                                     <div className="absolute inset-0 scale-[0.55] origin-center pointer-events-none">
                                         <service.Visual />
                                     </div>
-                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-zinc-900/90" />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90" />
                                 </div>
 
                                 {/* Content */}
