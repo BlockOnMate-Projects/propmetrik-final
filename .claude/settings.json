@@ -55,7 +55,9 @@
       "Bash(find maintenance *)",
       "Bash(find tenants *)",
       "Bash(find financials *)",
-      "Bash(find . -type d \\\\\\( -iname \"*lease*\" -o -iname \"*report*\" -o -iname \"*payment*\" \\\\\\))"
+      "Bash(find . -type d \\\\\\( -iname \"*lease*\" -o -iname \"*report*\" -o -iname \"*payment*\" \\\\\\))",
+      "Bash(gh run *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

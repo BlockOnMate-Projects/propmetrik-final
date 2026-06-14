@@ -228,7 +228,7 @@ export default function PropertyApplicationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-card pt-16 md:pt-20">
+    <div className="min-h-screen bg-card pt-24 sm:pt-28 md:pt-32">
       {/* Header with Back Button and Share */}
       <div className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-4 py-4">
