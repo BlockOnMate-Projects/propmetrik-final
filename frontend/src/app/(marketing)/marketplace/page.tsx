@@ -142,7 +142,7 @@ export default function MarketplacePage() {
     <div className="min-h-screen bg-card">
       {/* Hero Search Section */}
       <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 border-b border-indigo-800">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 sm:pb-12">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-28 sm:pt-36 md:pt-44 pb-12 sm:pb-16 md:pb-20">
           <div className="max-w-4xl mx-auto text-center mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 sm:mb-4">
               Discover Your Dream Property

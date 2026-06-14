@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root,
+  .light {
     /* Light Mode (Default) — Institutional Premium */
+    /* `.light` lets a subtree (e.g. the public marketplace storefront) force light
+       tokens even when an ancestor (<html>) is `.dark`. CSS custom properties resolve
+       to the nearest ancestor that defines them, so `.light` overrides `.dark` locally. */
     --background: 0 0% 100%;
     /* White */
     --foreground: 222 47% 11%;

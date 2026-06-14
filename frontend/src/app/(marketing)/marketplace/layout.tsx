@@ -5,9 +5,11 @@ export default function MarketplaceLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // This layout overrides parent to exclude ServicesFooter and Footer
+  // This layout overrides parent to exclude ServicesFooter and Footer.
+  // The public marketplace storefront always renders LIGHT, regardless of the
+  // global light/dark/system toggle — the `light` class forces light tokens.
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-foreground">
+    <div className="light [color-scheme:light] flex flex-col min-h-screen bg-background text-foreground">
       <TopNav />
       <main className="flex-1">
         {children}
