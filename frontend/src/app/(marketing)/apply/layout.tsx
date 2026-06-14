@@ -6,7 +6,9 @@ export default function ApplyLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-foreground">
+    // The public application flow always renders LIGHT, regardless of the global
+    // light/dark/system toggle — the `light` class forces light tokens.
+    <div className="light [color-scheme:light] flex flex-col min-h-screen bg-background text-foreground">
       <TopNav />
       {children}
     </div>

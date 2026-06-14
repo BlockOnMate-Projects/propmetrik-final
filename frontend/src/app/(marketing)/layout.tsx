@@ -15,7 +15,9 @@ export default function MarketingLayout({
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <TopNav />
+      {/* Marketplace + property-detail render their OWN (forced-light) TopNav in their
+          child layout, so skip the parent nav there to avoid a duplicate stacked nav. */}
+      {!isMarketplace && !isPropertyDetail && <TopNav />}
       {children}
       {/* Footer hidden on marketplace / property-detail pages.
           The services showcase lives on the home page only — not globally. */}
