@@ -429,13 +429,33 @@ export class DealService {
 
             params.push(dealId, organizationId);
 
-            const result = await db.query<Deal>(
-                `UPDATE deals
-         SET ${updates.join(', ')}
-         WHERE id = $${paramIndex} AND organization_id = $${paramIndex + 1} AND deleted_at IS NULL
-         RETURNING *`,
-                params
-            );
+            // Legacy commission/closing-rate triggers on `deals` reference a
+            // non-existent table (agent_commission_assignments) and break won/lost/
+            // closed updates. Disable them for this UPDATE inside a transaction
+            // (rolled back on error → triggers stay enabled), exactly as
+            // updateDealStage already does.
+            const client = await db.getClient();
+            let result: { rows: Deal[] };
+            try {
+                await client.query('BEGIN');
+                await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_deal_commission');
+                await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_update_agent_closing_rate');
+                result = await client.query<Deal>(
+                    `UPDATE deals
+             SET ${updates.join(', ')}
+             WHERE id = $${paramIndex} AND organization_id = $${paramIndex + 1} AND deleted_at IS NULL
+             RETURNING *`,
+                    params
+                );
+                await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_deal_commission');
+                await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_update_agent_closing_rate');
+                await client.query('COMMIT');
+            } catch (txErr) {
+                await client.query('ROLLBACK').catch(() => {});
+                throw txErr;
+            } finally {
+                client.release();
+            }
 
             if (result.rows.length === 0) {
                 throw new Error('Deal not found or unauthorized');
@@ -470,10 +490,105 @@ export class DealService {
                 }
             }
 
+            // PM↔CRM bridge close-the-loop: a WON deal on a bridged PM property marks
+            // that PM property sold + delists it, and closes sibling open enquiries.
+            if (data.deal_status === 'won') {
+                try {
+                    await this.closeLoopOnWonDeal(organizationId, updatedDeal);
+                } catch (loopErr: any) {
+                    logger.warn('Failed to close PM loop on won deal (non-fatal)', { dealId, error: loopErr.message });
+                }
+            }
+
             return updatedDeal;
         } catch (error) {
             logger.error('Error updating deal', { error, dealId, organizationId });
             throw error;
+        }
+    }
+
+    /**
+     * When a deal that references a BRIDGED crm_property (one mirrored from a PM
+     * property via source_pm_property_id) is won, flow the outcome back to PM:
+     *   • mark the PM property sold (sold_price/sold_at) + delist from marketplace
+     *   • mark the CRM mirror sold
+     *   • mark the winning enquiry converted, and sibling open enquiries lost
+     * No-op for native CRM deals (no source_pm_property_id) — PM is untouched.
+     */
+    private async closeLoopOnWonDeal(organizationId: string, deal: any): Promise<void> {
+        const crmPropertyIds: string[] = Array.isArray(deal?.property_ids) ? deal.property_ids : [];
+        if (crmPropertyIds.length === 0) return;
+
+        const soldPrice = deal?.deal_value != null ? Number(deal.deal_value) : null;
+        // A bridged deal is only ever 'sale' or 'rental' (lease is modelled as 'rental').
+        // Rentals/leases never reach here as native rentals (those aren't bridged), so a
+        // 'rental' deal_type here means a won LEASE → mark the PM property 'rented'.
+        const isLeaseDeal = (deal?.deal_type || '').toLowerCase() === 'rental';
+        const crmSoldStatus = isLeaseDeal ? 'rented' : 'sold';
+
+        // Resolve which of the deal's crm_properties are bridge mirrors of a PM property.
+        const bridged = await db.query(
+            `SELECT id::text AS crm_property_id, source_pm_property_id::text AS pm_property_id
+               FROM crm_properties
+              WHERE id = ANY($1::uuid[])
+                AND source_pm_property_id IS NOT NULL
+                AND organization_id = $2`,
+            [crmPropertyIds, organizationId],
+        );
+
+        for (const row of bridged.rows) {
+            const pmId = row.pm_property_id;
+            const crmId = row.crm_property_id;
+
+            // 1. Mark the PM property sold/rented + delist. sold_price/sold_at only for a sale.
+            if (isLeaseDeal) {
+                await db.query(
+                    `UPDATE properties
+                        SET status = 'rented',
+                            marketplace_enabled = FALSE,
+                            updated_at = CURRENT_TIMESTAMP
+                      WHERE id = $1::uuid AND organization_id = $2`,
+                    [pmId, organizationId],
+                );
+            } else {
+                await db.query(
+                    `UPDATE properties
+                        SET status = 'sold',
+                            sold_at = NOW(),
+                            sold_price = COALESCE($2, sold_price, price),
+                            marketplace_enabled = FALSE,
+                            updated_at = CURRENT_TIMESTAMP
+                      WHERE id = $1::uuid AND organization_id = $3`,
+                    [pmId, soldPrice, organizationId],
+                );
+            }
+
+            // 2. Mark the CRM mirror sold/rented.
+            await db.query(
+                `UPDATE crm_properties
+                    SET status = $2, status_changed_at = NOW(), updated_at = NOW()
+                  WHERE id = $1::uuid`,
+                [crmId, crmSoldStatus],
+            );
+
+            // 3. Winning enquiry → converted; sibling OPEN enquiries on the same PM property → lost.
+            await db.query(
+                `UPDATE property_inquiries
+                    SET status = 'converted', updated_at = NOW()
+                  WHERE deal_id = $1::uuid`,
+                [deal.id],
+            );
+            await db.query(
+                `UPDATE property_inquiries
+                    SET status = 'lost', updated_at = NOW()
+                  WHERE property_id = $1::uuid
+                    AND organization_id = $2
+                    AND status IN ('new', 'contacted', 'qualified')
+                    AND (deal_id IS NULL OR deal_id <> $3::uuid)`,
+                [pmId, organizationId, deal.id],
+            );
+
+            logger.info('PM loop closed on won deal', { dealId: deal.id, pmPropertyId: pmId, crmPropertyId: crmId, soldPrice });
         }
     }
 

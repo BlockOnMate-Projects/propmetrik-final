@@ -70,6 +70,12 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
+// Public, token-scoped tenant-application routes (NO auth). Prospective tenants have no
+// account, so these must NOT sit behind `authenticate` — otherwise they 401 in production
+// (dev masks it via the dev-mode auth bypass). Mounted in index.ts BEFORE the authed
+// `/api/v1/pm` router so these specific paths resolve without authentication.
+export const propertyManagementPublicRouter = Router();
+
 const propertyPhotoUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 },
@@ -223,6 +229,81 @@ router.get('/properties', asyncHandler(async (req: Request, res: Response) => {
 
     const properties = await propertyService.listProperties(organizationId);
     res.json(properties);
+}));
+
+/**
+ * GET /api/v1/pm/enquiries
+ * List sale/lease (and other) enquiries captured against this org's properties.
+ * This is the PM-side lead inbox — works whether or not the org has CRM.
+ */
+router.get('/enquiries', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const status = typeof req.query.status === 'string' ? req.query.status : null;
+    const params: any[] = [organizationId];
+    let statusClause = '';
+    if (status && status !== 'all') {
+        params.push(status);
+        statusClause = `AND pi.status = $${params.length}`;
+    }
+
+    const result = await db.query(
+        `SELECT pi.id::text,
+                pi.name, pi.email, pi.phone, pi.message,
+                pi.inquiry_type, pi.transaction_type::text AS transaction_type,
+                pi.offer_amount, pi.offer_currency, pi.status,
+                pi.deal_id::text AS deal_id,
+                pi.created_at, pi.responded_at,
+                pi.property_id::text AS property_id,
+                p.title AS property_title,
+                p.address_city AS property_city
+           FROM property_inquiries pi
+           LEFT JOIN properties p ON p.id = pi.property_id AND p.region = pi.property_region
+          WHERE pi.organization_id = $1
+            ${statusClause}
+          ORDER BY pi.created_at DESC
+          LIMIT 200`,
+        params,
+    );
+
+    res.json({ enquiries: result.rows });
+}));
+
+/**
+ * PATCH /api/v1/pm/enquiries/:id
+ * Update an enquiry's status (e.g. mark contacted / lost). Scoped to the org.
+ */
+router.patch('/enquiries/:id', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = await getUserId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const allowed = ['new', 'contacted', 'qualified', 'converted', 'closed', 'lost'];
+    const status = req.body?.status;
+    if (!status || !allowed.includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const result = await db.query(
+        `UPDATE property_inquiries
+            SET status = $1,
+                responded_at = CASE WHEN $1 <> 'new' AND responded_at IS NULL THEN NOW() ELSE responded_at END,
+                responded_by = CASE WHEN $1 <> 'new' AND responded_by IS NULL THEN $2::uuid ELSE responded_by END,
+                updated_at = NOW()
+          WHERE id = $3::uuid AND organization_id = $4
+          RETURNING id::text`,
+        [status, userId || null, req.params.id, organizationId],
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Enquiry not found' });
+    }
+    res.json({ success: true, id: result.rows[0].id });
 }));
 
 /**
@@ -2987,7 +3068,7 @@ router.delete('/application-links/:id', asyncHandler(async (req: Request, res: R
  * GET /api/v1/pm/application-links/:token/validate
  * Validate an application link token (public)
  */
-router.get('/application-links/:token/validate', asyncHandler(async (req: Request, res: Response) => {
+propertyManagementPublicRouter.get('/application-links/:token/validate', asyncHandler(async (req: Request, res: Response) => {
     const result = await applicationService.validateApplicationLink(req.params.token);
     res.json(result);
 }));
@@ -2997,7 +3078,7 @@ router.get('/application-links/:token/validate', asyncHandler(async (req: Reques
  * Upload an ID/supporting document during a tenant application (public, token-scoped).
  * Returns an S3 object ref the apply step stores in uploaded_documents.
  */
-router.post('/application-links/:token/documents', documentUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+propertyManagementPublicRouter.post('/application-links/:token/documents', documentUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'Document file is required' });
 
@@ -3032,7 +3113,7 @@ router.post('/application-links/:token/documents', documentUpload.single('file')
  * Submit an application via application link token (public - no auth required)
  * This is the endpoint tenants use when submitting from the Tenant Portal
  */
-router.post('/application-links/:token/apply', asyncHandler(async (req: Request, res: Response) => {
+propertyManagementPublicRouter.post('/application-links/:token/apply', asyncHandler(async (req: Request, res: Response) => {
     try {
         const application = await applicationService.createApplicationFromLink(req.params.token, req.body);
         res.status(201).json(application);
@@ -3048,7 +3129,7 @@ router.post('/application-links/:token/apply', asyncHandler(async (req: Request,
  * GET /api/v1/pm/applications/public/:token
  * Get application status by application token (public - for tenant status tracking)
  */
-router.get('/applications/public/:token', asyncHandler(async (req: Request, res: Response) => {
+propertyManagementPublicRouter.get('/applications/public/:token', asyncHandler(async (req: Request, res: Response) => {
     const application = await applicationService.getApplicationByToken(req.params.token);
     if (!application) {
         return res.status(404).json({ error: 'Application not found or token expired' });

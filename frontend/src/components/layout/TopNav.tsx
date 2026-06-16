@@ -96,7 +96,8 @@ function UserMenu({
     ? session.user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : session?.user?.email?.[0]?.toUpperCase() || '?'
 
-  const admin = isAdminRole(userRole)
+  // Admin shortcuts require platform-staff (PropMetrik employee), not just the role.
+  const admin = isAdminRole(userRole) && (session?.user as any)?.userType === 'staff'
 
   return (
     <div ref={ref} className="relative">
@@ -410,8 +411,9 @@ export function TopNav() {
   // Access the upgrade gate for tier-gating navigation clicks
   const { navigateOrGate } = useUpgradeGate()
 
-  // Determine user type + subscribed services for customer navigation
-  const userType = (effectiveSession?.user as any)?.userType || 'staff'
+  // Determine user type + subscribed services for customer navigation.
+  // Least-privilege default: missing/unknown → 'customer' (never 'staff').
+  const userType = (effectiveSession?.user as any)?.userType || 'customer'
   const subscribedServices: string[] = (effectiveSession?.user as any)?.subscribedServices || []
 
   // Show all tabs the user's ROLE allows (based on RBAC).
@@ -420,8 +422,8 @@ export function TopNav() {
   const visibleNavigation = mounted
     ? (sessionReady
       ? (userType === 'customer'
-        ? buildCustomerNavigation(navigation, subscribedServices)
-        : navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey)))
+        ? buildCustomerNavigation(navigation, subscribedServices).filter(item => !item.adminOnly)
+        : navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey) && (!item.adminOnly || userType === 'staff')))
       : navigation.filter(item => !item.adminOnly))
     : navigation.filter(item => !item.adminOnly)
 

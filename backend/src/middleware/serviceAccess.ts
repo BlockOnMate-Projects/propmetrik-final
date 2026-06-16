@@ -204,3 +204,92 @@ export function requireServiceAccess(serviceKey: string) {
 export function clearServiceAccessCache(userId: string): void {
   subscriptionCache.delete(userId);
 }
+
+// Org-level entitlement cache: orgId|serviceKey → { has, ts }
+const orgServiceCache = new Map<string, { has: boolean; ts: number }>();
+
+/**
+ * Does an ORGANIZATION have access to a platform service?
+ *
+ * Used by the PM↔CRM bridge to decide whether a PM for-sale listing should be
+ * mirrored into the org's CRM/Deals pipeline. An org "has" a service when:
+ *   - it is the platform org (PropMetrik staff org — has everything), OR
+ *   - the service is a 'shared' (base/free) service, OR
+ *   - any member of the org holds an active subscription for that service_key,
+ *     OR an active subscription row is scoped directly to the organization.
+ *
+ * Fail-closed: on error returns false (no accidental CRM mirroring). Cached 60s.
+ */
+export async function orgHasService(organizationId: string | null | undefined, serviceKey: string): Promise<boolean> {
+  if (!organizationId) return false;
+
+  const cacheKey = `${organizationId}|${serviceKey}`;
+  const now = Date.now();
+  const cached = orgServiceCache.get(cacheKey);
+  if (cached && (now - cached.ts) < CACHE_TTL) {
+    return cached.has;
+  }
+
+  let has = false;
+  try {
+    const { pool } = await import('../database');
+
+    // Platform org has all services.
+    const orgRes = await pool.query(
+      'SELECT is_platform_org FROM organizations WHERE id = $1',
+      [organizationId],
+    );
+    if (orgRes.rows.length > 0 && orgRes.rows[0].is_platform_org === true) {
+      has = true;
+    }
+
+    // Shared (base/free) services are always available.
+    if (!has) {
+      const svcRes = await pool.query(
+        'SELECT id, category FROM platform_services WHERE service_key = $1',
+        [serviceKey],
+      );
+      if (svcRes.rows.length > 0) {
+        if (svcRes.rows[0].category === 'shared') {
+          has = true;
+        } else {
+          const serviceId = svcRes.rows[0].id;
+          // Active subscription scoped to the org OR held by any org member.
+          const subRes = await pool.query(
+            `SELECT 1
+               FROM user_service_subscriptions uss
+              WHERE uss.service_id = $1
+                AND uss.status = 'active'
+                AND (uss.expires_at IS NULL OR uss.expires_at > NOW())
+                AND (
+                  uss.organization_id = $2
+                  OR uss.user_id IN (SELECT id FROM users WHERE organization_id = $2)
+                )
+              LIMIT 1`,
+            [serviceId, organizationId],
+          );
+          has = subRes.rows.length > 0;
+        }
+      }
+    }
+  } catch (err: any) {
+    logger.error('orgHasService check failed', { organizationId, serviceKey, error: err.message });
+    return false; // fail-closed
+  }
+
+  orgServiceCache.set(cacheKey, { has, ts: now });
+  return has;
+}
+
+/**
+ * Clear the org-service entitlement cache (e.g., after granting/revoking a subscription).
+ */
+export function clearOrgServiceCache(organizationId?: string): void {
+  if (!organizationId) {
+    orgServiceCache.clear();
+    return;
+  }
+  for (const key of orgServiceCache.keys()) {
+    if (key.startsWith(`${organizationId}|`)) orgServiceCache.delete(key);
+  }
+}

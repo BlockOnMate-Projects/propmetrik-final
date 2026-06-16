@@ -34,7 +34,7 @@ interface Property {
   title: string;
   description?: string;
   property_type: string;
-  transaction_type: 'rental' | 'sale';
+  transaction_type: 'rental' | 'sale' | 'lease';
   address: string;
   city: string;
   region: string;
@@ -284,7 +284,7 @@ export default function PropertyApplicationPage() {
             {!property.digital_address && <div className="mb-2" />}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <span className="px-2 sm:px-3 py-1 bg-muted text-gray-700 rounded-md text-xs sm:text-sm font-medium">
-                For {property.transaction_type === 'rental' ? 'Rent' : 'Sale'}
+                For {property.transaction_type === 'rental' ? 'Rent' : property.transaction_type === 'lease' ? 'Lease' : 'Sale'}
               </span>
               <span className="px-2 sm:px-3 py-1 bg-muted text-gray-700 rounded-md text-xs sm:text-sm font-medium">
                 {formatPropertyType(property.property_type)}
@@ -303,7 +303,7 @@ export default function PropertyApplicationPage() {
                 {formatPrice(property.price, property.currency)}
               </div>
               <div className="text-sm text-muted-foreground">
-                {property.transaction_type === 'rental' ? 'per month' : 'total price'}
+                {property.transaction_type === 'rental' ? 'per month' : property.transaction_type === 'lease' ? 'lease price' : 'asking price'}
               </div>
             </div>
 
@@ -314,13 +314,13 @@ export default function PropertyApplicationPage() {
               </div>
             )}
 
-            {/* PM rental properties → redirect to tenant portal */}
-            {property.source === 'pm' ? (
+            {/* PM RENTAL → tenant application. Everything else (PM sale/lease, CRM) → enquiry / offer form. */}
+            {property.source === 'pm' && property.transaction_type === 'rental' ? (
               <>
                 <button
                   onClick={handleStartApplication}
                   disabled={applying}
-                  className="w-full py-3 bg-indigo-600 text-foreground rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {applying ? (
                     <>
@@ -339,7 +339,7 @@ export default function PropertyApplicationPage() {
                 </p>
               </>
             ) : (
-              /* CRM sale properties → inline inquiry form */
+              /* Sale / lease listings → inline enquiry / offer form */
               <ApplicationForm property={property} token={token} />
             )}
           </div>
@@ -640,8 +640,8 @@ export default function PropertyApplicationPage() {
                           <MapPin className="w-8 h-8" />
                         </div>
                       )}
-                      <span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-semibold text-foreground ${sp.transaction_type === 'rental' ? 'bg-emerald-500' : 'bg-indigo-600'}`}>
-                        {sp.transaction_type === 'rental' ? 'RENT' : 'SALE'}
+                      <span className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-semibold text-white ${sp.transaction_type === 'rental' ? 'bg-emerald-500' : sp.transaction_type === 'lease' ? 'bg-amber-500' : 'bg-indigo-600'}`}>
+                        {sp.transaction_type === 'rental' ? 'RENT' : sp.transaction_type === 'lease' ? 'LEASE' : 'SALE'}
                       </span>
                     </div>
                     <div className="p-4">

@@ -59,8 +59,8 @@ export default function PublicationsAnalyticsPage() {
           {analytics.publications_by_type.length === 0 ? (
             <div className="text-muted-foreground font-mono text-sm">No type analytics yet.</div>
           ) : (
-            analytics.publications_by_type.map((item) => (
-              <div key={item.type} className="flex items-center justify-between border border-border bg-background/60 px-3 py-2">
+            analytics.publications_by_type.map((item, idx) => (
+              <div key={`${item.type ?? 'unknown'}-${idx}`} className="flex items-center justify-between border border-border bg-background/60 px-3 py-2">
                 <span className="text-sm text-muted-foreground font-mono">{item.type}</span>
                 <span className="text-sm text-foreground font-mono">{item.count}</span>
               </div>

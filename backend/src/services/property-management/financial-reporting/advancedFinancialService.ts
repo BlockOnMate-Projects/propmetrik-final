@@ -59,11 +59,12 @@ export interface IRRAnalysis {
   initialInvestment: number;
   annualCashFlows: number[];
   terminalValue: number;
-  irr: number;
-  npv: number;
+  /** null when there are no real cash flows / the solver did not converge (insufficient data). */
+  irr: number | null;
+  npv: number | null;
   discountRate: number;
   paybackPeriod: number | null;
-  profitabilityIndex: number;
+  profitabilityIndex: number | null;
 }
 
 export interface CashOnCashAnalysis {
@@ -99,6 +100,20 @@ export interface PropertyFinancialSummary {
   capRate: CapRateAnalysis;
   cashOnCash: CashOnCashAnalysis;
   dscr?: DSCRAnalysis;
+  /** Actual recorded income/expense over `periodStart`–`periodEnd` (the trailing 12 months).
+   *  Single source of truth for the UI's cash-flow cards AND the summary so they can't disagree. */
+  cashFlow: {
+    totalIncome: number;
+    totalExpenses: number;
+    netCashFlow: number;
+    periodStart: string;
+    periodEnd: string;
+  };
+  occupancy: {
+    rate: number;
+    occupiedUnits: number;
+    totalUnits: number;
+  };
   benchmarks: {
     marketCapRate: number;
     marketNOIPerSqft: number;
@@ -456,17 +471,24 @@ export class AdvancedFinancialService {
     const pvInflows = npv + initialInvestment;
     const profitabilityIndex = initialInvestment > 0 ? pvInflows / initialInvestment : 0;
 
+    // Guard against meaningless outputs when the property has no real cash flows (NOI 0 →
+    // all-zero projections). Without income data, IRR/NPV/PI are undefined — return null so
+    // the UI shows "—" instead of the solver's seed (a fake 10%) or a bare -investment NPV.
+    const hasCashFlow =
+      annualCashFlows.some(cf => Math.abs(cf) > 1e-6) || Math.abs(terminalValue) > 1e-6;
+    const irrConverged = hasCashFlow && Number.isFinite(irr);
+
     return {
       propertyId,
       holdingPeriodYears,
       initialInvestment,
       annualCashFlows,
       terminalValue: parseFloat(terminalValue.toFixed(2)),
-      irr: parseFloat((irr * 100).toFixed(2)),
-      npv: parseFloat(npv.toFixed(2)),
+      irr: irrConverged ? parseFloat((irr * 100).toFixed(2)) : null,
+      npv: hasCashFlow ? parseFloat(npv.toFixed(2)) : null,
       discountRate,
       paybackPeriod: paybackPeriod ? parseFloat(paybackPeriod.toFixed(1)) : null,
-      profitabilityIndex: parseFloat(profitabilityIndex.toFixed(2))
+      profitabilityIndex: hasCashFlow ? parseFloat(profitabilityIndex.toFixed(2)) : null
     };
   }
 
@@ -506,8 +528,11 @@ export class AdvancedFinancialService {
       if (dnpv === 0) break;
       rate = rate - npv / dnpv;
     }
-    
-    return rate;
+
+    // Did not converge to a root. The most common cause is all-zero cash flows (no income
+    // data), which makes the derivative 0 on the first iteration — return NaN rather than
+    // leaking the initial guess (0.1) out as a fake "10%" IRR.
+    return NaN;
   }
 
   /**
@@ -711,6 +736,22 @@ export class AdvancedFinancialService {
     const areaSqft = (parseFloat(sizeRes.rows[0]?.total_area_sqm || '0') * 10.764) || 1;
     const noiPerSqft = noi.netOperatingIncome / areaSqft;
 
+    // Actual recorded cash flow over the SAME trailing-12-month window used for NOI above.
+    // This is the single source the UI reads for both the cash-flow cards and this summary,
+    // so the two sections can never show contradictory income/expense figures.
+    const periodStart = startDate.toISOString().split('T')[0];
+    const periodEnd = endDate.toISOString().split('T')[0];
+    const cfRes = await db.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN record_type = 'income'  THEN amount ELSE 0 END), 0) AS total_income,
+         COALESCE(SUM(CASE WHEN record_type = 'expense' THEN amount ELSE 0 END), 0) AS total_expenses
+       FROM property_financial_records
+       WHERE property_id = $1 AND transaction_date BETWEEN $2 AND $3`,
+      [propertyId, periodStart, periodEnd]
+    );
+    const totalIncome = parseFloat(cfRes.rows[0]?.total_income || '0');
+    const totalExpenses = parseFloat(cfRes.rows[0]?.total_expenses || '0');
+
     return {
       propertyId,
       propertyName: propRes.rows[0].title,
@@ -720,6 +761,18 @@ export class AdvancedFinancialService {
       capRate,
       cashOnCash,
       dscr,
+      cashFlow: {
+        totalIncome: parseFloat(totalIncome.toFixed(2)),
+        totalExpenses: parseFloat(totalExpenses.toFixed(2)),
+        netCashFlow: parseFloat((totalIncome - totalExpenses).toFixed(2)),
+        periodStart,
+        periodEnd
+      },
+      occupancy: {
+        rate: parseFloat(occupancyRate.toFixed(1)),
+        occupiedUnits,
+        totalUnits
+      },
       benchmarks: {
         marketCapRate,
         marketNOIPerSqft: parseFloat(noiPerSqft.toFixed(2)),

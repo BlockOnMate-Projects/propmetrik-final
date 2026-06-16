@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   Globe,
   Check,
@@ -204,40 +205,32 @@ export default function IntegrationsPage() {
   const [health, setHealth] = useState<Record<string, string>>({})
   const [healthLoading, setHealthLoading] = useState(true)
 
-  /* ── Fetch health from backend ── */
+  /* ── Fetch real per-integration status from backend (config presence + core live probes) ── */
   const loadHealth = useCallback(async () => {
     setHealthLoading(true)
     try {
-      const res = await fetch('/api/health')
+      const res = await authedFetch('/api/admin/integrations/health')
       if (res.ok) {
-        const data = await res.json()
-        const h: Record<string, string> = {}
-        if (data.services) {
-          for (const [k, v] of Object.entries(data.services)) {
-            h[k] = (v as { status?: string })?.status || 'unknown'
-          }
-        }
-        // Also check top-level keys
-        if (data.database) h['postgres'] = data.database === 'ok' ? 'connected' : 'degraded'
-        if (data.redis) h['redis'] = data.redis === 'ok' ? 'connected' : 'degraded'
-        if (data.minio) h['minio'] = data.minio === 'ok' ? 'connected' : 'degraded'
-        setHealth(h)
+        const json = (await res.json()) as { data: Record<string, string> }
+        setHealth(json.data || {})
       }
     } catch { /* ignore */ } finally { setHealthLoading(false) }
   }, [])
 
   useEffect(() => { loadHealth() }, [loadHealth])
 
-  /* ── Apply health status overrides ── */
-  const integrations = INTEGRATIONS.map((int) => {
-    if (health[int.id]) {
-      const s = health[int.id]
-      if (s === 'ok' || s === 'connected' || s === 'healthy') return { ...int, status: 'connected' as IntStatus }
-      if (s === 'degraded' || s === 'warning') return { ...int, status: 'degraded' as IntStatus }
-      if (s === 'down' || s === 'error') return { ...int, status: 'disconnected' as IntStatus }
-    }
-    return int
-  })
+  /* ── Apply REAL status from backend (authoritative; the hardcoded status is only a
+        fallback shown until the health probe returns) ── */
+  const mapStatus = (s: string): IntStatus => {
+    if (s === 'connected' || s === 'ok' || s === 'healthy') return 'connected'
+    if (s === 'configured') return 'configured'
+    if (s === 'degraded' || s === 'warning' || s === 'down' || s === 'error') return 'degraded'
+    if (s === 'not_configured' || s === 'disconnected') return 'disconnected'
+    return 'disconnected'
+  }
+  const integrations = INTEGRATIONS.map((int) =>
+    health[int.id] ? { ...int, status: mapStatus(health[int.id]) } : int
+  )
 
   /* ── Filter ── */
   const filtered = integrations
@@ -259,9 +252,10 @@ export default function IntegrationsPage() {
     .filter((g) => g.items.length > 0)
 
   /* ── Stats ── */
-  const connected  = integrations.filter((i) => i.status === 'connected').length
-  const configured = integrations.filter((i) => i.status === 'configured').length
-  const degraded   = integrations.filter((i) => i.status === 'degraded').length
+  const connected     = integrations.filter((i) => i.status === 'connected').length
+  const configured    = integrations.filter((i) => i.status === 'configured').length
+  const degraded      = integrations.filter((i) => i.status === 'degraded').length
+  const notConfigured = integrations.filter((i) => i.status === 'disconnected').length
 
   return (
     <div className="space-y-6">
@@ -290,9 +284,9 @@ export default function IntegrationsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Integrations', value: String(integrations.length), color: 'text-foreground', icon: Globe },
-          { label: 'Connected', value: String(connected), color: 'text-green-600 dark:text-green-400', icon: Check },
+          { label: 'Connected (live)', value: String(connected), color: 'text-green-600 dark:text-green-400', icon: Check },
           { label: 'Configured', value: String(configured), color: 'text-cyan-600 dark:text-cyan-400', icon: Settings },
-          { label: 'Degraded', value: String(degraded), color: degraded > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400', icon: degraded > 0 ? AlertTriangle : Zap },
+          { label: degraded > 0 ? 'Degraded' : 'Not Configured', value: String(degraded > 0 ? degraded : notConfigured), color: (degraded > 0 || notConfigured > 0) ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400', icon: (degraded > 0 || notConfigured > 0) ? AlertTriangle : Zap },
         ].map((c) => (
           <div key={c.label} className="bg-card border border-border p-4">
             <div className="flex items-center gap-2 mb-2">

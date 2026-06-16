@@ -55,12 +55,18 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         
         {/* Transaction Type Badge */}
         <div className="absolute top-3 left-3">
-          <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg ${
-            property.transaction_type === 'rental' 
-              ? 'bg-emerald-500 text-foreground' 
-              : 'bg-indigo-600 text-foreground'
+          <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg text-white ${
+            property.transaction_type === 'rental'
+              ? 'bg-emerald-500'
+              : property.transaction_type === 'lease'
+                ? 'bg-amber-500'
+                : 'bg-indigo-600'
           }`}>
-            {property.transaction_type === 'rental' ? 'FOR RENT' : 'FOR SALE'}
+            {property.transaction_type === 'rental'
+              ? 'FOR RENT'
+              : property.transaction_type === 'lease'
+                ? 'FOR LEASE'
+                : 'FOR SALE'}
           </span>
         </div>
 
@@ -101,6 +107,9 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
           </span>
           {property.transaction_type === 'rental' && (
             <span className="text-muted-foreground text-sm font-medium">/month</span>
+          )}
+          {property.transaction_type === 'lease' && (
+            <span className="text-muted-foreground text-sm font-medium ml-1">lease</span>
           )}
           {property.transaction_type === 'sale' && property.total_area_sqm && (
             <span className="text-xs text-muted-foreground ml-1">

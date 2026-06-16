@@ -15,6 +15,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { workspaceService, EntityType, MemberRole } from '../../shared-services/workspace/WorkspaceService';
+import { workspaceWebSocketServer } from '../../shared-services/workspace/WorkspaceWebSocketServer';
 import { documentService } from '../../shared-services/workspace/documentService';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
@@ -283,7 +284,11 @@ router.post(
         }
 
         const conversation = await workspaceService.createOrGetDMConversation(workspaceId, userId, memberId);
-        res.status(201).json({ conversation });
+        // Surface the new DM in BOTH users' conversation lists live.
+        workspaceWebSocketServer.broadcastConversationCreated(conversation.id).catch(() => {});
+        // Return it with the actor's viewer-relative name (the other person).
+        const enriched = await workspaceService.getConversationForViewer(conversation.id, userId);
+        res.status(201).json({ conversation: enriched || conversation });
     })
 );
 
@@ -320,6 +325,34 @@ router.post(
         }
 
         const conversation = await workspaceService.createGroupConversation(workspaceId, userId, name.trim(), uniqueIds);
+        // Surface the new group in every member's conversation list live.
+        workspaceWebSocketServer.broadcastConversationCreated(conversation.id).catch(() => {});
+        res.status(201).json({ conversation });
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/channel
+ * Create a named channel open to every current workspace member.
+ */
+router.post(
+    '/:workspaceId/conversations/channel',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId } = req.params;
+        const { name } = req.body as { name?: string };
+
+        if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const isMember = await workspaceService.isMember(workspaceId, userId);
+        if (!isMember) return res.status(403).json({ error: 'Access denied' });
+
+        const conversation = await workspaceService.createChannel(workspaceId, userId, name.trim());
+        // Surface the new channel in every member's conversation list live.
+        workspaceWebSocketServer.broadcastConversationCreated(conversation.id).catch(() => {});
         res.status(201).json({ conversation });
     })
 );

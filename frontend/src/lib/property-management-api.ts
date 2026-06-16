@@ -26,6 +26,26 @@ import {
 
 const PM_BASE = '/pm';
 
+// A marketplace enquiry captured against a PM property (the PM-side lead inbox).
+export interface PMEnquiry {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string;
+    message: string;
+    inquiry_type: string;
+    transaction_type: 'sale' | 'rental' | 'lease' | null;
+    offer_amount: number | string | null;
+    offer_currency: string | null;
+    status: 'new' | 'contacted' | 'qualified' | 'converted' | 'closed' | 'lost';
+    deal_id: string | null;
+    created_at: string;
+    responded_at: string | null;
+    property_id: string;
+    property_title: string | null;
+    property_city: string | null;
+}
+
 // Generated lease document response
 export interface GeneratedLeaseDocument {
     tenantId: string;
@@ -80,6 +100,20 @@ export const propertyManagementApi = {
     deleteProperty: (id: string) =>
         fetchApi<void>(`${PM_BASE}/properties/${id}`, {
             method: 'DELETE'
+        }),
+
+    // =====================================================
+    // ENQUIRIES (sale/lease marketplace leads)
+    // =====================================================
+    getEnquiries: (status?: string) =>
+        fetchApi<{ enquiries: PMEnquiry[] }>(
+            `${PM_BASE}/enquiries${status && status !== 'all' ? `?status=${status}` : ''}`
+        ),
+
+    updateEnquiryStatus: (id: string, status: string) =>
+        fetchApi<{ success: boolean; id: string }>(`${PM_BASE}/enquiries/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status }),
         }),
 
 

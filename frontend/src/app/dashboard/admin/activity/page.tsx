@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { Activity, RefreshCw, User, Clock } from 'lucide-react'
 import { authedFetch } from '@/lib/authed-fetch'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 interface ActivityEvent {
   id: string
@@ -22,7 +21,7 @@ export default function ActivityPage() {
   const fetchActivity = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authedFetch(`${API}/api/v1/admin/activity?limit=50`)
+      const res = await authedFetch(`/api/admin/activity?limit=50`)
       if (res.ok) {
         const data = (await res.json()) as { data: ActivityEvent[] }
         setEvents(data.data || [])

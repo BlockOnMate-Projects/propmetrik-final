@@ -29,7 +29,7 @@ router.get('/', async (_req: Request, res: Response) => {
         WHERE region = 'greater_accra'
           AND price > 0
           AND transaction_type = 'sale'
-      `),
+      `).catch(() => ({ rows: [{ median_price: 0, avg_price: 0, total_properties: 0 }] })),
 
       // 2. Market segments — sale prices only for meaningful comparison
       pool.query(`
@@ -62,7 +62,7 @@ router.get('/', async (_req: Request, res: Response) => {
                CASE WHEN s.avg_price > o.val THEN 'up' ELSE 'down' END AS direction
         FROM segments s, overall_median o
         ORDER BY s.cnt DESC
-      `),
+      `).catch(() => ({ rows: [] as any[] })),
 
       // 3. Active deals count
       pool.query(`
@@ -79,7 +79,7 @@ router.get('/', async (_req: Request, res: Response) => {
       `).catch(() => ({ rows: [{ pending_vals: 0 }] })),
 
       // 5. Total properties count
-      pool.query(`SELECT COUNT(*) AS total FROM properties`),
+      pool.query(`SELECT COUNT(*) AS total FROM properties`).catch(() => ({ rows: [{ total: 0 }] })),
 
       // 6. Avg cap rate
       pool.query(`

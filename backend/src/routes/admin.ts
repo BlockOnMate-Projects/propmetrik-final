@@ -6,8 +6,13 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { pool } from '../database';
+import { pool, checkHealth as dbCheckHealth } from '../database';
+import { redisCache } from '../database/redis';
 import { logger } from '../utils/logger';
+import keycloakAdminService from '../services/keycloakAdminService';
+import { getAuthUserId } from '../middleware/pmAuth';
+import { s3Client, checkHealth as minioCheckHealth } from '../database/minio';
+import { version as pkgVersion } from '../../package.json';
 import { feeEngine } from '../../shared-services/payments/feeEngine';
 import { cryptoPaymentService, exchangeRateService, loadCryptoConfig, nowPaymentsService } from '../../shared-services/payments/crypto';
 
@@ -19,6 +24,483 @@ function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => P
         Promise.resolve(fn(req, res, next)).catch(next);
     };
 }
+
+// ============================================================================
+// PLATFORM ADMIN — users / organizations / activity / audit logs / system
+// Read-only directories + health for the Admin console (F-keys: Organization,
+// Platform). All return { data: ... } to match the frontend admin pages.
+// ============================================================================
+
+/** GET /users?search= — platform user directory */
+router.get('/users', asyncHandler(async (req: Request, res: Response) => {
+    const search = ((req.query.search as string) || '').trim();
+    const like = `%${search}%`;
+    const result = await pool.query(
+        `SELECT u.id,
+                u.email,
+                COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.display_name, u.email) AS full_name,
+                COALESCE(o.name, '—') AS organization_name,
+                u.last_login_at AS last_login,
+                u.is_active AS is_active,
+                u.status AS status,
+                u.email_verified AS email_verified,
+                u.created_at,
+                COALESCE(
+                    (SELECT ur.role FROM user_roles ur WHERE ur.user_id = u.id ORDER BY ur.granted_at DESC NULLS LAST LIMIT 1),
+                    NULLIF(u.subscription_tier, 'free'),
+                    'member'
+                ) AS role
+         FROM users u
+         LEFT JOIN organizations o ON o.id = u.organization_id
+         WHERE $1 = ''
+            OR u.email ILIKE $2 OR u.first_name ILIKE $2 OR u.last_name ILIKE $2
+            OR u.display_name ILIKE $2 OR o.name ILIKE $2
+         ORDER BY u.created_at DESC
+         LIMIT 200`,
+        [search, like]
+    );
+    res.json({ data: result.rows });
+}));
+
+/** GET /organizations?search= — platform organization directory */
+router.get('/organizations', asyncHandler(async (req: Request, res: Response) => {
+    const search = ((req.query.search as string) || '').trim();
+    const like = `%${search}%`;
+    const result = await pool.query(
+        `SELECT o.id, o.name, o.slug,
+                'Ghana' AS country,
+                COALESCE(o.address_city, '—') AS city,
+                (SELECT COUNT(*)::int FROM users u WHERE u.organization_id = o.id) AS user_count,
+                COALESCE(
+                    (SELECT sp.tier FROM subscriptions s
+                       JOIN subscription_plans sp ON sp.id = s.plan_id
+                      WHERE s.organization_id = o.id AND s.status = 'active'
+                      ORDER BY s.current_period_end DESC LIMIT 1),
+                    'free'
+                ) AS subscription_tier,
+                o.created_at, o.is_active
+         FROM organizations o
+         WHERE $1 = '' OR o.name ILIKE $2 OR o.slug ILIKE $2 OR o.address_city ILIKE $2
+         ORDER BY o.created_at DESC
+         LIMIT 200`,
+        [search, like]
+    );
+    res.json({ data: result.rows });
+}));
+
+/** GET /activity?limit= — recent platform activity feed (derived from audit log) */
+router.get('/activity', asyncHandler(async (req: Request, res: Response) => {
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '50'), 10) || 50, 1), 200);
+    const result = await pool.query(
+        `SELECT id,
+                COALESCE(user_email, 'system') AS user_email,
+                action AS event_type,
+                (action || ' ' || entity_type) AS description,
+                COALESCE(metadata, '{}'::jsonb) AS metadata,
+                created_at
+         FROM audit_logs
+         ORDER BY created_at DESC
+         LIMIT $1`,
+        [limit]
+    );
+    res.json({ data: result.rows });
+}));
+
+// Shared SELECT + filter builder for the audit trail (used by list + CSV export).
+const AUDIT_SELECT = `SELECT id,
+            COALESCE(user_email, 'system') AS user_email,
+            action,
+            entity_type AS resource_type,
+            COALESCE(entity_id::text, '') AS resource_id,
+            COALESCE(host(ip_address), '') AS ip_address,
+            COALESCE(metadata->>'details', NULLIF(array_to_string(changed_fields, ', '), ''), '') AS details,
+            created_at
+     FROM audit_logs`;
+
+/** Build a parameterised WHERE clause from query params (search/action/from/to). */
+function buildAuditFilter(q: any): { where: string; params: any[] } {
+    const search = ((q.search as string) || '').trim();
+    const action = ((q.action as string) || '').trim();
+    const from = ((q.from as string) || '').trim();   // YYYY-MM-DD
+    const to = ((q.to as string) || '').trim();        // YYYY-MM-DD (inclusive)
+    const params: any[] = [];
+    const clauses: string[] = [];
+    if (search) {
+        params.push(`%${search}%`);
+        const i = params.length;
+        clauses.push(`(user_email ILIKE $${i} OR entity_type ILIKE $${i} OR entity_id::text ILIKE $${i})`);
+    }
+    if (action) { params.push(action); clauses.push(`action = $${params.length}`); }
+    if (from) { params.push(from); clauses.push(`created_at >= $${params.length}::date`); }
+    if (to) { params.push(to); clauses.push(`created_at < ($${params.length}::date + INTERVAL '1 day')`); }
+    return { where: clauses.length ? 'WHERE ' + clauses.join(' AND ') : '', params };
+}
+
+/** GET /audit-logs?limit=&offset=&search=&action=&from=&to= — paginated immutable audit trail. Returns { data, total }. */
+router.get('/audit-logs', asyncHandler(async (req: Request, res: Response) => {
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '50'), 10) || 50, 1), 500);
+    const offset = Math.max(parseInt(String(req.query.offset ?? '0'), 10) || 0, 0);
+    const { where, params } = buildAuditFilter(req.query);
+    const [rows, total] = await Promise.all([
+        pool.query(`${AUDIT_SELECT} ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, limit, offset]),
+        pool.query(`SELECT count(*)::int AS n FROM audit_logs ${where}`, params),
+    ]);
+    res.json({ data: rows.rows, total: total.rows[0].n, limit, offset });
+}));
+
+/** GET /audit-logs/export?search=&action=&from=&to= — CSV download of the filtered trail (cap 100k rows). */
+router.get('/audit-logs/export', asyncHandler(async (req: Request, res: Response) => {
+    const MAX = 100_000;
+    const { where, params } = buildAuditFilter(req.query);
+    const result = await pool.query(`${AUDIT_SELECT} ${where} ORDER BY created_at DESC LIMIT ${MAX}`, params);
+
+    const esc = (v: any) => {
+        const s = v === null || v === undefined ? '' : String(v);
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['timestamp', 'user_email', 'action', 'resource_type', 'resource_id', 'ip_address', 'details'];
+    const lines = [header.join(',')];
+    for (const r of result.rows) {
+        lines.push([
+            r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+            r.user_email, r.action, r.resource_type, r.resource_id, r.ip_address, r.details,
+        ].map(esc).join(','));
+    }
+    if (result.rows.length >= MAX) {
+        logger.warn({ max: MAX }, 'Audit CSV export hit the row cap; export truncated');
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-logs-${stamp}.csv"`);
+    res.send('﻿' + lines.join('\r\n')); // BOM so Excel reads UTF-8 correctly
+}));
+
+/** GET /system/health — infra health snapshot for the Admin console */
+router.get('/system/health', asyncHandler(async (_req: Request, res: Response) => {
+    // Database — real SELECT 1 + live pool stats
+    let database = { status: 'down', connections: 0, pool_size: 0 };
+    try {
+        const h = await dbCheckHealth();
+        database = {
+            status: h.connected ? 'operational' : 'down',
+            connections: h.poolSize,
+            pool_size: ((pool as any).options?.max as number) ?? h.poolSize,
+        };
+    } catch { /* leave as down */ }
+
+    // Redis — real PING + memory from INFO
+    let redis = { status: 'unknown', memory_used: 'n/a' };
+    try {
+        const pong = await redisCache.ping();
+        let mem = 'n/a';
+        try {
+            const info = await redisCache.info('memory');
+            const m = /used_memory_human:([^\r\n]+)/.exec(info);
+            if (m) mem = m[1].trim();
+        } catch { /* memory section optional */ }
+        redis = { status: pong === 'PONG' ? 'operational' : 'degraded', memory_used: mem };
+    } catch { redis = { status: 'down', memory_used: 'n/a' }; }
+
+    // Object storage (MinIO/S3) — real bucket-reachability probe
+    let storage = { status: 'unknown', used: 'n/a', total: 'n/a' };
+    try {
+        if (s3Client) {
+            const h = await minioCheckHealth();
+            const entries = Object.values(h.buckets);
+            const total = entries.length;
+            const healthy = entries.filter((b) => b.exists).length;
+            storage = {
+                status: !h.connected || healthy === 0 ? 'down' : (healthy === total ? 'operational' : 'degraded'),
+                used: String(healthy),
+                total: String(total),
+            };
+        }
+    } catch {
+        storage = { status: 'down', used: 'n/a', total: 'n/a' };
+    }
+
+    // App version: real package.json version, optionally suffixed with the build SHA
+    const version = process.env.GIT_SHA
+        ? `${pkgVersion}+${process.env.GIT_SHA.slice(0, 7)}`
+        : (process.env.APP_VERSION || pkgVersion);
+
+    res.json({
+        data: {
+            api: {
+                status: 'operational',
+                uptime: Math.floor(process.uptime()),
+                version,
+            },
+            database,
+            redis,
+            storage,
+        },
+    });
+}));
+
+// ============================================================================
+// INTEGRATIONS HEALTH — real per-integration status for the Admin console.
+// Honest taxonomy:
+//   connected      = live-probed and healthy (the 4 core infra + Keycloak token)
+//   configured     = required env present (not live-probed) / built-in capability
+//   not_configured = required env var(s) absent — shows gray, NOT fake green
+//   down           = live probe attempted and failed
+// We never report 'connected' for an external service we didn't actually reach.
+// ============================================================================
+
+type IntDef = {
+    id: string;
+    env?: string[];           // any present → configured
+    probe?: 'postgres' | 'redis' | 'minio' | 'keycloak';
+    alwaysOn?: boolean;       // internal/self-hosted (up if the API is up)
+    noConfig?: boolean;       // capability exists, no external config needed (scrapers/public APIs)
+};
+
+// env var names mirror the `configuredVia` hints shown on the integrations page
+const INTEGRATION_DEFS: IntDef[] = [
+    { id: 'paystack', env: ['PAYSTACK_LIVE_SECRET_KEY', 'PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_SECRET_KEY'] },
+    { id: 'nowpayments', env: ['NOWPAYMENTS_LIVE_API_KEY', 'NOWPAYMENTS_TEST_API_KEY', 'NOWPAYMENTS_API_KEY'] },
+    { id: 'onchain-crypto', env: ['PROPMETRIK_CONTRACT_ADDRESS', 'POLYGON_RPC_URL', 'PROPMETRIK_CONTRACT_CHAIN_ID'] },
+    { id: 'mobile-money', env: ['PAYSTACK_LIVE_SECRET_KEY', 'PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_SECRET_KEY'] },
+    { id: 'keycloak', probe: 'keycloak' },
+    { id: 'google-oauth', env: ['GOOGLE_CLIENT_ID'] },
+    { id: 'whatsapp', env: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_TOKEN'] },
+    { id: 'twilio', env: ['TWILIO_LIVE_ACCOUNT_SID', 'TWILIO_TEST_ACCOUNT_SID', 'TWILIO_ACCOUNT_SID'] },
+    { id: 'gmail-smtp', env: ['GOOGLE_SMTP_USER', 'GOOGLE_EMAIL_USER', 'SMTP_USER'] },
+    { id: 'sse', alwaysOn: true },
+    { id: 'postgres', probe: 'postgres' },
+    { id: 'redis', probe: 'redis' },
+    { id: 'minio', probe: 'minio' },
+    { id: 'opensearch', env: ['OPENSEARCH_URL', 'OPENSEARCH_NODE'] },
+    { id: 'clickhouse', env: ['CLICKHOUSE_URL', 'CLICKHOUSE_HOST'] },
+    { id: 'deepseek', env: ['DEEPSEEK_API_KEY'] },
+    { id: 'anthropic', env: ['ANTHROPIC_API_KEY'] },
+    { id: 'ml-serving', env: ['PYTHON_VALUATION_URL', 'PYTHON_API_URL', 'ML_SERVING_URL'] },
+    { id: 'mapbox', env: ['MAPBOX_ACCESS_TOKEN', 'MAPBOX_TOKEN'] },
+    { id: 'google-maps', env: ['GOOGLE_MAPS_API_KEY'] },
+    { id: 'ghanapost', env: ['GHANAPOST_GPS_URL', 'GHANA_POST_GPS_URL', 'GHANAPOST_API_KEY'] },
+    { id: 'bog', noConfig: true },
+    { id: 'worldbank', noConfig: true },
+    { id: 'gss', noConfig: true },
+    { id: 'npa', noConfig: true },
+    { id: 'fx-feed', noConfig: true },
+    { id: 'booking', noConfig: true },
+    { id: 'nadmo', noConfig: true },
+    { id: 'partner-pull', noConfig: true },
+    { id: 'scrapy', noConfig: true },
+    { id: 'esign', alwaysOn: true },
+    { id: 'google-calendar', env: ['GOOGLE_CLIENT_ID'] },
+    { id: 'tin-gra', env: ['GRA_API_KEY', 'TIN_API_KEY', 'GRA_TIN_API_KEY'] },
+    { id: 'ssnit', env: ['SSNIT_API_KEY', 'SSNIT_API_URL'] },
+];
+
+/** GET /integrations/health — real status per integration (config presence + core live probes). */
+router.get('/integrations/health', asyncHandler(async (_req: Request, res: Response) => {
+    // Run the cheap live probes once, in parallel.
+    const [pg, rds, mn, kc] = await Promise.allSettled([
+        dbCheckHealth(),
+        redisCache.ping(),
+        s3Client ? minioCheckHealth() : Promise.resolve(null),
+        keycloakAdminService.enabled ? keycloakAdminService.getAdminToken() : Promise.reject(new Error('not configured')),
+    ]);
+
+    const probe = {
+        postgres: pg.status === 'fulfilled' && pg.value?.connected ? 'connected' : 'down',
+        redis: rds.status === 'fulfilled' && rds.value === 'PONG' ? 'connected' : 'down',
+        minio: !s3Client ? 'not_configured' : (mn.status === 'fulfilled' && (mn.value as any)?.connected ? 'connected' : 'down'),
+        keycloak: !keycloakAdminService.enabled ? 'not_configured' : (kc.status === 'fulfilled' ? 'connected' : 'down'),
+    } as const;
+
+    const data: Record<string, string> = {};
+    for (const def of INTEGRATION_DEFS) {
+        if (def.probe) data[def.id] = probe[def.probe];
+        else if (def.alwaysOn) data[def.id] = 'connected';
+        else if (def.noConfig) data[def.id] = 'configured';
+        else if (def.env) data[def.id] = def.env.some((e) => !!(process.env[e] && process.env[e]!.trim())) ? 'configured' : 'not_configured';
+        else data[def.id] = 'not_configured';
+    }
+
+    res.json({ data });
+}));
+
+// ============================================================================
+// PLATFORM ADMIN — destructive actions (delete user / org, downgrade to free)
+// Hard deletes run in a transaction; if a RESTRICT foreign key (financial /
+// legal records) blocks the delete, we roll back and return 409 with detail
+// rather than force-cascading real data. Keycloak identity removal happens
+// AFTER the DB commit (best-effort) so the app row and the login go together.
+// ============================================================================
+
+// Benign per-user child rows that are safe to remove with the user.
+const USER_CHILD_TABLES = [
+    'workspace_members', 'user_notifications', 'user_roles',
+    'push_subscriptions', 'notification_preferences',
+];
+
+/** Which of USER_CHILD_TABLES actually exist with a user_id column (avoids aborting the tx). */
+async function existingUserChildTables(): Promise<string[]> {
+    const r = await pool.query(
+        `SELECT table_name FROM information_schema.columns
+         WHERE table_schema='public' AND column_name='user_id' AND table_name = ANY($1::text[])`,
+        [USER_CHILD_TABLES]
+    );
+    return r.rows.map((x) => x.table_name as string);
+}
+
+/** Delete benign child rows + this user's payments, inside an open transaction. */
+async function clearUserDeps(client: any, userId: string, childTables: string[]): Promise<void> {
+    for (const t of childTables) {
+        await client.query(`DELETE FROM ${t} WHERE user_id = $1`, [userId]);
+    }
+    // payments are keyed by payer_id (not user_id)
+    await client.query(`DELETE FROM payment_transactions WHERE payer_id = $1`, [userId]);
+}
+
+/** Best-effort Keycloak identity removal — never fails the request (DB row is already gone). */
+async function removeKeycloakIdentity(keycloakId: string | null, email: string | null): Promise<boolean> {
+    try {
+        if (!keycloakAdminService.enabled) return false;
+        if (keycloakId) { await keycloakAdminService.deleteUser(keycloakId); return true; }
+        if (email) return await keycloakAdminService.deleteUserByEmail(email);
+        return false;
+    } catch (e) {
+        logger.warn({ err: e, keycloakId, email }, 'Keycloak identity delete failed after DB removal');
+        return false;
+    }
+}
+
+/** True if the user holds a super_admin role (protected from deletion). */
+async function isSuperAdmin(userId: string): Promise<boolean> {
+    const r = await pool.query(
+        `SELECT 1 FROM user_roles WHERE user_id=$1 AND role='super_admin' LIMIT 1`, [userId]
+    );
+    return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * DELETE /users/:id — hard-delete a platform user (DB + Keycloak identity).
+ * Guards: cannot delete yourself or another super_admin.
+ */
+router.delete('/users/:id', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    let requesterId: string | null = null;
+    try { requesterId = getAuthUserId(req); } catch { /* dev bypass */ }
+    if (requesterId && requesterId === id) {
+        res.status(400).json({ error: 'You cannot delete your own account.' });
+        return;
+    }
+    const u = await pool.query('SELECT id, email, keycloak_id FROM users WHERE id=$1', [id]);
+    if (!u.rowCount) { res.status(404).json({ error: 'User not found' }); return; }
+    if (await isSuperAdmin(id)) {
+        res.status(403).json({ error: 'Cannot delete a super_admin account.' });
+        return;
+    }
+    const { email, keycloak_id } = u.rows[0];
+    const childTables = await existingUserChildTables();
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await clearUserDeps(client, id, childTables);
+        await client.query('DELETE FROM users WHERE id=$1', [id]);
+        await client.query('COMMIT');
+    } catch (e: any) {
+        await client.query('ROLLBACK');
+        if (e.code === '23503') {
+            res.status(409).json({ error: 'User has linked records that block deletion.', detail: e.detail });
+            return;
+        }
+        throw e;
+    } finally {
+        client.release();
+    }
+    const kcRemoved = await removeKeycloakIdentity(keycloak_id, email);
+    res.json({ data: { deleted: true, id, email, keycloak_removed: kcRemoved } });
+}));
+
+/**
+ * DELETE /organizations/:id — hard-delete an org and everything tied to it:
+ * financials (subscriptions/invoices/member payments), pipelines, notifications,
+ * and member user accounts (DB + Keycloak). Transactional.
+ */
+router.delete('/organizations/:id', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const org = await pool.query('SELECT id, name FROM organizations WHERE id=$1', [id]);
+    if (!org.rowCount) { res.status(404).json({ error: 'Organization not found' }); return; }
+
+    const members = await pool.query('SELECT id, email, keycloak_id FROM users WHERE organization_id=$1', [id]);
+    // refuse if a super_admin is a member — don't let an org delete nuke an admin
+    for (const m of members.rows) {
+        if (await isSuperAdmin(m.id)) {
+            res.status(403).json({ error: `Organization has a super_admin member (${m.email}); remove them first.` });
+            return;
+        }
+    }
+    const childTables = await existingUserChildTables();
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // org-level financial + incidental rows (these tables are known to exist)
+        await client.query('DELETE FROM invoices WHERE organization_id=$1', [id]);
+        await client.query('DELETE FROM subscriptions WHERE organization_id=$1', [id]);
+        await client.query('DELETE FROM deal_pipelines WHERE organization_id=$1', [id]);
+        await client.query('DELETE FROM user_notifications WHERE organization_id=$1', [id]);
+        // member accounts
+        for (const m of members.rows) {
+            await clearUserDeps(client, m.id, childTables);
+            await client.query('DELETE FROM users WHERE id=$1', [m.id]);
+        }
+        await client.query('DELETE FROM organizations WHERE id=$1', [id]);
+        await client.query('COMMIT');
+    } catch (e: any) {
+        await client.query('ROLLBACK');
+        if (e.code === '23503') {
+            res.status(409).json({ error: 'Organization has linked records that block deletion.', detail: e.detail });
+            return;
+        }
+        throw e;
+    } finally {
+        client.release();
+    }
+    // Keycloak cleanup for members (after commit, best-effort)
+    let kcRemoved = 0;
+    for (const m of members.rows) { if (await removeKeycloakIdentity(m.keycloak_id, m.email)) kcRemoved++; }
+    res.json({ data: { deleted: true, id, members_removed: members.rowCount, keycloak_removed: kcRemoved } });
+}));
+
+/**
+ * POST /organizations/:id/set-free — downgrade a paid org to free:
+ * cancel its live subscriptions and set member users to the free tier.
+ * Non-destructive; the org's derived tier then shows 'free'.
+ */
+router.post('/organizations/:id/set-free', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const org = await pool.query('SELECT id FROM organizations WHERE id=$1', [id]);
+    if (!org.rowCount) { res.status(404).json({ error: 'Organization not found' }); return; }
+
+    const client = await pool.connect();
+    let cancelled = 0, downgraded = 0;
+    try {
+        await client.query('BEGIN');
+        const c = await client.query(
+            `UPDATE subscriptions
+                SET status='cancelled', cancelled_at=NOW(), cancel_reason='admin: downgraded to free'
+              WHERE organization_id=$1 AND status IN ('active','trialing','past_due','incomplete')`,
+            [id]
+        );
+        cancelled = c.rowCount ?? 0;
+        const d = await client.query(
+            `UPDATE users SET subscription_tier='free' WHERE organization_id=$1`, [id]
+        );
+        downgraded = d.rowCount ?? 0;
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
+    res.json({ data: { id, tier: 'free', subscriptions_cancelled: cancelled, users_downgraded: downgraded } });
+}));
 
 // ============================================================================
 // PLATFORM BILLING & REVENUE

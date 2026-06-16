@@ -12,8 +12,8 @@ export interface MarketplaceProperty {
   title: string;
   description: string | null;
   property_type: string;
-  transaction_type: 'rental' | 'sale';
-  
+  transaction_type: 'rental' | 'sale' | 'lease';
+
   // Location
   address: string;
   city: string;
@@ -64,7 +64,7 @@ export interface MarketplaceProperty {
 
 export interface SearchFilters {
   query?: string;
-  transaction_type?: 'rental' | 'sale' | 'all';
+  transaction_type?: 'rental' | 'sale' | 'lease' | 'all';
   property_types?: string[];
   min_price?: number;
   max_price?: number;
@@ -333,7 +333,7 @@ export class MarketplaceService {
               WHEN 'commercial_shop' THEN 'commercial'
               ELSE property_type::text
             END AS property_type,
-            'rental'::text AS transaction_type,
+            transaction_type::text AS transaction_type,
             address_street || ', ' || address_city AS address,
             address_city AS city,
             region::text,
@@ -508,7 +508,7 @@ export class MarketplaceService {
       const pmQuery = `
         SELECT 
           id, 'pm' AS source, permanent_link_token, title, description,
-          property_type, 'rental' AS transaction_type,
+          property_type, transaction_type::text AS transaction_type,
           address_street || ', ' || address_city AS address,
           address_city AS city, region, neighborhood, digital_address,
           latitude, longitude, price, price_currency AS currency,

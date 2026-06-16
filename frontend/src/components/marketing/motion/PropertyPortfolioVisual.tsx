@@ -3,12 +3,14 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
+// Demo stats are FIXED per property (not Math.random) so the server-rendered HTML matches
+// the client on hydration — random-per-render values cause a React hydration mismatch.
 const properties = [
-    { name: 'Cantonments Heights', type: 'Residential', units: 24, occupancy: 96, revenue: 'GHS 38,400', status: 'healthy' },
-    { name: 'Osu Oxford Plaza', type: 'Commercial', units: 12, occupancy: 100, revenue: 'GHS 62,000', status: 'healthy' },
-    { name: 'Airport West Villas', type: 'Residential', units: 8, occupancy: 88, revenue: 'GHS 14,200', status: 'attention' },
-    { name: 'Ring Road Retail', type: 'Retail', units: 18, occupancy: 72, revenue: 'GHS 28,900', status: 'warning' },
-    { name: 'East Legon Residences', type: 'Residential', units: 32, occupancy: 94, revenue: 'GHS 51,600', status: 'healthy' },
+    { name: 'Cantonments Heights', type: 'Residential', units: 24, occupancy: 96, revenue: 'GHS 38,400', status: 'healthy', tickets: 2, renewals: 3, overdue: 0 },
+    { name: 'Osu Oxford Plaza', type: 'Commercial', units: 12, occupancy: 100, revenue: 'GHS 62,000', status: 'healthy', tickets: 1, renewals: 1, overdue: 0 },
+    { name: 'Airport West Villas', type: 'Residential', units: 8, occupancy: 88, revenue: 'GHS 14,200', status: 'attention', tickets: 3, renewals: 2, overdue: 1 },
+    { name: 'Ring Road Retail', type: 'Retail', units: 18, occupancy: 72, revenue: 'GHS 28,900', status: 'warning', tickets: 5, renewals: 1, overdue: 2 },
+    { name: 'East Legon Residences', type: 'Residential', units: 32, occupancy: 94, revenue: 'GHS 51,600', status: 'healthy', tickets: 2, renewals: 4, overdue: 0 },
 ];
 
 const statusColors = {
@@ -107,9 +109,9 @@ export default function PropertyPortfolioVisual() {
                         className="grid grid-cols-4 gap-3"
                     >
                         {[
-                            { label: 'Open Tickets', value: Math.floor(Math.random() * 6) + 1, accent: false },
-                            { label: 'Lease Renewals', value: Math.floor(Math.random() * 4) + 1, accent: true },
-                            { label: 'Overdue Rent', value: Math.floor(Math.random() * 3), accent: false },
+                            { label: 'Open Tickets', value: active.tickets, accent: false },
+                            { label: 'Lease Renewals', value: active.renewals, accent: true },
+                            { label: 'Overdue Rent', value: active.overdue, accent: false },
                             { label: 'Collections', value: `${active.occupancy}%`, accent: false },
                         ].map((item) => (
                             <div key={item.label} className="text-center">

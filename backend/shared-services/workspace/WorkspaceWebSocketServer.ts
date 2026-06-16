@@ -26,6 +26,7 @@ import { logger } from '../../src/utils/logger';
 import { workspaceService } from './WorkspaceService';
 import { kobbyAIService, EntityType as KobbyEntityType } from './KobbyAIService';
 import { redisPubSub } from '../../src/database/redis';
+import { createNotification } from '../notifications/in-mail/notificationService';
 
 // ============================================================================
 // CONSTANTS
@@ -380,6 +381,59 @@ class WorkspaceWebSocketServerImpl {
 
         // Acknowledge to sender
         this.send(client.ws, { type: 'message_ack', messageId: message.id });
+
+        // Deliver immediately to every online conversation member on this instance
+        // (incl. the sender, so their own bubble renders without waiting on Redis).
+        // persistMessage also publishes to Redis for OTHER instances; the frontend
+        // dedups by message id, so a double from the loopback is harmless.
+        await this.broadcastToConversation(conversationId, { type: 'message', payload: message });
+
+        // Offline fallback: any member without a live socket gets an in-app notification
+        // so DMs aren't silently lost when the recipient isn't connected.
+        try {
+            const memberIds = await workspaceService.getConversationMemberUserIds(conversationId);
+            const offline = memberIds.filter((uid) => uid !== client.userId && !this.userClients.has(uid));
+            if (offline.length > 0) {
+                const senderName = (message as any).sender_name || 'A teammate';
+                const preview = sanitized.length > 120 ? `${sanitized.slice(0, 120)}…` : sanitized;
+                await Promise.all(
+                    offline.map((uid) =>
+                        createNotification({
+                            userId: uid,
+                            organizationId: client.organizationId,
+                            category: 'system',
+                            priority: 'normal',
+                            title: `New message from ${senderName}`,
+                            body: preview,
+                            sourceType: 'workspace_message',
+                            sourceId: message.id,
+                            sourceUrl: '/dashboard',
+                        }).catch(() => undefined)
+                    )
+                );
+            }
+        } catch (notifyErr) {
+            logger.warn('Offline workspace-message notify failed (non-critical)', { error: (notifyErr as Error).message });
+        }
+    }
+
+    /**
+     * Announce a newly created conversation (DM/group) to its members so it
+     * appears in their conversation list live — each member gets a payload with
+     * their own viewer-relative display name.
+     */
+    async broadcastConversationCreated(conversationId: string): Promise<void> {
+        try {
+            const memberIds = await workspaceService.getConversationMemberUserIds(conversationId);
+            await Promise.all(
+                memberIds.map(async (uid) => {
+                    const conv = await workspaceService.getConversationForViewer(conversationId, uid);
+                    if (conv) this.sendToUser(uid, { type: 'conversation', conversation: conv });
+                })
+            );
+        } catch (err) {
+            logger.warn('broadcastConversationCreated failed (non-critical)', { error: (err as Error).message });
+        }
     }
 
     private async handleKobbyQuery(client: AuthenticatedClient, msg: WSMessage): Promise<void> {

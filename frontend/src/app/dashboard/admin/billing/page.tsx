@@ -5,7 +5,6 @@ import { CreditCard, RefreshCw, DollarSign, TrendingUp, Building2, Receipt, Laye
 import { authedFetch } from '@/lib/authed-fetch'
 import { formatCurrency } from '@/lib/utils'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 interface Summary {
   total_revenue: number
@@ -60,10 +59,10 @@ export default function BillingPage() {
     setLoading(true)
     try {
       const [s, r, t, i] = await Promise.all([
-        authedFetch(`${API}/api/v1/admin/billing/summary?period=${period}`),
-        authedFetch(`${API}/api/v1/admin/billing/revenue?period=${period}`),
-        authedFetch(`${API}/api/v1/admin/billing/transactions?limit=50`),
-        authedFetch(`${API}/api/v1/admin/billing/invoices?limit=20`),
+        authedFetch(`/api/admin/billing/summary?period=${period}`),
+        authedFetch(`/api/admin/billing/revenue?period=${period}`),
+        authedFetch(`/api/admin/billing/transactions?limit=50`),
+        authedFetch(`/api/admin/billing/invoices?limit=20`),
       ])
       if (s.ok) setSummary((await s.json()).data)
       if (r.ok) setRevenue((await r.json()).data)

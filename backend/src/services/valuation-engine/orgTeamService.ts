@@ -264,12 +264,19 @@ class OrgTeamService {
                 }
             }
 
-            // Update user's organization if they exist
+            // Update user's organization if they exist. user_type is derived from
+            // the org being joined (platform → staff, else customer) so a customer
+            // org can never produce a 'staff' user via this legacy invite path.
             if (acceptedUserId) {
+                const platformCheck = await client.query(
+                    `SELECT is_platform_org FROM organizations WHERE id = $1`,
+                    [invitation.organization_id]
+                );
+                const effectiveUserType = platformCheck.rows[0]?.is_platform_org ? 'staff' : 'customer';
                 await client.query(
-                    `UPDATE users SET organization_id = $1, role = $2::user_role_enum, updated_at = NOW()
+                    `UPDATE users SET organization_id = $1, role = $2::user_role_enum, user_type = $4, updated_at = NOW()
            WHERE id = $3`,
-                    [invitation.organization_id, invitation.role, acceptedUserId]
+                    [invitation.organization_id, invitation.role, acceptedUserId, effectiveUserType]
                 );
             }
 

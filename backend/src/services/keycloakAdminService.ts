@@ -195,6 +195,37 @@ class KeycloakAdminService {
   }
 
   /**
+   * Permanently delete a Keycloak user by its Keycloak id.
+   * Idempotent: a 404 (already gone) resolves successfully.
+   */
+  async deleteUser(keycloakId: string): Promise<void> {
+    if (!keycloakEnabled) {
+      throw new Error('Keycloak is not configured (missing KEYCLOAK_URL or KEYCLOAK_REALM)');
+    }
+    const adminToken = await this.getAdminToken();
+    try {
+      await axios.delete(
+        `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${encodeURIComponent(keycloakId)}`,
+        { headers: { Authorization: `Bearer ${adminToken}` }, timeout: 10_000 },
+      );
+    } catch (err: any) {
+      if (err?.response?.status === 404) return; // already deleted — treat as success
+      throw err;
+    }
+  }
+
+  /**
+   * Permanently delete a Keycloak user by email. Returns true if a user was
+   * found and deleted, false if no Keycloak identity existed for that email.
+   */
+  async deleteUserByEmail(email: string): Promise<boolean> {
+    const found = await this.findUserByEmail(email);
+    if (!found) return false;
+    await this.deleteUser(found.id);
+    return true;
+  }
+
+  /**
    * Find or create a Keycloak user by email (idempotent).
    *
    * Options allow callers to control:

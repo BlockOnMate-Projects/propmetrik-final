@@ -317,6 +317,19 @@ export interface ContributionStats {
   activeContributors: number;
 }
 
+// Centralized dataset coverage (the real `properties` table the valuation engine reads)
+export interface DataHubCoverage {
+  totals: { total: number; geocoded: number; org_contributed: number; seeded: number };
+  by_basis: Array<{ basis: string; count: number }>;
+  eligibility: { sale_comps: number; rental_comps: number; org_sale_comps: number; org_rental_comps: number };
+  by_region: Array<{ region: string; count: number }>;
+  recently_added_30d: number;
+}
+
+export const catalogApi = {
+  getCoverage: () => fetchApi<ApiResponse<DataHubCoverage>>('/data-hub/catalog/coverage'),
+};
+
 export const contributionsApi = {
   getAll: (filters?: ContributionFilters) => {
     const params = new URLSearchParams();

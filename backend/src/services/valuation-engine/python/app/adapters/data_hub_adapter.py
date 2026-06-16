@@ -124,8 +124,9 @@ class PostgreSQLMarketDataAdapter(MarketDataAdapter):
                 ST_GeogFromText('POINT(' || (p.coordinates->>'lng') || ' ' || (p.coordinates->>'lat') || ')')
             ) / 1000 AS distance_km
         FROM properties p
-        WHERE 
+        WHERE
             p.id != $1
+            AND p.deleted_at IS NULL
             AND p.property_type = $4
             AND p.region = $5
             AND p.current_price_ghs IS NOT NULL

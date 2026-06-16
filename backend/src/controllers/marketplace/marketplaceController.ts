@@ -157,6 +157,11 @@ export class MarketplaceController {
       try {
         property = await opensearchMarketplaceService.getPropertyByToken(token);
       } catch {
+        property = null;
+      }
+      // Fall back to the DB when OpenSearch has no hit (returns null without throwing,
+      // e.g. a newly created property that hasn't been indexed yet).
+      if (!property) {
         property = await marketplaceService.getPropertyByToken(token);
       }
 
@@ -167,7 +172,7 @@ export class MarketplaceController {
       // Search for similar properties
       const priceVariance = property.price * 0.3; // ±30% price range
       const similarFilters = {
-        transaction_type: property.transaction_type as 'rental' | 'sale',
+        transaction_type: property.transaction_type as 'rental' | 'sale' | 'lease',
         property_types: [property.property_type],
         min_price: Math.max(0, property.price - priceVariance),
         max_price: property.price + priceVariance,
@@ -447,7 +452,9 @@ export class MarketplaceController {
             expiresInDays: 30,
             maxUses: undefined // Unlimited uses
           },
-          'marketplace-system' // System user ID
+          // created_by is a NOT NULL uuid column with no FK; use the nil UUID as the
+          // "system / marketplace-generated" sentinel (a non-uuid string throws 22P02).
+          '00000000-0000-0000-0000-000000000000'
         );
         
         applicationToken = link.token;

@@ -88,7 +88,8 @@ export function WorkspaceContent({
             return `Group: ${conversation.name || 'Untitled Group'}`;
         }
 
-        // DM label: show the other participant's name/email
+        // DM label: prefer the server-resolved name; fall back to dm_key + members lookup
+        if (conversation.display_name) return conversation.display_name;
         const dmKey = conversation.dm_key || '';
         const ids = dmKey.split(':').filter(Boolean);
         const otherUserId = ids.find((id) => id !== resolvedUserId) || ids[0];
@@ -150,6 +151,16 @@ export function WorkspaceContent({
         setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
+        });
+    }, []);
+
+    // A new DM/group was created with me — surface it in my conversation list live.
+    const handleConversation = useCallback((conversation: WorkspaceConversation) => {
+        setConversations((prev) => {
+            if (prev.some((c) => c.id === conversation.id)) {
+                return prev.map((c) => (c.id === conversation.id ? { ...c, ...conversation } : c));
+            }
+            return [conversation, ...prev];
         });
     }, []);
 
@@ -217,6 +228,7 @@ export function WorkspaceContent({
         workspaceId: workspace?.id || '',
         token: resolvedToken,
         onMessage: handleNewMessage,
+        onConversation: handleConversation,
         onMessageEdited: handleMessageEdited,
         onMessageDeleted: handleMessageDeleted,
         onKobbyResponse: handleKobbyResponse,
@@ -234,6 +246,15 @@ export function WorkspaceContent({
             setMessages(initialMessages);
         }
     }, [initialMessages]);
+
+    // Reconnect replay: when the socket comes back online, re-pull the active
+    // conversation's history so nothing sent during the outage is missed.
+    useEffect(() => {
+        if (!connected || !workspace || !activeConversationId) return;
+        workspaceApi.getMessages(workspace.id, undefined, 50, activeConversationId)
+            .then(({ messages: msgs }) => setMessages(msgs))
+            .catch(() => { });
+    }, [connected, workspace, activeConversationId]);
 
     const handleSend = useCallback(
         (content: string, metadata?: any, threadId?: string) => {
@@ -301,6 +322,17 @@ export function WorkspaceContent({
     const handleCreateGroup = useCallback((groupName: string, memberIds: string[]) => {
         if (!workspace) return;
         workspaceApi.createGroupConversation(workspace.id, groupName.trim(), memberIds)
+            .then(({ conversation }) => {
+                setActiveTab('chat');
+                setActiveConversationId(conversation.id);
+                setConversations((prev) => [conversation, ...prev.filter((c) => c.id !== conversation.id)]);
+            })
+            .catch((err) => setError(err.message));
+    }, [workspace]);
+
+    const handleCreateChannel = useCallback((name: string) => {
+        if (!workspace || !name.trim()) return;
+        workspaceApi.createChannelConversation(workspace.id, name.trim())
             .then(({ conversation }) => {
                 setActiveTab('chat');
                 setActiveConversationId(conversation.id);
@@ -564,6 +596,7 @@ export function WorkspaceContent({
                         onlineUserIds={onlineUsers}
                         onMemberClick={handleMemberClick}
                         onCreateGroup={handleCreateGroup}
+                        onCreateChannel={handleCreateChannel}
                         onRefresh={() =>
                             workspace &&
                             workspaceApi.getMembers(workspace.id).then(({ members: m }) => setMembers(m))
