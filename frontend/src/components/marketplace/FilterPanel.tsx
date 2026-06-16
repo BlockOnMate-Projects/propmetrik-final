@@ -51,18 +51,18 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
       {/* Transaction Type */}
       <div className="mb-6">
         <label className="block text-sm font-semibold mb-3 text-gray-700">Transaction Type</label>
-        <div className="grid grid-cols-3 gap-2">
-          {['all', 'rental', 'sale'].map(type => (
+        <div className="grid grid-cols-4 gap-2">
+          {['all', 'rental', 'sale', 'lease'].map(type => (
             <button
               key={type}
               onClick={() => onFilterChange({ ...filters, transaction_type: type })}
-              className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`px-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 filters.transaction_type === type
-                  ? 'bg-indigo-600 text-foreground shadow-lg shadow-indigo-600/50'
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/50'
                   : 'bg-muted text-gray-700 hover:bg-gray-200 border border-border'
               }`}
             >
-              {type === 'all' ? 'All' : type === 'rental' ? 'Rent' : 'Buy'}
+              {type === 'all' ? 'All' : type === 'rental' ? 'Rent' : type === 'sale' ? 'Buy' : 'Lease'}
             </button>
           ))}
         </div>

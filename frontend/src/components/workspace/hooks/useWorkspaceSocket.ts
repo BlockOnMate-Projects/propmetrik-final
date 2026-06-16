@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { WorkspaceMessage } from '@/lib/workspace-api';
+import type { WorkspaceMessage, WorkspaceConversation } from '@/lib/workspace-api';
 import type { KobbyResponse } from './useKobbyAI';
 
 /**
@@ -33,6 +33,7 @@ type WSEvent =
     | { type: 'connected'; userId: string }
     | { type: 'joined'; workspaceId: string; messages: WorkspaceMessage[]; unreadCount: number; onlineUsers?: string[] }
     | { type: 'message'; payload: WorkspaceMessage }
+    | { type: 'conversation'; conversation: WorkspaceConversation }
     | { type: 'message_ack'; messageId: string }
     | { type: 'message_edited'; messageId: string; content: string; editedAt: string }
     | { type: 'typing'; userId: string; conversationId?: string }
@@ -48,6 +49,7 @@ interface UseWorkspaceSocketOptions {
     workspaceId: string;
     token: string | null;
     onMessage?: (msg: WorkspaceMessage) => void;
+    onConversation?: (conversation: WorkspaceConversation) => void;
     onMessageEdited?: (messageId: string, content: string, editedAt: string) => void;
     onMessageDeleted?: (messageId: string) => void;
     onPresenceChange?: (onlineUsers: string[]) => void;
@@ -60,6 +62,7 @@ export function useWorkspaceSocket({
     workspaceId,
     token,
     onMessage,
+    onConversation,
     onMessageEdited,
     onMessageDeleted,
     onPresenceChange,
@@ -115,6 +118,9 @@ export function useWorkspaceSocket({
                         break;
                     case 'message':
                         onMessage?.(data.payload);
+                        break;
+                    case 'conversation':
+                        onConversation?.(data.conversation);
                         break;
                     case 'message_edited':
                         onMessageEdited?.(data.messageId, data.content, data.editedAt);
@@ -174,7 +180,7 @@ export function useWorkspaceSocket({
         ws.onerror = () => {
             setError('WebSocket connection error');
         };
-    }, [workspaceId, token, onMessage, onMessageEdited, onMessageDeleted, onPresenceChange, onKobbyResponse, onKobbyError, onKobbyThinking]);
+    }, [workspaceId, token, onMessage, onConversation, onMessageEdited, onMessageDeleted, onPresenceChange, onKobbyResponse, onKobbyError, onKobbyThinking]);
 
     useEffect(() => {
         connect();

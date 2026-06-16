@@ -142,10 +142,10 @@ export class ConstructionOpsService {
     // Map display names to DB enum values
     const regionMap: Record<string, string> = {
       'Greater Accra': 'greater_accra',
-      'Ashanti': 'kumasi_metro',
-      'Western': 'western_cluster',
+      'Ashanti': 'ashanti',
+      'Western': 'western',
       'Eastern': 'eastern',
-      'Northern': 'northern_cluster',
+      'Northern': 'northern',
     };
 
     const dbRegion = filter.region ? (regionMap[filter.region] || filter.region) : undefined;

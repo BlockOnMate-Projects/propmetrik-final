@@ -703,7 +703,7 @@ class ProjectWizardService extends BaseService {
       // Map Ghana region to RegionCode
       const regionMap: Record<string, string> = {
         'Greater Accra': 'greater_accra',
-        'Ashanti': 'kumasi_metro',
+        'Ashanti': 'ashanti',
         'Eastern': 'eastern',
         'Western': 'western',
         'Central': 'central',

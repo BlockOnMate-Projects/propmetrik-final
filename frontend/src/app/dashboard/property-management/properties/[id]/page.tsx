@@ -774,9 +774,11 @@ export default function PropertyDetailPage() {
                             <CardContent className="p-4">
                                 <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">IRR</p>
                                 <p className={`text-lg font-bold font-mono ${(irrData?.irr ?? 0) >= 10 ? 'text-green-500' : (irrData?.irr ?? 0) >= 5 ? 'text-primary' : 'text-destructive'}`}>
-                                    {irrData ? `${irrData.irr?.toFixed(2)}%` : '—'}
+                                    {irrData?.irr != null ? `${irrData.irr.toFixed(2)}%` : '—'}
                                 </p>
-                                {irrData && <p className="text-[9px] font-mono text-muted-foreground mt-1">Payback: {irrData.paybackPeriodYears?.toFixed(1)} yrs</p>}
+                                {irrData?.irr != null
+                                    ? <p className="text-[9px] font-mono text-muted-foreground mt-1">Payback: {irrData.paybackPeriodYears?.toFixed(1)} yrs</p>
+                                    : <p className="text-[9px] font-mono text-muted-foreground mt-1">No income data</p>}
                             </CardContent>
                         </Card>
                         <Card className="bg-card border-border">
@@ -862,10 +864,16 @@ export default function PropertyDetailPage() {
                 {/* FINANCIALS TAB */}
                 <TabsContent value="financials" className="mt-6">
                     {(() => {
-                        const totalIncome = financials.filter(f => f.recordType === 'income').reduce((acc, f) => acc + f.amount, 0)
-                        const totalExpenses = financials.filter(f => f.recordType === 'expense').reduce((acc, f) => acc + f.amount, 0)
+                        // Read cash flow from the SAME source as the Financial Intelligence Summary
+                        // (backend `getPropertyFinancialSummary`, trailing 12 months) so the two
+                        // sections can't contradict. Fall back to the loaded records only until the
+                        // summary resolves.
+                        const totalIncome = financialSummary?.cashFlow?.totalIncome
+                            ?? financials.filter(f => f.recordType === 'income').reduce((acc, f) => acc + f.amount, 0)
+                        const totalExpenses = financialSummary?.cashFlow?.totalExpenses
+                            ?? financials.filter(f => f.recordType === 'expense').reduce((acc, f) => acc + f.amount, 0)
                         const expenseRatio = totalIncome > 0 ? ((totalExpenses / totalIncome) * 100).toFixed(1) : '0.0'
-                        const netCashFlow = totalIncome - totalExpenses
+                        const netCashFlow = financialSummary?.cashFlow?.netCashFlow ?? (totalIncome - totalExpenses)
                         const appreciation = roiData?.appreciation || (property.price ? property.price * 0.05 : 0)
 
                         return (
@@ -971,9 +979,9 @@ export default function PropertyDetailPage() {
                                     <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">IRR</Badge>
                                 </div>
                                 <p className={`text-xl font-bold font-mono ${(irrData?.irr ?? 0) >= 10 ? 'text-green-500' : (irrData?.irr ?? 0) >= 5 ? 'text-primary' : 'text-destructive'}`}>
-                                    {irrData ? `${irrData.irr?.toFixed(2)}%` : '—'}
+                                    {irrData?.irr != null ? `${irrData.irr.toFixed(2)}%` : '—'}
                                 </p>
-                                {irrData && (
+                                {irrData?.irr != null ? (
                                     <div className="mt-2 space-y-1">
                                         <div className="flex justify-between">
                                             <span className="text-[9px] font-mono text-muted-foreground">NPV</span>
@@ -984,6 +992,8 @@ export default function PropertyDetailPage() {
                                             <span className="text-[9px] font-mono text-foreground">{irrData.paybackPeriodYears?.toFixed(1)} yrs</span>
                                         </div>
                                     </div>
+                                ) : (
+                                    <p className="text-[9px] font-mono text-muted-foreground mt-2">Insufficient income data to compute a return.</p>
                                 )}
                             </CardContent>
                         </Card>
@@ -1031,7 +1041,10 @@ export default function PropertyDetailPage() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm font-mono text-primary uppercase">Financial Intelligence Summary</CardTitle>
                                 <CardDescription className="text-[10px] font-mono text-muted-foreground uppercase">
-                                    Computed as of {financialSummary.asOfDate ? new Date(financialSummary.asOfDate).toLocaleDateString('en-GB') : 'today'} · {financialSummary.currency || 'GHS'}
+                                    Income &amp; expenses · last 12 months
+                                    {financialSummary.cashFlow?.periodStart && financialSummary.cashFlow?.periodEnd
+                                        ? ` (${new Date(financialSummary.cashFlow.periodStart).toLocaleDateString('en-GB')} – ${new Date(financialSummary.cashFlow.periodEnd).toLocaleDateString('en-GB')})`
+                                        : ''} · {financialSummary.currency || 'GHS'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>

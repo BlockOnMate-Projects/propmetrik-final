@@ -31,7 +31,7 @@ import contributionRoutes from './routes/contributions';
 import pullIntegrationRoutes from './routes/pullIntegrations';
 import reportRoutes from './routes/reports';
 import valuersRoutes from './routes/valuers';
-import propertyManagementRoutes from './routes/propertyManagement';
+import propertyManagementRoutes, { propertyManagementPublicRouter } from './routes/propertyManagement';
 import crmRoutes from './routes/crm';
 import marketplaceRoutes from './routes/marketplace';
 import webhooksRoutes from './routes/webhooks';
@@ -109,6 +109,8 @@ import { initWhatsAppDigest } from './jobs/whatsappDigest';
 import { initRentReminderJob } from './jobs/rentReminderJob';
 import { initCrmTaskReminderJob } from './jobs/crmTaskReminderJob';
 import { initSubscriptionRenewalJob } from './jobs/subscriptionRenewalJob';
+import { initDataHubSyncJob } from './jobs/dataHubSyncJob';
+import { initContributionProcessorJob } from './jobs/contributionProcessorJob';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -207,6 +209,10 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/reports', reportRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/valuers', authenticate, requireServiceAccess('valuations'), valuersRoutes);
 app.use('/api/valuers', authenticate, requireServiceAccess('valuations'), valuersRoutes);  // Also mount for frontend compatibility
+// Public, token-scoped tenant-application endpoints — MUST be mounted BEFORE the authed
+// `/api/v1/pm` router so prospective tenants (no account) can validate links, apply, upload
+// docs, and check status without auth. Otherwise they 401 in prod (dev masks it via bypass).
+app.use('/api/v1/pm', propertyManagementPublicRouter);
 app.use('/api/v1/pm', authenticate, requireServiceAccess('property_management'), propertyManagementRoutes);
 app.use('/api/v1/crm', authenticate, requireServiceAccess('crm'), crmRoutes);
 app.use('/api/crm', authenticate, requireServiceAccess('crm'), crmRoutes);  // Also mount for frontend compatibility
@@ -978,6 +984,12 @@ const server = app.listen(config.port, async () => {
   initCrmTaskReminderJob();
   // Start daily subscription renewal / dunning sweep
   initSubscriptionRenewalJob();
+  // Start CRM→data-hub property sync sweep (DH-B) so Deal Management properties
+  // enrich the centralized valuation dataset automatically.
+  initDataHubSyncJob();
+  // Start data-hub contribution processor (DH-C) so pending contributions are
+  // validated/applied instead of piling up.
+  initContributionProcessorJob();
   // Attach WebSocket server for workspace real-time collaboration
   workspaceWebSocketServer.attach(server);
   logger.info(`Propmetrik API server running on port ${config.port}`, {

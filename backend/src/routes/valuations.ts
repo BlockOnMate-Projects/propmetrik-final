@@ -1648,6 +1648,8 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
         AND p.id != ALL($12::uuid[])
         -- Only include sale properties (not rentals)
         AND p.transaction_type = 'sale'
+        -- Exclude deleted properties (PM delete sets deleted_at)
+        AND p.deleted_at IS NULL
     `;
 
     // Add optional filters
@@ -2036,7 +2038,9 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
       WHERE p.id != COALESCE($6::uuid, p.id)
         -- RENTAL ONLY filter
         AND p.transaction_type = 'rental'
-        AND p.latitude IS NOT NULL 
+        -- Exclude deleted properties (PM delete sets deleted_at)
+        AND p.deleted_at IS NULL
+        AND p.latitude IS NOT NULL
         AND p.longitude IS NOT NULL
         AND p.price IS NOT NULL
         AND p.price > 0
@@ -2382,7 +2386,7 @@ router.get('/cap-rate/:region/:propertyType', async (req: Request, res: Response
     const { region, propertyType } = req.params;
 
     // Validate inputs
-    const validRegions = ['greater_accra', 'kumasi_metro', 'eastern', 'western_cluster', 'northern_cluster'];
+    const validRegions = ['greater_accra', 'ashanti', 'eastern', 'central', 'western', 'volta', 'northern', 'upper_east', 'upper_west', 'bono', 'bono_east', 'ahafo', 'savannah', 'north_east', 'oti', 'western_north'];
     const validPropertyTypes = ['residential_house', 'apartment_flat', 'commercial_office', 'commercial_shop', 'warehouse', 'mixed_use', 'land', 'industrial'];
 
     if (!validRegions.includes(region.toLowerCase())) {
@@ -2471,7 +2475,7 @@ router.post('/cap-rate/derive', async (req: Request, res: Response) => {
       });
     }
 
-    const validRegions = ['greater_accra', 'kumasi_metro', 'eastern', 'western_cluster', 'northern_cluster'];
+    const validRegions = ['greater_accra', 'ashanti', 'eastern', 'central', 'western', 'volta', 'northern', 'upper_east', 'upper_west', 'bono', 'bono_east', 'ahafo', 'savannah', 'north_east', 'oti', 'western_north'];
     const validPropertyTypes = ['residential_house', 'apartment_flat', 'commercial_office', 'commercial_shop', 'warehouse', 'mixed_use', 'land', 'industrial'];
 
     if (!validRegions.includes(region.toLowerCase())) {
@@ -2817,10 +2821,21 @@ router.get('/market/:region', async (req: Request, res: Response) => {
     // Validate region
     const validRegions: RegionCode[] = [
       'greater_accra',
-      'kumasi_metro',
+      'ashanti',
       'eastern',
-      'western_cluster',
-      'northern_cluster',
+      'central',
+      'western',
+      'volta',
+      'northern',
+      'upper_east',
+      'upper_west',
+      'bono',
+      'bono_east',
+      'ahafo',
+      'savannah',
+      'north_east',
+      'oti',
+      'western_north',
     ];
 
     if (!validRegions.includes(region as RegionCode)) {

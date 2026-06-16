@@ -486,7 +486,13 @@ export default function NewPropertyPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-xs font-mono uppercase text-muted-foreground">
-                                    {isMultiUnit ? 'Default Rent (Per Unit)' : 'Rental Price *'}
+                                    {isMultiUnit
+                                        ? 'Default Rent (Per Unit)'
+                                        : formData.transactionType === 'sale'
+                                            ? 'Asking Price *'
+                                            : formData.transactionType === 'lease'
+                                                ? 'Lease Price *'
+                                                : 'Rental Price (Monthly) *'}
                                 </Label>
                                 <Input
                                     name="price"
@@ -497,6 +503,11 @@ export default function NewPropertyPage() {
                                     className="bg-background border-border font-mono font-bold text-amber-500"
                                     required={!isMultiUnit}
                                 />
+                                {!isMultiUnit && formData.transactionType === 'sale' && (
+                                    <p className="text-[10px] font-mono text-muted-foreground">
+                                        Listed for sale — buyers enquire from the marketplace.
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-mono uppercase text-muted-foreground">Currency</Label>

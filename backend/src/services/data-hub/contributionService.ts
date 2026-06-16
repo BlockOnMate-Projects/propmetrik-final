@@ -486,13 +486,77 @@ export class ContributionService {
    */
   async getPendingForReview(limit: number = 20): Promise<Contribution[]> {
     const result = await query<Contribution>(
-      `SELECT * FROM contributions 
+      `SELECT * FROM contributions
        WHERE validation_status = 'pending'
        ORDER BY trust_score DESC, created_at ASC
        LIMIT $1`,
       [limit]
     );
     return result.rows;
+  }
+
+  /**
+   * Batch-process pending contributions (DH-C).
+   *
+   * Runs auto-validation over the pending queue so contributions don't pile up
+   * forever. High-confidence ones (auto_approved) are marked is_applied=true —
+   * the underlying property is already present in the centralized `properties`
+   * table (PM writes there directly; CRM is handled by the data-hub sync job),
+   * so this resolves the queue WITHOUT re-inserting (no duplicate comps).
+   * Low-confidence ones are left as under_review for a human; clearly bad ones
+   * are auto_rejected. Idempotent and safe to run on a schedule.
+   */
+  async processPendingContributions(limit: number = 200): Promise<{
+    processed: number;
+    auto_approved: number;
+    applied: number;
+    under_review: number;
+    auto_rejected: number;
+    errors: number;
+  }> {
+    const pending = await query<{ id: string; source_context: string }>(
+      `SELECT id, source_context FROM contributions
+        WHERE validation_status = 'pending'
+        ORDER BY trust_score DESC NULLS LAST, created_at ASC
+        LIMIT $1`,
+      [limit]
+    );
+
+    // Internal service hooks (PM / CRM / valuation workflow) are AUDIT records for
+    // data that already lives in `properties` — they aren't external submissions to
+    // quality-gate. Resolve them as applied rather than running the strict external
+    // validator (which would wrongly flag them as missing fields).
+    const INTERNAL_SOURCES = new Set(['property_management', 'crm_deal_management', 'crm', 'valuation_workflow']);
+
+    const summary = { processed: 0, auto_approved: 0, applied: 0, under_review: 0, auto_rejected: 0, errors: 0 };
+
+    for (const row of pending.rows) {
+      summary.processed++;
+      try {
+        if (INTERNAL_SOURCES.has(row.source_context)) {
+          await this.update(row.id, { validation_status: 'auto_approved', is_applied: true });
+          summary.auto_approved++;
+          summary.applied++;
+          continue;
+        }
+        // External submission → strict auto-validation.
+        const res = await this.autoValidate(row.id);
+        if (res.status === 'auto_approved') {
+          summary.auto_approved++;
+          await this.update(row.id, { is_applied: true });
+          summary.applied++;
+        } else if (res.status === 'under_review') {
+          summary.under_review++;
+        } else if (res.status === 'auto_rejected') {
+          summary.auto_rejected++;
+        }
+      } catch (err: any) {
+        summary.errors++;
+        logger.warn('processPendingContributions: a contribution failed', { id: row.id, error: err.message });
+      }
+    }
+
+    return summary;
   }
 
   /**

@@ -393,6 +393,15 @@ router.post('/properties/submit', validate(submitPropertyBody), asyncHandler(asy
     ]);
 
     res.status(201).json(result.rows[0]);
+
+    // Flywheel (DH-F): immediately sync the new CRM property into the centralized
+    // `properties` dataset so it becomes a valuation comparable without waiting for
+    // the 30-min sweep. Fire-and-forget — never blocks/fails the create response.
+    const newCrmId = result.rows[0]?.id;
+    if (newCrmId) {
+        crmPropertySyncService.syncToDataHub(newCrmId, userId, 'auto')
+            .catch((err: any) => logger.warn('Immediate CRM→hub sync failed (cron will retry)', { crmPropertyId: newCrmId, error: err.message }));
+    }
 }));
 
 // PATCH /properties/:id — Update CRM property with re-geocoding

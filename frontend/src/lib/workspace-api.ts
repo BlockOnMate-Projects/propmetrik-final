@@ -61,6 +61,9 @@ export interface WorkspaceConversation {
     created_at: string;
     updated_at: string;
     archived_at: string | null;
+    /** Server-resolved label for DMs (the other participant); absent for channels/groups. */
+    display_name?: string | null;
+    other_user_id?: string | null;
 }
 
 export interface ConversationMember {
@@ -119,6 +122,13 @@ export const workspaceApi = {
         fetchWorkspaceApi<{ conversation: WorkspaceConversation }>(`/${workspaceId}/conversations/group`, {
             method: 'POST',
             body: JSON.stringify({ name, memberIds }),
+        }),
+
+    /** Create a named channel open to every workspace member */
+    createChannelConversation: (workspaceId: string, name: string) =>
+        fetchWorkspaceApi<{ conversation: WorkspaceConversation }>(`/${workspaceId}/conversations/channel`, {
+            method: 'POST',
+            body: JSON.stringify({ name }),
         }),
 
     renameConversation: (workspaceId: string, conversationId: string, name: string) =>

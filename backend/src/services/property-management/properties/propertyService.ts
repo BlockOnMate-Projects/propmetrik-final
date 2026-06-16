@@ -9,21 +9,35 @@ import {
 } from '../../../types/property-management.types';
 import { logger } from '../../../utils/logger';
 import { ghanaPostService } from '../../data-hub/ghanaPostGeocodingService';
+import { orgHasService } from '../../../middleware/serviceAccess';
+import { syncPmPropertyToCrm } from '../../crm-deal-management/crmBridgeService';
 
 export class PropertyService {
+    /**
+     * If a property is listed for sale/lease and the org also subscribes to CRM,
+     * mirror it into crm_properties (the PM↔CRM bridge). No-op otherwise.
+     */
+    private async maybeBridgeToCrm(organizationId: string, property: Property): Promise<void> {
+        const txn = (property?.transactionType || '').toLowerCase();
+        if (txn !== 'sale' && txn !== 'lease') return;
+        if (!property?.id) return;
+        if (!(await orgHasService(organizationId, 'crm'))) return;
+        await syncPmPropertyToCrm(property.id);
+    }
+
     /**
      * Create a new property for the PM module
      */
     async createProperty(organizationId: string, data: CreatePropertyDto, userId: string): Promise<Property> {
         logger.info('Starting createProperty', { organizationId, unitsCount: data.unitsCount, units: data.units?.length, title: data.title });
         try {
+            let created: Property;
+
             // Preferred path: explicit per-unit layout (each unit carries its own specs)
             if (data.units && data.units.length > 0) {
-                return await this.createMultiUnitProperty(organizationId, data, userId, data.units);
-            }
-
-            // Legacy path: a uniform count of identical units (kept for API back-compat)
-            if (data.unitsCount && data.unitsCount > 1) {
+                created = await this.createMultiUnitProperty(organizationId, data, userId, data.units);
+            } else if (data.unitsCount && data.unitsCount > 1) {
+                // Legacy path: a uniform count of identical units (kept for API back-compat)
                 const uniformUnits: PropertyUnitInput[] = Array.from({ length: data.unitsCount }, (_, i) => ({
                     label: `Unit ${i + 1}`,
                     bedrooms: data.bedrooms,
@@ -31,10 +45,19 @@ export class PropertyService {
                     totalAreaSqm: data.totalAreaSqm,
                     price: data.price,
                 }));
-                return await this.createMultiUnitProperty(organizationId, data, userId, uniformUnits);
+                created = await this.createMultiUnitProperty(organizationId, data, userId, uniformUnits);
+            } else {
+                created = await this.createSingleProperty(organizationId, data, userId);
             }
 
-            return await this.createSingleProperty(organizationId, data, userId);
+            // PM↔CRM bridge (#93): if this is a for-sale/for-lease listing AND the org
+            // also pays for CRM/Deals, mirror it into crm_properties so it shows in their
+            // CRM dashboard immediately. Non-blocking and best-effort — never fails the create.
+            this.maybeBridgeToCrm(organizationId, created).catch(err =>
+                logger.warn('PM→CRM bridge on create failed (non-fatal)', { error: err.message, propertyId: created?.id }),
+            );
+
+            return created;
         } catch (error: any) {
             logger.error('Error in createProperty', {
                 error: error.message,
@@ -454,6 +477,12 @@ export class PropertyService {
             logger.error('Failed to create property update contribution hook', hookError);
         }
 
+        // PM↔CRM bridge (#93): keep the CRM mirror's asset facts in sync, and create
+        // it on the fly if this update turned the property into a for-sale/lease listing.
+        this.maybeBridgeToCrm(organizationId, property).catch(err =>
+            logger.warn('PM→CRM bridge on update failed (non-fatal)', { error: err.message, propertyId: property?.id }),
+        );
+
         return property;
     }
 
@@ -471,9 +500,12 @@ export class PropertyService {
             throw new Error('Cannot delete property with active tenancies');
         }
 
+        // Soft-delete: withdraw from active PM/marketplace views AND set deleted_at
+        // so the row is excluded from the valuation comparable pool (comp searches
+        // filter deleted_at IS NULL). Reversible — the row is retained, not dropped.
         const query = `
             UPDATE properties
-            SET status = 'withdrawn', updated_at = CURRENT_TIMESTAMP
+            SET status = 'withdrawn', deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
             WHERE id = $1 AND organization_id = $2
             RETURNING id
         `;

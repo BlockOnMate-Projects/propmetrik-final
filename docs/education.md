@@ -1,8 +1,11 @@
 # PropMetrik Education Module — Enterprise Implementation Specification
 
-**Version:** 1.0  
-**Date:** April 2026  
+**Version:** 1.1  
+**Date:** June 2026  
 **Scope:** Full end-to-end specification for `user_type = education` — faculty and student roles, cohort management, assignment workflow, bring-your-own-data valuation, billing, RBAC, database schema, API endpoints, and UI routing.
+
+> **Revision v1.1 — Billing model changed to STUDENT-PAID, hard-gated.**
+> v1.0 billed the **faculty/department** per cohort up front (students then enrolled free). v1.1 inverts this: **each student pays their own per-seat semester fee**, and a student gets **no access to the workspace until they pay**. Payment is unlocked only **after the professor approves** their enrollment for that semester. The faculty-invoice path (`edu_invoices`, manual admin confirmation) is **removed**; student seat fees are collected automatically through the platform's existing Paystack/MoMo rails and recorded in the unified `payment_transactions` ledger. Sections changed: 1 (principles), 2 (ADR), 3 (access), 4 (schema — `edu_enrollments` gains an access-gate state machine; `edu_invoices` dropped), 5 (RBAC), 6 (billing), 7 (onboarding), 10 (API), 12 (notifications), 13 (payment), 14 (migrations, renumbered ≥249), 15 (phase plan). Sections 8 (assignment workflow), 9 (BYOD), 11 (UI) are unchanged except where access-gating is referenced.
 
 ---
 
@@ -30,15 +33,26 @@
 
 ### What This Module Does
 
-PropMetrik Education is a vertical within the existing platform that enables universities and professional training institutions to teach property valuation using real workflows and real field data. It is **not a separate product** — it is a role-switched experience within the same Next.js frontend and TypeScript/Python backend.
+PropMetrik Education is a **course module for real-estate-related programmes** (valuation, and adjacent courses such as real estate finance, property/asset management, and real estate development) within the existing platform. It lets faculty teach the practical, data-driven side of these courses using real workflows and real field data. It is **not a separate product** — it is a role-switched experience within the same Next.js frontend and TypeScript/Python backend.
+
+### Scope & Non-Goals
+
+This is a **subject-specific teaching/assessment module, NOT a general-purpose Learning Management System (LMS).** It is designed to sit *alongside* whatever a lecturer already uses for the rest of the course (lecture delivery, the official gradebook, attendance), and to own the one thing a general LMS cannot do: students performing **real valuations / real-estate analyses with the professional engine on their own sourced data**, and faculty assessing those runs.
+
+**In scope (the module's job):** cohorts/enrolment, the BYOD valuation workspace (all engine methods), assignments framed as real valuation/analysis tasks, immutable submissions + generated GHIS-standard reports, faculty review & grading of those submissions, per-student seat billing, and the Data Hub reference panel.
+
+**Explicitly NOT in scope (use the institution's LMS for these):** general course-content hosting (lecture slides/videos/readings/syllabus), quizzes/exams, the **official weighted course gradebook** (we grade *our* assignments and can export them — the final course grade lives in the institution's system), discussion forums, calendar/attendance, and group/peer work beyond what's listed in the Phase Plan. Positioning it as a Moodle/Canvas replacement would be a mistake — the moat is the valuation engine, not course administration.
+
+> Note: today's assignment + submission model is **valuation-centric** (the 6 methods + GHIS report). Serving non-valuation real-estate courses (e.g. a development-appraisal or property-management brief) well may need additional assignment/submission types later; the flagship and the only fully-specced path is valuation.
 
 ### Core Principles
 
 1. **Bring Your Own Data** — Students source their own comparables, construction costs, and rental evidence from fieldwork and published sources. The platform's Data Hub is shown as read-only reference context only. No platform data is pre-populated into student workspaces.
-2. **Faculty as Customer** — The billing relationship is with the faculty member or department, not the student and not the university IT department.
-3. **Class Code Enrollment** — No university IT integration required. Professors share a join code; students self-register. University systems are irrelevant.
-4. **Same Codebase, Role-Switched UI** — The existing `user_type` pattern (currently `staff` / `customer`) is extended with `education`. Faculty and students log in at the same domain as all other users and receive dashboards appropriate to their role.
-5. **Accounts Are Permanent** — Cohort membership expires at semester end; the PropMetrik account does not. A student who used the platform in Semester 1 carries their history forward into Semester 2 with a new cohort code.
+2. **Student as Payer, Professor as Gatekeeper** — Each student pays their own per-seat semester fee. The professor does **not** pay and carries no financial liability; the professor controls **who** is allowed to pay by approving enrolments. A student cannot pay (and therefore cannot use the workspace) until the professor approves them for that semester.
+3. **Pay-to-Unlock (hard gate)** — Approval alone does not grant access. After approval, the student must pay the seat fee; only a confirmed payment unlocks the BYOD workspace, assignments, and submission. No free tier, no preview run.
+4. **Class Code Enrollment** — No university IT integration required. Professors share a join code; students self-register, then await approval. University systems are irrelevant.
+5. **Same Codebase, Role-Switched UI** — The existing `user_type` pattern (currently `staff` / `customer`) is extended with `education`. Faculty and students log in at the same domain as all other users and receive dashboards appropriate to their role.
+6. **Accounts Are Permanent** — Cohort membership and paid access expire at semester end; the PropMetrik account does not. A student who used the platform in Semester 1 carries their history forward into Semester 2 — but must be approved and pay again for the new cohort. Past submissions remain read-only accessible.
 
 ---
 
@@ -51,8 +65,11 @@ PropMetrik Education is a vertical within the existing platform that enables uni
 | University SSO (SAML/OAuth) | Not in MVP | Ghana universities lack reliable identity providers. Class-code enrollment is faster to market and has zero IT dependency. SSO is a Phase 3 feature for institutions that request it after adoption. |
 | PropMetrik owns the user relationship | Yes — PropMetrik accounts only | University cannot revoke access. Student account history persists beyond institutional relationship. Platform lock-in is maintained. |
 | Data Hub access for students | Read-only reference, never auto-populated | Ensures pedagogical value (different student data → different results). Mirrors real professional practice. |
-| Billing unit | Per seat per semester | Aligns with Ghana academic calendar. Semester = defined period. Easier budget approval at HOD level than annual. |
-| Payment method | MoMo primary, bank transfer secondary | Institutional budget disbursement in Ghana is predominantly MoMo or GhIPSS. Card is secondary. |
+| Billing unit | Per seat per semester | Aligns with Ghana academic calendar. Semester = defined period. |
+| **Who pays** (v1.1) | **The student, individually** | A ₵50 seat fee is individually affordable via MoMo and removes the months-long friction of getting a Ghanaian department's budget approved. The professor takes on no financial liability. Trade-off accepted: collection is fragmented across many small payers, and a class may be partially gated (some paid, some not) — mitigated by the per-student waiver and the faculty roster's paid/unpaid visibility. |
+| **Access gating** (v1.1) | **Hard paywall after professor approval** | Two-step gate: (1) professor approves the enrolment for the semester; (2) student pays. Only a confirmed payment flips access to `active`. Approval without payment = no access. Enforced by `requireEduPaidEnrollment` middleware mirroring the existing `requireServiceAccess` pattern. |
+| Payment method | MoMo primary, card secondary — **automated** | Collected through the platform's existing Paystack integration (`channel: 'mobile_money'`), the same automated rail tenants use to pay rent. Confirmation is webhook-driven; **no manual admin confirmation** (v1.0's manual step is removed). |
+| Payment record | Unified `payment_transactions` ledger | A seat fee is 100% platform revenue (no third-party split), so it is recorded like a subscription charge: `payment_type='education'`, `recipient_type='platform'`, `service_fee=0`. The per-cohort faculty-invoice table (`edu_invoices`) is **not used** and is dropped. |
 
 ---
 
@@ -74,7 +91,7 @@ Two new roles are added to `user_role_enum`:
 
 | Role | Level | Description |
 |---|---|---|
-| `edu_faculty` | 32 | Professor / lecturer. Creates cohorts and assignments, reviews submissions, manages cohort billing. Treated as a customer (no access to platform `/admin`). |
+| `edu_faculty` | 32 | Professor / lecturer. Creates cohorts and assignments, **approves/waives student enrolments**, reviews submissions. Pays nothing (students self-pay). Treated as a customer (no access to platform `/admin`). |
 | `edu_student` | 80 | Student enrolled in at least one active cohort. Can run BYOD valuations and submit assignments. Read-only access to own submission history. |
 
 Both roles have `user_type = 'education'`.
@@ -103,34 +120,42 @@ Both roles have `user_type = 'education'`.
 | Create assignment | ✓ (own cohorts only) | ✗ |
 | View all submissions in cohort | ✓ | ✗ |
 | View own submissions | ✓ | ✓ |
-| Run BYOD valuation (all 6 methods) | ✓ (preview) | ✓ (draft → submit) |
-| Generate valuation report (PDF/DOCX) | ✓ | ✓ (included in submission) |
+| Run BYOD valuation (all 6 methods) | ✓ (preview) | ✓ (draft → submit) — **only after seat fee paid** |
+| Generate valuation report (PDF/DOCX) | ✓ | ✓ (included in submission) — paid access |
 | View Data Hub benchmarks (read-only) | ✓ | ✓ (reference panel only) |
-| Submit assignment | ✗ | ✓ (enrolled cohorts only) |
+| Submit assignment | ✗ | ✓ (enrolled **and paid** cohorts only) |
 | Review / grade submission | ✓ (own cohorts only) | ✗ |
-| Manage cohort billing | ✓ (own cohorts only) | ✗ |
+| Approve / reject enrolments | ✓ (own cohorts only) | ✗ |
+| Waive a student's seat fee (grant free access) | ✓ (own cohorts only) | ✗ |
+| Pay own seat fee to unlock access | ✗ | ✓ |
 
 ---
 
 ## 4. Database Schema
 
-### Migration: `230_education_module.sql`
+### Migration: `249_education_module.sql`
+
+> Renumbered from 230 (v1.0): migrations 230–248 are already used by other features; 249 is the next free number. `ALTER TYPE … ADD VALUE` (roles, `payment_type_enum`) requires the enum **owner/superuser** and cannot be added-and-used in the same transaction — run those statements first, autocommit, then the table DDL (same operational pattern as the region-partition migration). The faculty-invoice table (`edu_invoices`) from v1.0 is **removed**; student seat fees live in the unified `payment_transactions` ledger (see §6, §13).
 
 ```sql
 -- ============================================================
--- MIGRATION 230: Education Module
+-- MIGRATION 249: Education Module (student-paid, hard-gated)
 -- PropMetrik Education — Faculty, Students, Cohorts,
--- Assignments, Submissions, Reviews, Billing
+-- Assignments, Submissions, Reviews. Per-student seat billing.
 -- ============================================================
 
--- 1. Extend user_type constraint
+-- 1. Extend user_type constraint (re-add whatever the live constraint is named)
 ALTER TABLE users DROP CONSTRAINT IF EXISTS chk_user_type;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_user_type_check;
 ALTER TABLE users ADD CONSTRAINT chk_user_type
   CHECK (user_type IN ('staff', 'customer', 'education'));
 
--- 2. Add education roles to enum
+-- 2. Add education roles to enum (SUPERUSER; commit before use)
 ALTER TYPE user_role_enum ADD VALUE IF NOT EXISTS 'edu_faculty';
 ALTER TYPE user_role_enum ADD VALUE IF NOT EXISTS 'edu_student';
+
+-- 2b. Allow education seat fees in the unified payments ledger (SUPERUSER; commit before use)
+ALTER TYPE payment_type_enum ADD VALUE IF NOT EXISTS 'education';
 
 -- ============================================================
 -- 3. INSTITUTIONS
@@ -185,15 +210,17 @@ CREATE TABLE edu_cohorts (
     starts_at        DATE NOT NULL,
     ends_at          DATE NOT NULL,
 
-    -- Status
+    -- Status — a cohort goes live as soon as the professor publishes it.
+    -- There is NO faculty payment to wait for (students pay individually).
+    -- draft → active (join code live) → completed (semester ended) → archived
     status           VARCHAR(20) NOT NULL DEFAULT 'draft'
                        CHECK (status IN ('draft','active','completed','archived')),
 
-    -- Billing
-    billing_status   VARCHAR(20) NOT NULL DEFAULT 'pending'
-                       CHECK (billing_status IN ('pending','invoiced','paid','overdue','waived')),
+    -- Billing (student-paid): the per-seat fee EACH student pays to unlock access.
+    -- There is no cohort-level invoice; payment is per enrolment (see edu_enrollments).
     price_per_seat_ghs DECIMAL(10,2) NOT NULL DEFAULT 50.00,
-    invoice_id       UUID,   -- FK to invoices table, set when invoice is generated
+    allow_waivers    BOOLEAN NOT NULL DEFAULT TRUE,  -- may the professor grant free seats?
+    paid_seats       INTEGER NOT NULL DEFAULT 0,     -- enrolments with access_status='active'
 
     metadata         JSONB DEFAULT '{}',
     created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -213,30 +240,60 @@ CREATE TABLE edu_enrollments (
     cohort_id    UUID NOT NULL REFERENCES edu_cohorts(id) ON DELETE CASCADE,
     student_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     enrolled_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    -- Membership lifecycle (is the student still in the class at all)
     status       VARCHAR(20) NOT NULL DEFAULT 'active'
                    CHECK (status IN ('active','dropped','suspended')),
     dropped_at   TIMESTAMPTZ,
+
+    -- ── ACCESS-GATE STATE MACHINE (the heart of the student-paid model) ──
+    -- pending_approval → (professor approves) → awaiting_payment
+    --                 → (student pays OR professor waives) → active
+    --                 → (semester ends) → expired
+    -- requireEduPaidEnrollment() grants workspace/submit access ONLY when access_status = 'active'.
+    access_status   VARCHAR(20) NOT NULL DEFAULT 'pending_approval'
+                      CHECK (access_status IN ('pending_approval','awaiting_payment','active','expired','rejected')),
+
+    -- Approval (professor admits the student for this semester)
+    approved_at     TIMESTAMPTZ,
+    approved_by     UUID REFERENCES users(id),
+    rejected_reason TEXT,
+
+    -- Payment (links to the unified payment_transactions ledger by reference)
+    seat_price_ghs    DECIMAL(10,2),   -- snapshot of cohort price at approval time
+    payment_reference VARCHAR(100),    -- payment_transactions.reference (edu_<enrollmentId>_…)
+    paid_at           TIMESTAMPTZ,
+
+    -- Waiver (professor/admin grants free access — scholarship/hardship)
+    waived_by       UUID REFERENCES users(id),
+    waive_reason    TEXT,
+    waived_at       TIMESTAMPTZ,
+
+    expired_at      TIMESTAMPTZ,        -- set when cohort ends; access drops to read-only history
+
     UNIQUE (cohort_id, student_id)
 );
 
 CREATE INDEX idx_edu_enrollments_cohort  ON edu_enrollments(cohort_id);
 CREATE INDEX idx_edu_enrollments_student ON edu_enrollments(student_id);
+CREATE INDEX idx_edu_enrollments_access  ON edu_enrollments(access_status);
+CREATE INDEX idx_edu_enrollments_payref  ON edu_enrollments(payment_reference) WHERE payment_reference IS NOT NULL;
 
--- Trigger: maintain enrolled_count on edu_cohorts
+-- Trigger: maintain both counters on edu_cohorts by recomputing for the affected cohort.
+--   enrolled_count = students still in the class (status='active', i.e. not dropped)
+--   paid_seats     = students with unlocked access (access_status='active')
+-- Recompute (rather than +/- deltas) so the two-axis state machine can't drift the counts.
 CREATE OR REPLACE FUNCTION edu_update_enrolled_count()
 RETURNS TRIGGER AS $$
+DECLARE
+    target_cohort UUID := COALESCE(NEW.cohort_id, OLD.cohort_id);
 BEGIN
-    IF TG_OP = 'INSERT' AND NEW.status = 'active' THEN
-        UPDATE edu_cohorts SET enrolled_count = enrolled_count + 1 WHERE id = NEW.cohort_id;
-    ELSIF TG_OP = 'UPDATE' THEN
-        IF OLD.status = 'active' AND NEW.status != 'active' THEN
-            UPDATE edu_cohorts SET enrolled_count = enrolled_count - 1 WHERE id = NEW.cohort_id;
-        ELSIF OLD.status != 'active' AND NEW.status = 'active' THEN
-            UPDATE edu_cohorts SET enrolled_count = enrolled_count + 1 WHERE id = NEW.cohort_id;
-        END IF;
-    ELSIF TG_OP = 'DELETE' AND OLD.status = 'active' THEN
-        UPDATE edu_cohorts SET enrolled_count = enrolled_count - 1 WHERE id = OLD.cohort_id;
-    END IF;
+    UPDATE edu_cohorts c SET
+        enrolled_count = (SELECT COUNT(*) FROM edu_enrollments e
+                           WHERE e.cohort_id = target_cohort AND e.status = 'active'),
+        paid_seats     = (SELECT COUNT(*) FROM edu_enrollments e
+                           WHERE e.cohort_id = target_cohort AND e.access_status = 'active')
+    WHERE c.id = target_cohort;
     RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
@@ -350,54 +407,31 @@ CREATE TABLE edu_submission_revisions (
 CREATE INDEX idx_edu_revisions_submission ON edu_submission_revisions(submission_id);
 
 -- ============================================================
--- 10. COHORT INVOICES
--- Education billing — per cohort, per semester
+-- 10. SEAT PAYMENTS — NO DEDICATED TABLE
 -- ============================================================
-CREATE TABLE edu_invoices (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    cohort_id       UUID NOT NULL REFERENCES edu_cohorts(id) ON DELETE RESTRICT,
-    faculty_id      UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    institution_id  UUID REFERENCES edu_institutions(id),
-
-    invoice_number  VARCHAR(50) NOT NULL UNIQUE,  -- e.g. EDU-2026-001
-    seats_invoiced  INTEGER NOT NULL,
-    price_per_seat  DECIMAL(10,2) NOT NULL,
-    subtotal_ghs    DECIMAL(10,2) NOT NULL,
-    tax_ghs         DECIMAL(10,2) NOT NULL DEFAULT 0,
-    total_ghs       DECIMAL(10,2) NOT NULL,
-
-    status          VARCHAR(20) NOT NULL DEFAULT 'unpaid'
-                      CHECK (status IN ('unpaid','paid','overdue','cancelled','waived')),
-    payment_method  VARCHAR(50),  -- mtn_momo, bank_transfer, card, waived
-    payment_reference VARCHAR(100),
-    paid_at         TIMESTAMPTZ,
-    due_at          TIMESTAMPTZ NOT NULL,
-
-    -- Admin override
-    waived_by       UUID REFERENCES users(id),
-    waive_reason    TEXT,
-
-    notes           TEXT,
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_edu_invoices_cohort   ON edu_invoices(cohort_id);
-CREATE INDEX idx_edu_invoices_faculty  ON edu_invoices(faculty_id);
-CREATE INDEX idx_edu_invoices_status   ON edu_invoices(status);
-
--- Update edu_cohorts.invoice_id FK
-ALTER TABLE edu_cohorts ADD CONSTRAINT fk_cohort_invoice
-  FOREIGN KEY (invoice_id) REFERENCES edu_invoices(id);
+-- Student seat fees are NOT invoiced per cohort. Each student's payment is a row in the
+-- existing unified `payment_transactions` ledger (migration 133), written by the same
+-- Paystack flow that handles rent/subscriptions:
+--     payment_type      = 'education'
+--     payer_id          = student user id
+--     payer_email       = student email
+--     recipient_type    = 'platform'        -- 100% platform revenue, no third-party split
+--     service_fee       = 0
+--     principal_amount  = total = cohort.price_per_seat_ghs (pesewas)
+--     domain_record_type= 'edu_enrollment'
+--     domain_record_id  = edu_enrollments.id
+--     reference         = 'edu_<enrollmentId>_<uuid>'
+-- On charge.success, edu_enrollments.access_status flips to 'active' and paid_at/payment_reference
+-- are set (see §13). The v1.0 `edu_invoices` table and edu_cohorts.invoice_id FK are removed.
 
 -- ============================================================
 -- 11. AUDIT LOG entries for education events
 -- Uses existing audit_log table pattern
 -- ============================================================
 -- No new table needed; use existing audit_log with resource_type = 'education'
--- Actions: cohort_created, cohort_activated, student_enrolled, assignment_published,
---          submission_submitted, submission_reviewed, invoice_generated, invoice_paid
+-- Actions: cohort_created, cohort_activated, student_enrolled, enrollment_approved,
+--          enrollment_rejected, seat_paid, seat_waived, access_expired,
+--          assignment_published, submission_submitted, submission_reviewed
 ```
 
 ---
@@ -422,8 +456,37 @@ VALUES
   ('edu_submission_create',  'edu_submission',   'create', ARRAY['edu_student']::user_role_enum[], 'Submit assignment'),
   ('edu_submission_read_own','edu_submission',   'read',   ARRAY['edu_faculty','edu_student']::user_role_enum[], 'Read submissions (faculty=all in cohort, student=own only)'),
   ('edu_submission_review',  'edu_submission',   'review', ARRAY['edu_faculty','super_admin']::user_role_enum[], 'Grade/review a submission'),
-  ('edu_invoice_read',       'edu_invoice',      'read',   ARRAY['super_admin','admin','edu_faculty']::user_role_enum[], 'View education invoices'),
-  ('edu_invoice_manage',     'edu_invoice',      'manage', ARRAY['super_admin','admin']::user_role_enum[], 'Create/waive education invoices');
+  ('edu_enrollment_approve', 'edu_enrollment',   'approve',ARRAY['super_admin','edu_faculty']::user_role_enum[], 'Approve/reject/waive a student enrolment in own cohort'),
+  ('edu_enrollment_pay',     'edu_enrollment',   'pay',    ARRAY['edu_student']::user_role_enum[], 'Pay own seat fee to unlock access'),
+  ('edu_payment_read',       'edu_payment',      'read',   ARRAY['super_admin','admin','edu_faculty']::user_role_enum[], 'View seat-payment status (faculty=own cohort roster, admin=all)');
+```
+
+### Access Gate Middleware (the pay-to-unlock enforcement)
+
+```typescript
+// backend/src/middleware/eduGuard.ts — mirrors requireServiceAccess, but keyed on enrolment.
+// Apply to BYOD valuation + submission routes. Approval alone is NOT enough — access_status
+// must be 'active' (paid or waived).
+export function requireEduPaidEnrollment(cohortIdParam = 'cohortId') {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (user?.role === 'super_admin') return next();           // platform staff bypass
+    const cohortId = req.params[cohortIdParam] ?? req.body.cohortId;
+    const row = await pool.query(
+      `SELECT access_status FROM edu_enrollments
+        WHERE cohort_id = $1 AND student_id = $2 AND status = 'active'`,
+      [cohortId, user.id]
+    );
+    const access = row.rows[0]?.access_status;
+    if (access === 'active') return next();
+    return res.status(403).json({
+      error: 'Seat fee not paid',
+      code: access === 'awaiting_payment' ? 'PAYMENT_REQUIRED'
+          : access === 'pending_approval' ? 'AWAITING_APPROVAL'
+          : 'NOT_ENROLLED',
+    });
+  };
+}
 ```
 
 ### Middleware Pattern
@@ -481,61 +544,61 @@ async assertStudentEnrolled(cohortId: string, studentId: string): Promise<void> 
 
 ---
 
-## 6. Billing Model
+## 6. Billing Model — Student-Paid, Per Seat, Per Semester
+
+Each **student** pays their own seat fee to unlock the cohort for the semester. The professor never pays and there is no cohort-level invoice. Collection is automated end-to-end through the platform's existing Paystack/MoMo rails (the same loop tenants use to pay rent); confirmation is webhook-driven, with **no manual admin step**.
 
 ### Pricing Structure
 
-| Unit | Price | Trigger |
-|---|---|---|
-| Per seat, per semester | ₵50 GHS | Cohort activation (invoice generated on `max_seats` declaration) |
-| Department deal (3+ cohorts/year) | ₵40 GHS/seat | Manual override by PropMetrik admin |
-| Annual institutional licence | Flat negotiated | Phase 3 — after ≥5 cohorts at one institution |
+| Unit | Price | Who pays | Set by |
+|---|---|---|---|
+| Per seat, per semester | ₵50 GHS (default `edu_cohorts.price_per_seat_ghs`) | The student | Professor may set a different per-seat price per cohort; PropMetrik admin can cap/override |
+| Waived seat (scholarship/hardship) | ₵0 | Nobody — professor grants free access | `edu_enrollments.waived_by` |
+| Annual institutional licence | Flat negotiated | Institution | Phase 3 — after ≥5 cohorts at one institution (would re-introduce a sponsored billing mode) |
 
-### Billing Flow
+### Billing Flow (per student)
 
 ```
-1. Faculty creates cohort → declares max_seats (e.g. 60)
-2. System generates edu_invoice:
-     invoice_number: EDU-{YEAR}-{SEQ}
-     seats_invoiced: 60
-     price_per_seat: 50.00
-     total_ghs: 3000.00
-     due_at: cohort.starts_at - 7 days
-3. Faculty receives invoice via email + in-app notification
-4. Faculty pays via MoMo or bank transfer
-5. PropMetrik admin confirms payment → invoice.status = 'paid'
-     → cohort.billing_status = 'paid'
-     → cohort.status = 'active'   (join code becomes live)
-6. Students can now enrol using the join code
+1. Professor creates cohort and publishes it → cohort.status = 'active'.
+   (No payment required to go live — the join code is immediately usable.)
+2. Student joins via the cohort join code
+   → edu_enrollments row, access_status = 'pending_approval'. NO workspace access yet.
+3. Professor reviews the roster and APPROVES the student (or rejects/waives)
+   → access_status = 'awaiting_payment'
+   → seat_price_ghs snapshotted from the cohort
+   → Student notified: "You're approved — pay ₵50 to unlock your workspace."
+   (Waive instead → access_status = 'active', free; skip steps 4–6.)
+4. Student initiates payment: POST /education/enrollments/:id/pay
+   → paymentProcessor → paystackService.initializeTransaction({ channel: 'mobile_money'|'card' })
+   → returns authorization_url; reference = 'edu_<enrollmentId>_<uuid>'
+   → a 'pending' row is written to payment_transactions (payment_type='education',
+      recipient_type='platform', service_fee=0, principal = seat_price_ghs)
+5. Student pays on Paystack (MoMo prompt / card)
+6. Paystack 'charge.success' webhook (existing POST /api/v1/webhooks/paystack)
+   → verify, mark payment_transactions 'success'
+   → edu_enrollments: access_status='active', paid_at=now, payment_reference set
+   → Student notified: "Payment confirmed — your workspace is unlocked."
+   → Professor notified (digest): "[Student] has paid and is active."
 7. At semester end (cohort.ends_at):
-     → cohort.status = 'completed'
-     → students retain read-only access to their submissions
-     → join code deactivated (new enrollments blocked)
+   → cohort.status='completed'; a job sets active enrolments → access_status='expired'
+   → students keep READ-ONLY access to their own submissions; join code deactivated
 ```
 
-### Seat Overage
+The **hard gate**: `requireEduPaidEnrollment` (see §5) allows the BYOD workspace and submission **only** when `access_status='active'`. `pending_approval` → 403 `AWAITING_APPROVAL`; `awaiting_payment` → 403 `PAYMENT_REQUIRED` (the UI shows the pay screen).
 
-If enrolled_count approaches max_seats, the faculty receives a notification at 80% and 100% capacity. To add seats:
-1. Faculty requests seat increase from their cohort settings
-2. System generates a supplementary invoice: `additional_seats × ₵50`
-3. Payment confirmed → max_seats updated
+### Seat Capacity
 
-### Payment Methods (Phase 1)
+`max_seats` caps how many students may hold a non-dropped enrolment (`enrolled_count`). The professor sees, on the roster, the split of **pending / awaiting payment / active** so they can chase unpaid students or prune no-shows. `paid_seats` (active enrolments) is the revenue-bearing count. Raising `max_seats` requires no payment from the professor (students self-pay), so seat overage is just a settings change.
 
-Both are confirmed manually by PropMetrik admin in the admin panel:
+### Waivers (per student)
 
-| Method | Mechanism |
-|---|---|
-| MTN Mobile Money | Faculty pays to PropMetrik MoMo merchant number. Reference = invoice number. Admin confirms in `/admin/education/invoices`. |
-| Bank Transfer / GhIPSS | Faculty pays to PropMetrik bank account. Reference = invoice number. Admin confirms. |
+Because some Ghanaian students genuinely cannot afford even ₵50, the professor (if `cohort.allow_waivers`) or a PropMetrik admin may waive an individual seat: `access_status='active'`, `waived_by`/`waive_reason` set, no payment. This is the per-student equivalent of v1.0's cohort-level waiver and is essential to avoid locking out hardship cases.
 
-**Phase 2:** Paystack webhook → auto-confirmation on successful card/MoMo payment.
+### Refund / Dispute Policy
 
-### Refund Policy
-
-- No refund after cohort is activated and join code has been used by ≥1 student
-- Full refund if cohort is cancelled before any enrollment
-- Pro-rata refund for unused seats if cohort is cancelled after partial enrollment (PropMetrik admin discretion)
+- Seat fees are **non-refundable once `access_status='active'`** (the student has had workspace access). Stated clearly on the pay screen.
+- Pre-payment, a student who is rejected or drops owes nothing (no charge was made).
+- Paystack chargebacks/disputes are handled through the existing payments dispute path; a successful dispute reverses `access_status` to `awaiting_payment`.
 
 ---
 
@@ -560,7 +623,7 @@ Both are confirmed manually by PropMetrik admin in the admin panel:
 
 **Phase 2 upgrade:** If faculty email domain matches `edu_institutions.staff_email_domains`, auto-approve without admin review.
 
-### Student Enrollment Flow
+### Student Enrollment Flow (join → approve → pay → unlock)
 
 ```
 1. Professor shares join code (e.g. "KNUST-VAL-4F9X") or join link
@@ -569,8 +632,8 @@ Both are confirmed manually by PropMetrik admin in the admin panel:
 2. Student visits the join URL
    → If not logged in: prompted to sign up or log in
    → If logged in as wrong user_type: shown error "This link is for student enrollment"
-   → If cohort is full: shown "This cohort is full — contact your lecturer"
-   → If cohort billing not paid: shown "This cohort is not yet active"
+   → If cohort is full (enrolled_count ≥ max_seats): "This cohort is full — contact your lecturer"
+   → (Cohort is active on creation — there is no "not yet paid by faculty" state.)
 
 3. Student signs up:
    - Name, email (or phone for SMS OTP), password
@@ -578,10 +641,23 @@ Both are confirmed manually by PropMetrik admin in the admin panel:
    - **Student ID number (required)** — the university index number (e.g. `20245678`). Stored as `edu_student_id`. Faculty can see this alongside submissions.
    - user_type = 'education', role = 'edu_student'
 
-4. On account creation:
-   → edu_enrollments record created (cohort_id, student_id)
-   → Student lands on education dashboard, cohort visible
-   → Faculty notified: "New student enrolled: [name]"
+4. On account creation / join:
+   → edu_enrollments row created: access_status = 'pending_approval'
+   → Student lands on the cohort with a banner: "Awaiting your lecturer's approval."
+   → NO workspace/assignment access yet (requireEduPaidEnrollment blocks it).
+   → Faculty notified: "New student awaiting approval: [name] ([student ID])"
+
+5. Professor approves the student (roster → Approve)
+   → access_status = 'awaiting_payment'; seat_price_ghs snapshotted
+   → Student notified: "Approved — pay ₵50 to unlock your workspace for the semester."
+   (Or professor waives → access_status='active', free; student skips to step 7.)
+
+6. Student pays the seat fee (MoMo / card via Paystack — see §6 and §13)
+   → on webhook confirmation: access_status='active'
+
+7. Access unlocked
+   → Student sees assignments, opens the BYOD workspace, can submit.
+   → Faculty roster shows the student as Active (paid / waived).
 ```
 
 ### Returning Student (New Semester)
@@ -589,9 +665,11 @@ Both are confirmed manually by PropMetrik admin in the admin panel:
 ```
 1. Student already has PropMetrik account from previous semester
 2. Professor shares new cohort's join code
-3. Student logs in → visits join link → single click to enroll
-4. Previous submission history remains accessible (read-only)
-5. New cohort workspace is fresh
+3. Student logs in → visits join link → joins (access_status='pending_approval')
+4. Professor approves → student pays the new cohort's seat fee → access unlocked
+   (Approval + payment are per cohort, every semester — access does not carry over.)
+5. Previous submission history remains accessible (read-only) regardless of new-cohort payment
+6. New cohort workspace is fresh
 ```
 
 ---
@@ -829,21 +907,26 @@ All endpoints are prefixed `/api/v1/education/`.
 | POST | `/cohorts` | `edu_faculty` | Create cohort (generates join code, draft status) |
 | GET | `/cohorts` | `edu_faculty` | List own cohorts |
 | GET | `/cohorts/:id` | `edu_faculty` | Cohort detail |
-| PATCH | `/cohorts/:id` | `edu_faculty` | Update cohort (pre-activation only) |
-| POST | `/cohorts/:id/activate` | `edu_faculty` | Request activation (triggers invoice) |
+| PATCH | `/cohorts/:id` | `edu_faculty` | Update cohort |
+| POST | `/cohorts/:id/activate` | `edu_faculty` | Publish cohort → status `active`, join code live (no invoice, no payment) |
 | POST | `/cohorts/:id/archive` | `edu_faculty` | Archive completed cohort |
-| GET | `/cohorts/:id/students` | `edu_faculty` | List enrolled students |
-| DELETE | `/cohorts/:id/students/:studentId` | `edu_faculty` | Remove student from cohort |
+| GET | `/cohorts/:id/students` | `edu_faculty` | Roster with per-student `access_status` (pending / awaiting payment / active / waived) |
+| POST | `/cohorts/:id/students/:studentId/approve` | `edu_faculty` | Approve enrolment → `awaiting_payment` |
+| POST | `/cohorts/:id/students/:studentId/reject` | `edu_faculty` | Reject enrolment (with reason) |
+| POST | `/cohorts/:id/students/:studentId/waive` | `edu_faculty` | Waive seat fee → `active` (free), if `allow_waivers` |
+| DELETE | `/cohorts/:id/students/:studentId` | `edu_faculty` | Remove/drop student from cohort |
 | GET | `/cohorts/:id/submissions` | `edu_faculty` | All submissions across all assignments |
 
 ### Enrollment (Student-facing)
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/join/:code` | Public | Preview cohort info from join code (name, faculty, institution, period) |
-| POST | `/enroll` | `edu_student` | Enrol in cohort by join code or token |
-| GET | `/my-cohorts` | `edu_student` | List own enrolled cohorts |
+| GET | `/join/:code` | Public | Preview cohort info from join code (name, faculty, institution, period, seat price) |
+| POST | `/enroll` | `edu_student` | Join cohort by join code/token → enrolment `pending_approval` |
+| GET | `/my-cohorts` | `edu_student` | Own cohorts, each with own `access_status` |
 | DELETE | `/my-cohorts/:cohortId` | `edu_student` | Drop from cohort |
+| POST | `/enrollments/:id/pay` | `edu_student` | Initiate seat-fee payment (returns Paystack `authorization_url`); allowed only when `awaiting_payment` |
+| GET | `/enrollments/:id/payment-status` | `edu_student` | Poll access/payment state after returning from Paystack |
 
 ### Assignments
 
@@ -878,16 +961,18 @@ All endpoints are prefixed `/api/v1/education/`.
 | POST | `/valuation/byod` | `edu_student`, `edu_faculty` | Run BYOD valuation (no Data Hub fetch) |
 | GET | `/valuation/reference/:region` | `edu_student`, `edu_faculty` | Read-only Data Hub benchmarks for reference panel |
 
-### Billing (Education Invoices)
+### Billing (Student Seat Payments)
+
+No per-cohort invoices. Each student pays their own seat fee; the existing Paystack webhook confirms it.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/invoices` | `edu_faculty` | Own invoices |
-| GET | `/invoices/:id` | `edu_faculty` | Invoice detail |
-| GET | `/admin/invoices` | `super_admin`, `admin` | All education invoices |
-| PATCH | `/admin/invoices/:id/confirm-payment` | `super_admin`, `admin` | Confirm manual payment |
-| PATCH | `/admin/invoices/:id/waive` | `super_admin` | Waive invoice |
-| POST | `/admin/invoices/generate` | `super_admin`, `admin` | Manually generate invoice for cohort |
+| POST | `/enrollments/:id/pay` | `edu_student` | Initiate seat-fee payment (see Enrollment section) |
+| GET | `/enrollments/:id/payment-status` | `edu_student` | Own payment/access state |
+| POST | `/api/v1/webhooks/paystack` | Paystack (signed) | **Existing** handler, extended: `charge.success` with `reference` `edu_…` / `metadata.payment_type='education'` → set enrolment `access_status='active'` |
+| GET | `/cohorts/:id/payments` | `edu_faculty` | Seat-payment status for own cohort roster (read-only) |
+| GET | `/admin/payments` | `super_admin`, `admin` | All education seat payments (filter by institution/cohort/date) — reads `payment_transactions` |
+| POST | `/cohorts/:id/students/:studentId/waive` | `edu_faculty` | Grant free access (also listed under Cohorts) |
 
 ---
 
@@ -906,8 +991,8 @@ All endpoints are prefixed `/api/v1/education/`.
   cohorts/[id]/assignments/      ← list assignments
   cohorts/[id]/assignments/new   ← create assignment
   cohorts/[id]/assignments/[aid] ← assignment detail + submission list
-  cohorts/[id]/students          ← enrolled student list
-  cohorts/[id]/billing           ← invoice status and payment instructions
+  cohorts/[id]/students          ← roster: approve / reject / waive + per-student access_status
+  cohorts/[id]/payments          ← seat-payment status (who's paid / awaiting / waived)
   submissions/[sid]/review       ← review workspace (split-view)
   profile/                       ← faculty profile
 
@@ -932,10 +1017,15 @@ All endpoints are prefixed `/api/v1/education/`.
 │  MY COHORTS                                                 │
 │  ┌──────────────────────────────────────────┐              │
 │  │ Valuation III – Sem 1 2026/27            │              │
-│  │ KNUST · VAL 305 · 34/60 students         │              │
-│  │ Status: Active  |  Billing: Paid         │              │
-│  │ [Assignments] [Students] [Billing]        │              │
+│  │ KNUST · VAL 305 · 34 joined              │              │
+│  │ Status: Active │ 28 paid · 4 awaiting    │              │
+│  │ 2 pending approval                       │              │
+│  │ [Assignments] [Roster] [Payments]         │              │
 │  └──────────────────────────────────────────┘              │
+├─────────────────────────────────────────────────────────────┤
+│  PENDING APPROVALS (2)   ← approve so they can pay          │
+│  Yaw Owusu (20231145)   joined 1h ago   [Approve] [Reject] │
+│  Esi Mensah (20230987)  joined 3h ago   [Approve] [Reject] │
 ├─────────────────────────────────────────────────────────────┤
 │  PENDING REVIEWS (7)                                        │
 │  Kwame Asante    Assignment 2  Submitted 2h ago  [Review]  │
@@ -951,6 +1041,24 @@ All endpoints are prefixed `/api/v1/education/`.
 
 ### Student Dashboard
 
+The student's view depends on their `access_status`. Before paying, the whole cohort is gated behind a single pay (or "awaiting approval") banner; assignments are listed but locked.
+
+**Awaiting approval / awaiting payment (gated):**
+```
+┌─ PropMetrik Education ─────────────────────────────────────┐
+│  Welcome, Kwame                                             │
+│  Valuation III – Dr. Mensah (KNUST · VAL 305)              │
+├─────────────────────────────────────────────────────────────┤
+│  ⏳ Awaiting your lecturer's approval.                      │   ← pending_approval
+│     You'll be able to pay once approved.                   │
+│  ── OR (once approved) ──────────────────────────────────  │
+│  🔒 You're approved! Pay ₵50 to unlock this semester.      │   ← awaiting_payment
+│     [ Pay ₵50 with Mobile Money / Card ]                   │
+│     Assignment 2: Income Approach · Due 30 Apr (locked)    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**After payment (unlocked):**
 ```
 ┌─ PropMetrik Education ─────────────────────────────────────┐
 │  Welcome, Kwame                                             │
@@ -1060,9 +1168,11 @@ All notifications use the existing notification system. New event types:
 | Event | Recipient | Channel | Message |
 |---|---|---|---|
 | Faculty account approved | Faculty | Email + in-app | "Your PropMetrik Education account has been approved. Log in to create your first cohort." |
-| Cohort invoice generated | Faculty | Email + in-app | "Invoice EDU-2026-001 for ₵3,000 has been generated for [Cohort Name]. Payment due by [date]." |
-| Invoice payment confirmed | Faculty | Email + in-app | "Payment confirmed. Your cohort [name] is now active. Share join code: XXXX-YYYY-ZZZZ" |
-| Student enrolled | Faculty | In-app (digest) | "[Student name] has joined [Cohort name]" |
+| Student awaiting approval | Faculty | In-app (digest) | "[Student name] ([student ID]) joined [Cohort name] and is awaiting your approval." |
+| Enrolment approved | Student | Email + in-app | "You've been approved for [Cohort name]. Pay your ₵50 seat fee to unlock your workspace. [Pay now]" |
+| Seat fee paid / access unlocked | Student | Email + in-app | "Payment confirmed — your [Cohort name] workspace is now unlocked." |
+| Seat fee waived | Student | Email + in-app | "Your lecturer has granted you free access to [Cohort name]. Your workspace is unlocked." |
+| Student paid / active | Faculty | In-app (digest) | "[Student name] has paid and is now active in [Cohort name]." |
 | Cohort 80% full | Faculty | Email + in-app | "Your cohort [name] is 80% full (48/60 seats). Request additional seats if needed." |
 | Assignment published | Enrolled students | Email + in-app | "New assignment: [title]. Due [date]. [Open assignment]" |
 | Assignment deadline 3 days | Students without submission | In-app + SMS | "Reminder: [Assignment] is due in 3 days." |
@@ -1070,55 +1180,66 @@ All notifications use the existing notification system. New event types:
 | Review submitted | Student | Email + in-app | "Your submission for [Assignment] has been reviewed. Score: X/100. [View feedback]" |
 | Revision requested | Student | Email + in-app | "Your lecturer has requested a revision for [Assignment]. [View feedback]" |
 | Cohort expiring in 7 days | Faculty | Email | "Cohort [name] ends in 7 days. Consider creating next semester's cohort." |
-| Invoice overdue | Faculty | Email + in-app | "Invoice EDU-2026-001 is overdue. Cohort access will be suspended in 48 hours if payment is not received." |
+| Approved but unpaid (reminder) | Student | In-app + SMS | "You're approved for [Cohort name] but haven't paid. Pay ₵50 to unlock your workspace before the next deadline. [Pay now]" |
 
 ---
 
 ## 13. Payment Integration
 
-### Phase 1: Manual Confirmation
+Automated from day one — no manual-confirmation phase. Seat fees ride the platform's **existing** Paystack integration (the same rail tenants use to pay rent and customers use to pay subscriptions). The seat fee is 100% platform revenue, so it is collected like a **subscription** charge (recipient = platform, no subaccount split, `service_fee=0`), not like rent.
 
-```
-Faculty pays → PropMetrik admin receives → confirms in admin panel
-→ PATCH /api/v1/education/admin/invoices/:id/confirm-payment
-   body: { payment_method: 'mtn_momo', payment_reference: 'MoMo TX ref', paid_at: ISO8601 }
-→ invoice.status = 'paid'
-→ cohort.billing_status = 'paid', cohort.status = 'active'
-→ Faculty notified
-```
-
-Admin panel page: `/admin/education/invoices` — shows all pending, paid, and overdue invoices. Admin can filter by institution, faculty, date range.
-
-### Phase 2: Paystack Auto-Confirmation
-
-Paystack webhook → `POST /webhooks/paystack` (existing webhook handler extended):
+### Initiate (student clicks "Pay ₵50")
 
 ```typescript
-case 'charge.success':
-  if (metadata?.invoice_type === 'education') {
-    await eduBillingService.confirmPayment({
-      invoiceId: metadata.invoice_id,
-      paymentReference: data.reference,
-      paymentMethod: 'paystack_' + data.channel,
-      paidAt: new Date(data.paid_at),
-    });
-  }
-  break;
+// POST /api/v1/education/enrollments/:id/pay   (requireEduRole('edu_student'))
+// Reuses the existing paymentProcessor → paystackService path.
+const ref = `edu_${enrollmentId}_${uuid()}`;
+const init = await paystackService.initializeTransaction({
+  email: student.email,
+  amountSubunits: toPesewas(enrollment.seat_price_ghs),   // whole fee = principal
+  reference: ref,
+  channels: [channel],                                    // 'mobile_money' | 'card'
+  metadata: { payment_type: 'education', enrollment_id: enrollmentId, cohort_id, student_id },
+});
+// write a 'pending' row to payment_transactions (payment_type='education',
+// recipient_type='platform', service_fee=0, principal = total = seat fee)
+return { authorization_url: init.authorization_url, reference: ref };
 ```
 
-The Paystack payment link is generated at invoice creation and included in the faculty's invoice email.
+Guard: only callable when `access_status='awaiting_payment'` (i.e. professor already approved). If an enrolment is already `active`, return its state — never double-charge.
 
-### Billing Admin Capabilities
+### Confirm (automatic, webhook-driven)
+
+Extend the **existing** `POST /api/v1/webhooks/paystack` `charge.success` branch — no new endpoint:
+
+```typescript
+case 'charge.success': {
+  const ref = data.reference;
+  if (ref.startsWith('edu_') || data.metadata?.payment_type === 'education') {
+    // idempotent: verifyAndRecordPayment already no-ops if this reference is recorded 'success'
+    await paymentProcessor.verifyAndRecordPayment(ref);   // marks payment_transactions 'success'
+    await eduEnrollmentService.markPaid(ref, {            // by payment_reference
+      paidAt: new Date(data.paid_at),
+      channel: data.channel,                              // 'mobile_money' | 'card'
+    });
+    // → edu_enrollments: access_status='active', paid_at set
+    // → notify student "unlocked", notify faculty (digest) "student active"
+  }
+  break;
+}
+```
+
+A student returning from Paystack polls `GET /enrollments/:id/payment-status` until `access_status='active'` (covers the race where the redirect lands before the webhook). Verification is idempotent on `reference`, so the poll and the webhook can't double-apply.
+
+### Admin / Faculty Capabilities (no invoices to manage)
 
 | Action | Who |
 |---|---|
-| View all invoices | `super_admin`, `admin` |
-| Confirm payment | `super_admin`, `admin` |
-| Waive invoice (e.g. pilot cohort, scholarship) | `super_admin` only |
-| Set custom per-seat price per faculty | `super_admin` |
-| Generate invoice manually | `super_admin`, `admin` |
-| Download invoice PDF | Faculty, admin |
-| Export billing report | `super_admin`, `admin` |
+| View own cohort's seat-payment roster (paid / awaiting / pending) | `edu_faculty` |
+| Waive an individual student's seat fee | `edu_faculty` (own cohort), `super_admin` |
+| Set the per-seat price for a cohort | `edu_faculty` (subject to admin cap), `super_admin` |
+| View / export all education seat payments | `super_admin`, `admin` (reads `payment_transactions`) |
+| Refund a seat payment (Paystack) | `super_admin` (reverses `access_status` → `awaiting_payment`) |
 
 ---
 
@@ -1126,16 +1247,18 @@ The Paystack payment link is generated at invoice creation and included in the f
 
 ### File list (in order):
 
+> Renumbered from 230–232. Migrations 230–248 are already in use; education starts at **249**. The `ALTER TYPE … ADD VALUE` statements (roles, `payment_type_enum`) need the enum **owner/superuser** and must commit before the values are used — run them first (autocommit), then the table DDL, same as the region-partition migration. No `edu_invoices` table (student-paid uses `payment_transactions`).
+
 | File | Description |
 |---|---|
-| `230_education_module.sql` | All education tables (institutions, cohorts, enrollments, assignments, submissions, revisions, invoices). Extends user_type constraint. Adds edu roles to enum. |
-| `231_education_rbac_policies.sql` | Inserts authorization_policies rows for all education resources |
-| `232_education_subscription_plan.sql` | Inserts `education_cohort` plan into subscription_plans for billing reference |
+| `249_education_module.sql` | All education tables (institutions, cohorts, enrolments **with the access-gate state machine**, assignments, submissions, revisions). Extends `user_type` constraint. Adds `edu_faculty`/`edu_student` roles and `'education'` to `payment_type_enum`. **No invoices table.** |
+| `250_education_rbac_policies.sql` | Inserts `authorization_policies` rows for all education resources, incl. enrolment approve/pay and seat-payment read |
+| `251_education_seat_fee.sql` | Inserts the `'education'` row into `fee_configurations` (zero platform split — whole fee is revenue) and the `education_cohort` reference plan into `subscription_plans` |
 
-### `231_education_rbac_policies.sql`
+### `250_education_rbac_policies.sql`
 
 ```sql
--- Migration 231: Education RBAC Policies
+-- Migration 250: Education RBAC Policies
 INSERT INTO authorization_policies 
   (policy_name, resource_type, action, allowed_roles, description)
 VALUES
@@ -1161,20 +1284,33 @@ VALUES
    ARRAY['super_admin','edu_faculty','edu_student']::user_role_enum[], 'Read submissions'),
   ('edu_submission_review',     'edu_submission',   'review', 
    ARRAY['super_admin','edu_faculty']::user_role_enum[], 'Grade/review a submission'),
-  ('edu_invoice_read',          'edu_invoice',      'read',   
-   ARRAY['super_admin','admin','edu_faculty']::user_role_enum[], 'View education invoices'),
-  ('edu_invoice_manage',        'edu_invoice',      'manage', 
-   ARRAY['super_admin','admin']::user_role_enum[], 'Create/confirm/waive invoices'),
+  ('edu_enrollment_approve',    'edu_enrollment',   'approve',
+   ARRAY['super_admin','edu_faculty']::user_role_enum[], 'Approve/reject/waive a student enrolment in own cohort'),
+  ('edu_enrollment_pay',        'edu_enrollment',   'pay',
+   ARRAY['edu_student']::user_role_enum[], 'Pay own seat fee to unlock access'),
+  ('edu_payment_read',          'edu_payment',      'read',
+   ARRAY['super_admin','admin','edu_faculty']::user_role_enum[], 'View seat-payment status'),
   ('edu_faculty_approve',       'edu_faculty',      'approve',
    ARRAY['super_admin','admin']::user_role_enum[], 'Approve faculty signup requests')
 ON CONFLICT (policy_name) DO NOTHING;
 ```
 
-### `232_education_subscription_plan.sql`
+### `251_education_seat_fee.sql`
 
 ```sql
--- Migration 232: Education Cohort Plan
--- Adds 'education' to subscription_plans.category enum first
+-- Migration 251: Education seat fee config + reference plan
+
+-- 1. Fee rule so feeEngine.calculate('education', amount) returns a ZERO platform split.
+--    A seat fee has no third-party recipient (PropMetrik IS the recipient), so the whole
+--    amount is principal/revenue and service_fee = 0 — same shape as a subscription charge.
+--    (Pattern mirrors 151_invoice_platform_fee.sql which seeded the 'valuation' fee row.)
+--    Requires payment_type_enum to already contain 'education' (added in migration 249).
+INSERT INTO fee_configurations (payment_type, fee_mode, percentage_rate, flat_amount, currency)
+VALUES ('education', 'flat', 0.0000, 0.00, 'GHS')
+ON CONFLICT DO NOTHING;
+
+-- 2. Reference plan (internal pricing display only; students are billed per enrolment,
+--    NOT via a recurring subscription row).
 ALTER TABLE subscription_plans DROP CONSTRAINT IF EXISTS subscription_plans_category_check;
 ALTER TABLE subscription_plans ADD CONSTRAINT subscription_plans_category_check
   CHECK (category IN (
@@ -1188,18 +1324,18 @@ INSERT INTO subscription_plans (
   max_users, target_audience, features, cta_text,
   is_featured, is_public, trial_days, metadata
 ) VALUES (
-  'education_cohort',
-  'Education Cohort',
-  'Per-student per-semester access for university courses. Faculty-managed cohorts with BYOD valuation workspace, assignment workflows, and faculty review tools.',
+  'education_seat',
+  'Education Seat (per semester)',
+  'Per-student, per-semester access for university courses. The student pays this seat fee after their professor approves them; it unlocks the BYOD valuation workspace, assignment workflow, and submission for that cohort.',
   'education', 'starter', 'b2c',
   50.00, 'GHS',
   1,
-  'University lecturers and professional training institutions',
-  '["BYOD valuation workspace","Assignment creation and management","Faculty review and grading tools","Submission history","Data Hub reference panel","MoMo and bank transfer payment"]'::jsonb,
-  'Create Cohort',
-  FALSE, FALSE,  -- not shown in public marketplace; sold direct
+  'University students enrolled in a valuation course',
+  '["BYOD valuation workspace","All 6 valuation methods","Assignment submission","Generated GHIS-standard report","Data Hub reference panel","MoMo and card payment"]'::jsonb,
+  'Pay seat fee',
+  FALSE, FALSE,  -- not a public marketplace plan; charged per enrolment
   0,
-  '{"billing_unit":"per_seat_per_semester","min_seats":10,"volume_discount_threshold":3}'::jsonb
+  '{"billing_unit":"per_seat_per_semester","payer":"student","gating":"hard_paywall_after_approval"}'::jsonb
 ) ON CONFLICT (slug) DO NOTHING;
 ```
 
@@ -1217,24 +1353,26 @@ INSERT INTO subscription_plans (
 | `edu_faculty` + `edu_student` roles in enum and RBAC | Build |
 | Faculty signup request + admin approval | Build |
 | Cohort creation with join code generation | Build |
-| Student enrollment via join code | Build |
+| Student enrollment via join code (→ `pending_approval`) | Build |
+| Faculty roster: approve / reject / waive a student enrolment | Build |
+| Per-student seat payment via Paystack (MoMo + card), webhook-confirmed (reuse existing rails) | Build |
+| `requireEduPaidEnrollment` hard gate on workspace + submission | Build |
 | Assignment creation and publish | Build |
 | BYOD valuation workspace (manual comparable entry, engine runs on student data) | Build |
 | Reference panel (read-only Data Hub benchmarks) | Build |
 | Student submission (snapshot + commentary) | Build |
 | Faculty review workspace (split-view) | Build |
 | Education dashboard (faculty + student, role-switched) | Build |
-| Education invoice generation (manual) | Build |
-| Admin invoice confirmation (MoMo / bank) | Build |
-| Email notifications for key events | Build |
-| Admin panel: faculty requests, invoice management | Build |
+| Email + in-app notifications for key events (approved, paid, reviewed) | Build |
+| Admin panel: faculty requests, seat-payment view | Build |
 
 ### Phase 2 — Growth (After First Paying Semester)
 
 | Feature | Notes |
 |---|---|
-| Paystack auto-payment for invoices | Webhook extension to existing handler |
-| CSV bulk student upload | Faculty uploads a CSV; system creates invite tokens |
+| Bulk-approve roster + "approved but unpaid" reminder/dunning cadence | Reduce the partial-class gap |
+| Per-student waiver/hardship workflow with audit | Faculty grants free seats; admin oversight |
+| CSV bulk student upload | Faculty uploads a CSV; system creates invite tokens (still pending approval) |
 | In-app notification digest for faculty (submission counts) | Reduce email noise |
 | Assignment late submission enforcement with penalty scoring | |
 | Revision history UI for faculty | Show diffs between submission versions |

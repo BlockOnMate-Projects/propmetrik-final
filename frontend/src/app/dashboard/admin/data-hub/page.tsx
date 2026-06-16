@@ -31,6 +31,7 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
   dataSourcesApi,
+  catalogApi,
   etlJobsApi,
   contributionsApi,
   economicApi,
@@ -62,6 +63,14 @@ export default function DataHubOverview() {
     queryFn: () => dataSourcesApi.getStatsByTier(),
     refetchInterval: 30000, // Refresh every 30s
   })
+
+  // Centralized dataset coverage — the real `properties` table valuation reads.
+  const { data: coverageRes } = useQuery({
+    queryKey: ['datahub-coverage'],
+    queryFn: () => catalogApi.getCoverage(),
+    refetchInterval: 60000,
+  })
+  const coverage = coverageRes?.data
 
   const { data: jobStats, isLoading: jobsLoading } = useQuery({
     queryKey: ['etl-jobs-stats'],
@@ -184,6 +193,44 @@ export default function DataHubOverview() {
           </div>
         </div>
       </div>
+
+      {/* Centralized Dataset — the real `properties` table valuation reads */}
+      {coverage && (
+        <div className="mb-6 rounded-lg border border-border bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-mono text-sm font-bold tracking-wide text-foreground">CENTRALIZED DATASET</h2>
+              <p className="font-mono text-[11px] text-muted-foreground">Live property records the valuation engine reads as comparables</p>
+            </div>
+            <span className="font-mono text-[10px] text-muted-foreground">refreshes 60s</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: 'Total records', value: coverage.totals.total },
+              { label: 'Geocoded', value: coverage.totals.geocoded },
+              { label: 'Sale comps', value: coverage.eligibility.sale_comps },
+              { label: 'Rental comps', value: coverage.eligibility.rental_comps },
+              { label: 'Org-contributed', value: coverage.totals.org_contributed },
+              { label: 'Added (30d)', value: coverage.recently_added_30d },
+            ].map((m) => (
+              <div key={m.label} className="rounded-md bg-muted/40 p-3">
+                <div className="text-xl font-bold text-foreground">{formatNumber(m.value)}</div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{m.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {coverage.by_basis.map((b) => (
+              <span key={b.basis} className="rounded px-2 py-0.5 font-mono text-[10px] bg-muted text-muted-foreground border border-border">
+                {b.basis}: {formatNumber(b.count)}
+              </span>
+            ))}
+            <span className="rounded px-2 py-0.5 font-mono text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-800/30">
+              your orgs contribute {formatNumber(coverage.eligibility.org_sale_comps + coverage.eligibility.org_rental_comps)} comps
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Top Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">

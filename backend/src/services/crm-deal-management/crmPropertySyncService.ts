@@ -139,7 +139,7 @@ export class CrmPropertySyncService {
    */
   async checkSyncEligibility(propertyId: string): Promise<SyncEligibility> {
     const result = await db.query<CrmPropertyForSync>(
-      `SELECT * FROM crm_properties WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT * FROM crm_properties WHERE id = $1`,
       [propertyId]
     );
 
@@ -233,7 +233,7 @@ export class CrmPropertySyncService {
 
       // Get property
       const propResult = await client.query<CrmPropertyForSync>(
-        `SELECT * FROM crm_properties WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
+        `SELECT * FROM crm_properties WHERE id = $1 FOR UPDATE`,
         [crmPropertyId]
       );
 
@@ -450,15 +450,15 @@ export class CrmPropertySyncService {
     // Strategy 3: Fuzzy match by address + property type + similar specs
     if (property.address_city && property.address_street) {
       const fuzzyMatch = await db.query<{ id: string }>(
-        `SELECT id FROM properties 
-         WHERE LOWER(city) = LOWER($1)
-           AND property_type = $2
+        `SELECT id FROM properties
+         WHERE LOWER(address_city) = LOWER($1)
+           AND property_type = $2::property_type_enum
            AND deleted_at IS NULL
            AND (
              (bedrooms = $3 OR $3 IS NULL)
-             AND (ABS(COALESCE(total_area_sqm, 0) - COALESCE($4, 0)) < 20 OR $4 IS NULL)
+             AND (ABS(COALESCE(total_area_sqm, 0) - COALESCE($4::numeric, 0)) < 20 OR $4::numeric IS NULL)
            )
-           AND SIMILARITY(LOWER(COALESCE(address, '')), LOWER($5)) > 0.5
+           AND SIMILARITY(LOWER(COALESCE(address_street, '')), LOWER($5)) > 0.5
          LIMIT 1`,
         [
           property.address_city,
@@ -493,24 +493,30 @@ export class CrmPropertySyncService {
   ): Promise<SyncResult> {
     const contributionId = uuidv4();
 
-    // Create contribution record for the link
+    // Create contribution record for the link (canonical contributions columns).
     await client.query(
       `INSERT INTO contributions (
-        id, contributor_id, contribution_type, source_context, source_id,
-        target_property_id, data, validation_status, property_region, created_at
-      ) VALUES ($1, $2, 'crm_property_update', 'crm', $3, $4, $5, 'auto_validated', $6, NOW())`,
+        id, contributor_id, contributor_type, contribution_type, data,
+        validation_status, source_context, metadata,
+        applied_property_id, is_applied, applied_at, created_at
+      ) VALUES ($1, $2, 'system', 'crm_property_update', $3, 'auto_approved', 'crm', $4, $5, TRUE, NOW(), NOW())`,
       [
         contributionId,
-        triggeredBy,
-        crmProperty.id,
-        existingProperty.id,
+        triggeredBy || null,
         JSON.stringify({
           action: 'link',
           match_type: existingProperty.match_type,
           crm_reference: crmProperty.reference_number,
           organization_id: crmProperty.organization_id,
         }),
-        this.mapRegion(crmProperty.region),
+        JSON.stringify({
+          source_id: crmProperty.id,
+          organization_id: crmProperty.organization_id,
+          datahub_property_id: existingProperty.id,
+          match_type: existingProperty.match_type,
+          automated: true,
+        }),
+        existingProperty.id,
       ]
     );
 
@@ -549,80 +555,85 @@ export class CrmPropertySyncService {
     // Map CRM property to Data Hub schema
     const dataHubProperty = this.mapToDataHubSchema(crmProperty, propertyId);
 
-    // Insert into properties table
+    // Insert into the centralized `properties` table (the valuation comparable
+    // source). Column names/types match the real schema — region & property_type
+    // are NOT-NULL enums (region is the partition key); data hub comps are
+    // marketplace_enabled=FALSE so they never surface as public listings.
+    const geocoded = dataHubProperty.latitude != null && dataHubProperty.longitude != null;
     await client.query(
       `INSERT INTO properties (
-        id, source_slug, source_id, source_url, reference_number,
-        title, description, property_type, transaction_type,
-        region, city, neighborhood, address, digital_address, landmark,
-        latitude, longitude, coordinates_source, geocoding_confidence,
-        price, currency, price_negotiable,
-        bedrooms, bathrooms, total_area_sqm, land_area_sqm, floors, year_built,
-        features, amenities, images,
-        data_quality_score, is_verified, verification_source,
+        id, organization_id, reference_number, title, description,
+        region, address_city, address_district, address_street, digital_address,
+        property_type, transaction_type,
+        bedrooms, bathrooms, floors, total_area_sqm, land_area_sqm, year_built,
+        price, price_currency, status,
+        latitude, longitude, location_verified, marketplace_enabled,
+        features, amenities, image_urls, evidence_type,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
-        $29, $30, $31, $32, $33, $34, NOW(), NOW()
+        $1, $2, $3, $4, $5,
+        $6::region_code_enum, $7, $8, $9, $10,
+        $11::property_type_enum, $12::transaction_type_enum,
+        $13, $14, $15, $16, $17, $18,
+        $19, $20, 'active',
+        $21, $22, $23, FALSE,
+        $24::jsonb, $25::jsonb, $26::jsonb, 'contributed',
+        NOW(), NOW()
       )`,
       [
         dataHubProperty.id,
-        dataHubProperty.source_slug,
-        dataHubProperty.source_id,
-        dataHubProperty.source_url,
+        crmProperty.organization_id,
         dataHubProperty.reference_number,
         dataHubProperty.title,
         dataHubProperty.description,
-        dataHubProperty.property_type,
-        dataHubProperty.transaction_type,
         dataHubProperty.region,
         dataHubProperty.city,
         dataHubProperty.neighborhood,
         dataHubProperty.address,
         dataHubProperty.digital_address,
-        dataHubProperty.landmark,
-        dataHubProperty.latitude,
-        dataHubProperty.longitude,
-        dataHubProperty.coordinates_source,
-        dataHubProperty.geocoding_confidence,
-        dataHubProperty.price,
-        dataHubProperty.currency,
-        dataHubProperty.price_negotiable,
+        dataHubProperty.property_type,
+        dataHubProperty.transaction_type,
         dataHubProperty.bedrooms,
         dataHubProperty.bathrooms,
+        dataHubProperty.floors,
         dataHubProperty.total_area_sqm,
         dataHubProperty.land_area_sqm,
-        dataHubProperty.floors,
         dataHubProperty.year_built,
+        dataHubProperty.price,
+        dataHubProperty.currency,
+        dataHubProperty.latitude,
+        dataHubProperty.longitude,
+        geocoded,
         JSON.stringify(dataHubProperty.features || []),
         JSON.stringify(dataHubProperty.amenities || []),
         JSON.stringify(dataHubProperty.images || []),
-        dataHubProperty.data_quality_score,
-        dataHubProperty.is_verified,
-        dataHubProperty.verification_source,
       ]
     );
 
-    // Create contribution record
+    // Audit/credit record in the contributions queue, marked applied (the data
+    // now lives in `properties`). Uses the canonical contributions columns.
     await client.query(
       `INSERT INTO contributions (
-        id, contributor_id, contribution_type, source_context, source_id,
-        target_property_id, data, validation_status, property_region, credits_awarded, created_at
-      ) VALUES ($1, $2, 'crm_property_new', 'crm', $3, $4, $5, 'auto_validated', $6, $7, NOW())`,
+        id, contributor_id, contributor_type, contribution_type, data,
+        validation_status, source_context, metadata,
+        applied_property_id, is_applied, applied_at, created_at
+      ) VALUES ($1, $2, 'system', 'crm_property_new', $3, 'auto_approved', 'crm', $4, $5, TRUE, NOW(), NOW())`,
       [
         contributionId,
-        triggeredBy,
-        crmProperty.id,
-        propertyId,
+        triggeredBy || null,
         JSON.stringify({
           action: 'create',
           crm_reference: crmProperty.reference_number,
           organization_id: crmProperty.organization_id,
           quality_score: dataHubProperty.data_quality_score,
         }),
-        this.mapRegion(crmProperty.region),
-        this.calculateCredits(dataHubProperty.data_quality_score),
+        JSON.stringify({
+          source_id: crmProperty.id,
+          organization_id: crmProperty.organization_id,
+          datahub_property_id: propertyId,
+          automated: true,
+        }),
+        propertyId,
       ]
     );
 
@@ -840,10 +851,9 @@ export class CrmPropertySyncService {
    */
   async getPendingSyncProperties(organizationId: string, limit = 100): Promise<string[]> {
     const result = await db.query<{ id: string }>(
-      `SELECT id FROM crm_properties 
-       WHERE organization_id = $1 
+      `SELECT id FROM crm_properties
+       WHERE organization_id = $1
          AND (sync_status = 'pending' OR sync_status IS NULL)
-         AND deleted_at IS NULL
          AND (sync_attempts < $2 OR sync_attempts IS NULL)
        ORDER BY created_at ASC
        LIMIT $3`,
@@ -858,11 +868,10 @@ export class CrmPropertySyncService {
    */
   async retryFailedSyncs(organizationId: string): Promise<{ retried: number; successful: number }> {
     const failedProperties = await db.query<{ id: string }>(
-      `SELECT id FROM crm_properties 
-       WHERE organization_id = $1 
+      `SELECT id FROM crm_properties
+       WHERE organization_id = $1
          AND sync_status = 'failed'
          AND sync_attempts < $2
-         AND deleted_at IS NULL
        ORDER BY last_sync_attempt_at ASC
        LIMIT 50`,
       [organizationId, MAX_SYNC_RETRIES]
@@ -878,6 +887,45 @@ export class CrmPropertySyncService {
       retried: failedProperties.rows.length,
       successful,
     };
+  }
+
+  /**
+   * Drain pending CRM property syncs ACROSS ALL ORGANIZATIONS.
+   *
+   * Org-agnostic version of getPendingSyncProperties — used by the scheduled
+   * data-hub sync job so CRM/Deal properties flow into the centralized
+   * `properties` table (the valuation comparable source) without anyone having
+   * to click a manual "sync" button. Also retries 'failed' rows that still have
+   * attempts left. Returns a summary.
+   */
+  async syncAllPending(limit = 200): Promise<{ processed: number; synced: number; linked: number; skipped: number; failed: number }> {
+    const result = await db.query<{ id: string }>(
+      `SELECT id FROM crm_properties
+        WHERE (sync_status = 'pending' OR sync_status IS NULL OR sync_status = 'failed')
+          AND (sync_attempts < $1 OR sync_attempts IS NULL)
+          -- Exclude PM-CRM bridge mirrors: the underlying PM property is ALREADY in
+          -- the properties table (the data hub), so syncing the mirror double-counts it.
+          AND source_pm_property_id IS NULL
+        ORDER BY COALESCE(last_sync_attempt_at, created_at) ASC
+        LIMIT $2`,
+      [MAX_SYNC_RETRIES, limit],
+    );
+
+    const summary = { processed: 0, synced: 0, linked: 0, skipped: 0, failed: 0 };
+    for (const row of result.rows) {
+      summary.processed++;
+      try {
+        const r = await this.syncToDataHub(row.id, undefined, 'auto');
+        if (r.success && r.action === 'created') summary.synced++;
+        else if (r.success && r.action === 'linked') summary.linked++;
+        else if (r.action === 'skipped') summary.skipped++;
+        else summary.failed++;
+      } catch (err: any) {
+        summary.failed++;
+        logger.warn('syncAllPending: a property sync threw', { crmPropertyId: row.id, error: err.message });
+      }
+    }
+    return summary;
   }
 
   // ==========================================================================
@@ -992,18 +1040,27 @@ export class CrmPropertySyncService {
    */
   private mapRegion(region: string): string {
     const normalized = region?.toLowerCase().replace(/[_\s]+/g, '_') || 'greater_accra';
-    const mappings: Record<string, string> = {
-      'greater_accra': 'greater_accra',
+
+    // Real Ghana regions (region_code_enum values that have table partitions).
+    // Pass these through unchanged — do NOT remap to legacy cluster buckets
+    // (kumasi_metro / western_cluster / northern_cluster), which may lack a
+    // partition and would 500 on insert.
+    const REAL_REGIONS = new Set([
+      'greater_accra', 'ashanti', 'eastern', 'western', 'central', 'volta',
+      'northern', 'upper_east', 'upper_west', 'bono', 'bono_east', 'ahafo',
+      'savannah', 'north_east', 'oti', 'western_north',
+    ]);
+    if (REAL_REGIONS.has(normalized)) return normalized;
+
+    // Common aliases / legacy cluster names → real regions.
+    const aliases: Record<string, string> = {
       'accra': 'greater_accra',
-      'ashanti': 'kumasi_metro',
-      'kumasi': 'kumasi_metro',
-      'eastern': 'eastern',
-      'western': 'western_cluster',
-      'central': 'western_cluster',
-      'northern': 'northern_cluster',
-      'volta': 'northern_cluster',
+      'kumasi': 'ashanti',
+      'kumasi_metro': 'ashanti',
+      'western_cluster': 'western',
+      'northern_cluster': 'northern',
     };
-    return mappings[normalized] || 'greater_accra';
+    return aliases[normalized] || 'greater_accra';
   }
 
   /**

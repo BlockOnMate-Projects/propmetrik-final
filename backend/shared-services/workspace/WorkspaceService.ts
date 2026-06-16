@@ -300,19 +300,42 @@ class WorkspaceServiceImpl {
 
     async listConversations(workspaceId: string, userId: string): Promise<WorkspaceConversation[]> {
         await this.ensureDefaultConversation(workspaceId);
+        // For DMs, resolve the OTHER participant's name so the list can label it
+        // reliably ("Farouk") instead of the frontend having to parse dm_key.
         const result = await pool.query<WorkspaceConversation>(
-            `SELECT c.*
+            `SELECT c.*, dm.display_name, dm.other_user_id
              FROM workspace_conversations c
-             JOIN workspace_conversation_members cm ON cm.conversation_id = c.id
-             WHERE c.workspace_id = $1
-               AND cm.user_id = $2
-               AND c.archived_at IS NULL
+             JOIN workspace_conversation_members cm ON cm.conversation_id = c.id AND cm.user_id = $2
+             LEFT JOIN LATERAL (
+               SELECT COALESCE(u.display_name, NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS display_name, u.id AS other_user_id
+               FROM workspace_conversation_members m2 JOIN users u ON u.id = m2.user_id
+               WHERE m2.conversation_id = c.id AND m2.user_id <> $2
+               LIMIT 1
+             ) dm ON c.conversation_type = 'dm'
+             WHERE c.workspace_id = $1 AND c.archived_at IS NULL
              ORDER BY
                CASE WHEN c.conversation_type = 'channel' THEN 0 WHEN c.conversation_type = 'dm' THEN 1 ELSE 2 END,
                c.updated_at DESC`,
             [workspaceId, userId]
         );
         return result.rows;
+    }
+
+    /** Return a single conversation with a viewer-relative display_name (DM = the other member). */
+    async getConversationForViewer(conversationId: string, viewerUserId: string): Promise<WorkspaceConversation | null> {
+        const result = await pool.query<WorkspaceConversation>(
+            `SELECT c.*, dm.display_name, dm.other_user_id
+             FROM workspace_conversations c
+             LEFT JOIN LATERAL (
+               SELECT COALESCE(u.display_name, NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.email) AS display_name, u.id AS other_user_id
+               FROM workspace_conversation_members m2 JOIN users u ON u.id = m2.user_id
+               WHERE m2.conversation_id = c.id AND m2.user_id <> $2
+               LIMIT 1
+             ) dm ON c.conversation_type = 'dm'
+             WHERE c.id = $1`,
+            [conversationId, viewerUserId]
+        );
+        return result.rows[0] || null;
     }
 
     async getConversationById(workspaceId: string, conversationId: string): Promise<WorkspaceConversation | null> {
@@ -521,6 +544,25 @@ class WorkspaceServiceImpl {
             [created.rows[0].id, actorUserId, otherUserId]
         );
 
+        return created.rows[0];
+    }
+
+    /** Create a named channel open to EVERY current workspace member (org-wide chat). */
+    async createChannel(workspaceId: string, creatorUserId: string, name: string): Promise<WorkspaceConversation> {
+        const created = await pool.query<WorkspaceConversation>(
+            `INSERT INTO workspace_conversations (workspace_id, conversation_type, name, created_by)
+             VALUES ($1, 'channel', $2, $3)
+             RETURNING *`,
+            [workspaceId, name, creatorUserId]
+        );
+        await pool.query(
+            `INSERT INTO workspace_conversation_members (conversation_id, user_id, role)
+             SELECT $1, wm.user_id, CASE WHEN wm.role = 'admin' THEN 'admin' ELSE 'member' END
+             FROM workspace_members wm
+             WHERE wm.workspace_id = $2
+             ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+            [created.rows[0].id, workspaceId]
+        );
         return created.rows[0];
     }
 

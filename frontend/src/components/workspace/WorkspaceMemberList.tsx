@@ -12,6 +12,7 @@ interface WorkspaceMemberListProps {
     onRefresh?: () => void;
     onMemberClick?: (member: WorkspaceMember) => void;
     onCreateGroup?: (groupName: string, memberIds: string[]) => void;
+    onCreateChannel?: (name: string) => void;
 }
 
 const roleConfig: Record<MemberRole, { icon: typeof User; label: string; color: string }> = {
@@ -20,10 +21,19 @@ const roleConfig: Record<MemberRole, { icon: typeof User; label: string; color: 
     viewer: { icon: Eye, label: 'Viewer', color: 'text-muted-foreground' },
 };
 
-export function WorkspaceMemberList({ members, currentUserId, onlineUserIds = [], onRefresh, onMemberClick, onCreateGroup }: WorkspaceMemberListProps) {
+export function WorkspaceMemberList({ members, currentUserId, onlineUserIds = [], onRefresh, onMemberClick, onCreateGroup, onCreateChannel }: WorkspaceMemberListProps) {
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
     const [groupName, setGroupName] = useState('');
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [isCreatingChannel, setIsCreatingChannel] = useState(false);
+    const [channelName, setChannelName] = useState('');
+
+    const handleCreateChannel = () => {
+        if (!channelName.trim() || !onCreateChannel) return;
+        onCreateChannel(channelName.trim());
+        setChannelName('');
+        setIsCreatingChannel(false);
+    };
 
     const selectableMembers = useMemo(
         () => members.filter((member) => member.user_id !== currentUserId),
@@ -51,9 +61,17 @@ export function WorkspaceMemberList({ members, currentUserId, onlineUserIds = []
                     Members ({members.length})
                 </p>
                 <div className="flex items-center gap-2">
+                    {onCreateChannel && (
+                        <button
+                            onClick={() => { setIsCreatingChannel((p) => !p); setIsCreatingGroup(false); }}
+                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-300 transition-colors"
+                        >
+                            {isCreatingChannel ? 'Cancel' : 'New Channel'}
+                        </button>
+                    )}
                     {onCreateGroup && (
                         <button
-                            onClick={() => setIsCreatingGroup((prev) => !prev)}
+                            onClick={() => { setIsCreatingGroup((prev) => !prev); setIsCreatingChannel(false); }}
                             className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-300 transition-colors"
                         >
                             {isCreatingGroup ? 'Cancel' : 'New Group'}
@@ -69,6 +87,28 @@ export function WorkspaceMemberList({ members, currentUserId, onlineUserIds = []
                     )}
                 </div>
             </div>
+
+            {isCreatingChannel && (
+                <div className="mb-4 p-3 rounded-xl border border-border bg-card/40 space-y-2">
+                    <input
+                        value={channelName}
+                        onChange={(e) => setChannelName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleCreateChannel(); }}
+                        placeholder="Channel name"
+                        autoFocus
+                        className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Open to everyone in the workspace.</p>
+                    <button
+                        type="button"
+                        onClick={handleCreateChannel}
+                        disabled={!channelName.trim()}
+                        className="w-full px-3 py-2 rounded-lg text-xs font-medium bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-500"
+                    >
+                        Create channel
+                    </button>
+                </div>
+            )}
 
             {isCreatingGroup && (
                 <div className="mb-4 p-3 rounded-xl border border-border bg-card/40 space-y-2">

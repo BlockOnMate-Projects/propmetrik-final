@@ -117,13 +117,16 @@ router.post('/signup', async (req: Request, res: Response) => {
     const userId = uuidv4();
     const defaultRole = organizationId ? 'firm_principal' : 'viewer';
 
+    // Public signup is always a CUSTOMER (a new org owner subscribing to the
+    // platform). 'staff' (PropMetrik employee) is only granted by provisioning a
+    // user into the platform org — never via self-service signup.
     await client.query(
       `INSERT INTO users (
         id, email, password_hash, first_name, last_name,
-        role, organization_id, subscription_tier,
+        role, organization_id, subscription_tier, user_type,
         is_active, email_verified,
         created_at, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'starter', true, false, NOW(), NOW())`,
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'starter', 'customer', true, false, NOW(), NOW())`,
       [userId, normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), defaultRole, organizationId]
     );
 
@@ -444,9 +447,15 @@ router.post('/login', async (req: Request, res: Response) => {
       { expiresIn: jwtExpiresIn }
     );
 
-    // Update last login timestamp
+    // Update login tracking. A successful password login proves the user owns the
+    // account, so promote a 'pending_verification' account to 'active' (email
+    // verification remains tracked separately via email_verified).
     await pool.query(
-      'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+      `UPDATE users
+          SET last_login_at = NOW(),
+              login_count = COALESCE(login_count, 0) + 1,
+              status = CASE WHEN status = 'pending_verification' THEN 'active'::user_status_enum ELSE status END
+        WHERE id = $1`,
       [user.id]
     );
 
@@ -538,7 +547,11 @@ router.post('/google', async (req: Request, res: Response) => {
       }
 
       await client.query(
-        'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+        `UPDATE users
+            SET last_login_at = NOW(),
+                login_count = COALESCE(login_count, 0) + 1,
+                status = CASE WHEN status = 'pending_verification' THEN 'active'::user_status_enum ELSE status END
+          WHERE id = $1`,
         [user.id]
       );
     } else {

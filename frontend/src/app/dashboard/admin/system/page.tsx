@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Server, RefreshCw, Cpu, HardDrive, Database, Wifi, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Server, RefreshCw, Cpu, HardDrive, Database, Wifi, CheckCircle, AlertTriangle, HelpCircle } from 'lucide-react'
 import { authedFetch } from '@/lib/authed-fetch'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 interface SystemHealth {
   api: { status: string; uptime: number; version: string }
@@ -20,7 +19,7 @@ export default function SystemPage() {
   const fetchHealth = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authedFetch(`${API}/api/v1/admin/system/health`)
+      const res = await authedFetch(`/api/admin/system/health`)
       if (res.ok) {
         const data = (await res.json()) as { data: SystemHealth }
         setHealth(data.data)
@@ -34,19 +33,22 @@ export default function SystemPage() {
 
   useEffect(() => { fetchHealth() }, [fetchHealth])
 
-  const StatusBadge = ({ status }: { status: string }) => (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] border ${
-      status === 'healthy' || status === 'connected'
-        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-800'
+  const StatusBadge = ({ status }: { status: string }) => {
+    const s = (status || '').toLowerCase()
+    const healthy = ['operational', 'healthy', 'connected', 'up', 'ok', 'online'].includes(s)
+    const unknown = s === 'unknown' || s === 'n/a' || s === ''
+    const cls = healthy
+      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-800'
+      : unknown
+        ? 'bg-muted text-muted-foreground border-border'
         : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-800'
-    }`}>
-      {status === 'healthy' || status === 'connected'
-        ? <CheckCircle className="w-3 h-3" />
-        : <AlertTriangle className="w-3 h-3" />
-      }
-      {status.toUpperCase()}
-    </span>
-  )
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] border ${cls}`}>
+        {healthy ? <CheckCircle className="w-3 h-3" /> : unknown ? <HelpCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+        {status.toUpperCase()}
+      </span>
+    )
+  }
 
   const formatUptime = (seconds: number) => {
     const d = Math.floor(seconds / 86400)
@@ -143,7 +145,7 @@ export default function SystemPage() {
             </div>
             <div className="space-y-2">
               <div className="flex justify-between font-mono text-xs">
-                <span className="text-muted-foreground">Usage</span>
+                <span className="text-muted-foreground">Buckets healthy</span>
                 <span className="text-foreground">{health.storage.used} / {health.storage.total}</span>
               </div>
             </div>

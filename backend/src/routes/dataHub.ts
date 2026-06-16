@@ -41,6 +41,51 @@ import { query } from '../database';
 const router = Router();
 
 // ============================================
+// Catalog / Coverage — the REAL centralized dataset
+// ============================================
+
+/**
+ * Centralized dataset coverage.
+ * Surfaces the actual `properties` table (the data hub that valuation reads) so
+ * tracked PM/CRM/contributed properties are visible — counts by basis, region,
+ * geocoding, provenance (org-contributed vs seeded), and valuation-eligibility.
+ * GET /data-hub/catalog/coverage
+ */
+router.get('/catalog/coverage', asyncHandler(async (_req: Request, res: Response) => {
+  const [totals, byBasis, eligibility, byRegion, recent] = await Promise.all([
+    query(`SELECT
+              COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE latitude IS NOT NULL AND longitude IS NOT NULL)::int AS geocoded,
+              COUNT(*) FILTER (WHERE organization_id IS NOT NULL)::int AS org_contributed,
+              COUNT(*) FILTER (WHERE organization_id IS NULL)::int AS seeded
+            FROM properties`),
+    query(`SELECT transaction_type::text AS basis, COUNT(*)::int AS count
+             FROM properties GROUP BY 1 ORDER BY 2 DESC`),
+    query(`SELECT
+              COUNT(*) FILTER (WHERE transaction_type='sale'   AND latitude IS NOT NULL AND COALESCE(inferred_sale_price, price) > 0)::int AS sale_comps,
+              COUNT(*) FILTER (WHERE transaction_type='rental' AND latitude IS NOT NULL AND price > 0)::int AS rental_comps,
+              COUNT(*) FILTER (WHERE transaction_type='sale'   AND latitude IS NOT NULL AND COALESCE(inferred_sale_price, price) > 0 AND organization_id IS NOT NULL)::int AS org_sale_comps,
+              COUNT(*) FILTER (WHERE transaction_type='rental' AND latitude IS NOT NULL AND price > 0 AND organization_id IS NOT NULL)::int AS org_rental_comps
+            FROM properties`),
+    query(`SELECT region::text AS region, COUNT(*)::int AS count
+             FROM properties GROUP BY 1 ORDER BY 2 DESC LIMIT 12`),
+    query(`SELECT COUNT(*)::int AS last_30d
+             FROM properties WHERE created_at >= NOW() - INTERVAL '30 days'`),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      totals: totals.rows[0],
+      by_basis: byBasis.rows,
+      eligibility: eligibility.rows[0],
+      by_region: byRegion.rows,
+      recently_added_30d: recent.rows[0].last_30d,
+    },
+  });
+}));
+
+// ============================================
 // Data Sources
 // ============================================
 

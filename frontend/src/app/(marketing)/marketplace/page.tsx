@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 interface SearchFilters {
   query?: string;
-  transaction_type: 'all' | 'rental' | 'sale';
+  transaction_type: 'all' | 'rental' | 'sale' | 'lease';
   property_types?: string[];
   min_price?: number;
   max_price?: number;

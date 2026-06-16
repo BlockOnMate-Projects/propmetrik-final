@@ -1,5 +1,6 @@
 'use client'
 
+import { authedFetch } from '@/lib/authed-fetch'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Zap,
@@ -93,10 +94,10 @@ export default function UsageAnalyticsPage() {
     setLoading(true)
     try {
       const [sumRes, dailyRes, epRes, orgRes] = await Promise.all([
-        fetch('/api/admin/platform/usage/summary'),
-        fetch(`/api/admin/platform/usage/daily?days=${days}`),
-        fetch('/api/admin/platform/usage/by-endpoint'),
-        fetch('/api/admin/platform/usage/by-org'),
+        authedFetch('/api/admin/platform/usage/summary'),
+        authedFetch(`/api/admin/platform/usage/daily?days=${days}`),
+        authedFetch('/api/admin/platform/usage/by-endpoint'),
+        authedFetch('/api/admin/platform/usage/by-org'),
       ])
       if (sumRes.ok) {
         const j = await sumRes.json()

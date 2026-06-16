@@ -369,6 +369,16 @@ class InviteService {
       const effectiveLastName = lastName || inv.last_name || '';
       const displayName = [effectiveFirstName, effectiveLastName].filter(Boolean).join(' ');
 
+      // SECURITY: user_type is derived from the org being joined, NOT the invite's
+      // stored value. Only members of the platform org are 'staff' (PropMetrik
+      // employees); anyone joining a customer org is 'customer'. This makes it
+      // impossible for a customer org to mint a 'staff' user via an invite.
+      const platformOrgCheck = await client.query(
+        'SELECT is_platform_org FROM organizations WHERE id = $1',
+        [inv.organization_id]
+      );
+      const effectiveUserType = platformOrgCheck.rows[0]?.is_platform_org ? 'staff' : 'customer';
+
       if (existingUser.rows.length > 0) {
         userId = existingUser.rows[0].id;
         await client.query(
@@ -384,7 +394,7 @@ class InviteService {
            WHERE id = $9`,
           [
             inv.organization_id, inv.role,
-            keycloakUserId, passwordHash, inv.user_type,
+            keycloakUserId, passwordHash, effectiveUserType,
             effectiveFirstName, effectiveLastName, displayName,
             userId, orgTier,
           ],
@@ -401,7 +411,7 @@ class InviteService {
             userId, inv.email, passwordHash,
             effectiveFirstName, effectiveLastName, displayName,
             inv.role, inv.organization_id, keycloakUserId,
-            inv.user_type, orgTier,
+            effectiveUserType, orgTier,
           ],
         );
       }

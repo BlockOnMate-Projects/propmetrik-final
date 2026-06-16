@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Users, Search, RefreshCw, Shield, Mail, Building2 } from 'lucide-react'
+import { Users, Search, RefreshCw, Shield, Mail, Building2, Trash2 } from 'lucide-react'
 import { authedFetch } from '@/lib/authed-fetch'
+import { ConfirmModal } from '@/components/admin/ConfirmModal'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 interface User {
   id: string
@@ -14,18 +14,34 @@ interface User {
   organization_name: string
   last_login: string
   is_active: boolean
+  status?: string
+  email_verified?: boolean
   created_at: string
+}
+
+// Truthful 3-state: a disabled/suspended account is INACTIVE; an account that
+// signed up but has never actually logged in is PENDING; otherwise ACTIVE.
+// (Login now advances pending_verification → active, so a signed-in user reads
+// ACTIVE. Email verification is tracked separately and doesn't make a live,
+// signed-in account "inactive".)
+function userState(u: User): 'active' | 'pending' | 'inactive' {
+  if (!u.is_active || u.status === 'suspended' || u.status === 'inactive') return 'inactive'
+  if (u.status === 'pending_verification') return 'pending'
+  return 'active'
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<User | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authedFetch(`${API}/api/v1/admin/users?search=${encodeURIComponent(search)}`)
+      const res = await authedFetch(`/api/admin/users?search=${encodeURIComponent(search)}`)
       if (res.ok) {
         const data = (await res.json()) as { data: User[] }
         setUsers(data.data || [])
@@ -38,6 +54,26 @@ export default function UsersPage() {
   }, [search])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    setBusy(true)
+    setActionError(null)
+    try {
+      const res = await authedFetch(`/api/admin/users/${pendingDelete.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setPendingDelete(null)
+        await fetchUsers()
+      } else {
+        const j = await res.json().catch(() => ({})) as { error?: string }
+        setActionError(j.error || `Delete failed (${res.status})`)
+      }
+    } catch {
+      setActionError('Network error')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -76,13 +112,14 @@ export default function UsersPage() {
               <th className="text-left px-4 py-3 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Role</th>
               <th className="text-left px-4 py-3 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Last Login</th>
               <th className="text-left px-4 py-3 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Status</th>
+              <th className="text-right px-4 py-3 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center font-mono text-sm text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center font-mono text-sm text-muted-foreground">Loading...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center font-mono text-sm text-muted-foreground">No users found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center font-mono text-sm text-muted-foreground">No users found</td></tr>
             ) : (
               users.map((user) => (
                 <tr key={user.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
@@ -106,9 +143,31 @@ export default function UsersPage() {
                     {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-0.5 font-mono text-[10px] ${user.is_active ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-800' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-800'}`}>
-                      {user.is_active ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
+                    {(() => {
+                      const s = userState(user)
+                      const cls = s === 'active'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-800'
+                        : s === 'pending'
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-800'
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-800'
+                      return (
+                        <span
+                          className={`inline-block px-2 py-0.5 font-mono text-[10px] border ${cls}`}
+                          title={s === 'pending' ? 'Account active; email not verified yet' : undefined}
+                        >
+                          {s === 'active' ? 'ACTIVE' : s === 'pending' ? 'PENDING' : 'INACTIVE'}
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => { setActionError(null); setPendingDelete(user) }}
+                      title="Delete user"
+                      className="inline-flex items-center gap-1 px-2 py-1 font-mono text-[10px] text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 border border-transparent hover:border-red-800 transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" /> DELETE
+                    </button>
                   </td>
                 </tr>
               ))
@@ -116,6 +175,23 @@ export default function UsersPage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        open={!!pendingDelete}
+        title="Delete user"
+        message={
+          <>
+            Permanently delete <span className="text-foreground font-bold">{pendingDelete?.full_name}</span> ({pendingDelete?.email})?
+            This removes the platform account <span className="text-foreground">and its Keycloak login</span>. This cannot be undone.
+          </>
+        }
+        confirmWord={pendingDelete?.email}
+        confirmLabel="Delete user"
+        busy={busy}
+        error={actionError}
+        onConfirm={confirmDelete}
+        onClose={() => setPendingDelete(null)}
+      />
     </div>
   )
 }

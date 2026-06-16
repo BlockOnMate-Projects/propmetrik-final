@@ -204,14 +204,16 @@ async function enrichUserFromDb(req: Request): Promise<void> {
       [userId],
     );
     if (result.rows.length > 0) {
-      req.user.userType = result.rows[0].user_type || 'staff';
+      // Least-privilege default: unknown/unset → 'customer', never 'staff'
+      // ('staff' = PropMetrik employee = member of the platform org).
+      req.user.userType = result.rows[0].user_type || 'customer';
       req.user.tier = result.rows[0].subscription_tier || 'starter';
     } else {
-      req.user.userType = 'staff';
+      req.user.userType = 'customer';
     }
   } catch {
-    // Non-fatal — downstream middleware can resolve if needed
-    req.user.userType = 'staff';
+    // Non-fatal — fail closed (deny platform access) rather than granting staff.
+    req.user.userType = 'customer';
   }
 }
 
@@ -484,9 +486,37 @@ export function requireResourcePermission(
   };
 }
 
-// Pre-defined role check middleware
-export const requireAdmin = requireRoles('admin', 'super_admin');
-export const requireSuperAdmin = requireRoles('super_admin');
+/**
+ * Platform-staff role gate. Requires one of `roles` AND that the user is a
+ * PropMetrik employee — i.e. user_type='staff' (= member of the platform org).
+ * This guards the Admin console: a customer-org user who somehow holds an
+ * admin-ish role still cannot pass, because they are not platform staff.
+ */
+export function requirePlatformRoles(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      return next(new UnauthorizedError('Authentication required'));
+    }
+    const userRoles = [...req.user.realmRoles, ...req.user.clientRoles];
+    const hasRole = roles.some((role) => userRoles.includes(role));
+    const isPlatformStaff = req.user.userType === 'staff';
+    if (!hasRole || !isPlatformStaff) {
+      authLogger.warn('Access denied - not platform staff or insufficient role', {
+        userId: req.user.sub,
+        requiredRoles: roles,
+        userRoles,
+        userType: req.user.userType,
+      });
+      return next(new ForbiddenError('Insufficient permissions'));
+    }
+    next();
+  };
+}
+
+// Pre-defined role check middleware.
+// Admin console = platform staff only (role AND member of the platform org).
+export const requireAdmin = requirePlatformRoles('admin', 'super_admin');
+export const requireSuperAdmin = requirePlatformRoles('super_admin');
 export const requireAgent = requireRoles('agent', 'admin', 'super_admin');
 export const requireValuer = requireRoles('valuer', 'admin', 'super_admin');
 export const requireAnalyst = requireRoles('analyst', 'admin', 'super_admin');

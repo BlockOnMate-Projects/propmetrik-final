@@ -5,7 +5,18 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
-const ADMIN_ROLES = ['super_admin', 'admin', 'firm_principal']
+// PLATFORM-OWNER ONLY: super_admin (owner) + admin (platform staff).
+// NOT firm_principal — that's the ORG-OWNER role every subscriber gets, so it
+// must never grant access to the platform Admin portal. Mirrors backend rbac
+// platformTabs.admin + requireAdmin.
+const ADMIN_ROLES = ['super_admin', 'admin']
+
+// Admin portal = PropMetrik employees only. A platform role is necessary but NOT
+// sufficient — the user must also be platform staff (user_type='staff' = member
+// of the platform org). Customers can never satisfy this. Mirrors backend requireAdmin.
+function canAccessAdmin(user: any): boolean {
+  return !!user && ADMIN_ROLES.includes(user.role) && user.userType === 'staff'
+}
 
 export default function AdminLayout({
   children,
@@ -20,16 +31,14 @@ export default function AdminLayout({
 
   useEffect(() => {
     if (status === 'loading') return
-    const role = (session?.user as any)?.role
-    if (!role || !ADMIN_ROLES.includes(role)) {
+    if (!canAccessAdmin(session?.user)) {
       router.replace('/dashboard')
     }
   }, [session, status, router])
 
   if (status === 'loading') return null
 
-  const role = (session?.user as any)?.role
-  if (!role || !ADMIN_ROLES.includes(role)) return null
+  if (!canAccessAdmin(session?.user)) return null
 
   return (
     <div className="min-h-screen bg-background">

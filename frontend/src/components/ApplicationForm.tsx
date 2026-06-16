@@ -13,12 +13,18 @@ interface ApplicationFormProps {
 }
 
 export default function ApplicationForm({ property, token }: ApplicationFormProps) {
+    const txn = property?.transaction_type;
+    const isRental = txn === 'rental';
+    const isLease = txn === 'lease';
+    const isSale = !isRental && !isLease; // default to sale framing
+
     const [form, setForm] = useState({
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
         message: '',
+        offer_amount: '',
     });
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -34,6 +40,8 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
             return;
         }
 
+        const offerAmount = form.offer_amount ? parseFloat(form.offer_amount) : undefined;
+
         setSubmitting(true);
         try {
             const res = await fetch('/api/marketplace/inquiries', {
@@ -46,7 +54,8 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                     phone: form.phone,
                     message: form.message || undefined,
                     property_id: property?.id,
-                    inquiry_type: property?.transaction_type === 'rental' ? 'rent' : 'buy',
+                    inquiry_type: offerAmount ? 'offer' : isRental ? 'rent' : isLease ? 'lease' : 'buy',
+                    offer_amount: offerAmount && offerAmount > 0 ? offerAmount : undefined,
                 }),
             });
 
@@ -69,10 +78,10 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
             <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-xl p-6 text-center space-y-3">
                 <CheckCircle2 className="w-10 h-10 text-green-600 mx-auto" />
                 <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
-                    Inquiry Submitted!
+                    Enquiry Submitted!
                 </h3>
                 <p className="text-sm text-green-700 dark:text-green-300">
-                    An agent will contact you shortly about this property.
+                    The owner&apos;s team will be in touch with you shortly about this property.
                 </p>
                 {inquiryId && (
                     <p className="text-xs text-green-600 dark:text-green-400">
@@ -86,10 +95,10 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Interested in this property?
+                {isSale ? 'Make an offer or enquire' : isLease ? 'Enquire about leasing' : 'Interested in this property?'}
             </h3>
             <p className="text-sm text-muted-foreground">
-                Fill in your details and an agent will reach out to you.
+                Fill in your details and the owner&apos;s team will reach out to you.
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -138,11 +147,27 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                 />
             </div>
 
+            {!isRental && (
+                <div>
+                    <Label htmlFor="offer_amount" className="text-xs font-medium">
+                        Your Offer ({property?.currency || 'GHS'}) — optional
+                    </Label>
+                    <Input
+                        id="offer_amount"
+                        type="number"
+                        min="0"
+                        placeholder={isLease ? 'Proposed lease amount' : 'Your offer amount'}
+                        value={form.offer_amount}
+                        onChange={e => setForm(f => ({ ...f, offer_amount: e.target.value }))}
+                    />
+                </div>
+            )}
+
             <div>
                 <Label htmlFor="message" className="text-xs font-medium">Message (optional)</Label>
                 <Textarea
                     id="message"
-                    placeholder="I'm interested in scheduling a viewing..."
+                    placeholder={isRental ? "I'm interested in scheduling a viewing..." : "I'm interested in this property..."}
                     value={form.message}
                     onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                     rows={3}
@@ -164,7 +189,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                 ) : (
                     <Send className="w-4 h-4 mr-2" />
                 )}
-                {submitting ? 'Submitting...' : 'Express Interest'}
+                {submitting ? 'Submitting...' : form.offer_amount ? 'Submit Offer' : isRental ? 'Express Interest' : 'Send Enquiry'}
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">

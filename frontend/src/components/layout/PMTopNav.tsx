@@ -10,6 +10,7 @@ import { canAccessServiceSubTab, canCustomerAccessSubTab } from '@/lib/rbac'
 const navigation = [
     { name: 'OVERVIEW', href: '/dashboard/property-management', exact: true, key: '1', subTabKey: 'propmgmt-overview' },
     { name: 'PROPERTIES', href: '/dashboard/property-management/properties', key: '2', subTabKey: 'propmgmt-properties' },
+    { name: 'ENQUIRIES', href: '/dashboard/property-management/enquiries', key: 'E', subTabKey: 'propmgmt-properties' },
     { name: 'MESSAGES', href: '/dashboard/property-management/messages', key: '3', subTabKey: 'propmgmt-messages' },
     { name: 'PORTFOLIOS', href: '/dashboard/property-management/portfolios', key: '4', subTabKey: 'propmgmt-portfolios' },
     { name: 'APPLICATIONS', href: '/dashboard/property-management/applications', key: '5', subTabKey: 'propmgmt-applications' },

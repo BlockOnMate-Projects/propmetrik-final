@@ -58,11 +58,27 @@ export type ComparableSourceType =
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
-export type RegionCode = 
-  | 'greater_accra' 
-  | 'kumasi_metro' 
-  | 'eastern' 
-  | 'western_cluster' 
+export type RegionCode =
+  // Real Ghana regions (current scheme)
+  | 'greater_accra'
+  | 'ashanti'
+  | 'eastern'
+  | 'central'
+  | 'western'
+  | 'volta'
+  | 'northern'
+  | 'upper_east'
+  | 'upper_west'
+  | 'bono'
+  | 'bono_east'
+  | 'ahafo'
+  | 'savannah'
+  | 'north_east'
+  | 'oti'
+  | 'western_north'
+  // Legacy metro/cluster values (retained for backward compatibility; no partitions)
+  | 'kumasi_metro'
+  | 'western_cluster'
   | 'northern_cluster';
 
 export type PropertyType = 
