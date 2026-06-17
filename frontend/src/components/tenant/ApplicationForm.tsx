@@ -383,8 +383,12 @@ export default function ApplicationForm({ property, token, units }: ApplicationF
                         <Input
                             id="income"
                             type="number"
-                            value={formData.employment.monthlyIncome}
-                            onChange={(e) => handleNestedChange('employment', 'monthlyIncome', parseFloat(e.target.value))}
+                            min={0}
+                            value={formData.employment.monthlyIncome || ''}
+                            onChange={(e) => {
+                                const n = parseFloat(e.target.value);
+                                handleNestedChange('employment', 'monthlyIncome', Number.isFinite(n) ? n : 0);
+                            }}
                         />
                     </div>
                     <div className="space-y-2">

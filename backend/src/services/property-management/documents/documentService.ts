@@ -2,6 +2,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import db from '../../../database';
 import { getSignedLeaseDownloadUrl, isS3ObjectRef, parseS3ObjectRef, storeSignedLeaseDocument } from '../leases/signedLeaseStorage';
+import { getObjectSize } from '../../../database/minio';
+import { logger } from '../../../utils/logger';
 import {
     PropertyDocument,
     CreatePropertyDocumentDto,
@@ -438,6 +440,23 @@ export class DocumentService {
         const allDocs: VaultDocument[] = [];
         const seenTenancyLeases = new Set<string>();
 
+        // Resolve a stored file reference (s3://, /api/v1/files/<bucket>/<key>, or a bare
+        // MinIO key) into { bucket, key } so we can read its size from storage. Returns
+        // null for external http(s) URLs and legacy data: URLs (not size-fetchable).
+        const storageLocationFromUrl = (url: string | null): { bucket: string; key: string } | null => {
+            if (!url || url.startsWith('http') || url.startsWith('data:')) return null;
+            if (url.startsWith('s3://')) return parseS3ObjectRef(url);
+            if (url.startsWith('/api/v1/files/')) {
+                const rest = url.slice('/api/v1/files/'.length);
+                const i = rest.indexOf('/');
+                if (i <= 0) return null;
+                return { bucket: rest.slice(0, i), key: rest.slice(i + 1) };
+            }
+            const bucket = url.startsWith('propmetrik-') ? url.split('/')[0] : 'propmetrik-documents';
+            const key = url.startsWith('propmetrik-') ? url.substring(bucket.length + 1) : url;
+            return { bucket, key };
+        };
+
         for (const result of orderedResults) {
             for (const row of result.rows) {
                 // Deduplicate: signed lease from tenancies takes priority; skip unsigned lease_documents duplicate
@@ -475,13 +494,37 @@ export class DocumentService {
                     resolvedFileUrl = `/api/v1/files/${bucket}/${key}`;
                 }
 
+                // Size/mime: prefer the recorded value; otherwise read it from storage
+                // (many uploads + all lease/signed-lease rows were stored without a size).
+                let fileSizeBytes: number | undefined = row.file_size_bytes ? parseInt(row.file_size_bytes) : undefined;
+                let mimeType: string | undefined = row.mime_type || undefined;
+                if (fileSizeBytes === undefined) {
+                    const loc = storageLocationFromUrl(row.file_url);
+                    if (loc) {
+                        const meta = await getObjectSize(loc.bucket, loc.key);
+                        if (typeof meta.size === 'number') {
+                            fileSizeBytes = meta.size;
+                            if (!mimeType && meta.contentType) mimeType = meta.contentType;
+                            // Lazy backfill: property_management_documents owns a size column
+                            // (so uploads are fixed permanently). lease_documents / tenancies
+                            // have no size column, so those are filled in-memory each load.
+                            if (row.source === 'upload') {
+                                db.query(
+                                    `UPDATE property_management_documents SET file_size_bytes = $1, mime_type = COALESCE(mime_type, $2) WHERE id = $3`,
+                                    [meta.size, meta.contentType || null, row.id],
+                                ).catch((e: any) => logger.warn('vault size backfill (pm doc) failed', { id: row.id, error: e.message }));
+                            }
+                        }
+                    }
+                }
+
                 allDocs.push({
                     id: row.id,
                     title: row.title,
                     fileName: row.file_name,
                     fileUrl: resolvedFileUrl,
-                    fileSizeBytes: row.file_size_bytes ? parseInt(row.file_size_bytes) : undefined,
-                    mimeType: row.mime_type,
+                    fileSizeBytes,
+                    mimeType,
                     documentType: row.document_type,
                     source: row.source,
                     propertyId: row.property_id,

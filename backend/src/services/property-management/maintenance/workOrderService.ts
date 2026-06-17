@@ -606,7 +606,9 @@ export class WorkOrderService {
         COUNT(CASE WHEN status = 'assigned' THEN 1 END) as assigned_count,
         COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_count,
         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count,
+        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_count,
         COUNT(CASE WHEN priority = 'urgent' AND status NOT IN ('completed', 'cancelled') THEN 1 END) as urgent_pending,
+        COUNT(CASE WHEN priority IN ('urgent', 'high') AND status NOT IN ('completed', 'cancelled') THEN 1 END) as critical_high,
         COALESCE(SUM(actual_cost), 0) as total_costs,
         COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) / 86400), 0) as avg_resolution_days
       FROM maintenance_work_orders
@@ -615,6 +617,13 @@ export class WorkOrderService {
 
         const result = await this.db.query(query, [organizationId]);
         const row = result.rows[0];
+
+        // Solve rate = completed / (all work orders that needed solving, i.e. excluding cancelled).
+        const total = parseInt(row.total, 10);
+        const completed = parseInt(row.completed_count, 10);
+        const cancelled = parseInt(row.cancelled_count, 10);
+        const solvable = total - cancelled;
+        const solveRate = solvable > 0 ? Math.round((completed / solvable) * 100) : 0;
 
         // Get by category breakdown
         const categoryQuery = `
@@ -627,14 +636,17 @@ export class WorkOrderService {
         const categoryResult = await this.db.query(categoryQuery, [organizationId]);
 
         return {
-            total: parseInt(row.total, 10),
+            total,
             byStatus: {
                 open: parseInt(row.open_count, 10),
                 assigned: parseInt(row.assigned_count, 10),
                 inProgress: parseInt(row.in_progress_count, 10),
-                completed: parseInt(row.completed_count, 10)
+                completed,
+                cancelled
             },
             urgentPending: parseInt(row.urgent_pending, 10),
+            criticalHigh: parseInt(row.critical_high, 10),
+            solveRate,
             totalCosts: parseFloat(row.total_costs),
             avgResolutionDays: parseFloat(row.avg_resolution_days),
             byCategory: categoryResult.rows.reduce((acc, row) => {
@@ -745,8 +757,11 @@ interface WorkOrderStats {
         assigned: number;
         inProgress: number;
         completed: number;
+        cancelled: number;
     };
     urgentPending: number;
+    criticalHigh: number;
+    solveRate: number; // % of non-cancelled work orders that are completed (0-100)
     totalCosts: number;
     avgResolutionDays: number;
     byCategory: Record<string, number>;

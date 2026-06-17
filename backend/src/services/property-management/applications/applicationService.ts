@@ -132,6 +132,14 @@ export interface Application {
   
   // E-Sign integration (populated dynamically)
   signerToken?: string;
+
+  // Lease progress (derived from the linked tenancy + lease envelope; populated
+  // by getApplicationByToken). The application.status enum stops at
+  // 'lease_generated', so signed/active state must be derived for the tracker.
+  leaseGenerated?: boolean;
+  leaseSigned?: boolean;
+  tenancyActive?: boolean;
+  leaseSignedUrl?: string;
 }
 
 export interface CreateApplicationDto {
@@ -516,7 +524,53 @@ export class ApplicationService {
     }
     
     const application = this.mapRowToApplication(result.rows[0]);
-    
+
+    // Derive lease progress from the linked tenancy + lease envelope. The
+    // application.status enum has no signed/active state (it stops at
+    // 'lease_generated'), so the public status tracker can't otherwise tell that
+    // the tenant has signed. A completed lease envelope or an active/countersigned
+    // tenancy means the lease is signed.
+    if (application.tenancyId) {
+      try {
+        const lease = await this.db.query(
+          `SELECT t.status            AS tenancy_status,
+                  t.lease_status,
+                  t.esign_status,
+                  t.lease_signed_url,
+                  EXISTS (
+                    SELECT 1 FROM esign_envelopes e
+                    WHERE e.context_entity_id = t.id
+                      AND e.context_type = 'lease'
+                      AND e.status = 'completed'
+                  ) AS has_completed_envelope
+           FROM tenancies t
+           WHERE t.id = $1`,
+          [application.tenancyId]
+        );
+        const row = lease.rows[0];
+        if (row) {
+          application.leaseSigned = Boolean(
+            row.has_completed_envelope ||
+            row.esign_status === 'completed' ||
+            row.lease_status === 'countersigned' ||
+            !!row.lease_signed_url
+          );
+          application.tenancyActive = row.tenancy_status === 'active';
+          // A lease exists (generated/sent) once there's a tenancy with a lease
+          // document/envelope, regardless of whether the app row advanced.
+          application.leaseGenerated = Boolean(
+            application.leaseSigned ||
+            application.status === ApplicationStatus.LEASE_GENERATED ||
+            !!row.lease_signed_url ||
+            ['sent', 'sent_to_tenant', 'tenant_signed', 'completed'].includes(row.esign_status)
+          );
+          if (row.lease_signed_url) application.leaseSignedUrl = row.lease_signed_url;
+        }
+      } catch {
+        // Non-fatal: fall back to the raw application status if the lookup fails.
+      }
+    }
+
     return application;
   }
 

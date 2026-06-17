@@ -167,13 +167,23 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                         es.name as signer_name, es.email as signer_email, es.user_id as signer_user_id
                  FROM esign_fields ef
                  LEFT JOIN esign_signers es ON es.id = ef.signer_id
-                 WHERE ef.envelope_id = $1 AND ef.field_type IN ('signature', 'date_signed', 'date') AND ef.value IS NOT NULL`,
+                 WHERE ef.envelope_id = $1 AND ef.value IS NOT NULL`,
                 [envelopeId]
             );
 
             const sigRows = fieldsResult.rows.filter((f: any) => f.field_type === 'signature');
             // PM/config flows store the date field as 'date'; the designer uses 'date_signed'. Accept both.
             const dateRows = fieldsResult.rows.filter((f: any) => f.field_type === 'date_signed' || f.field_type === 'date');
+            // Everything else placed by the designer (name→text, email, company, title,
+            // initials, checkbox, free text). These were being dropped, so only the
+            // signature + date ever rendered on the executed PDF. Their value is a
+            // typed-text data:image (occasionally a plain string).
+            const textRows = fieldsResult.rows.filter(
+                (f: any) =>
+                    f.field_type !== 'signature' &&
+                    f.field_type !== 'date_signed' &&
+                    f.field_type !== 'date'
+            );
 
             if (sigRows.length > 0) {
                 // Resolve the signer's permanent PMT id — keyed off the account user_id
@@ -206,6 +216,16 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                     usePercentage: true,
                 }));
 
+                const textFields = textRows.map((f: any) => ({
+                    value: f.value,
+                    page: f.page || 1,
+                    x: f.x_position,
+                    y: f.y_position,
+                    width: f.width,
+                    height: f.height,
+                    usePercentage: true,
+                }));
+
                 // Get signers and audit for full certificate
                 const signersRes = await dbQuery(
                     `SELECT name, email, role, signed_at, signed_from_ip, signed_user_agent
@@ -225,6 +245,7 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                     originalPdfBytes,
                     signatures: signatureFields,
                     dateFields,
+                    textFields,
                     appendCertificatePage: true,
                     documentHash,
                     envelopeId,
@@ -2342,7 +2363,28 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
 
         // Collect date fields
         const dateFields = (envelope.fields || [])
-            .filter(f => f.type === 'date_signed' && f.value)
+            .filter(f => (f.type === 'date_signed' || f.type === 'date') && f.value)
+            .map(f => ({
+                value: f.value!,
+                page: f.page || 1,
+                x: f.x,
+                y: f.y,
+                width: f.width,
+                height: f.height,
+                usePercentage: true,
+            }));
+
+        // Collect all other placed fields (name→text, email, company, title,
+        // initials, checkbox, free text). Previously dropped → only signature +
+        // date ever rendered. Value is a typed-text data:image or plain string.
+        const textFields = (envelope.fields || [])
+            .filter(
+                f =>
+                    f.type !== 'signature' &&
+                    f.type !== 'date_signed' &&
+                    f.type !== 'date' &&
+                    f.value
+            )
             .map(f => ({
                 value: f.value!,
                 page: f.page || 1,
@@ -2394,6 +2436,7 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
             originalPdfBytes,
             signatures: signatureFields,
             dateFields,
+            textFields,
             appendCertificatePage: includeAuditPage,
             documentHash,
             envelopeId: envelope.id,

@@ -4,6 +4,7 @@ import {
   HeadBucketCommand,
   PutObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
   PutBucketPolicyCommand,
@@ -173,6 +174,28 @@ export async function getFile(
     contentType: response.ContentType,
     metadata: response.Metadata,
   };
+}
+
+/**
+ * Read an object's size (bytes) and content type without downloading it.
+ * Returns {} on any failure (object missing, storage down) — callers treat
+ * a missing size as "unknown" rather than erroring.
+ */
+export async function getObjectSize(
+  bucket: string,
+  key: string
+): Promise<{ size?: number; contentType?: string }> {
+  if (!minioConfigured) return {};
+  try {
+    const response = await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return {
+      size: typeof response.ContentLength === 'number' ? response.ContentLength : undefined,
+      contentType: response.ContentType,
+    };
+  } catch (err: any) {
+    logger.warn('getObjectSize failed', { bucket, key, error: err?.message });
+    return {};
+  }
 }
 
 /**

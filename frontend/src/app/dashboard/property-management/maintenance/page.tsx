@@ -32,17 +32,21 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { propertyManagementApi } from '@/lib/property-management-api'
+import { propertyManagementApi, type PMWorkOrderStats } from '@/lib/property-management-api'
 import { WorkOrder, WorkOrderStatus } from '@/types/property-management'
 
 export default function MaintenancePage() {
     const router = useRouter()
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
+    const [stats, setStats] = useState<PMWorkOrderStats | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState('all')
@@ -62,6 +66,8 @@ export default function MaintenancePage() {
                 const response = await propertyManagementApi.getWorkOrders(params)
                 const data = Array.isArray(response) ? response : response.data || []
                 setWorkOrders(data)
+                // Org-wide aggregates for the header tiles (real solve rate, counts).
+                propertyManagementApi.getWorkOrderStats().then(setStats).catch(() => {})
             } catch (err) {
                 console.error('Failed to load work orders:', err)
                 setError('Failed to load maintenance requests. Please try again.')
@@ -75,6 +81,30 @@ export default function MaintenancePage() {
     const openRequests = workOrders.filter(wo => wo.status === WorkOrderStatus.OPEN).length
     const inProgress = workOrders.filter(wo => wo.status === WorkOrderStatus.IN_PROGRESS).length
     const criticalTickets = workOrders.filter(wo => wo.priority === 'critical' || wo.priority === 'high').length
+
+    // Persist a status change for a work order, with optimistic UI update.
+    const setStatus = async (id: string, status: WorkOrderStatus) => {
+        const previous = workOrders.find(w => w.id === id)?.status
+        setWorkOrders(prev => prev.map(w => (w.id === id ? { ...w, status } : w)))
+        try {
+            await propertyManagementApi.updateWorkOrder(id, { status } as any)
+            // Refresh org-wide tiles (solve rate, counts) after the change persists.
+            propertyManagementApi.getWorkOrderStats().then(setStats).catch(() => {})
+        } catch (err: any) {
+            // revert on failure
+            setWorkOrders(prev => prev.map(w => (w.id === id && previous ? { ...w, status: previous } : w)))
+            alert(err?.message || 'Failed to update status')
+        }
+    }
+
+    const STATUS_OPTIONS: { value: WorkOrderStatus; label: string }[] = [
+        { value: WorkOrderStatus.OPEN, label: 'Open' },
+        { value: WorkOrderStatus.ASSIGNED, label: 'Assigned' },
+        { value: WorkOrderStatus.IN_PROGRESS, label: 'In Progress' },
+        { value: WorkOrderStatus.PENDING_APPROVAL, label: 'Pending Approval' },
+        { value: WorkOrderStatus.COMPLETED, label: 'Completed' },
+        { value: WorkOrderStatus.CANCELLED, label: 'Cancelled' },
+    ]
 
     return (
         <div className="space-y-6">
@@ -106,7 +136,7 @@ export default function MaintenancePage() {
                         <AlertCircle className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : openRequests}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : (stats?.byStatus.open ?? openRequests)}</div>
                     </CardContent>
                 </Card>
                 <Card className="bg-background border border-border">
@@ -115,7 +145,7 @@ export default function MaintenancePage() {
                         <Clock className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : inProgress}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : (stats?.byStatus.inProgress ?? inProgress)}</div>
                     </CardContent>
                 </Card>
                 <Card className="bg-background border border-border">
@@ -124,7 +154,7 @@ export default function MaintenancePage() {
                         <AlertCircle className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : criticalTickets}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : (stats?.criticalHigh ?? criticalTickets)}</div>
                     </CardContent>
                 </Card>
                 <Card className="bg-background border border-border">
@@ -133,7 +163,7 @@ export default function MaintenancePage() {
                         <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground font-mono">82%</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{stats ? `${stats.solveRate}%` : '-'}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -248,19 +278,30 @@ export default function MaintenancePage() {
                                                         <DropdownMenuItem className="hover:bg-card focus:bg-card cursor-pointer text-xs font-mono" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/property-management/maintenance/${wo.id}`) }}>
                                                             View details
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem className="hover:bg-card focus:bg-card cursor-pointer text-xs font-mono" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/property-management/maintenance/${wo.id}`) }}>
-                                                            Update Status
-                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSub>
+                                                            <DropdownMenuSubTrigger className="hover:bg-card focus:bg-card cursor-pointer text-xs font-mono">
+                                                                Update Status
+                                                            </DropdownMenuSubTrigger>
+                                                            <DropdownMenuSubContent className="bg-background border-border text-muted-foreground">
+                                                                {STATUS_OPTIONS.map(opt => (
+                                                                    <DropdownMenuItem
+                                                                        key={opt.value}
+                                                                        disabled={wo.status === opt.value}
+                                                                        className="hover:bg-card focus:bg-card cursor-pointer text-xs font-mono"
+                                                                        onClick={(e) => { e.stopPropagation(); setStatus(wo.id, opt.value) }}
+                                                                    >
+                                                                        {opt.label}
+                                                                        {wo.status === opt.value ? ' ✓' : ''}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuSubContent>
+                                                        </DropdownMenuSub>
                                                         <DropdownMenuSeparator className="bg-muted" />
-                                                        <DropdownMenuItem className="text-amber-500 hover:bg-card focus:bg-card cursor-pointer text-xs font-mono" onClick={async (e) => {
-                                                            e.stopPropagation();
-                                                            if (confirm('Close this ticket?')) {
-                                                                try {
-                                                                    await propertyManagementApi.updateWorkOrder(wo.id, { status: WorkOrderStatus.COMPLETED } as any);
-                                                                    setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: WorkOrderStatus.COMPLETED } : w));
-                                                                } catch (err: any) { alert(err.message || 'Failed to close ticket'); }
-                                                            }
-                                                        }}>
+                                                        <DropdownMenuItem
+                                                            disabled={wo.status === WorkOrderStatus.COMPLETED}
+                                                            className="text-amber-500 hover:bg-card focus:bg-card cursor-pointer text-xs font-mono"
+                                                            onClick={(e) => { e.stopPropagation(); setStatus(wo.id, WorkOrderStatus.COMPLETED) }}
+                                                        >
                                                             Close Ticket
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
