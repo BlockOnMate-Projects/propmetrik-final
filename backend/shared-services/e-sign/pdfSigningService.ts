@@ -1014,6 +1014,19 @@ export class PdfSigningService {
             height: number;
             usePercentage?: boolean;
         }>;
+        // Non-signature, non-date placed fields (name, email, company, title,
+        // initials, checkbox, free text). Their value is either a typed-text
+        // data:image (the usual case — the signing UI renders text to an image)
+        // or a plain string. Rendered exactly like date fields.
+        textFields?: Array<{
+            value: string;
+            page: number;
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+            usePercentage?: boolean;
+        }>;
         appendCertificatePage?: boolean;
         documentHash?: string;
         envelopeId?: string;
@@ -1042,13 +1055,21 @@ export class PdfSigningService {
             params.signatures
         );
 
-        // Embed date fields if provided
-        if (params.dateFields && params.dateFields.length > 0) {
+        // Embed date fields AND all other non-signature placed fields (name, email,
+        // company, title, initials, checkbox, free text). They share identical
+        // rendering: the value is usually a typed-text data:image, occasionally a
+        // plain string — both are handled below.
+        const overlayFields = [
+            ...(params.dateFields || []),
+            ...(params.textFields || []),
+        ];
+        if (overlayFields.length > 0) {
             const pdfDoc = await PDFDocument.load(pdfBytes);
             const dateFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
             const pages = pdfDoc.getPages();
 
-            for (const df of params.dateFields) {
+            for (const df of overlayFields) {
+                if (!df || typeof df.value !== 'string' || df.value.length === 0) continue;
                 const pageIdx = (df.page || 1) - 1;
                 if (pageIdx < 0 || pageIdx >= pages.length) continue;
                 const pg = pages[pageIdx];

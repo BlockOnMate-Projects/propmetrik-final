@@ -26,6 +26,18 @@ import {
 
 const PM_BASE = '/pm';
 
+// Org-wide work-order aggregates returned by GET /pm/work-orders-stats.
+export interface PMWorkOrderStats {
+    total: number;
+    byStatus: { open: number; assigned: number; inProgress: number; completed: number; cancelled: number };
+    urgentPending: number;
+    criticalHigh: number;
+    solveRate: number; // 0-100
+    totalCosts: number;
+    avgResolutionDays: number;
+    byCategory: Record<string, number>;
+}
+
 // A marketplace enquiry captured against a PM property (the PM-side lead inbox).
 export interface PMEnquiry {
     id: string;
@@ -288,6 +300,9 @@ export const propertyManagementApi = {
             body: JSON.stringify(data)
         }),
 
+    // Org-wide work-order aggregates (real solve rate, counts) — not capped at the page list.
+    getWorkOrderStats: () => fetchApi<PMWorkOrderStats>(`${PM_BASE}/work-orders-stats`),
+
     assignWorkOrder: (
         id: string,
         vendorId: string,
@@ -303,15 +318,6 @@ export const propertyManagementApi = {
             method: 'POST',
             body: JSON.stringify(data)
         }),
-
-    getWorkOrderStats: () => fetchApi<{
-        total: number;
-        byStatus: Record<string, number>;
-        urgentPending: number;
-        totalCosts: number;
-        avgResolutionDays: number;
-        byCategory: Record<string, number>;
-    }>(`${PM_BASE}/work-orders-stats`),
 
     // =====================================================
     // DOCUMENTS

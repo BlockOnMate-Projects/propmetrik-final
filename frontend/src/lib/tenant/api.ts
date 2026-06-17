@@ -120,6 +120,11 @@ export interface ApplicationStatus {
     notes?: string;
   }>;
   signerToken?: string;
+  // Derived lease progress (the application status enum stops at 'lease_generated').
+  leaseGenerated?: boolean;
+  leaseSigned?: boolean;
+  tenancyActive?: boolean;
+  leaseSignedUrl?: string;
 }
 
 // =====================================================

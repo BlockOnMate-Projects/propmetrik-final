@@ -339,6 +339,10 @@ export default function DocumentVaultPage() {
                                                     <Badge variant="outline" className="text-[10px] font-mono uppercase border-emerald-900 text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/10">
                                                         Verified
                                                     </Badge>
+                                                ) : doc.source === 'upload' ? (
+                                                    <Badge variant="outline" className="text-[10px] font-mono uppercase border-border text-muted-foreground">
+                                                        Uploaded
+                                                    </Badge>
                                                 ) : (
                                                     <span className="text-[10px] text-muted-foreground font-mono">—</span>
                                                 )}

@@ -18,14 +18,38 @@ import {
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: typeof Clock; desc: string }> = {
-  submitted: { label: 'Under Review', color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock, desc: 'Your application is being reviewed by the property manager.' },
-  reviewing: { label: 'Under Review', color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock, desc: 'Your application is currently being evaluated.' },
+  submitted: { label: 'Submitted', color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock, desc: 'Your application has been received and is awaiting review.' },
+  under_review: { label: 'Under Review', color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock, desc: 'Your application is currently being evaluated by the property manager.' },
   approved: { label: 'Approved', color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle2, desc: 'Congratulations! Your application has been approved.' },
   rejected: { label: 'Not Approved', color: 'text-red-600', bg: 'bg-red-50', icon: XCircle, desc: 'Unfortunately, your application was not approved at this time.' },
-  lease_ready: { label: 'Lease Ready', color: 'text-purple-600', bg: 'bg-purple-50', icon: FileText, desc: 'Your lease agreement is ready for signing.' },
+  lease_generated: { label: 'Lease Sent', color: 'text-purple-600', bg: 'bg-purple-50', icon: FileText, desc: 'Your lease agreement is ready. Please review and sign it.' },
+  signed: { label: 'Lease Signed', color: 'text-emerald-600', bg: 'bg-emerald-50', icon: CheckCircle2, desc: 'Your lease is signed and your tenancy is active. Welcome home!' },
 };
 
-const STEPS = ['submitted', 'reviewing', 'approved', 'lease_ready'];
+// Ordered timeline stages shown in the progress tracker.
+const STEPS = ['submitted', 'under_review', 'approved', 'lease_generated', 'signed'];
+const STEP_LABEL: Record<string, string> = {
+  submitted: 'Submitted',
+  under_review: 'Under Review',
+  approved: 'Approved',
+  lease_generated: 'Lease Sent',
+  signed: 'Lease Signed',
+};
+
+// Map raw application status + derived lease flags → the timeline stage to show.
+function resolveStage(status: {
+  status: string;
+  leaseGenerated?: boolean;
+  leaseSigned?: boolean;
+}): string {
+  const raw = (status.status || '').toLowerCase();
+  if (raw === 'rejected') return 'rejected';
+  if (status.leaseSigned) return 'signed';
+  if (status.leaseGenerated || raw === 'lease_generated') return 'lease_generated';
+  if (raw === 'approved') return 'approved';
+  if (raw === 'under_review' || raw === 'reviewing') return 'under_review';
+  return 'submitted';
+}
 
 export default function ApplicationStatusPage() {
   const params = useParams();
@@ -78,10 +102,11 @@ export default function ApplicationStatusPage() {
     );
   }
 
-  const cfg = STATUS_CONFIG[status.status] || STATUS_CONFIG.submitted;
+  const stage = resolveStage(status);
+  const cfg = STATUS_CONFIG[stage] || STATUS_CONFIG.submitted;
   const StatusIcon = cfg.icon;
-  const currentStepIdx = STEPS.indexOf(status.status);
-  const isRejected = status.status === 'rejected';
+  const currentStepIdx = STEPS.indexOf(stage);
+  const isRejected = stage === 'rejected';
 
   return (
     <div className="min-h-screen bg-muted">
@@ -130,7 +155,6 @@ export default function ApplicationStatusPage() {
                 {STEPS.map((step, i) => {
                   const isComplete = i <= currentStepIdx;
                   const isCurrent = i === currentStepIdx;
-                  const stepCfg = STATUS_CONFIG[step] || STATUS_CONFIG.submitted;
                   return (
                     <div key={step} className="relative flex flex-col items-center z-10">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
@@ -139,7 +163,7 @@ export default function ApplicationStatusPage() {
                         {isComplete ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                       </div>
                       <p className={`text-[10px] mt-1.5 font-medium whitespace-nowrap ${isComplete ? 'text-cyan-600' : 'text-muted-foreground'}`}>
-                        {stepCfg.label}
+                        {STEP_LABEL[step]}
                       </p>
                     </div>
                   );
@@ -150,24 +174,35 @@ export default function ApplicationStatusPage() {
         )}
 
         {/* Actions */}
-        {status.status === 'approved' && status.leaseId && (
-          <Card>
+        {/* Lease signed — terminal success state */}
+        {stage === 'signed' && (
+          <Card className="border-emerald-200">
             <CardContent className="py-6">
               <div className="flex items-center gap-3 mb-4">
-                <FileText className="w-5 h-5 text-purple-600" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">Your lease is ready</p>
-                  <p className="text-xs text-muted-foreground">Sign your lease agreement to finalize your tenancy</p>
+                  <p className="text-sm font-semibold text-gray-900">Lease signed & tenancy active</p>
+                  <p className="text-xs text-muted-foreground">All parties have signed. Your executed lease is available in your tenant portal.</p>
                 </div>
               </div>
-              <Link href={`/dashboard/tenant/lease/${status.leaseId}`}>
-                <Button className="w-full bg-cyan-600 hover:bg-cyan-700">Sign Lease Agreement</Button>
-              </Link>
+              <div className="flex flex-col gap-2">
+                {status.leaseSignedUrl && /^https?:\/\//.test(status.leaseSignedUrl) && (
+                  <a href={status.leaseSignedUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full gap-2">
+                      <FileText className="w-4 h-4" /> View Signed Lease
+                    </Button>
+                  </a>
+                )}
+                <Link href="/tenant/dashboard">
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700">Go to Tenant Portal</Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {status.status === 'lease_ready' && status.leaseId && (
+        {/* Lease sent, awaiting signature */}
+        {stage === 'lease_generated' && status.leaseId && (
           <Card>
             <CardContent className="py-6">
               <div className="flex items-center gap-3 mb-4">
