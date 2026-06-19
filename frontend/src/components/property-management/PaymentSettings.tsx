@@ -955,8 +955,8 @@ function CryptoWalletSettings({ serviceLabel, api }: { serviceLabel: string; api
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
                                 <Info className="h-3 w-3" />
                                 {currentWallet.useNowPayments
-                                    ? `Payers send any crypto → NOWPayments converts → you receive ${currentWallet.payoutCoin?.toUpperCase()}`
-                                    : `Payers on Polygon pay directly via smart contract → you receive ${currentWallet.payoutCoin?.toUpperCase()}`}
+                                    ? `Payers send any crypto → NOWPayments converts → you receive ${(currentWallet.payoutCoin || 'USDT').toUpperCase()}`
+                                    : `Payers on Polygon pay directly via smart contract → you receive ${(currentWallet.payoutCoin || 'USDT').toUpperCase()}`}
                             </div>
                             <Button
                                 variant="outline"

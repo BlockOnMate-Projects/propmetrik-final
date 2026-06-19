@@ -103,6 +103,13 @@ export const propertyManagementApi = {
             body: JSON.stringify(data)
         }),
 
+    /** AI-draft a marketing description from the structured fields entered so far. */
+    generateDescription: (fields: Record<string, unknown>) =>
+        fetchApi<{ description: string; provider: string }>(`${PM_BASE}/ai/property-description`, {
+            method: 'POST',
+            body: JSON.stringify(fields)
+        }),
+
     updateProperty: (id: string, data: Partial<Property>) =>
         fetchApi<Property>(`${PM_BASE}/properties/${id}`, {
             method: 'PATCH',

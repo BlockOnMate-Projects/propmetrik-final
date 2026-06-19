@@ -6175,28 +6175,8 @@ router.post('/payments/resolve-account', requirePMWrite, async (req: Request, re
  */
 router.get('/payments/crypto-wallet', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const organizationId = getOrgId(req);
-
-    const { pool } = await import('../database');
-    const result = await pool.query(
-      `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
-       FROM payment_accounts
-       WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'project_management' AND is_active = TRUE
-       LIMIT 1`,
-      [organizationId]
-    );
-
-    if (result.rows.length === 0 || !result.rows[0].crypto_wallet_address) {
-      return res.json({ configured: false });
-    }
-
-    const row = result.rows[0];
-    res.json({
-      configured: true,
-      walletAddress: row.crypto_wallet_address,
-      isVerified: row.crypto_wallet_verified || false,
-      registeredAt: row.crypto_wallet_registered_at,
-    });
+    const { cryptoPayoutService } = await import('../services/payments/cryptoPayoutService');
+    res.json(await cryptoPayoutService.get(getOrgId(req), 'project_management'));
   } catch (error) {
     next(error);
   }
@@ -6208,44 +6188,16 @@ router.get('/payments/crypto-wallet', async (req: Request, res: Response, next: 
  */
 router.post('/payments/crypto-wallet', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const organizationId = getOrgId(req);
-    const { walletAddress } = req.body;
-
-    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
-      return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Polygon address (0x + 40 hex chars)' });
-    }
-
-    const { pool } = await import('../database');
-    const upsertResult = await pool.query(`
-      INSERT INTO payment_accounts (id, entity_type, entity_id, service_type, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
-      VALUES (gen_random_uuid(), 'organization', $1, 'project_management', $2, NOW(), NOW(), TRUE)
-      ON CONFLICT (entity_id, entity_type, service_type) DO UPDATE SET
-        crypto_wallet_address = $2,
-        crypto_wallet_registered_at = NOW(),
-        updated_at = NOW()
-      RETURNING id, crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
-    `, [organizationId, walletAddress]);
-
-    const row = upsertResult.rows[0];
-
-    let onChainRegistered = false;
-    try {
-      const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
-      if (cryptoPaymentService.isConfigured()) {
-        await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress, 'project_management');
-        onChainRegistered = true;
-        await pool.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
-      }
-    } catch {
-      // On-chain registration is optional
-    }
-
-    res.json({
-      success: true,
-      walletAddress: row.crypto_wallet_address,
-      isVerified: onChainRegistered || row.crypto_wallet_verified || false,
-      registeredAt: row.crypto_wallet_registered_at,
+    const { walletAddress, payoutCoin, payoutChain } = req.body;
+    const { cryptoPayoutService } = await import('../services/payments/cryptoPayoutService');
+    const result = await cryptoPayoutService.save({
+      entityId: getOrgId(req),
+      serviceType: 'project_management',
+      walletAddress,
+      payoutCoin,
+      payoutChain,
     });
+    res.status(result.status).json(result.body);
   } catch (error) {
     next(error);
   }

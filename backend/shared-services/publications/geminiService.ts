@@ -2,8 +2,8 @@
  * Gemini AI Service — Publications AI Content Generation
  * Uses Google Gemini 2.5 Flash for generating research content
  */
-import { config } from '../../src/config';
 import { logger } from '../../src/utils/logger';
+import { aiService } from '../../src/services/ai/aiService';
 
 // ============================================================
 // TYPES
@@ -72,54 +72,19 @@ const SECTION_PROMPTS: Record<string, string> = {
 // ============================================================
 
 async function callGemini(request: GeminiGenerateRequest): Promise<GeminiResponse> {
-  const { apiKey, apiUrl } = config.gemini;
-
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured');
-  }
-
-  const url = `${apiUrl}?key=${apiKey}`;
-
-  const body = {
-    contents: [
-      ...(request.systemPrompt ? [{
-        role: 'user',
-        parts: [{ text: `System instructions: ${request.systemPrompt}` }],
-      }, {
-        role: 'model',
-        parts: [{ text: 'Understood. I will follow these instructions for all my responses.' }],
-      }] : []),
-      {
-        role: 'user',
-        parts: [{ text: request.prompt }],
-      },
-    ],
-    generationConfig: {
-      maxOutputTokens: request.maxTokens || 2048,
-      temperature: request.temperature ?? 0.7,
-    },
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  // Delegates to the shared aiService (Gemini primary, DeepSeek fallback, centralized
+  // model). Kept the name/contract so every generate* function below is unchanged.
+  const result = await aiService.generateText({
+    prompt: request.prompt,
+    system: request.systemPrompt,
+    maxOutputTokens: request.maxTokens || 2048,
+    temperature: request.temperature ?? 0.7,
+    feature: 'publications',
   });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    logger.error({ status: response.status, body: errorBody }, 'Gemini API error');
-    throw new Error(`Gemini API error: ${response.status} — ${errorBody}`);
-  }
-
-  const data: any = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const tokensUsed = data.usageMetadata?.totalTokenCount;
-
   return {
-    text,
-    model: 'gemini-2.5-flash',
-    tokensUsed,
+    text: result.text,
+    model: result.model,
   };
 }
 

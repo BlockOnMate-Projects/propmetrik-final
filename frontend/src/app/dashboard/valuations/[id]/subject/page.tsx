@@ -19,7 +19,19 @@ import {
   ArrowRight,
   Loader2,
   Save,
+  Wand2,
+  MapPin,
 } from 'lucide-react'
+
+interface AreaNarrativeEvidence {
+  latitude: number
+  longitude: number
+  locality: string | null
+  district: string | null
+  region: string | null
+  coordinateSource: string
+  places: Array<{ name: string; category: string; distanceMeters?: number }>
+}
 
 export default function SubjectPropertyPage() {
   const params = useParams()
@@ -32,6 +44,48 @@ export default function SubjectPropertyPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiEvidence, setAiEvidence] = useState<AreaNarrativeEvidence | null>(null)
+
+  const handleGenerateArea = async () => {
+    setAiError(null)
+    setAiBusy(true)
+    setAiEvidence(null)
+    try {
+      const res = await fetchApi<{ fields: Record<string, string>; evidence: AreaNarrativeEvidence }>(
+        '/valuations/ai/area-narrative',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            latitude: (propertyData as any).latitude ?? null,
+            longitude: (propertyData as any).longitude ?? null,
+            digitalAddress: propertyData.digital_address || null,
+            address: propertyData.address || null,
+            city: propertyData.city || null,
+            region: propertyData.region || null,
+            neighborhoodClass: (propertyData as any).neighborhood_class || null,
+            propertyType: propertyData.property_type || null,
+          }),
+        }
+      )
+      // Drafts only — merged into the form for the valuer to review/edit before approving.
+      setPropertyData(prev => ({
+        ...prev,
+        city_description: res.fields.city_description || prev.city_description,
+        city_details: res.fields.city_details || prev.city_details,
+        neighbourhood_description: res.fields.neighbourhood_description || prev.neighbourhood_description,
+        neighborhood_details: res.fields.neighborhood_details || prev.neighborhood_details,
+        location_description: res.fields.location_description || prev.location_description,
+        services_description: res.fields.services_description || prev.services_description,
+      }))
+      setAiEvidence(res.evidence)
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Could not generate area description')
+    } finally {
+      setAiBusy(false)
+    }
+  }
 
   // Fetch valuation and property data
   useEffect(() => {
@@ -331,6 +385,48 @@ export default function SubjectPropertyPage() {
         {error && <AlertBanner type="error" title="Error" message={error} />}
         {success && <AlertBanner type="success" title="Success" message={success} />}
       </div>
+
+      {/* AI area-narrative assist — drafts city/neighbourhood/location/services
+          from real geocoding + Google Places. Valuer reviews & edits below. */}
+      <TerminalPanel title="AI AREA DESCRIPTION (DRAFT — REVIEW BEFORE APPROVING)" className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+          <p className="text-xs text-muted-foreground font-mono max-w-xl">
+            Generates the city, neighbourhood, location and services descriptions from the
+            property’s GPS/address using Google Places — grounded in real nearby amenities,
+            not invented. Always review and edit before approving the report.
+          </p>
+          <button
+            type="button"
+            onClick={handleGenerateArea}
+            disabled={aiBusy}
+            className="inline-flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-50"
+          >
+            {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            {aiBusy ? 'Generating…' : 'Generate with AI'}
+          </button>
+        </div>
+        {aiError && <p className="px-3 pb-3 text-xs text-red-500 font-mono">{aiError}</p>}
+        {aiEvidence && (
+          <div className="px-3 pb-3 text-xs font-mono text-muted-foreground">
+            <div className="flex items-center gap-1.5 mb-1 text-foreground">
+              <MapPin className="h-3.5 w-3.5" />
+              {[aiEvidence.locality, aiEvidence.district, aiEvidence.region].filter(Boolean).join(', ') || 'Location resolved'}
+              <span className="opacity-60">
+                ({aiEvidence.latitude.toFixed(4)}, {aiEvidence.longitude.toFixed(4)} · {aiEvidence.coordinateSource})
+              </span>
+            </div>
+            {aiEvidence.places.length > 0 ? (
+              <p>
+                Grounded in {aiEvidence.places.length} nearby place(s):{' '}
+                {aiEvidence.places.slice(0, 8).map(p => p.name).join(', ')}
+                {aiEvidence.places.length > 8 ? '…' : ''}
+              </p>
+            ) : (
+              <p className="text-amber-500">No nearby amenities returned — the draft is general; verify carefully.</p>
+            )}
+          </div>
+        )}
+      </TerminalPanel>
 
       {/* Property Form */}
       <TerminalPanel title="EDIT PROPERTY DETAILS" className="mb-6">

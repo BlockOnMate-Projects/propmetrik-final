@@ -1474,9 +1474,12 @@ export class ApplicationService {
     let units: Array<Record<string, any>> | undefined;
     if (result.rows[0].property_total_units && Number(result.rows[0].property_total_units) > 0) {
       const unitRows = await this.db.query(
+        // Hide units that aren't available to apply for. Use real listing_status_enum
+        // values — 'leased'/'occupied' are NOT in the enum and made Postgres throw,
+        // which 500'd this endpoint for every multi-unit building.
         `SELECT id, unit_number, floor_number, bedrooms, bathrooms, total_area_sqm, price, price_currency, status
          FROM properties
-         WHERE parent_property_id = $1 AND status NOT IN ('withdrawn', 'leased', 'occupied')
+         WHERE parent_property_id = $1 AND status NOT IN ('withdrawn', 'rented', 'sold')
          ORDER BY floor_number NULLS LAST, unit_number`,
         [result.rows[0].property_id]
       );

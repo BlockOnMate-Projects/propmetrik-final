@@ -1,0 +1,64 @@
+name: Build Python Service Images
+
+# Builds the three heavy Python images (ml-serving, valuation-engine, scrapy-worker)
+# once in CI and pushes them to GHCR. Coolify then PULLS these on deploy instead of
+# rebuilding them on the production host — so a normal commit only rebuilds `api`.
+#
+# Only runs when one of those services' source actually changes (paths filter below),
+# so it stays out of the way of your day-to-day api/frontend commits.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/shared-services/ml-serving/**'
+      - 'backend/src/services/valuation-engine/python/**'
+      - 'backend/src/services/data-hub/pipelines/scrapy/**'
+      - '.github/workflows/python-images.yml'
+  workflow_dispatch: {}   # lets you trigger a build manually from the Actions tab
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: cedyngroup   # GHCR namespace (must be lowercase)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write     # required to push to GHCR via the built-in GITHUB_TOKEN
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: propmetrik-ml-serving
+            context: backend/shared-services/ml-serving
+          - name: propmetrik-valuation-engine
+            context: backend/src/services/valuation-engine/python
+          - name: propmetrik-scrapy-worker
+            context: backend/src/services/data-hub/pipelines/scrapy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.name }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.name }}:${{ github.sha }}
+          # GitHub Actions layer cache — unchanged images rebuild in seconds.
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

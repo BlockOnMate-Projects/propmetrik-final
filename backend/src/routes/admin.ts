@@ -15,6 +15,7 @@ import { s3Client, checkHealth as minioCheckHealth } from '../database/minio';
 import { version as pkgVersion } from '../../package.json';
 import { feeEngine } from '../../shared-services/payments/feeEngine';
 import { cryptoPaymentService, exchangeRateService, loadCryptoConfig, nowPaymentsService } from '../../shared-services/payments/crypto';
+import { aiService } from '../services/ai/aiService';
 
 const router = Router();
 
@@ -293,6 +294,16 @@ const INTEGRATION_DEFS: IntDef[] = [
     { id: 'tin-gra', env: ['GRA_API_KEY', 'TIN_API_KEY', 'GRA_TIN_API_KEY'] },
     { id: 'ssnit', env: ['SSNIT_API_KEY', 'SSNIT_API_URL'] },
 ];
+
+/**
+ * GET /ai/health — live probe of each AI provider (Gemini, DeepSeek).
+ * This is the check that would have caught the retired-model 404: it actually
+ * round-trips a tiny prompt to each provider and reports model + status.
+ */
+router.get('/ai/health', asyncHandler(async (_req: Request, res: Response) => {
+    const result = await aiService.healthCheck();
+    res.status(result.available ? 200 : 503).json(result);
+}));
 
 /** GET /integrations/health — real status per integration (config presence + core live probes). */
 router.get('/integrations/health', asyncHandler(async (_req: Request, res: Response) => {

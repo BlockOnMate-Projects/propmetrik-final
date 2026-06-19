@@ -313,6 +313,37 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 /**
+ * @route POST /api/valuations/ai/area-narrative
+ * @desc Draft city/neighbourhood/location/services descriptions for the subject
+ *       step, grounded in real geocoding + Google Places data. Returns DRAFT text
+ *       (the valuer reviews/edits before approving the report) plus the evidence used.
+ * @access Private
+ */
+router.post('/ai/area-narrative', async (req: Request, res: Response) => {
+  try {
+    const { areaNarrativeService } = await import('../services/valuation-engine/areaNarrativeService');
+    const b = req.body || {};
+    const result = await areaNarrativeService.generate({
+      latitude: typeof b.latitude === 'number' ? b.latitude : (b.latitude ? Number(b.latitude) : null),
+      longitude: typeof b.longitude === 'number' ? b.longitude : (b.longitude ? Number(b.longitude) : null),
+      digitalAddress: b.digitalAddress || b.digital_address || null,
+      address: b.address || b.addressStreet || null,
+      city: b.city || b.addressCity || null,
+      region: b.region || null,
+      neighborhoodClass: b.neighborhoodClass || b.neighborhood_class || null,
+      propertyType: b.propertyType || b.property_type || null,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    const msg = err?.message || 'Failed to generate area narrative';
+    const status = /could not determine the property location/i.test(msg) ? 400
+      : /not configured/i.test(msg) ? 503
+      : 502;
+    return res.status(status).json({ error: msg });
+  }
+});
+
+/**
  * @route POST /api/valuations
  * @desc Create a new valuation for a property
  * @access Private

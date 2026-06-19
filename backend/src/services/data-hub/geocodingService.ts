@@ -593,6 +593,100 @@ export class GeocodingService {
       avg_confidence: parseFloat(row.avg_confidence || '0'),
     };
   }
+
+  /**
+   * Real amenities/POIs near a coordinate via Google Places Nearby Search.
+   * Used to GROUND the valuation area narrative — only real, Google-returned
+   * places are surfaced, so the AI describes what is actually there.
+   */
+  async searchNearbyPlaces(
+    lat: number,
+    lng: number,
+    opts?: { categories?: string[]; radiusMeters?: number; maxPerCategory?: number }
+  ): Promise<NearbyPlace[]> {
+    if (!this.googleApiKey) {
+      logger.warn('Google Maps API key not configured — cannot fetch nearby places');
+      return [];
+    }
+    const categories = opts?.categories ?? [
+      'school', 'hospital', 'bank', 'supermarket', 'transit_station',
+      'place_of_worship', 'shopping_mall', 'pharmacy', 'police', 'restaurant',
+    ];
+    const radius = Math.min(opts?.radiusMeters ?? 1500, 5000);
+    const maxPerCategory = opts?.maxPerCategory ?? 3;
+
+    const haversine = (la2: number, ln2: number): number => {
+      const R = 6371000;
+      const toRad = (d: number) => (d * Math.PI) / 180;
+      const dLat = toRad(la2 - lat);
+      const dLng = toRad(ln2 - lng);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat)) * Math.cos(toRad(la2)) * Math.sin(dLng / 2) ** 2;
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    };
+
+    const out: NearbyPlace[] = [];
+    const seen = new Set<string>();
+
+    for (const category of categories) {
+      try {
+        const url =
+          `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
+          `?location=${lat},${lng}&radius=${radius}&type=${encodeURIComponent(category)}&key=${this.googleApiKey}`;
+        const resp = await fetch(url);
+        if (!resp.ok) continue;
+        const data = (await resp.json()) as {
+          status: string;
+          results?: Array<{
+            name: string;
+            vicinity?: string;
+            rating?: number;
+            types?: string[];
+            business_status?: string;
+            geometry?: { location?: { lat: number; lng: number } };
+          }>;
+        };
+        if (data.status !== 'OK' || !data.results) continue;
+
+        const top = data.results
+          .filter((r) => r.business_status !== 'CLOSED_PERMANENTLY')
+          .slice(0, maxPerCategory);
+
+        for (const r of top) {
+          const key = r.name?.toLowerCase().trim();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          const loc = r.geometry?.location;
+          out.push({
+            name: r.name,
+            category,
+            types: r.types || [],
+            vicinity: r.vicinity,
+            rating: r.rating,
+            distanceMeters: loc ? haversine(loc.lat, loc.lng) : undefined,
+          });
+        }
+      } catch (err) {
+        logger.warn('searchNearbyPlaces: category failed', {
+          category,
+          error: err instanceof Error ? err.message : 'unknown',
+        });
+      }
+    }
+
+    // Closest first.
+    return out.sort((a, b) => (a.distanceMeters ?? 1e9) - (b.distanceMeters ?? 1e9));
+  }
+}
+
+export interface NearbyPlace {
+  name: string;
+  category: string;
+  types: string[];
+  vicinity?: string;
+  rating?: number;
+  distanceMeters?: number;
 }
 
 export const geocodingService = new GeocodingService();
