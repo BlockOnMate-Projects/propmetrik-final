@@ -36,7 +36,11 @@ services:
       valuation-engine:
         condition: service_started
     networks:
+      # propmetrik-network: talk to ml-serving/valuation-engine/etc by service name.
+      # coolify: Coolify's Traefik proxy network — REQUIRED so api.propmetrik.com routes
+      # to this container. Without it a clean redeploy leaves api unreachable (504).
       - propmetrik-network
+      - coolify
     deploy:
       resources:
         limits:
@@ -304,6 +308,11 @@ services:
 networks:
   propmetrik-network:
     driver: bridge
+  # Coolify's shared proxy (Traefik) network — created/managed by Coolify, not here.
+  # The api service joins it so the public domain (api.propmetrik.com) is routable
+  # after every deploy. `external: true` = use the existing network, don't create it.
+  coolify:
+    external: true
 
 volumes:
   ml-models:
