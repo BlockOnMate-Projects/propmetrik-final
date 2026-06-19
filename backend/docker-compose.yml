@@ -58,9 +58,9 @@ services:
   # ML Model Serving Service (FastAPI/Python)
   # ============================================
   ml-serving:
-    build:
-      context: ./shared-services/ml-serving
-      dockerfile: Dockerfile
+    # Prebuilt in CI (.github/workflows/python-images.yml) and pulled here — Coolify
+    # does NOT rebuild this on the prod host. Local dev re-adds `build:` via the override.
+    image: ghcr.io/cedyngroup/propmetrik-ml-serving:${PYTHON_IMAGE_TAG:-latest}
     container_name: propmetrik-ml-serving
     ports:
       - "${ML_PORT:-8000}:8000"
@@ -96,9 +96,8 @@ services:
   # Python Valuation Engine Service (FastAPI)
   # ============================================
   valuation-engine:
-    build:
-      context: ./src/services/valuation-engine/python
-      dockerfile: Dockerfile
+    # Prebuilt in CI and pulled here (see ml-serving note).
+    image: ghcr.io/cedyngroup/propmetrik-valuation-engine:${PYTHON_IMAGE_TAG:-latest}
     container_name: propmetrik-valuation-engine
     environment:
       - API_PORT=8001
@@ -132,9 +131,8 @@ services:
   # Scrapy Worker (Property Data Scraping)
   # ============================================
   scrapy-worker:
-    build:
-      context: ./src/services/data-hub/pipelines/scrapy
-      dockerfile: Dockerfile
+    # Prebuilt in CI and pulled here (see ml-serving note).
+    image: ghcr.io/cedyngroup/propmetrik-scrapy-worker:${PYTHON_IMAGE_TAG:-latest}
     container_name: propmetrik-scrapy-worker
     volumes:
       - scrapy-items:/app/items

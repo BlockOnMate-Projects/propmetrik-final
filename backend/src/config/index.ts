@@ -226,8 +226,22 @@ export const config = {
   // Gemini AI (Google)
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
+    // Legacy full-URL form, kept for existing callers (kobbyAI, crm/ai, publications).
+    // NOTE: in prod this env currently pins a RETIRED model (gemini-2.0-flash) → 404.
+    // The shared aiService ignores this and builds its URL from apiBaseUrl + model below.
     apiUrl: process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    // Model is centralized here so a Google model retirement is a one-line change.
+    apiBaseUrl: process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     enabled: !!process.env.GEMINI_API_KEY,
+  },
+
+  // DeepSeek (OpenAI-compatible) — used as the fallback provider by aiService
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY || '',
+    apiBaseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
+    model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+    enabled: !!process.env.DEEPSEEK_API_KEY,
   },
 
   // Workspace & Kobby AI Schedules

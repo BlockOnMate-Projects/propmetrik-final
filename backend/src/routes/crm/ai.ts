@@ -18,8 +18,7 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
-import { config } from '../../config';
-import axios from 'axios';
+import { aiService } from '../../services/ai/aiService';
 
 const router = Router();
 
@@ -206,31 +205,20 @@ router.post('/ai/ask', async (req: Request, res: Response) => {
 
         const fullContext = `${CRM_AI_SYSTEM_PROMPT}\n\n${crmContext}${entityContext ? `\n\nFOCUSED ENTITY:\n${entityContext}` : ''}`;
 
-        // Try Gemini (primary)
-        const geminiKey = config.gemini?.apiKey;
-        const geminiUrl = config.gemini?.apiUrl;
-
+        // Try the shared AI service (Gemini → DeepSeek), then fall back to rule-based.
         let response: any;
 
-        if (geminiKey && geminiUrl) {
+        if (aiService.isAvailable()) {
             try {
-                const geminiResp = await axios.post(
-                    `${geminiUrl}?key=${geminiKey}`,
-                    {
-                        system_instruction: { parts: { text: fullContext } },
-                        contents: [{ parts: [{ text: query }] }],
-                        generationConfig: { temperature: 0.2, response_mime_type: 'application/json' },
-                    },
-                    { headers: { 'Content-Type': 'application/json' }, timeout: 30000 }
-                );
-
-                let rawText = geminiResp.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (rawText) {
-                    rawText = rawText.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
-                    response = JSON.parse(rawText);
-                }
+                const { data } = await aiService.generateJson<any>({
+                    system: fullContext,
+                    prompt: query,
+                    temperature: 0.2,
+                    feature: 'crm.ai-ask',
+                });
+                response = data;
             } catch (err: any) {
-                logger.warn('CRM AI: Gemini failed, using fallback', { error: err.message });
+                logger.warn('CRM AI: provider failed, using fallback', { error: err.message });
             }
         }
 

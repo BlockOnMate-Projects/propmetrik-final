@@ -29,6 +29,8 @@ export default function NewPropertyPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isMultiUnit, setIsMultiUnit] = useState(false)
+    const [aiBusy, setAiBusy] = useState(false)
+    const [aiError, setAiError] = useState<string | null>(null)
 
     const [formData, setFormData] = useState({
         title: '',
@@ -64,6 +66,34 @@ export default function NewPropertyPage() {
 
     const handleSelectChange = (name: string, value: string) => {
         setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const handleGenerateDescription = async () => {
+        setAiError(null)
+        setAiBusy(true)
+        try {
+            const { description } = await propertyManagementApi.generateDescription({
+                title: formData.title,
+                propertyType: formData.propertyType,
+                transactionType: formData.transactionType,
+                bedrooms: formData.bedrooms,
+                bathrooms: formData.bathrooms,
+                totalAreaSqm: formData.totalAreaSqm,
+                region: formData.region,
+                addressCity: formData.addressCity,
+                addressDistrict: formData.addressDistrict,
+                addressStreet: formData.addressStreet,
+                price: formData.price,
+                priceCurrency: formData.priceCurrency,
+                isMultiUnit,
+                floors: floorsCount,
+            })
+            setFormData(prev => ({ ...prev, description }))
+        } catch (err) {
+            setAiError(err instanceof Error ? err.message : 'Could not generate a description')
+        } finally {
+            setAiBusy(false)
+        }
     }
 
     const unitLabel = (floor: number, indexOnFloor: number, sequential: number): string => {
@@ -600,13 +630,28 @@ export default function NewPropertyPage() {
                         )}
 
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono uppercase text-muted-foreground">Description</Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Description</Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleGenerateDescription}
+                                    disabled={aiBusy}
+                                    className="h-7 gap-1.5 text-xs font-mono text-cyan-600 hover:text-cyan-700"
+                                >
+                                    {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                                    {aiBusy ? 'GENERATING…' : 'GENERATE WITH AI'}
+                                </Button>
+                            </div>
                             <Textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
+                                placeholder="Write a description, or fill in the details above and click Generate with AI."
                                 className="bg-background border-border font-mono min-h-[100px]"
                             />
+                            {aiError && <p className="text-xs text-red-500 font-mono">{aiError}</p>}
                         </div>
 
                         <div className="flex justify-end gap-4 pt-4">

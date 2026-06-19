@@ -75,10 +75,12 @@ export async function fetchApiBlob(
     authHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  // Spread options first, set headers last — see fetchApi note (auth would be dropped otherwise).
+  const { headers: callerHeaders, ...restOptions } = options || {};
   const response = await fetch(url, {
     credentials: 'include',
-    headers: { ...authHeaders, ...options?.headers },
-    ...options,
+    ...restOptions,
+    headers: { ...authHeaders, ...callerHeaders },
   });
 
   if (!response.ok) {
@@ -106,13 +108,18 @@ export async function fetchApi<T>(
     authHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  // Spread caller options FIRST, then set headers LAST — otherwise `...options`
+  // (which carries its own `headers` for POSTs that set Content-Type) overwrites
+  // the merged header object and drops the Authorization token → 401. This was the
+  // "authentication failed" bug on payment setup (resolve/register-account).
+  const { headers: callerHeaders, ...restOptions } = options || {};
   const response = await fetch(url, {
     credentials: 'include',
+    ...restOptions,
     headers: {
       ...authHeaders,
-      ...options?.headers,
+      ...callerHeaders,
     },
-    ...options,
   });
 
   if (!response.ok) {

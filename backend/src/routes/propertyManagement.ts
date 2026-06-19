@@ -20,6 +20,8 @@ import { FinancialService } from '../services/property-management/financial-repo
 import { advancedFinancialService } from '../services/property-management/financial-reporting/advancedFinancialService';
 import { PortfolioService } from '../services/property-management/portfolios/portfolioService';
 import { propertyService } from '../services/property-management/properties/propertyService';
+import { aiService } from '../services/ai/aiService';
+import { cryptoPayoutService } from '../services/payments/cryptoPayoutService';
 import { getGhsRateMap, fxMeta } from '../services/property-management/utils/currencyFx';
 import {
     validate,
@@ -911,6 +913,66 @@ router.post('/payments/resolve-account', asyncHandler(async (req: Request, res: 
     }
 }));
 
+/**
+ * POST /api/v1/pm/ai/property-description
+ * Draft a marketing description for a property from the structured fields the
+ * user has already entered during onboarding. Grounded — the model is told to
+ * use ONLY the provided facts. Returns { description } for the user to edit.
+ */
+router.post('/ai/property-description', asyncHandler(async (req: Request, res: Response) => {
+    if (!aiService.isAvailable()) {
+        return res.status(503).json({ error: 'AI text generation is not configured' });
+    }
+
+    const b = req.body || {};
+    const humanize = (v: unknown): string =>
+        typeof v === 'string' ? v.replace(/_/g, ' ').trim() : '';
+
+    // Build a fact list from only the fields that are present — never invent.
+    const facts: string[] = [];
+    if (b.title) facts.push(`Name: ${String(b.title).trim()}`);
+    if (b.propertyType) facts.push(`Property type: ${humanize(b.propertyType)}`);
+    if (b.transactionType) facts.push(`Listing: for ${humanize(b.transactionType)}`);
+    if (b.bedrooms) facts.push(`Bedrooms: ${b.bedrooms}`);
+    if (b.bathrooms) facts.push(`Bathrooms: ${b.bathrooms}`);
+    if (b.totalAreaSqm) facts.push(`Floor area: ${b.totalAreaSqm} sqm`);
+    const location = [b.addressStreet, b.addressDistrict, b.addressCity, humanize(b.region)]
+        .filter(Boolean).join(', ');
+    if (location) facts.push(`Location: ${location}`);
+    if (b.price) {
+        const cur = b.priceCurrency || 'GHS';
+        const period = String(b.transactionType) === 'rental' ? ' per month' : '';
+        facts.push(`Price: ${cur} ${b.price}${period}`);
+    }
+    if (b.isMultiUnit) facts.push(`This is a multi-unit building${b.floors ? ` with ${b.floors} floor(s)` : ''}.`);
+
+    if (facts.length === 0) {
+        return res.status(400).json({ error: 'Provide some property details first (type, location, beds, etc.)' });
+    }
+
+    const system =
+        'You are a professional real estate copywriter for the Ghanaian market. ' +
+        'Write a concise, appealing property listing description using ONLY the facts provided. ' +
+        'Do NOT invent amenities, finishes, neighbourhood claims, or features that are not given. ' +
+        'Tone: warm but professional. Length: 2–3 sentences (about 50–90 words). ' +
+        'Return plain text only — no markdown, headings, bullet points, or quotes.';
+
+    const prompt = `Property facts:\n${facts.map((f) => `- ${f}`).join('\n')}\n\nWrite the listing description.`;
+
+    try {
+        const result = await aiService.generateText({
+            system,
+            prompt,
+            temperature: 0.8,
+            maxOutputTokens: 220,
+            feature: 'pm.property-description',
+        });
+        return res.json({ description: result.text, provider: result.provider });
+    } catch (err: any) {
+        return res.status(502).json({ error: err?.message || 'AI generation failed' });
+    }
+}));
+
 // =====================================================
 // CRYPTO WALLET CONFIGURATION
 // =====================================================
@@ -921,70 +983,24 @@ router.post('/payments/resolve-account', asyncHandler(async (req: Request, res: 
  */
 router.get('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
-
-    const result = await db.query(
-        `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
-         FROM payment_accounts
-         WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'property_management' AND is_active = TRUE
-         LIMIT 1`,
-        [organizationId]
-    );
-
-    if (result.rows.length === 0 || !result.rows[0].crypto_wallet_address) {
-        return res.json({ configured: false });
-    }
-
-    const row = result.rows[0];
-    res.json({
-        configured: true,
-        walletAddress: row.crypto_wallet_address,
-        isVerified: row.crypto_wallet_verified || false,
-        registeredAt: row.crypto_wallet_registered_at,
-    });
+    res.json(await cryptoPayoutService.get(organizationId, 'property_management'));
 }));
 
 /**
  * POST /api/v1/pm/payments/crypto-wallet
- * Save/update crypto wallet address for the PM org
+ * Save/update crypto payout wallet for the PM org (chain-aware via cryptoPayoutService).
  */
 router.post('/payments/crypto-wallet', cryptoRateLimit, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
-    const { walletAddress } = req.body;
-
-    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
-        return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Polygon address (0x + 40 hex chars)' });
-    }
-
-    const upsertResult = await db.query(`
-        INSERT INTO payment_accounts (id, entity_type, entity_id, service_type, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
-        VALUES (gen_random_uuid(), 'organization', $1, 'property_management', $2, NOW(), NOW(), TRUE)
-        ON CONFLICT (entity_id, entity_type, service_type) DO UPDATE SET
-            crypto_wallet_address = $2,
-            crypto_wallet_registered_at = NOW(),
-            updated_at = NOW()
-        RETURNING id, crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
-    `, [organizationId, walletAddress]);
-
-    const row = upsertResult.rows[0];
-
-    let onChainRegistered = false;
-    try {
-        const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
-        if (cryptoPaymentService.isConfigured()) {
-            await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress, 'property_management');
-            onChainRegistered = true;
-            await db.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
-        }
-    } catch {
-        // On-chain registration is optional
-    }
-
-    res.json({
-        success: true,
-        walletAddress: row.crypto_wallet_address,
-        isVerified: onChainRegistered || row.crypto_wallet_verified || false,
-        registeredAt: row.crypto_wallet_registered_at,
+    const { walletAddress, payoutCoin, payoutChain } = req.body;
+    const result = await cryptoPayoutService.save({
+        entityId: organizationId,
+        serviceType: 'property_management',
+        walletAddress,
+        payoutCoin,
+        payoutChain,
     });
+    res.status(result.status).json(result.body);
 }));
 
 /**

@@ -22,8 +22,7 @@ import { ghaiService } from '../../src/services/analytics/ghaiService';
 import { constructionCostIndexService } from '../../src/services/analytics/constructionCostIndexService';
 import { workspaceService } from './WorkspaceService';
 import { logger } from '../../src/utils/logger';
-import { config } from '../../src/config';
-import axios from 'axios';
+import { aiService } from '../../src/services/ai/aiService';
 
 // ============================================================================
 // TYPES
@@ -580,39 +579,19 @@ class KobbyAIServiceImpl {
     ): Promise<KobbyResponse> {
         const systemPrompt = buildSystemPrompt(context);
 
-        const geminiKey = config.gemini.apiKey;
-        const geminiUrl = config.gemini.apiUrl;
-
-        if (!geminiKey) {
-            logger.warn('KobbyAI: GEMINI_API_KEY missing, using rule-based fallback');
+        if (!aiService.isAvailable()) {
+            logger.warn('KobbyAI: no AI provider configured, using rule-based fallback');
             return this.buildFallbackResponseObj(userQuery, context);
         }
 
         try {
-            const response = await axios.post(
-                `${geminiUrl}?key=${geminiKey}`,
-                {
-                    system_instruction: {
-                        parts: { text: systemPrompt }
-                    },
-                    contents: [
-                        { parts: [{ text: userQuery }] }
-                    ],
-                    generationConfig: {
-                        temperature: 0.2, // Low temp for factual responses
-                        response_mime_type: "application/json",
-                    }
-                },
-                { headers: { 'Content-Type': 'application/json' } }
-            );
-
-            let rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!rawText) throw new Error('Empty Gemini response');
-
-            // Clean markdown wrappings if Gemini ignored instructions
-            rawText = rawText.trim().replace(/^```json\s*/, '').replace(/\s*```$/, '');
-
-            const parsed = JSON.parse(rawText);
+            // Shared aiService: Gemini → DeepSeek fallback, centralized model, JSON mode.
+            const { data: parsed } = await aiService.generateJson<any>({
+                system: systemPrompt,
+                prompt: userQuery,
+                temperature: 0.2, // Low temp for factual responses
+                feature: 'kobby-ai',
+            });
 
             return {
                 answer: parsed.answer || 'I could not generate a response for that query.',
@@ -623,10 +602,7 @@ class KobbyAIServiceImpl {
             };
 
         } catch (err: any) {
-            logger.error('KobbyAI: Gemini API call failed', {
-                error: err.response?.data || err.message,
-                status: err.response?.status
-            });
+            logger.error('KobbyAI: AI call failed', { error: err.message });
             // Fallback on failure
             return this.buildFallbackResponseObj(userQuery, context);
         }
