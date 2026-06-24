@@ -835,11 +835,23 @@ router.get(
     '/:entityType/:entityId',
     asyncHandler(async (req, res) => {
         const { userId, organizationId } = getUser(req);
-        const { entityType, entityId } = req.params;
+        const { entityType } = req.params;
+        let { entityId } = req.params;
 
         const validTypes: EntityType[] = ['project', 'valuation', 'deal', 'property', 'platform'];
         if (!validTypes.includes(entityType as EntityType)) {
             return res.status(400).json({ error: `Invalid entity type. Must be one of: ${validTypes.join(', ')}` });
+        }
+        if (!organizationId) {
+            return res.status(403).json({ error: 'No organization on session' });
+        }
+
+        // The platform (company-wide) workspace is ALWAYS keyed to the caller's own org —
+        // it's the Teams-tenant model: one workspace per organization, all members of that
+        // org auto-join. We ignore any client-supplied entity_id here so a shared/global id
+        // can never collapse multiple orgs into one workspace.
+        if (entityType === 'platform') {
+            entityId = organizationId;
         }
 
         const workspace = await workspaceService.ensureWorkspace(

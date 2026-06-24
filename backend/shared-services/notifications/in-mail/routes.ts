@@ -16,6 +16,37 @@ const router = Router();
 router.use(authenticate);
 
 /**
+ * Serialize a service-layer Notification (camelCase) to the snake_case shape
+ * the frontend API contract expects (see frontend/src/lib/notification-api.ts).
+ * Without this the client reads `created_at`/`is_read`/`source_url` as undefined,
+ * which renders "Invalid Date" and makes rows appear permanently unread / unclickable.
+ */
+function serializeNotification(n: any) {
+  return {
+    id: n.id,
+    user_id: n.userId,
+    organization_id: n.organizationId,
+    title: n.title,
+    body: n.body,
+    summary: n.summary,
+    category: n.category,
+    priority: n.priority,
+    source_type: n.sourceType,
+    source_id: n.sourceId,
+    source_url: n.sourceUrl,
+    actions: n.actions || [],
+    is_read: n.isRead,
+    read_at: n.readAt,
+    is_archived: n.isArchived,
+    archived_at: n.archivedAt,
+    metadata: n.metadata || {},
+    created_at: n.createdAt,
+    updated_at: n.updatedAt,
+    expires_at: n.expiresAt,
+  };
+}
+
+/**
  * GET /notifications
  * Get notifications for the current user
  */
@@ -43,7 +74,7 @@ router.get('/', async (req: Request, res: Response) => {
     const result = await notificationService.getNotifications(userId, filters, pagination);
 
     res.json({
-      notifications: result.notifications,
+      notifications: result.notifications.map(serializeNotification),
       total: result.total,
       limit: pagination.limit,
       offset: pagination.offset,

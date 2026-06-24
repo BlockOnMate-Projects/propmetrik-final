@@ -138,30 +138,34 @@ class WorkspaceServiceImpl {
         organizationId: string,
         name?: string
     ): Promise<Workspace> {
+        if (!organizationId) {
+            throw Object.assign(new Error('organizationId is required to resolve a workspace'), { status: 400 });
+        }
         const client = await pool.connect();
         try {
-            // Try to find existing workspace
+            // Try to find existing workspace — scoped by organization so two different
+            // orgs can never collapse onto the same workspace row (the cross-org leak).
             const existing = await client.query<Workspace>(
-                `SELECT * FROM workspaces WHERE entity_type = $1 AND entity_id = $2`,
-                [entityType, entityId]
+                `SELECT * FROM workspaces WHERE entity_type = $1 AND entity_id = $2 AND organization_id = $3`,
+                [entityType, entityId, organizationId]
             );
 
             let workspace: Workspace;
             if (existing.rows.length > 0) {
                 workspace = existing.rows[0];
             } else {
-                // Create new workspace
+                // Create new workspace. Unique key is (entity_type, entity_id, organization_id)
+                // — see migration 249. Conflict target must match that constraint.
                 const result = await client.query<Workspace>(
                     `INSERT INTO workspaces (entity_type, entity_id, organization_id, name)
              VALUES ($1, $2, $3, $4)
-             ON CONFLICT (entity_type, entity_id) DO UPDATE
-               SET name = COALESCE(EXCLUDED.name, workspaces.name),
-                   organization_id = COALESCE(workspaces.organization_id, EXCLUDED.organization_id)
+             ON CONFLICT (entity_type, entity_id, organization_id) DO UPDATE
+               SET name = COALESCE(EXCLUDED.name, workspaces.name)
              RETURNING *`,
-                    [entityType, entityId, organizationId || null, name || null]
+                    [entityType, entityId, organizationId, name || null]
                 );
                 workspace = result.rows[0];
-                logger.info(`Workspace created: ${workspace.id} for ${entityType} ${entityId}`);
+                logger.info(`Workspace created: ${workspace.id} for ${entityType} ${entityId} (org ${organizationId})`);
             }
 
             // Sync organization members for platform workspace
@@ -197,12 +201,14 @@ class WorkspaceServiceImpl {
     }
 
     /**
-     * Get a workspace by its id, scoped to organization.
-     * Handles nullable organization_id using IS NOT DISTINCT FROM.
+     * Get a workspace by its id, STRICTLY scoped to the caller's organization.
+     * A workspace always belongs to exactly one org; we never match on NULL org
+     * (that was a cross-org access hole — a null-org row was visible to everyone).
      */
     async getById(workspaceId: string, organizationId: string): Promise<Workspace | null> {
+        if (!organizationId) return null;
         const result = await pool.query<Workspace>(
-            `SELECT * FROM workspaces WHERE id = $1 AND (organization_id = $2 OR organization_id IS NULL)`,
+            `SELECT * FROM workspaces WHERE id = $1 AND organization_id = $2`,
             [workspaceId, organizationId]
         );
         return result.rows[0] || null;
@@ -216,6 +222,23 @@ class WorkspaceServiceImpl {
      * Add a user to the workspace.
      */
     async addMember(workspaceId: string, userId: string, role: MemberRole = 'member'): Promise<WorkspaceMember> {
+        // HARD org guard: never add a user to a workspace that belongs to a different
+        // organization. This is the last line of defense behind the per-org scoping —
+        // it stops both the REST auto-add and the WS join from ever mixing orgs again.
+        const guard = await pool.query<{ ok: boolean }>(
+            `SELECT (w.organization_id = u.organization_id) AS ok
+             FROM workspaces w, users u
+             WHERE w.id = $1 AND u.id = $2`,
+            [workspaceId, userId]
+        );
+        if (!guard.rows[0]) {
+            throw Object.assign(new Error('Workspace or user not found'), { status: 404 });
+        }
+        if (guard.rows[0].ok !== true) {
+            logger.warn(`Blocked cross-org workspace add: user ${userId} into workspace ${workspaceId}`);
+            throw Object.assign(new Error('Cannot join a workspace from another organization'), { status: 403 });
+        }
+
         const result = await pool.query<WorkspaceMember>(
             `INSERT INTO workspace_members (workspace_id, user_id, role)
        VALUES ($1, $2, $3)
@@ -807,12 +830,18 @@ class WorkspaceServiceImpl {
      * Get unread message count for a user in a workspace.
      */
     async getUnreadCount(workspaceId: string, userId: string): Promise<number> {
+        // Only count messages sent AFTER the user joined the workspace. Without this,
+        // a freshly-added member (the widget auto-adds the viewer on load) inherits every
+        // historical message from others as "unread" forever — producing phantom counts.
         const result = await pool.query<{ count: string }>(
             `SELECT COUNT(*) as count
        FROM workspace_messages m
+       JOIN workspace_members wm
+         ON wm.workspace_id = m.workspace_id AND wm.user_id = $2
        WHERE m.workspace_id = $1
          AND m.deleted_at IS NULL
          AND m.sender_id != $2
+         AND m.created_at >= wm.joined_at
          AND NOT EXISTS (
            SELECT 1 FROM workspace_message_reads r
            WHERE r.message_id = m.id AND r.user_id = $2
@@ -838,6 +867,7 @@ class WorkspaceServiceImpl {
          AND w.organization_id = $2
          AND m.deleted_at IS NULL
          AND m.sender_id != $1
+         AND m.created_at >= wm.joined_at
          AND NOT EXISTS (
            SELECT 1 FROM workspace_message_reads r
            WHERE r.message_id = m.id AND r.user_id = $1
@@ -865,6 +895,7 @@ class WorkspaceServiceImpl {
              WHERE m.workspace_id = $1
                AND m.deleted_at IS NULL
                AND m.sender_id != $2
+               AND m.created_at >= cm.joined_at
                AND NOT EXISTS (
                    SELECT 1 FROM workspace_message_reads r
                    WHERE r.message_id = m.id AND r.user_id = $2
