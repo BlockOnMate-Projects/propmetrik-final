@@ -107,6 +107,56 @@ router.get('/activity', asyncHandler(async (req: Request, res: Response) => {
     res.json({ data: result.rows });
 }));
 
+/**
+ * GET /overview — real platform metrics for the Admin dashboard cards.
+ * Every figure is computed live from the database (no hardcoded numbers).
+ * Each metric is isolated so one failing query never 500s the whole dashboard.
+ */
+router.get('/overview', asyncHandler(async (_req: Request, res: Response) => {
+    const num = (r: any, k = 'n') => parseInt(r?.rows?.[0]?.[k] ?? '0', 10) || 0;
+    const safe = async (sql: string): Promise<any> => {
+        try { return await pool.query(sql); } catch (e) { logger.warn({ err: (e as Error).message }, 'admin/overview metric failed'); return { rows: [{}] }; }
+    };
+
+    const [
+        users, orgs, sessions, properties, valuations, dataSources, security,
+    ] = await Promise.all([
+        safe(`SELECT COUNT(*)::int AS n,
+                     COUNT(*) FILTER (WHERE created_at >= date_trunc('month', now()))::int AS new_month
+              FROM users`),
+        safe(`SELECT COUNT(*)::int AS n,
+                     COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS new_week
+              FROM organizations`),
+        // No server-side session store — "active" = users seen in the last 24h.
+        safe(`SELECT COUNT(*)::int AS n FROM users WHERE last_login_at >= now() - interval '24 hours'`),
+        safe(`SELECT COUNT(*)::int AS n FROM properties`),
+        safe(`SELECT COUNT(*)::int AS n,
+                     COUNT(*) FILTER (WHERE created_at >= date_trunc('month', now()))::int AS mtd
+              FROM valuations`),
+        safe(`SELECT COUNT(*)::int AS n,
+                     COUNT(*) FILTER (WHERE last_sync_status IN ('pending','queued','running','retrying','failed')
+                                         OR last_sync_status IS NULL)::int AS pending
+              FROM data_sources WHERE is_active = true`),
+        // Security-relevant audit events in the last 24h (auth failures + destructive actions).
+        safe(`SELECT COUNT(*)::int AS n FROM audit_logs
+              WHERE created_at >= now() - interval '24 hours'
+                AND (action ILIKE '%fail%' OR action ILIKE '%delete%' OR action ILIKE '%denied%' OR action ILIKE '%revoke%')`),
+    ]);
+
+    res.json({
+        data: {
+            users: { total: num(users), newThisMonth: num(users, 'new_month') },
+            organizations: { total: num(orgs), newThisWeek: num(orgs, 'new_week') },
+            activeSessions: num(sessions),
+            properties: { total: num(properties) },
+            valuations: { total: num(valuations), mtd: num(valuations, 'mtd') },
+            dataSources: { total: num(dataSources), pendingSync: num(dataSources, 'pending') },
+            securityEvents24h: num(security),
+            apiUptimeSeconds: Math.floor(process.uptime()),
+        },
+    });
+}));
+
 // Shared SELECT + filter builder for the audit trail (used by list + CSV export).
 const AUDIT_SELECT = `SELECT id,
             COALESCE(user_email, 'system') AS user_email,

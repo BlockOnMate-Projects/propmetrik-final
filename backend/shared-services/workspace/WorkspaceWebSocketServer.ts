@@ -177,7 +177,14 @@ class WorkspaceWebSocketServerImpl {
         }
 
         const userId = authResult.userId;
-        const organizationId = authResult.organizationId || '00000000-0000-0000-0000-000000000000';
+        // Org MUST be resolvable from the token. Previously this fell back to the
+        // zero-UUID org, which dumped all org-less connections into one shared bucket
+        // (a cross-org collision path). Reject instead.
+        const organizationId = authResult.organizationId;
+        if (!organizationId) {
+            ws.close(4003, 'No organization on token');
+            return;
+        }
 
         // --- Per-user connection limit ---
         const existingConns = this.userClients.get(userId);

@@ -108,11 +108,13 @@ export default function DashboardLayout({
           <>
             <FloatingWindowManager />
             <GlobalSearch />
-            {/* Global Workspace Widget (Only if not handled by page-specific logic) */}
-            {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && (
+            {/* Company-wide workspace — one per organization (Teams-tenant model).
+                The backend forces the platform workspace's entity_id to the caller's own
+                org, so we pass the session org id here for clarity (it can't cross orgs). */}
+            {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && session?.user?.organizationId && (
               <WorkspaceWidget
                 entityType="platform"
-                entityId="00000000-0000-0000-0000-000000000000"
+                entityId={session.user.organizationId}
                 entityName="Workspace"
                 currentUserId={session?.user?.id}
                 token={(session as any)?.accessToken ?? null}
