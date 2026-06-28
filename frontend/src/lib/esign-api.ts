@@ -5,19 +5,35 @@
  * Uses fetch() with the backend at /api/v1/esign/
  */
 
+import { getSession } from 'next-auth/react';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 const ESIGN_BASE = `${API_BASE}/esign`;
 
-function getAuthHeaders(): HeadersInit {
+/**
+ * Build auth headers from the NextAuth session (same source as authed-fetch).
+ * The app authenticates via NextAuth, NOT the legacy `pm_access_token` localStorage
+ * keys — relying on those meant envelope uploads went out with NO Authorization
+ * header and the backend 401'd ("Authentication failed" on Send). Kept the
+ * localStorage lookup only as a last-resort fallback.
+ */
+async function getAuthHeaders(): Promise<Record<string, string>> {
   if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('pm_access_token') || localStorage.getItem('token') || localStorage.getItem('auth_token');
   const headers: Record<string, string> = {};
+  let token: string | null = null;
+  try {
+    const session = await getSession();
+    token = (session as any)?.accessToken ?? null;
+  } catch { /* fall through to legacy */ }
+  if (!token) {
+    token = localStorage.getItem('pm_access_token') || localStorage.getItem('token') || localStorage.getItem('auth_token');
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`;
   // Pass user info as headers for backend user identification
   try {
-    const session = localStorage.getItem('pm_user_session');
-    if (session) {
-      const user = JSON.parse(session);
+    const stored = localStorage.getItem('pm_user_session');
+    if (stored) {
+      const user = JSON.parse(stored);
       if (user.id) headers['X-User-Id'] = user.id;
     }
   } catch { /* ignore */ }
@@ -26,11 +42,12 @@ function getAuthHeaders(): HeadersInit {
 
 async function esignFetch<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${ESIGN_BASE}${endpoint}`;
+  const authHeaders = await getAuthHeaders();
   const response = await fetch(url, {
     credentials: 'include',
     ...options,
     headers: {
-      ...getAuthHeaders(),
+      ...authHeaders,
       ...options?.headers,
     },
   });
@@ -122,12 +139,9 @@ export async function createTemplate(data: FormData | {
   recipients?: any[];
 }) {
   if (data instanceof FormData) {
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('token') || localStorage.getItem('auth_token') || ''
-      : '';
     const res = await fetch(`${API_BASE}/esign/templates`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await getAuthHeaders(),
       body: data,
     });
     if (!res.ok) throw new Error(await res.text());
