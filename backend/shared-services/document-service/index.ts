@@ -517,7 +517,12 @@ export class PDFGenerationService {
                 const puppeteer = await import('puppeteer');
                 const browser = await puppeteer.default.launch({
                     headless: true,
-                    args: ['--no-sandbox', '--disable-setuid-sandbox']
+                    // Use the system Chromium installed in the Docker image (Alpine);
+                    // falls back to Puppeteer's bundled binary when the env var is unset (local dev).
+                    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+                    // --disable-dev-shm-usage: containers have a tiny /dev/shm; without this
+                    // Chromium crashes on larger pages. --disable-gpu for headless servers.
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
                 });
                 
                 const page = await browser.newPage();
@@ -581,8 +586,12 @@ export class PDFGenerationService {
             .replace(/&gt;/g, '>')
             .replace(/\n\s*\n\s*\n/g, '\n\n')
             .trim();
-        
-        const lines = text.split('\n');
+
+        // pdf-lib's StandardFonts are WinAnsi-encoded and THROW on any character they
+        // cannot encode (smart quotes, en/em dashes, ellipsis, accented names, the Cedi
+        // sign, etc.). Real lease data routinely contains these, so normalise to
+        // WinAnsi-safe ASCII before drawing — otherwise generation 500s.
+        const lines = this.toWinAnsiSafe(text).split('\n');
         
         let y = 780;
         const lineHeight = 14;
@@ -643,6 +652,31 @@ export class PDFGenerationService {
 
         const pdfBytes = await doc.save();
         return Buffer.from(pdfBytes);
+    }
+
+    /**
+     * Normalise text to characters the WinAnsi-encoded StandardFonts can draw.
+     * Maps common typographic punctuation to ASCII, transliterates accents, and
+     * replaces any remaining out-of-range codepoint so pdf-lib never throws.
+     */
+    private toWinAnsiSafe(input: string): string {
+        return input
+            // Smart quotes / apostrophes
+            .replace(/[‘’‚‛]/g, "'")
+            .replace(/[“”„‟]/g, '"')
+            // Dashes & ellipsis
+            .replace(/[‐-―]/g, '-')
+            .replace(/…/g, '...')
+            // Spaces & misc
+            .replace(/[   ]/g, ' ')
+            .replace(/•/g, '-')
+            // Currency
+            .replace(/₵/g, 'GHS ')
+            .replace(/₦/g, 'NGN ')
+            // Strip accents (é → e) where possible
+            .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+            // Anything still outside the Latin-1 range the font can't encode → '?'
+            .replace(/[^\x09\x0A\x0D\x20-\xFF]/g, '?');
     }
 
     /**

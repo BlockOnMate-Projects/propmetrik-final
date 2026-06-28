@@ -21,7 +21,7 @@ import { Router, Request, Response } from 'express';
 import { valuationInvoiceService, MWH_MAN_DAY_RATES, type FeeModel } from '../services/valuation-engine/valuationInvoiceService';
 import { invoiceService as projectInvoiceService } from '../services/project-management/invoiceService';
 import { authenticate } from '../middleware/auth';
-import { requireServiceAccess } from '../middleware/serviceAccess';
+import { requireServiceAccess, requireServiceRole } from '../middleware/serviceAccess';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import crypto from 'crypto';
@@ -971,7 +971,7 @@ router.get('/payments/banks', async (_req: Request, res: Response) => {
  * Register or update the organization's bank/MoMo account for payouts.
  * Creates a Paystack sub-account so payment splits happen automatically.
  */
-router.post('/payments/register-account', async (req: Request, res: Response) => {
+router.post('/payments/register-account', requireServiceRole('valuations', ['service_admin', 'finance_officer']), async (req: Request, res: Response) => {
     try {
         const organizationId = getOrgId(req);
         const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
@@ -1038,7 +1038,7 @@ router.get('/payments/crypto-wallet', async (req: Request, res: Response) => {
  * POST /payments/crypto-wallet
  * Save/update crypto wallet address. Registers on-chain if contract is configured.
  */
-router.post('/payments/crypto-wallet', async (req: Request, res: Response) => {
+router.post('/payments/crypto-wallet', requireServiceRole('valuations', ['service_admin', 'finance_officer']), async (req: Request, res: Response) => {
     try {
         const { walletAddress, payoutCoin, payoutChain } = req.body;
         const { cryptoPayoutService } = await import('../services/payments/cryptoPayoutService');

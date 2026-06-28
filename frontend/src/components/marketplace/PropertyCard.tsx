@@ -123,13 +123,24 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
           {property.title}
         </h3>
         
-        {/* Location */}
-        <div className="flex items-center gap-1.5 text-muted-foreground text-sm mb-4">
-          <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-          <span className="line-clamp-1">
-            {property.neighborhood ? `${property.neighborhood}, ` : ''}{property.city}
-          </span>
-        </div>
+        {/* Location — never render blank: prefer neighborhood+city, then fall back
+            to region (humanised) or the raw street address so a missing `city`
+            from any source (scraped/OpenSearch district mapping, etc.) still shows. */}
+        {(() => {
+          const formatRegion = (r?: string) =>
+            r ? r.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
+          const locationText =
+            [property.neighborhood, property.city].filter(Boolean).join(', ') ||
+            formatRegion(property.region) ||
+            property.address ||
+            'Location not specified';
+          return (
+            <div className="flex items-center gap-1.5 text-muted-foreground text-sm mb-4">
+              <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="line-clamp-1">{locationText}</span>
+            </div>
+          );
+        })()}
         {property.digital_address && (
           <div className="flex items-center gap-1.5 text-indigo-600 text-xs font-medium">
             <Navigation className="h-3 w-3" />

@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { getOrganizationId, asyncHandler } from './helpers';
 import { createCustomRateLimiter } from '../../middleware/rateLimiter';
+import { requireServiceRole } from '../../middleware/serviceAccess';
 import crypto from 'crypto';
 import { logger } from '../../utils/logger';
 
@@ -174,7 +175,7 @@ router.get('/payments/banks', paymentRateLimiter, asyncHandler(async (req: Reque
  * POST /payments/register-account
  * Register or update the organization's bank account for payouts
  */
-router.post('/payments/register-account', paymentRateLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/payments/register-account', requireServiceRole('crm', ['service_admin']), paymentRateLimiter, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
 
@@ -238,7 +239,7 @@ router.get('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Res
  * POST /payments/crypto-wallet
  * Save/update crypto payout wallet for the deal management org (chain-aware).
  */
-router.post('/payments/crypto-wallet', paymentRateLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/payments/crypto-wallet', requireServiceRole('crm', ['service_admin']), paymentRateLimiter, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { walletAddress, payoutCoin, payoutChain } = req.body;
     const { cryptoPayoutService } = await import('../../services/payments/cryptoPayoutService');

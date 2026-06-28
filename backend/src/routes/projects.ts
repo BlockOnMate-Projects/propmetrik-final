@@ -17,6 +17,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { registerPMParamValidation, registerProjectAccessParams, requireProjectAccess, requireProjectPermission, getAuthUserId, getAuthOrgId, getAuthContext, requirePMWrite } from '../middleware/pmAuth';
+import { requireServiceRole } from '../middleware/serviceAccess';
 import { validate } from '../middleware/validation';
 import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhaseSchema, createMilestoneSchema, updateMilestoneSchema, createDailyLogSchema, createPunchItemSchema, updatePunchItemSchema } from '../middleware/pmProjectValidation';
 import projectService from '../services/project-management/projectService';
@@ -6115,7 +6116,7 @@ router.get('/payments/banks', async (req: Request, res: Response, next: NextFunc
  * POST /api/v1/projects/payments/register-account
  * Register or update the organization's bank account for payouts
  */
-router.post('/payments/register-account', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/register-account', requireServiceRole('projects', ['service_admin', 'project_manager']), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const organizationId = getOrgId(req);
     const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
@@ -6186,7 +6187,7 @@ router.get('/payments/crypto-wallet', async (req: Request, res: Response, next: 
  * POST /api/v1/projects/payments/crypto-wallet
  * Save/update crypto wallet address for the project management org
  */
-router.post('/payments/crypto-wallet', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/crypto-wallet', requireServiceRole('projects', ['service_admin', 'project_manager']), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { walletAddress, payoutCoin, payoutChain } = req.body;
     const { cryptoPayoutService } = await import('../services/payments/cryptoPayoutService');

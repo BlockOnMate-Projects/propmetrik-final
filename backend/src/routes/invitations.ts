@@ -10,6 +10,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
+import { requireCanInvite } from '../middleware/serviceAccess';
 import { inviteService, CreateInvitationInput } from '../services/shared/inviteService';
 import { logger } from '../utils/logger';
 
@@ -76,7 +77,7 @@ router.use(authenticate);
  * POST / — Create a new invitation.
  * Requires: invitations.create
  */
-router.post('/', authorize('invitations', 'create'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requireCanInvite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const {
       email, role, userType, firstName, lastName,
@@ -155,7 +156,7 @@ router.get('/', authorize('invitations', 'read'), async (req: Request, res: Resp
  * DELETE /:id — Cancel a pending invitation.
  * Requires: invitations.manage
  */
-router.delete('/:id', authorize('invitations', 'manage'), async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', requireCanInvite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const cancelledById = (req as any).user?.id;
     await inviteService.cancelInvitation(req.params.id, cancelledById);
@@ -172,7 +173,7 @@ router.delete('/:id', authorize('invitations', 'manage'), async (req: Request, r
  * POST /:id/resend — Resend invitation email (extends expiry).
  * Requires: invitations.manage
  */
-router.post('/:id/resend', authorize('invitations', 'manage'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/resend', requireCanInvite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const resentById = (req as any).user?.id;
     const invitation = await inviteService.resendInvitation(req.params.id, resentById);
@@ -190,7 +191,7 @@ router.post('/:id/resend', authorize('invitations', 'manage'), async (req: Reque
  * POST /bulk — Bulk invite multiple users.
  * Requires: invitations.manage
  */
-router.post('/bulk', authorize('invitations', 'manage'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/bulk', requireCanInvite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { invitations: inviteList, userType, message } = req.body;
 

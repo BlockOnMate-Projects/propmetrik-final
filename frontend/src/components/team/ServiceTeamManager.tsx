@@ -10,7 +10,7 @@
  *   <ServiceTeamManager serviceKey="projects" />
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   Users, UserPlus, Mail, Shield, Search, MoreVertical,
@@ -106,8 +106,20 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [editingRoleFor, setEditingRoleFor] = useState<string | null>(null)
 
-  // Determine caller's role
-  const isAdmin = true // Default to admin for staff; customer role checked via session
+  // Determine whether the caller may manage the team (invite / edit roles / remove).
+  // This is a UI affordance only — the backend independently enforces the same rule
+  // (see requireCanInvite / requireServiceRole). Staff and org leadership always qualify;
+  // a customer qualifies only if their own service_role is 'service_admin'.
+  const isAdmin = useMemo(() => {
+    const u = session?.user as any
+    if (!u) return false
+    if (u.userType === 'staff') return true
+    if (['super_admin', 'admin', 'owner', 'firm_principal', 'manager'].includes(u.role)) return true
+    const me = members.find(
+      (m) => m.id === u.id || (u.email && m.email?.toLowerCase() === String(u.email).toLowerCase()),
+    )
+    return me?.serviceRole === 'service_admin'
+  }, [session, members])
 
   // ── Data fetching ────────────────────────────────────────────────────
 

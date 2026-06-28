@@ -64,6 +64,12 @@ import {
     FinancialFilters
 } from '../types/property-management.types';
 import { createCustomRateLimiter } from '../middleware/rateLimiter';
+import { requireServiceRole } from '../middleware/serviceAccess';
+
+// Service roles permitted to change payout destinations / financial settings.
+// A read-only "viewer", leasing agent or maintenance coordinator must NOT be able
+// to redirect where money is paid out.
+const PM_FINANCE_ROLES = ['service_admin', 'property_manager', 'accounts_officer'];
 import { getSignedLeaseDownloadUrl, isS3ObjectRef, storeSignedLeaseDocument } from '../services/property-management/leases/signedLeaseStorage';
 import { buckets, uploadFile } from '../database/minio';
 import { keycloakTenantOnboardingService } from '../services/property-management/auth/keycloakTenantOnboardingService';
@@ -868,7 +874,7 @@ router.get('/payments/banks', asyncHandler(async (req: Request, res: Response) =
  * POST /api/v1/pm/payments/register-account
  * Register or update the organization's bank account for payouts
  */
-router.post('/payments/register-account', paymentRateLimit, validate(pmRegisterAccountSchema), asyncHandler(async (req: Request, res: Response) => {
+router.post('/payments/register-account', requireServiceRole('property_management', PM_FINANCE_ROLES), paymentRateLimit, validate(pmRegisterAccountSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
 
@@ -990,7 +996,7 @@ router.get('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Res
  * POST /api/v1/pm/payments/crypto-wallet
  * Save/update crypto payout wallet for the PM org (chain-aware via cryptoPayoutService).
  */
-router.post('/payments/crypto-wallet', cryptoRateLimit, asyncHandler(async (req: Request, res: Response) => {
+router.post('/payments/crypto-wallet', requireServiceRole('property_management', PM_FINANCE_ROLES), cryptoRateLimit, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { walletAddress, payoutCoin, payoutChain } = req.body;
     const result = await cryptoPayoutService.save({

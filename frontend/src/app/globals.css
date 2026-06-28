@@ -61,45 +61,38 @@
   }
 
   .dark {
-    /* Dark Mode — Slate/Indigo */
-    --background: 222 47% 11%;
-    /* Slate 950 */
-    --foreground: 210 40% 98%;
-    /* Slate 50 */
+    /* Dark Mode — Neutral pure black (hue 0, 0% saturation = true grayscale, no blue tint) */
+    --background: 0 0% 0%;
+    /* Pure black */
+    --foreground: 0 0% 98%;
 
-    --card: 217 33% 17%;
-    /* Slate 800 */
-    --card-foreground: 210 40% 98%;
-    /* Slate 50 */
+    --card: 0 0% 5%;
+    /* Near-black panel, just lifted off the background */
+    --card-foreground: 0 0% 98%;
 
-    --popover: 217 33% 17%;
-    /* Slate 800 */
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
 
     --primary: 243 75% 59%;
-    /* Indigo 500 */
+    /* Indigo 500 — semantic accent, kept */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 17%;
-    /* Slate 800 */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217 33% 17%;
-    /* Slate 800 */
-    --muted-foreground: 215 20% 65%;
-    /* Slate 400 */
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 64%;
+    /* Neutral gray-400 equivalent */
 
-    --accent: 217 33% 17%;
-    /* Slate 800 */
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84% 60%;
     /* Red 500 */
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217 33% 20%;
-    /* Slate 700 */
-    --input: 217 33% 20%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
     --ring: 243 75% 59%;
     /* Indigo 500 */
 
