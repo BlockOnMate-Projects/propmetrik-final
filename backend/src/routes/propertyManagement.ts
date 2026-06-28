@@ -3510,6 +3510,87 @@ router.get('/tenant-messages/conversations', asyncHandler(async (req: Request, r
 }));
 
 /**
+ * POST /api/v1/pm/tenant-messages/conversations
+ * Get-or-create a conversation so the LANDLORD can start messaging a tenant who
+ * hasn't written in yet. Accepts { tenantId } or { tenancyId }; conversations are
+ * keyed by tenancy, so a tenantId is resolved to that tenant's most recent tenancy.
+ */
+router.post('/tenant-messages/conversations', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    let { tenancyId } = req.body as { tenancyId?: string };
+    const { tenantId } = req.body as { tenantId?: string };
+
+    // Resolve a tenancy from the tenant if only tenantId was supplied.
+    if (!tenancyId && tenantId) {
+        const tn = await db.query(
+            `SELECT id FROM tenancies
+             WHERE tenant_id = $1 AND organization_id = $2
+             ORDER BY (status = 'active') DESC, created_at DESC
+             LIMIT 1`,
+            [tenantId, organizationId]
+        );
+        tenancyId = tn.rows[0]?.id;
+    }
+    if (!tenancyId) {
+        return res.status(400).json({ error: 'This tenant has no tenancy to message about. Generate a lease / tenancy first.' });
+    }
+
+    // Tenancy must belong to this org.
+    const own = await db.query(
+        `SELECT id FROM tenancies WHERE id = $1 AND organization_id = $2`,
+        [tenancyId, organizationId]
+    );
+    if (own.rows.length === 0) {
+        return res.status(404).json({ error: 'Tenancy not found' });
+    }
+
+    // Get-or-create the conversation for this tenancy.
+    let convo = await db.query(
+        `SELECT * FROM tenant_conversations WHERE tenancy_id = $1 AND organization_id = $2 AND is_archived = FALSE LIMIT 1`,
+        [tenancyId, organizationId]
+    );
+    if (convo.rows.length === 0) {
+        convo = await db.query(
+            `INSERT INTO tenant_conversations (tenancy_id, organization_id, subject)
+             VALUES ($1, $2, $3) RETURNING *`,
+            [tenancyId, organizationId, 'Direct message']
+        );
+    }
+
+    // Return it enriched the same way the list endpoint does.
+    const enriched = await db.query(
+        `SELECT c.*, t.full_name AS tenant_name, t.email AS tenant_email, tn.tenant_id, p.title AS property_title
+         FROM tenant_conversations c
+         LEFT JOIN tenancies tn ON tn.id = c.tenancy_id
+         LEFT JOIN tenants t ON t.id = tn.tenant_id
+         LEFT JOIN properties p ON p.id = tn.property_id
+         WHERE c.id = $1`,
+        [convo.rows[0].id]
+    );
+    const r = enriched.rows[0];
+    res.status(201).json({
+        conversation: {
+            id: r.id,
+            tenancyId: r.tenancy_id,
+            tenantId: r.tenant_id,
+            tenantName: r.tenant_name,
+            tenantEmail: r.tenant_email,
+            propertyTitle: r.property_title,
+            subject: r.subject,
+            status: 'active',
+            lastMessage: null,
+            lastMessageAt: r.last_message_at,
+            unreadCount: r.landlord_unread_count || 0,
+            createdAt: r.created_at,
+        }
+    });
+}));
+
+/**
  * GET /api/v1/pm/tenant-messages/conversations/:conversationId/messages
  * Get messages in a conversation (landlord view)
  */

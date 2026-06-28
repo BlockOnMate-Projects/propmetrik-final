@@ -1405,7 +1405,11 @@ export default function TenantDetailsPage() {
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Quick Actions</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <Button variant="outline" className="w-full justify-start border-border text-muted-foreground hover:text-foreground font-mono text-xs">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.push(`/dashboard/property-management/messages?tenantId=${tenantId}`)}
+                                    className="w-full justify-start border-border text-muted-foreground hover:text-foreground font-mono text-xs"
+                                >
                                     <MessageSquare className="h-3 w-3 mr-2" />
                                     Send Message
                                 </Button>

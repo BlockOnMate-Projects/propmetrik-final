@@ -193,6 +193,13 @@ export const propertyManagementApi = {
         return fetchApi<PaginatedResponse<Tenant>>(`${PM_BASE}/tenants?${query.toString()}`);
     },
 
+    /** Get-or-create a tenant conversation so the landlord can start messaging. */
+    createConversation: (body: { tenantId?: string; tenancyId?: string }) =>
+        fetchApi<{ conversation: { id: string; tenancyId: string; tenantId: string; tenantName?: string } }>(
+            `${PM_BASE}/tenant-messages/conversations`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        ),
+
     getTenantById: (id: string) => fetchApi<Tenant>(`${PM_BASE}/tenants/${id}`),
 
     createTenant: (data: Partial<Tenant>) =>
