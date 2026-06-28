@@ -1,13 +1,16 @@
 'use client'
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { fetchApi } from '@/lib/api'
+import { propertyManagementApi } from '@/lib/property-management-api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   MessageSquare,
   Send,
@@ -17,6 +20,7 @@ import {
   CheckCheck,
   Loader2,
   Inbox,
+  PenSquare,
 } from 'lucide-react'
 
 interface Conversation {
@@ -147,6 +151,54 @@ export default function LandlordMessagesPage() {
     } catch {} finally { setLoadingConvos(false) }
   }
 
+  /* ─── Compose: start a conversation with any tenant ─── */
+  const searchParams = useSearchParams()
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [tenantSearch, setTenantSearch] = useState('')
+  const [tenantResults, setTenantResults] = useState<Array<{ id: string; fullName?: string; full_name?: string; name?: string; email?: string }>>([])
+  const [searchingTenants, setSearchingTenants] = useState(false)
+  const [startingId, setStartingId] = useState<string | null>(null)
+
+  // Get-or-create a conversation for a tenant, then open it.
+  const startConversationForTenant = useCallback(async (tenantId: string) => {
+    setStartingId(tenantId)
+    try {
+      const { conversation } = await propertyManagementApi.createConversation({ tenantId })
+      await loadConversations()
+      setActiveTenancyId(conversation.tenancyId)
+      setComposeOpen(false)
+      setTenantSearch('')
+      return conversation
+    } catch (e: any) {
+      alert(e?.message || 'Could not start a conversation with this tenant.')
+      return null
+    } finally {
+      setStartingId(null)
+    }
+  }, [])
+
+  // Deep link: /messages?tenantId=… (from the tenant page "Send Message" button)
+  useEffect(() => {
+    const tid = searchParams?.get('tenantId')
+    if (tid) startConversationForTenant(tid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  // Search the full tenant directory for the compose picker.
+  useEffect(() => {
+    if (!composeOpen) return
+    let cancelled = false
+    setSearchingTenants(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await propertyManagementApi.getTenants({ search: tenantSearch || undefined, limit: 25 })
+        if (!cancelled) setTenantResults(((res as any)?.data || (res as any)?.items || []) as any[])
+      } catch { if (!cancelled) setTenantResults([]) }
+      finally { if (!cancelled) setSearchingTenants(false) }
+    }, 250)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [composeOpen, tenantSearch])
+
   /** Fetch messages from every conversation for the tenant, merge & sort */
   const loadAllMessages = async (convoIds: string[]) => {
     try {
@@ -211,7 +263,16 @@ export default function LandlordMessagesPage() {
           {/* ─── Left sidebar: one entry per tenant ─── */}
           <div className={`w-full md:w-80 lg:w-96 border-r border-border flex flex-col ${activeTenancyId ? 'hidden md:flex' : 'flex'}`}>
             <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-mono font-bold text-amber-500 mb-3">TENANT MESSAGES</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-mono font-bold text-amber-500">TENANT MESSAGES</h3>
+                <Button
+                  size="sm"
+                  onClick={() => setComposeOpen(true)}
+                  className="h-7 bg-amber-500 hover:bg-amber-600 text-foreground text-xs gap-1.5"
+                >
+                  <PenSquare className="w-3.5 h-3.5" /> New
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -388,6 +449,51 @@ export default function LandlordMessagesPage() {
           </div>
         </div>
       </Card>
+
+      {/* Compose: pick any tenant to start a conversation */}
+      <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
+        <DialogContent className="bg-background border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-amber-500 font-mono text-sm">NEW MESSAGE</DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={tenantSearch}
+              onChange={e => setTenantSearch(e.target.value)}
+              placeholder="Search any tenant by name or email…"
+              className="pl-9 bg-card border-border text-sm h-9"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto -mx-2">
+            {searchingTenants ? (
+              <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : tenantResults.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-8">No tenants found</p>
+            ) : tenantResults.map(t => {
+              const name = t.fullName || t.full_name || t.name || t.email || 'Tenant'
+              return (
+                <button
+                  key={t.id}
+                  disabled={!!startingId}
+                  onClick={() => startConversationForTenant(t.id)}
+                  className="w-full px-3 py-2.5 flex items-center gap-3 text-left rounded-md hover:bg-card transition-colors disabled:opacity-50"
+                >
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarFallback className="bg-muted text-amber-500 text-xs font-bold">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-zinc-200 truncate">{name}</p>
+                    {t.email && <p className="text-[10px] text-muted-foreground truncate">{t.email}</p>}
+                  </div>
+                  {startingId === t.id && <Loader2 className="w-4 h-4 animate-spin text-amber-500" />}
+                </button>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
