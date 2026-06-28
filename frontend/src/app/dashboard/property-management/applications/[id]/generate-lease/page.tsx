@@ -114,16 +114,21 @@ export default function GenerateLeasePage() {
         landlordUtilities: []
     })
 
-    // When user checks "I am the landlord", auto-fill landlord info
+    // Keep the Landlord field in sync with the "I am the landlord" toggle:
+    //  - checked   → fill the CURRENT user's identity (they're declaring themselves landlord)
+    //  - unchecked → restore the PROPERTY's landlord (explicit owner, else the staff member
+    //                who listed it). This guarantees we never leave a stale identity (e.g. your
+    //                name) when you're actually signing on someone else's behalf.
     useEffect(() => {
+        if (!application) return
         if (formData.isUserLandlord && user) {
-            setFormData(prev => ({
-                ...prev,
-                landlordName: user.name || '',
-                landlordEmail: user.email || ''
-            }))
+            setFormData(prev => ({ ...prev, landlordName: user.name || '', landlordEmail: user.email || '' }))
+        } else if (!formData.isUserLandlord) {
+            const name = application.propertyOwnerName || application.propertyListedByName || ''
+            const email = application.propertyOwnerEmail || application.propertyListedByEmail || ''
+            setFormData(prev => ({ ...prev, landlordName: name, landlordEmail: email }))
         }
-    }, [formData.isUserLandlord, user])
+    }, [formData.isUserLandlord, user, application])
 
     useEffect(() => {
         if (applicationId) {
@@ -173,6 +178,19 @@ export default function GenerateLeasePage() {
                 // Security deposit is typically 2-3 months rent in Ghana
                 const securityDeposit = monthlyRent * 2
 
+                // Derive the landlord from the PROPERTY — an explicit owner if one was
+                // captured, otherwise the staff member who LISTED it. NEVER from whoever
+                // happens to be logged in continuing the workflow. This keeps the lease's
+                // landlord stable across a multi-staff team (e.g. Eric continuing a property
+                // Farouk listed → landlord is Farouk, and Eric signs as authorised agent).
+                const ownerName = appData.propertyOwnerName || appData.propertyListedByName || ''
+                const ownerEmail = appData.propertyOwnerEmail || appData.propertyListedByEmail || ''
+                const meId = (user as any)?.id
+                const iAmOwner = !!meId && (
+                    (!!appData.propertyOwnerId && appData.propertyOwnerId === meId) ||
+                    (!appData.propertyOwnerId && appData.propertyListedById === meId)
+                )
+
                 setFormData(prev => ({
                     ...prev,
                     startDate,
@@ -180,6 +198,9 @@ export default function GenerateLeasePage() {
                     monthlyRent,
                     currency: (appData as any).propertyPriceCurrency || 'GHS',
                     securityDeposit,
+                    isUserLandlord: iAmOwner,
+                    landlordName: iAmOwner ? (user?.name || ownerName) : ownerName,
+                    landlordEmail: iAmOwner ? (user?.email || ownerEmail) : ownerEmail,
                 }))
 
                 // Set default template

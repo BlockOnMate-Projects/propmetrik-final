@@ -129,7 +129,15 @@ export interface Application {
   propertyBedrooms?: number;
   propertyBathrooms?: number;
   propertyType?: string;
-  
+
+  // Landlord/owner derivation (for the lease form — see getApplicationById)
+  propertyOwnerId?: string;
+  propertyOwnerName?: string;
+  propertyOwnerEmail?: string;
+  propertyListedById?: string;
+  propertyListedByName?: string;
+  propertyListedByEmail?: string;
+
   // E-Sign integration (populated dynamically)
   signerToken?: string;
 
@@ -454,16 +462,27 @@ export class ApplicationService {
     organizationId: string
   ): Promise<Application | null> {
     const query = `
-      SELECT a.*, 
+      SELECT a.*,
              p.title as property_name,
              p.address_street as property_address,
              p.price as property_price,
              p.price_currency as property_price_currency,
              p.bedrooms as property_bedrooms,
              p.bathrooms as property_bathrooms,
-             p.property_type as property_type
+             p.property_type as property_type,
+             -- Landlord/owner derivation: an explicit owner on the property takes
+             -- precedence; otherwise the staff member who LISTED it (created_by) is the
+             -- de-facto landlord. The lease form prefills from these — never from whoever
+             -- happens to be driving the workflow.
+             p.owner_id as property_owner_id,
+             p.owner_name as property_owner_name,
+             p.owner_email as property_owner_email,
+             p.created_by as property_listed_by_id,
+             COALESCE(NULLIF(TRIM(CONCAT(lu.first_name, ' ', lu.last_name)), ''), lu.display_name, lu.email) as property_listed_by_name,
+             lu.email as property_listed_by_email
       FROM applications a
       LEFT JOIN properties p ON p.id = a.property_id
+      LEFT JOIN users lu ON lu.id = p.created_by
       WHERE a.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL
     `;
 
@@ -2055,7 +2074,13 @@ export class ApplicationService {
       propertyPriceCurrency: row.property_price_currency,
       propertyBedrooms: row.property_bedrooms,
       propertyBathrooms: row.property_bathrooms,
-      propertyType: row.property_type
+      propertyType: row.property_type,
+      propertyOwnerId: row.property_owner_id || undefined,
+      propertyOwnerName: row.property_owner_name || undefined,
+      propertyOwnerEmail: row.property_owner_email || undefined,
+      propertyListedById: row.property_listed_by_id || undefined,
+      propertyListedByName: row.property_listed_by_name || undefined,
+      propertyListedByEmail: row.property_listed_by_email || undefined
     };
   }
 

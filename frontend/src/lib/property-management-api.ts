@@ -1012,6 +1012,13 @@ export interface Application {
     propertyBedrooms?: number;
     propertyBathrooms?: number;
     propertyType?: string;
+    // Landlord/owner derivation for the lease form
+    propertyOwnerId?: string;
+    propertyOwnerName?: string;
+    propertyOwnerEmail?: string;
+    propertyListedById?: string;
+    propertyListedByName?: string;
+    propertyListedByEmail?: string;
 }
 
 export interface CreateApplicationDto {

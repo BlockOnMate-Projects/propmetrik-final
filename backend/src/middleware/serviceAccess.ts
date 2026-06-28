@@ -205,6 +205,129 @@ export function clearServiceAccessCache(userId: string): void {
   subscriptionCache.delete(userId);
 }
 
+// ── Role-aware guards ────────────────────────────────────────────────────────
+// Staff org-leadership realm roles that may perform privileged actions in any
+// service without a per-service service_role (mirrors requireServiceAccess).
+const ORG_LEADERSHIP_REALM_ROLES = ['super_admin', 'admin', 'firm_principal', 'manager'];
+
+/**
+ * Read the caller's org-level role + user_type from the DB (cached on req.user when present).
+ */
+async function resolveUserRoleAndType(req: Request): Promise<{ role: string; userType: string }> {
+  let userType = (req.user as any)?.userType as string | undefined;
+  let role: string | undefined;
+  try {
+    const { pool } = await import('../database');
+    const userId = req.user?.id || req.user?.sub;
+    if (userId) {
+      const r = await pool.query('SELECT role, user_type FROM users WHERE id = $1', [userId]);
+      if (r.rows.length) {
+        role = r.rows[0].role;
+        userType = userType || r.rows[0].user_type;
+      }
+    }
+  } catch { /* fall through */ }
+  return { role: role || 'member', userType: userType || 'staff' };
+}
+
+/**
+ * Middleware factory: require the caller to hold one of `allowedRoles` as their
+ * service_role for `serviceKey` (for customers), OR be staff / org-leadership.
+ *
+ * Use this to gate sensitive write actions that requireServiceAccess() alone does
+ * NOT protect — e.g. changing payout destinations. A read-only "Viewer" service
+ * role will be rejected.
+ *
+ *   router.post('/payments/crypto-wallet',
+ *     requireServiceRole('property_management', ['service_admin', 'property_manager', 'accounts_officer']),
+ *     handler);
+ */
+export function requireServiceRole(serviceKey: string, allowedRoles: string[]) {
+  const allowed = new Set(allowedRoles);
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    // super_admin / staff org-leadership bypass
+    const realmRoles = [...(req.user.realmRoles || []), ...(req.user.clientRoles || [])];
+    if (realmRoles.some(r => ORG_LEADERSHIP_REALM_ROLES.includes(r))) {
+      return next();
+    }
+
+    const { role, userType } = await resolveUserRoleAndType(req);
+    // Staff users (PropMetrik) manage everything.
+    if (userType === 'staff') {
+      return next();
+    }
+    // Customer org leadership (owner/admin) always passes.
+    if (['owner', 'admin'].includes(role)) {
+      return next();
+    }
+
+    // Customer: must hold an allowed service_role for this service.
+    const userId = req.user.id || req.user.sub;
+    const { roles } = await getUserSubscriptions(userId);
+    const serviceRole = roles.get(serviceKey) || null;
+    if (serviceRole && allowed.has(serviceRole)) {
+      return next();
+    }
+
+    logger.warn('Service role check denied', { userId, serviceKey, serviceRole, allowedRoles, path: req.originalUrl });
+    res.status(403).json({
+      error: 'Insufficient role',
+      message: `This action requires one of: ${allowedRoles.join(', ')}`,
+      serviceKey,
+    });
+  };
+}
+
+/**
+ * Middleware: only org leadership or a service_admin (of the service being invited
+ * into) may create/manage team invitations. Closes the hole where `invitations`
+ * was treated as a `__shared__` resource and any subscriber — including a Viewer —
+ * could invite teammates. The target service comes from req.body.serviceKey.
+ */
+export async function requireCanInvite(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (!req.user) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+  const realmRoles = [...(req.user.realmRoles || []), ...(req.user.clientRoles || [])];
+  if (realmRoles.some(r => ORG_LEADERSHIP_REALM_ROLES.includes(r))) {
+    return next();
+  }
+
+  const { role, userType } = await resolveUserRoleAndType(req);
+  if (userType === 'staff' || ['owner', 'admin'].includes(role)) {
+    return next();
+  }
+
+  // Customer: only a service_admin may invite. Normalise the body serviceKey
+  // (the UI may send hyphenated 'property-management') and, if the specific lookup
+  // misses, fall back to "service_admin of any service" — within one org the owner
+  // is typically service_admin across services. A non-admin role (viewer, agent,
+  // etc.) never has 'service_admin' anywhere, so this stays safe against them.
+  const serviceKey = ((req.body?.serviceKey as string) || '').replace(/-/g, '_');
+  const userId = req.user.id || req.user.sub;
+  const { roles } = await getUserSubscriptions(userId);
+  const isServiceAdmin =
+    (serviceKey && roles.get(serviceKey) === 'service_admin') ||
+    [...roles.values()].includes('service_admin');
+
+  if (isServiceAdmin) {
+    return next();
+  }
+
+  logger.warn('Invite permission denied', { userId, serviceKey, path: req.originalUrl });
+  res.status(403).json({
+    error: 'Insufficient role',
+    message: 'Only an organization owner/admin or a service administrator can invite team members',
+  });
+}
+
 // Org-level entitlement cache: orgId|serviceKey → { has, ts }
 const orgServiceCache = new Map<string, { has: boolean; ts: number }>();
 

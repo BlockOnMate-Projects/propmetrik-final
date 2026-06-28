@@ -11,6 +11,10 @@ WORKDIR /app
 # Install build dependencies for native modules
 RUN apk add --no-cache python3 make g++
 
+# Don't download Puppeteer's bundled (glibc) Chromium — it can't run on Alpine.
+# The runtime stages install the Alpine `chromium` package instead.
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
 # Copy package files
 COPY package*.json ./
 
@@ -45,8 +49,21 @@ RUN NODE_ENV=production npm prune --production
 # ============================================
 FROM node:20-alpine AS production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init for proper signal handling + Chromium for Puppeteer
+# (lease/report PDF generation). Puppeteer's bundled Chromium is glibc-based and
+# cannot run on Alpine/musl, so we install the Alpine chromium package and point
+# Puppeteer at it. Fonts are required or generated PDFs render blank/tofu text.
+RUN apk add --no-cache \
+    dumb-init \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -95,8 +112,11 @@ FROM node:20-alpine AS development
 
 WORKDIR /app
 
-# Install development dependencies
-RUN apk add --no-cache python3 make g++
+# Install development dependencies + Chromium for Puppeteer (see production stage note)
+RUN apk add --no-cache python3 make g++ \
+    chromium nss freetype harfbuzz ca-certificates ttf-freefont font-noto
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy package files
 COPY package*.json ./
