@@ -1111,25 +1111,26 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       comparablesCount: comparables.length,
     });
 
-    // Use RICS endpoint if we have comparables, otherwise fall back to standard
-    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
-    const pythonEndpoint = comparables.length > 0
-      ? `${pythonBase}/api/v1/methods/sales-comparison-rics`
-      : `${pythonBase}/api/v1/methods/sales-comparison`;
+    // Sales comparison is RICS-only and REQUIRES real comparable evidence. There is no simplified
+    // fallback that fabricates a value from a price-per-sqm — if there are no comparables, the method
+    // is not applicable and we fail loudly so the valuer adds evidence or chooses another method.
+    if (comparables.length === 0) {
+      return res.status(422).json({
+        error: 'Insufficient Evidence',
+        message: 'Sales comparison requires at least one comparable property. Add comparable evidence or use a different valuation method.',
+      });
+    }
 
-    const requestBody = comparables.length > 0
-      ? {
-        property: propertyData,
-        comparables: comparables,
-        valuation_date: new Date().toISOString(),
-        usd_to_ghs_rate: usdToGhs, // live DB rate (comps already GHS; passed only as a safety net)
-        options: req.body.options || {},
-      }
-      : {
-        property: propertyData,
-        valuation_date: new Date().toISOString(),
-        options: req.body.options || {},
-      };
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
+    const pythonEndpoint = `${pythonBase}/api/v1/methods/sales-comparison`;
+
+    const requestBody = {
+      property: propertyData,
+      comparables: comparables,
+      valuation_date: new Date().toISOString(),
+      usd_to_ghs_rate: usdToGhs, // live DB rate (comps already GHS; passed only as a safety net)
+      options: req.body.options || {},
+    };
 
     const pythonResponse = await fetch(pythonEndpoint, {
       method: 'POST',
@@ -1180,30 +1181,81 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       methodology_notes?: string[];
     };
 
-    // Update the valuation record with Python results
+    // Persist the sales-comparison RESULT (engine calculation) while PRESERVING the valuer's overlays.
+    // Robustness contract: a recalculation must NEVER trample manual work.
+    //  - the fresh sales result is MERGED into method_results.sales_comparison (other methods untouched),
+    //    keeping the valuer's per-method weight / primary-flag overlay across recalculations;
+    //  - method_weights and final_value_ghs (the reconciliation overlay) are NEVER written here;
+    //  - the overall headline (estimated_value / range / confidence) is set ONLY when the valuation has
+    //    not yet been reconciled (final_value_ghs IS NULL); once reconciled, the reconciled value stands.
     if (pythonResult.success && pythonResult.estimated_value) {
+      // Sales comparison is now a single RICS-compliant methodology (legacy passthrough removed),
+      // so every result here carries the full RICS evidence grid.
+      const isRICS = pythonResult.method === 'sales_comparison';
+
+      const existingResults: Record<string, any> = (valuation.method_results && typeof valuation.method_results === 'object')
+        ? valuation.method_results
+        : {};
+      const existingSales: any = existingResults.sales_comparison || {};
+      const salesResult = {
+        method: 'sales_comparison',
+        value: pythonResult.estimated_value,
+        value_ghs: pythonResult.estimated_value,
+        confidence: pythonResult.confidence_score,
+        confidence_score: pythonResult.confidence_score,
+        confidence_level: pythonResult.confidence_level,
+        // preserve the valuer's overlay (weight / primary flag) — a recalc keeps manual reconciliation intent
+        weight: typeof existingSales.weight === 'number' ? existingSales.weight : 0,
+        is_primary: existingSales.is_primary ?? false,
+        value_range: pythonResult.value_range,
+        details: {
+          ...(pythonResult.details || {}),
+          indicated_value: pythonResult.estimated_value,
+          ...(isRICS ? {
+            comparables_analyzed: pythonResult.comparables_analyzed,
+            adjustment_grid: pythonResult.adjustment_grid,
+            methodology_notes: pythonResult.methodology_notes,
+          } : {}),
+        },
+        assumptions: pythonResult.assumptions,
+        limitations: pythonResult.limitations,
+        calculated_at: new Date().toISOString(),
+        calculated_by: 'python_rics_engine',
+      };
+      const mergedResults = { ...existingResults, sales_comparison: salesResult };
+
+      const existingMethodsUsed: string[] = Array.isArray(valuation.methods_used)
+        ? valuation.methods_used
+        : (() => { try { return JSON.parse(valuation.methods_used || '[]'); } catch { return []; } })();
+      const mergedMethodsUsed = Array.from(new Set([...existingMethodsUsed, 'sales_comparison']));
+
       const updateResult = await query(
         `UPDATE valuations SET
-          estimated_value = $1,
-          confidence_score = $2,
-          value_range_low = $3,
-          value_range_high = $4,
-          methods_used = $5,
+          method_results = $1,
+          sales_comparison_value = $2,
+          sales_comparison_confidence = $3,
+          methods_used = $4,
+          estimated_value  = CASE WHEN final_value_ghs IS NULL THEN $5 ELSE estimated_value END,
+          value_range_low  = CASE WHEN final_value_ghs IS NULL THEN $6 ELSE value_range_low END,
+          value_range_high = CASE WHEN final_value_ghs IS NULL THEN $7 ELSE value_range_high END,
+          confidence_score = CASE WHEN final_value_ghs IS NULL THEN $8 ELSE confidence_score END,
           updated_at = NOW()
-        WHERE id = $6
+        WHERE id = $9
         RETURNING *`,
         [
+          JSON.stringify(mergedResults),
           pythonResult.estimated_value,
           pythonResult.confidence_score,
+          JSON.stringify(mergedMethodsUsed),
+          pythonResult.estimated_value,
           pythonResult.value_range?.low,
           pythonResult.value_range?.high,
-          JSON.stringify([pythonResult.method]),
+          pythonResult.confidence_score,
           valuationId,
         ]
       );
 
       const duration = Date.now() - startTime;
-      const isRICS = pythonResult.method === 'sales_comparison_rics';
 
       logger.info('Python valuation completed successfully', {
         valuationId,
@@ -2336,6 +2388,24 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
     const subjectSize = subjectProperty.built_area_sqm || subjectProperty.plot_size || 150;
     const subjectBedrooms = subjectProperty.bedrooms || 3;
 
+    // RICS/GhIS tiered comparability: prefer the SAME sub-type, but admit other rentals in the same
+    // CATEGORY (e.g. a house compared to apartments where same-type evidence is scarce). Same-type
+    // comps still rank higher via the similarity score (exact type = 25 vs other = 10), and the
+    // cross-type difference is flagged for adjustment/disclosure — rather than excluding them outright,
+    // which forced the area-benchmark fallback even when local residential evidence existed.
+    const PROPERTY_CATEGORY: Record<string, string[]> = {
+      residential: ['residential_house', 'apartment_flat', 'townhouse'],
+      commercial: ['commercial_shop', 'commercial_office', 'warehouse', 'industrial', 'mixed_use'],
+      land: ['land'],
+    };
+    const categoryOf = (t?: string | null): string =>
+      Object.keys(PROPERTY_CATEGORY).find((cat) => PROPERTY_CATEGORY[cat].includes(String(t))) || 'residential';
+    const subjectCategory = categoryOf(searchPropertyType);
+    // Always include the subject's own sub-type even if it is not in the map.
+    const searchCategoryTypes = Array.from(
+      new Set([...(PROPERTY_CATEGORY[subjectCategory] || []), String(searchPropertyType)])
+    );
+
     // Size range: ±25% for rentals (tighter than sales)
     const searchSizeMin = sizeMin ?? subjectSize * 0.75;
     const searchSizeMax = sizeMax ?? subjectSize * 1.25;
@@ -2449,8 +2519,12 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
             ))
           )
         ) <= $7
-        -- Property type filter
-        AND ($3::text IS NULL OR p.property_type::text = $3::text)
+        -- Property type filter: same CATEGORY (RICS tiered — same sub-type preferred via the
+        -- similarity score, other same-category sub-types admitted at lower weight). $14 = sub-type list.
+        AND p.property_type::text = ANY($14::text[])
+        -- Data hygiene (RICS evidence verification): drop obviously-erroneous rows
+        AND (p.bedrooms IS NULL OR p.bedrooms BETWEEN 0 AND 15)
+        AND (COALESCE(p.built_area_sqm, p.total_area_sqm) IS NULL OR COALESCE(p.built_area_sqm, p.total_area_sqm) BETWEEN 5 AND 10000)
         -- Size filter (±25% for rentals)
         AND (
           $8::numeric IS NULL OR 
@@ -2485,6 +2559,7 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
       searchBedroomsMax,                                                            // $11
       maxAgeMonths,                                                                 // $12
       excludeIds.length > 0 ? excludeIds : ['00000000-0000-0000-0000-000000000000'], // $13
+      searchCategoryTypes,                                                          // $14 same-category sub-types
     ];
 
     // Keep one row per distinct listing (dup_rn = 1), then order + limit.
@@ -2496,7 +2571,28 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
     `;
     params.push(limit);
 
-    const result = await query(searchQuery, params);
+    // params[6] is $7 (radiusKm); params is [...$1-$14, $15 limit].
+    let radiusUsed = radiusKm;
+    let result = await query(searchQuery, params);
+    // RICS: comparables should be local, so widen ONLY as needed. If nothing is within the requested
+    // radius, step out to a capped maximum; distance is disclosed and already down-weights similarity.
+    const MAX_RADIUS_KM = 25;
+    if (result.rows.length === 0) {
+      for (const r of [radiusKm * 2, radiusKm * 3, MAX_RADIUS_KM]) {
+        if (r <= radiusUsed || r > MAX_RADIUS_KM) continue;
+        params[6] = r; // $7 radius
+        result = await query(searchQuery, params);
+        radiusUsed = r;
+        if (result.rows.length > 0) break;
+      }
+    }
+
+    // Flag each comparable's type comparability for adjustment/disclosure (RICS): exact sub-type vs
+    // same-category. Same-category comps already score lower (10 vs 25) but the explicit flag lets the
+    // UI/report disclose and apply a property-type adjustment.
+    for (const row of result.rows as any[]) {
+      row.type_match = String(row.property_type) === String(searchPropertyType) ? 'exact' : 'category';
+    }
 
     // Calculate rental market statistics
     const comparablesFound = result.rows.length;
@@ -2564,6 +2660,11 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
         },
         count: comparablesFound,
         hasGap,
+        // RICS disclosure: how far we had to search, and how many comps are a different sub-type
+        // (same category) and therefore need a property-type adjustment.
+        radiusUsed,
+        radiusWidened: radiusUsed > radiusKm,
+        crossTypeCount: result.rows.filter((r: any) => r.type_match === 'category').length,
         aggregates,
         // Currency conversion info
         currencyConversion: {
@@ -3284,7 +3385,7 @@ router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Re
       const rangePctR = Number(b.range_pct) > 0 ? Number(b.range_pct) : 10;
       const pctsR = [-rangePctR, -rangePctR / 2, 0, rangePctR / 2, rangePctR];
       const vr = await query(
-        `SELECT v.method_results, p.building_size_sqm, p.built_area_sqm, p.land_area_sqm, p.year_built, p.condition, p.region
+        `SELECT v.method_results, p.id AS property_id, p.property_type, p.building_size_sqm, p.built_area_sqm, p.land_area_sqm, p.year_built, p.condition, p.region
            FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
         [valuationId]
       );
@@ -3293,7 +3394,11 @@ router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Re
       const mr = (prop.method_results || {})[recon.method];
       const d: any = mr?.details || {};
       const baseValueR = Number(mr?.value);
-      const baseInputR = Number(d[recon.detailKey]);
+      let baseInputR = Number(d[recon.detailKey]);
+      // Sales comparison persists only its headline value (no per-comp detail grid). Since the
+      // method value scales linearly with the price/sqm (and with the adjustment multiplier), the
+      // saved value IS a valid base input for those drivers.
+      if (recon.kind === 'sales' && (!Number.isFinite(baseInputR) || baseInputR === 0)) baseInputR = baseValueR;
       if (!Number.isFinite(baseValueR) || !Number.isFinite(baseInputR) || baseInputR === 0) {
         return res.status(422).json({ error: 'Sensitivity unavailable', message: `No saved ${recon.method} result/input for '${driver}' — run that method first.` });
       }
@@ -3313,7 +3418,7 @@ router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Re
         let mv: number | null = null;
 
         if (recon.kind === 'cost') {
-          const property = { building_size_sqm: d.building_size_sqm, land_area_sqm: d.land_area_sqm, year_built: prop.year_built, condition: prop.condition, region: prop.region };
+          const property = { id: prop.property_id, property_type: prop.property_type, building_size_sqm: d.building_size_sqm, land_area_sqm: d.land_area_sqm, year_built: prop.year_built, condition: prop.condition, region: prop.region };
           const opts: any = {
             construction_cost_per_sqm: d.cost_per_sqm,
             land_value_per_sqm: d.land_value_per_sqm,
@@ -3327,12 +3432,14 @@ router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Re
           else if (recon.overrideKey === 'physical_dep') opts.depreciation_overrides.physical = baseInputR * factor;
           mv = await callPy('cost-approach', property, opts);
         } else if (recon.kind === 'sales') {
-          const property = { building_size_sqm: d.building_size_sqm ?? prop.building_size_sqm ?? prop.built_area_sqm };
+          // Sales comparison value scales linearly with the indicated value and the comparable
+          // adjustment multiplier (mv = indicated × total_multiplier). Compute inline — exact, and
+          // avoids a redundant engine round-trip. (The legacy passthrough endpoint was removed.)
           const adj = { ...(d.adjustments || {}) };
-          let indicated = Number(d.indicated_value);
+          let indicated = Number(d.indicated_value) || baseValueR;                                // fall back to the saved headline value
           if (recon.overrideKey === 'indicated_value') indicated = indicated * factor;            // price per sqm scales value
           else if (recon.overrideKey === 'total_multiplier') adj.total_multiplier = (Number(adj.total_multiplier) || 1) * factor;
-          mv = await callPy('sales-comparison', property, { indicated_value: indicated, adjustments: adj });
+          mv = indicated * (Number(adj.total_multiplier) || 1);
         } else {
           // income — analytical perturbation from the engine's echoed NOI / EGI / cap (actual variables).
           const cap = Number(d.cap_rate_pct) / 100;
@@ -5319,52 +5426,9 @@ router.get('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Res
   }
 });
 
-/**
- * POST /api/valuations/:id/sensitivity
- * Run sensitivity analysis via Python service
- */
-router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Response) => {
-  try {
-    const { property, base_value, variables, variation_range } = req.body;
-
-    if (!property || !base_value) {
-      return res.status(400).json({ error: 'property and base_value are required' });
-    }
-
-    // Call Python service for sensitivity analysis
-    const pythonProperty = {
-      id: property.id || req.params.id,
-      property_type: property.property_type || 'residential',
-      region: property.region || 'Greater Accra',
-      land_area_sqm: property.land_area_sqm,
-      building_size_sqm: property.building_size_sqm,
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      year_built: property.year_built,
-    };
-
-    const sensitivityResult = await pythonClient.sensitivityAnalysis({
-      property: pythonProperty,
-      base_value,
-      variables: variables || ['land_value', 'construction_cost', 'cap_rate'],
-      variation_range: variation_range || 0.2,
-    });
-
-    // Store result in database
-    const insertResult = await query(
-      `INSERT INTO sensitivity_analyses 
-        (valuation_id, analysis_type, base_value, sensitivity_results, created_by, created_at)
-      VALUES ($1, 'multi_variable', $2, $3, $4, NOW())
-      RETURNING *`,
-      [req.params.id, base_value, sensitivityResult, (req as any).user?.id]
-    );
-
-    res.status(201).json({ success: true, data: { ...insertResult.rows[0], python_result: sensitivityResult } });
-  } catch (error: any) {
-    logger.error('Failed to run sensitivity analysis', { error: error.message });
-    res.status(500).json({ error: 'Failed to run sensitivity analysis', message: error.message });
-  }
-});
+// NOTE: the real POST /:id/sensitivity (driver-based per-method engine re-runs, RICS VPS 3) is
+// defined earlier in this file. A second, legacy POST /:id/sensitivity used to live here and was
+// dead (shadowed by the earlier registration); it has been removed.
 
 /**
  * POST /api/valuations/:id/sensitivity/cap-rate
@@ -6432,239 +6496,6 @@ router.post('/:id/sales-comparison', validateUUID('id'), async (req: Request, re
   }
 });
 
-/**
- * Auto-calculate sales comparison adjustments using Python valuation engine
- * POST /api/v1/valuations/:id/sales-comparison/auto-calculate
- * 
- * Calls the Python valuation service to calculate:
- * - Physical adjustments (GFA, bedrooms, age, condition, etc.)
- * - Location adjustments (neighborhood premiums, view, accessibility)
- * - Time adjustments (market appreciation since listing)
- * - Listing adjustments (asking-to-achieved discount)
- * - Ghana-specific adjustments (tenure risk, neighborhood premiums)
- * 
- * Returns calculated adjustments for frontend display.
- */
-router.post('/:id/sales-comparison/auto-calculate', validateUUID('id'), async (req: Request, res: Response) => {
-  const valuationId = req.params.id;
-
-  try {
-    const { subject_property, comparables, options } = req.body;
-
-    // Validate input
-    if (!subject_property) {
-      return res.status(400).json({
-        success: false,
-        error: 'subject_property is required',
-      });
-    }
-
-    if (!comparables || !Array.isArray(comparables) || comparables.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'comparables array is required and must not be empty',
-      });
-    }
-
-    // Check if Python service is available
-    const pythonAvailable = await pythonClient.isAvailable();
-
-    if (!pythonAvailable) {
-      // Fallback to TypeScript calculation
-      logger.warn('Python service not available, using TypeScript fallback for auto-calculate');
-
-      const adjustedComparables = comparables.map((comp: any) => {
-        const adjustments: Record<string, number> = {};
-
-        // Physical adjustments
-        if (subject_property.gfa && comp.gfa) {
-          const gfaDiff = (subject_property.gfa - comp.gfa) / comp.gfa;
-          adjustments.gfa = Math.max(-25, Math.min(25, gfaDiff * 100));
-        }
-
-        if (subject_property.bedrooms && comp.bedrooms) {
-          adjustments.bedrooms = (subject_property.bedrooms - comp.bedrooms) * 2.5;
-        }
-
-        if (subject_property.bathrooms && comp.bathrooms) {
-          adjustments.bathrooms = (subject_property.bathrooms - comp.bathrooms) * 2;
-        }
-
-        // Age adjustment (0.5% per year)
-        const subjectAge = subject_property.age || (subject_property.year_built ? new Date().getFullYear() - subject_property.year_built : 0);
-        const compAge = comp.age || (comp.year_built ? new Date().getFullYear() - comp.year_built : 0);
-        if (subjectAge && compAge) {
-          adjustments.age = (compAge - subjectAge) * 0.5;
-        }
-
-        // Condition adjustment (5% per level)
-        const conditionRatings: Record<string, number> = { excellent: 4, good: 3, fair: 2, poor: 1 };
-        const subjectCondition = conditionRatings[subject_property.condition || 'good'] || 3;
-        const compCondition = conditionRatings[comp.condition || 'good'] || 3;
-        adjustments.condition = (subjectCondition - compCondition) * 5;
-
-        // Listing adjustment (asking-to-achieved)
-        const evidenceType = comp.evidence_type || 'listing';
-        if (evidenceType === 'listing' || evidenceType === 'asking_price') {
-          const qualityDiscounts: Record<string, number> = {
-            luxury: -20, high: -15, standard: -12, basic: -8
-          };
-          adjustments.listing_adjustment = qualityDiscounts[comp.quality_rating || 'standard'] || -12;
-        } else {
-          adjustments.listing_adjustment = 0;
-        }
-
-        // Ghana-specific tenure adjustment
-        const tenureRisks: Record<string, number> = {
-          freehold: 0, leasehold_99: -3, government_lease: -5,
-          leasehold_50_99: -8, customary_freehold: -10, stool_land_documented: -12,
-          leasehold_under_50: -15, family_land_documented: -18,
-          stool_land_undocumented: -25, family_land_undocumented: -30
-        };
-        const subjectTenure = tenureRisks[subject_property.tenure_type || 'freehold'] || 0;
-        const compTenure = tenureRisks[comp.tenure_type || 'freehold'] || 0;
-        adjustments.tenure = subjectTenure - compTenure;
-
-        // Time adjustment (0.5% per month, ~6% annual)
-        if (comp.sale_date) {
-          const saleDate = new Date(comp.sale_date);
-          const monthsSince = (Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
-          adjustments.time = Math.min(15, monthsSince * 0.5);
-        }
-
-        // Calculate total adjustment
-        const totalAdjustment = Object.values(adjustments).reduce((sum, adj) => sum + adj, 0);
-        const adjustedPrice = comp.sale_price * (1 + totalAdjustment / 100);
-
-        return {
-          ...comp,
-          adjustments,
-          total_adjustment_pct: totalAdjustment,
-          adjusted_price: adjustedPrice,
-          adjusted_price_per_sqm: comp.gfa ? adjustedPrice / comp.gfa : null,
-          calculation_source: 'typescript_fallback',
-        };
-      });
-
-      // Calculate indicated value
-      const totalWeight = adjustedComparables.length;
-      const indicatedValue = adjustedComparables.reduce(
-        (sum: number, c: any) => sum + c.adjusted_price,
-        0
-      ) / totalWeight;
-
-      return res.json({
-        success: true,
-        data: {
-          valuation_id: valuationId,
-          comparables: adjustedComparables,
-          indicated_value: indicatedValue,
-          avg_adjustment_pct: adjustedComparables.reduce(
-            (sum: number, c: any) => sum + Math.abs(c.total_adjustment_pct),
-            0
-          ) / adjustedComparables.length,
-          calculation_source: 'typescript_fallback',
-          python_available: false,
-          message: 'Calculated using TypeScript fallback (Python service unavailable)',
-        },
-      });
-    }
-
-    // Convert subject property to Python format
-    const pythonSubject = {
-      id: valuationId,
-      property_type: subject_property.property_type || 'residential',
-      region: subject_property.region || 'greater_accra',
-      address_city: subject_property.city,
-      address_street: subject_property.address,
-      latitude: subject_property.latitude,
-      longitude: subject_property.longitude,
-      land_area_sqm: subject_property.plot_size,
-      building_size_sqm: subject_property.gfa,
-      bedrooms: subject_property.bedrooms,
-      bathrooms: subject_property.bathrooms,
-      year_built: subject_property.year_built,
-      condition: subject_property.condition,
-      current_price_ghs: subject_property.price,
-    };
-
-    // Call Python sales comparison service
-    const pythonResult = await pythonClient.salesComparison(pythonSubject, {
-      comparables: comparables.map((c: any) => ({
-        id: c.id,
-        property_type: c.property_type || 'residential',
-        region: c.region || 'greater_accra',
-        address_city: c.city,
-        address_street: c.address,
-        latitude: c.latitude,
-        longitude: c.longitude,
-        land_area_sqm: c.plot_size,
-        building_size_sqm: c.gfa,
-        bedrooms: c.bedrooms,
-        bathrooms: c.bathrooms,
-        year_built: c.year_built,
-        condition: c.condition,
-        current_price_ghs: c.sale_price || c.price,
-        sale_date: c.sale_date,
-        evidence_type: c.evidence_type,
-        tenure_type: c.tenure_type,
-        neighborhood: c.neighborhood,
-      })),
-      include_ghana_adjustments: options?.include_ghana_adjustments ?? true,
-      include_tenure_risk: options?.include_tenure_risk ?? true,
-      include_neighborhood_premiums: options?.include_neighborhood_premiums ?? true,
-    });
-
-    if (!pythonResult.success) {
-      throw new Error(pythonResult.details?.error || 'Python calculation failed');
-    }
-
-    // Map Python result back to frontend format
-    const adjustedComparables = comparables.map((comp: any, index: number) => {
-      const pythonComp = pythonResult.details?.comparables?.[index] || {};
-
-      return {
-        ...comp,
-        adjustments: pythonComp.adjustments || {},
-        total_adjustment_pct: pythonComp.total_adjustment_percentage || 0,
-        adjusted_price: pythonComp.adjusted_value || comp.sale_price,
-        adjusted_price_per_sqm: comp.gfa ? (pythonComp.adjusted_value || comp.sale_price) / comp.gfa : null,
-        similarity_score: pythonComp.similarity_score || 0.8,
-        weight: pythonComp.weight || 1.0,
-        calculation_source: 'python_valuation_engine',
-      };
-    });
-
-    res.json({
-      success: true,
-      data: {
-        valuation_id: valuationId,
-        comparables: adjustedComparables,
-        indicated_value: pythonResult.estimated_value,
-        confidence_score: pythonResult.confidence_score,
-        confidence_level: pythonResult.confidence_level,
-        value_range: pythonResult.value_range,
-        avg_adjustment_pct: pythonResult.details?.average_adjustment_pct || 0,
-        calculation_source: 'python_valuation_engine',
-        python_available: true,
-        methodology_notes: pythonResult.details?.methodology_notes,
-        assumptions: pythonResult.assumptions,
-        limitations: pythonResult.limitations,
-        ghana_adjustments_applied: {
-          tenure_risk: options?.include_tenure_risk ?? true,
-          neighborhood_premiums: options?.include_neighborhood_premiums ?? true,
-        },
-      },
-    });
-  } catch (error: any) {
-    logger.error('Failed to auto-calculate sales comparison', { valuationId, error: error.message });
-    res.status(500).json({
-      success: false,
-      error: 'Failed to auto-calculate sales comparison',
-      message: error.message,
-    });
-  }
-});
 
 // =====================================================
 // LAND VALUE ROUTES (2-Method Reconciliation: Residual + Comparable)

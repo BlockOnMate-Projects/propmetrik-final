@@ -214,10 +214,13 @@ function processTable($: any, tableEl: any): Table {
       const colspanAttr = cellEl.attr('colspan');
       const colSpan = colspanAttr ? parseInt(colspanAttr, 10) : 1;
 
-      // Extract text runs with appropriate color for header vs body
+      // Extract text runs with appropriate color for header vs body. Body cells honour an inline
+      // `color:`/`font-weight:` (e.g. the green/red sensitivity Impact column).
+      const cellStyleStr = cellEl.attr('style');
+      const cellTextColor = parseTextColor(cellStyleStr) || undefined;
       const cellRuns = isHeader
         ? extractTextRuns($, cellEl, { bold: true, italic: false, underline: false, color: COLORS.white })
-        : extractTextRuns($, cellEl);
+        : extractTextRuns($, cellEl, { bold: isBoldStyle(cellStyleStr), italic: false, underline: false, color: cellTextColor });
 
       cells.push(
         new TableCell({
@@ -361,6 +364,21 @@ function parseBackgroundColor(style?: string | null): string | null {
   if (!style) return null;
   const m = style.match(/background(?:-color)?:\s*#?([0-9a-fA-F]{6})\b/);
   return m ? m[1].toUpperCase() : null;
+}
+
+/**
+ * Parse an inline text `color:` into a 6-digit hex (no #), for coloured run text (e.g. the
+ * green/red sensitivity Impact column). Must not match `background-color`. Returns null if absent.
+ */
+function parseTextColor(style?: string | null): string | null {
+  if (!style) return null;
+  const m = style.match(/(?:^|;)\s*color:\s*#?([0-9a-fA-F]{6})\b/);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/** True when the inline style requests bold (font-weight: bold | 600–900). */
+function isBoldStyle(style?: string | null): boolean {
+  return !!style && /font-weight:\s*(?:bold|[6-9]00)\b/i.test(style);
 }
 
 function parseAlignment(style?: string | null): any {

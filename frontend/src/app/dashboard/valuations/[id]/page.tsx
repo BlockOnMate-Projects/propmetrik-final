@@ -479,7 +479,15 @@ export default function ValuationDetailPage() {
                 <div className="flex items-center justify-between mb-3">
                   <MethodBadge method={method} isPrimary={method === valuation?.primary_method} />
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {(result.weight * 100).toFixed(0)}%
+                    {(() => {
+                      // Authoritative reconciliation weights live on method_weights (already a %, e.g. 34).
+                      // Fall back to the per-result weight (a 0-1 fraction) only if method_weights is absent.
+                      const mw = (valuation as any)?.method_weights?.[method];
+                      const pct = Number.isFinite(Number(mw))
+                        ? Number(mw)
+                        : (Number.isFinite(Number(result?.weight)) ? Number(result.weight) * 100 : 0);
+                      return pct.toFixed(0);
+                    })()}%
                   </span>
                 </div>
                 <Currency value={result.value} size="md" />

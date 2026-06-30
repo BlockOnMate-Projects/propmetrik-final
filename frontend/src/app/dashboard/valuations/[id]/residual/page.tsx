@@ -8,8 +8,7 @@
  */
 
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   TerminalPanel,
   AlertBanner,
@@ -17,6 +16,7 @@ import {
   ConfidenceBar,
 } from '@/components/ui/terminal'
 import { valuationsApi, PythonMethodResponse } from '@/lib/valuation-api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import { fetchApi } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
@@ -73,6 +73,102 @@ const Tooltip = ({ text }: { text: string }) => (
   </div>
 )
 
+/**
+ * System-vs-User rate field — mirrors the Cost Approach pattern (system-generated value with an
+ * explicit toggle for the valuer to enter their own). In SYSTEM mode the engine resolves the value
+ * from market evidence (input disabled, value omitted from the request); in MY-VALUE mode the valuer
+ * overrides and the variance vs the system figure is disclosed (>±20% flagged for report justification).
+ */
+const EvidenceRateField = ({
+  label, tooltip, value, onChange, isUser, onModeChange, systemValue, systemLabel, evidence, unit = 'currency',
+}: {
+  label: string
+  tooltip: string
+  value: number
+  onChange: (v: number) => void
+  isUser: boolean
+  onModeChange: (user: boolean) => void
+  systemValue: number | null
+  systemLabel: string | null
+  evidence?: { count: number; p25: number; p75: number; median: number } | null
+  unit?: 'currency' | 'percent'
+}) => {
+  const fmt = (v: number) => unit === 'percent' ? `${v}%` : `GH₵${v.toLocaleString()}`
+  const variancePct = (isUser && systemValue && systemValue > 0 && value > 0)
+    ? Math.round(((value - systemValue) / systemValue) * 100)
+    : null
+  const highVariance = variancePct !== null && Math.abs(variancePct) > 20
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+        <label className="font-mono text-[10px] text-muted-foreground">
+          {label} <Tooltip text={tooltip} />
+        </label>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => onModeChange(false)}
+            className={`px-2 py-0.5 font-mono text-[9px] border transition-colors ${
+              !isUser
+                ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                : 'bg-muted border-border text-muted-foreground hover:border-zinc-600'
+            }`}
+          >◉ SYSTEM</button>
+          <button
+            type="button"
+            onClick={() => onModeChange(true)}
+            className={`px-2 py-0.5 font-mono text-[9px] border transition-colors ${
+              isUser
+                ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                : 'bg-muted border-border text-muted-foreground hover:border-zinc-600'
+            }`}
+          >◯ MY VALUE</button>
+        </div>
+      </div>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        disabled={!isUser}
+        className={`w-full bg-background border p-2 font-mono text-sm text-foreground ${
+          !isUser ? 'border-zinc-600 opacity-70 cursor-not-allowed' : 'border-amber-500'
+        }`}
+      />
+      <div className="flex items-center gap-2 mt-1 flex-wrap">
+        {!isUser && systemLabel && (
+          <span className="font-mono text-[9px] text-green-600 dark:text-green-400">
+            ⚙ SYSTEM-GENERATED · {systemLabel.toUpperCase()}
+          </span>
+        )}
+        {isUser && systemValue !== null && systemValue > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => { onChange(systemValue); onModeChange(false) }}
+              className="font-mono text-[9px] text-amber-600 dark:text-amber-400 hover:underline"
+            >↺ reset to system: {fmt(systemValue)}</button>
+            {variancePct !== null && (
+              <span className={`font-mono text-[9px] ${highVariance ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                {variancePct > 0 ? '+' : ''}{variancePct}% vs system
+              </span>
+            )}
+            {highVariance && (
+              <span className="font-mono text-[9px] text-red-600 dark:text-red-400 inline-flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> &gt;±20% — justify in report
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      {evidence && (
+        <div className="font-mono text-[9px] text-muted-foreground mt-1">
+          {evidence.count} comps · P25 GH₵{evidence.p25.toLocaleString()} | MED GH₵{evidence.median.toLocaleString()} | P75 GH₵{evidence.p75.toLocaleString()}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Development types available
 const DEVELOPMENT_TYPES = ['house', 'apartment', 'townhouse', 'commercial', 'office', 'industrial', 'warehouse']
 
@@ -82,6 +178,7 @@ export default function ResidualMethodPage() {
   const valuationId = params.id as string
 
   const [valuation, setValuation] = useState<Valuation | null>(null)
+  const hydratedRef = useRef(false) // rehydrate saved inputs once on load
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -94,8 +191,16 @@ export default function ResidualMethodPage() {
   const [efficiency, setEfficiency] = useState(0.78)
 
   // Cost inputs
-  const [salePricePerSqm, setSalePricePerSqm] = useState(9500)
-  const [constructionCostPerSqm, setConstructionCostPerSqm] = useState(5000)
+  // Sale price/sqm is resolved from comparable evidence by the engine — NO hardcoded default.
+  // It starts unset; the engine's resolved median is echoed in. Only an explicit valuer override
+  // is sent back to the engine.
+  const [salePricePerSqm, setSalePricePerSqm] = useState(0)
+  const [salePriceOverridden, setSalePriceOverridden] = useState(false)
+  // Construction cost/sqm is resolved from the Data Hub base costs by the engine — NO hardcoded
+  // default. It starts unset; the engine's resolved rate is echoed in. Only an explicit valuer
+  // override is sent back to the engine.
+  const [constructionCostPerSqm, setConstructionCostPerSqm] = useState(0)
+  const [constructionCostOverridden, setConstructionCostOverridden] = useState(false)
   const [costBasis, setCostBasis] = useState<'gross' | 'net'>('gross') // NEW: Cost basis toggle
   const [professionalFees, setProfessionalFees] = useState(14.5)
   const [contingency, setContingency] = useState(5)
@@ -103,26 +208,22 @@ export default function ResidualMethodPage() {
   const [salesCommission, setSalesCommission] = useState(3)
   const [legalFees, setLegalFees] = useState(1.5)
 
-  // Finance inputs
-  const [interestRate, setInterestRate] = useState(25)
+  // Finance inputs — interest rate is resolved from the Data Hub (economic_indicators, live BoG
+  // benchmark) by the engine. Starts unset; the resolved live rate is echoed in. Only an explicit
+  // valuer override is sent back. No hardcoded default.
+  const [interestRate, setInterestRate] = useState(0)
+  const [interestRateOverridden, setInterestRateOverridden] = useState(false)
+  const [systemInterestRate, setSystemInterestRate] = useState<number | null>(null)
   const [loanToValue, setLoanToValue] = useState(65)
   const [targetProfit, setTargetProfit] = useState(20)
   const [useAdvancedFinance, setUseAdvancedFinance] = useState(true) // NEW: S-curve vs simple
 
-  // Economic data from API
-  const [economicData, setEconomicData] = useState<{
-    interest_rate_policy?: string;
-    interest_rate_prime?: string;
-    lending_rate?: string;
-    mortgage_rate_avg?: string;
-  } | null>(null)
   const [interestRateSource, setInterestRateSource] = useState<string | null>(null)
 
   // API-driven market data
   const [systemSalePrices, setSystemSalePrices] = useState<Record<string, number>>({})
   const [comparableEvidence, setComparableEvidence] = useState<Record<string, { count: number; p25: number; p75: number; median: number }>>({})
   const [systemConstructionCosts, setSystemConstructionCosts] = useState<Record<string, number>>({})
-  const [loadingMarketData, setLoadingMarketData] = useState(false)
   const [salePriceSource, setSalePriceSource] = useState<string | null>(null)
   const [constructionCostSource, setConstructionCostSource] = useState<string | null>(null)
 
@@ -211,6 +312,33 @@ export default function ResidualMethodPage() {
         
         // Sale prices, construction costs, finance rate and development assumptions are all
         // resolved server-side by the /valuations/:id/residual/value route from the Data Hub.
+
+        // Rehydrate the valuer's saved inputs (overrides the property-derived defaults) so
+        // adjustments survive navigating away and back. Runs once.
+        const saved = (res.data as any)?.method_results?.residual_method?.inputs
+        if (!hydratedRef.current && saved && typeof saved === 'object') {
+          if (saved.developmentType !== undefined) setDevelopmentType(saved.developmentType)
+          if (saved.plotSize !== undefined) setPlotSize(saved.plotSize)
+          if (saved.plotCoverage !== undefined) setPlotCoverage(saved.plotCoverage)
+          if (saved.numberOfFloors !== undefined) setNumberOfFloors(saved.numberOfFloors)
+          if (saved.efficiency !== undefined) setEfficiency(saved.efficiency)
+          if (saved.salePricePerSqm !== undefined) setSalePricePerSqm(saved.salePricePerSqm)
+          if (saved.salePriceOverridden !== undefined) setSalePriceOverridden(saved.salePriceOverridden)
+          if (saved.constructionCostPerSqm !== undefined) setConstructionCostPerSqm(saved.constructionCostPerSqm)
+          if (saved.constructionCostOverridden !== undefined) setConstructionCostOverridden(saved.constructionCostOverridden)
+          if (saved.costBasis !== undefined) setCostBasis(saved.costBasis)
+          if (saved.professionalFees !== undefined) setProfessionalFees(saved.professionalFees)
+          if (saved.contingency !== undefined) setContingency(saved.contingency)
+          if (saved.marketingCost !== undefined) setMarketingCost(saved.marketingCost)
+          if (saved.salesCommission !== undefined) setSalesCommission(saved.salesCommission)
+          if (saved.legalFees !== undefined) setLegalFees(saved.legalFees)
+          if (saved.interestRate !== undefined) setInterestRate(saved.interestRate)
+          if (saved.interestRateOverridden !== undefined) setInterestRateOverridden(saved.interestRateOverridden)
+          if (saved.loanToValue !== undefined) setLoanToValue(saved.loanToValue)
+          if (saved.targetProfit !== undefined) setTargetProfit(saved.targetProfit)
+          if (saved.useAdvancedFinance !== undefined) setUseAdvancedFinance(saved.useAdvancedFinance)
+          hydratedRef.current = true
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
       } finally {
@@ -237,18 +365,32 @@ export default function ResidualMethodPage() {
           plot_coverage: plotCoverage,
           floors: numberOfFloors,
           efficiency,
-          sale_price_per_sqm: salePricePerSqm,
-          construction_cost_per_sqm: constructionCostPerSqm,
           cost_basis: costBasis,
           professional_fees_pct: professionalFees,
           contingency_pct: contingency,
           marketing_pct: marketingCost,
           sales_commission_pct: salesCommission,
           legal_fees_pct: legalFees,
-          finance_rate: interestRate,
           finance_ltv_pct: loanToValue,
           developer_profit_pct: targetProfit,
         }
+
+        // Sale price: OMIT so the engine resolves the comparable median; send ONLY when the valuer
+        // has explicitly overridden it. No hardcoded fallback.
+        if (salePriceOverridden && salePricePerSqm > 0) body.sale_price_per_sqm = salePricePerSqm
+
+        // Construction cost: OMIT so the engine resolves the Data Hub base rate; send ONLY when the
+        // valuer has explicitly overridden it. No hardcoded fallback.
+        if (constructionCostOverridden && constructionCostPerSqm > 0) body.construction_cost_per_sqm = constructionCostPerSqm
+
+        // Finance rate: OMIT so the engine resolves the live Data Hub rate (economic_indicators, BoG
+        // benchmark); send ONLY when the valuer has explicitly overridden it. No hardcoded fallback.
+        if (interestRateOverridden && interestRate > 0) body.finance_rate = interestRate
+
+        // Finance model toggle: SIMPLE assumes the FULL loan is outstanding for the whole period
+        // (avg balance factor = 1.0); S-CURVE reflects time-phased drawdown, using the published
+        // factor (~0.55) the engine resolves from the Data Hub config. Only SIMPLE needs an override.
+        if (!useAdvancedFinance) body.finance_avg_balance_factor = 1.0
 
         const response = await fetchApi<any>(`/valuations/${valuationId}/residual/value`, {
           method: 'POST',
@@ -262,9 +404,41 @@ export default function ResidualMethodPage() {
         const d = data.details || {}
         if (d.efficiency) setEfficiency(d.efficiency)
         if (d.plot_coverage) setPlotCoverage(d.plot_coverage)
-        if (d.sale_price_per_sqm) setSalePricePerSqm(d.sale_price_per_sqm)
-        if (d.construction_cost_per_sqm) setConstructionCostPerSqm(d.construction_cost_per_sqm)
-        if (d.finance_rate) setInterestRate(Math.round(d.finance_rate * 1000) / 10)
+        // Echo the engine's resolved sale price (from comparable evidence) into the field when the
+        // valuer hasn't overridden it, and record the system value + provenance for the badge/reset.
+        if (d.sale_price_per_sqm) {
+          if (!salePriceOverridden) setSalePricePerSqm(d.sale_price_per_sqm)
+          const spSrc = response?.meta?.sources?.sale_price_per_sqm
+          if (spSrc === 'comparables') {
+            setSystemSalePrices(prev => ({ ...prev, [developmentType]: d.sale_price_per_sqm }))
+          }
+        }
+        // Echo the engine's resolved construction rate (from the Data Hub) into the field when the
+        // valuer hasn't overridden it, and record the system value + provenance so the source badge
+        // and "reset to system" affordance work.
+        if (d.construction_cost_per_sqm) {
+          if (!constructionCostOverridden) setConstructionCostPerSqm(d.construction_cost_per_sqm)
+          const ccSrc = response?.meta?.sources?.construction_cost_per_sqm
+          if (ccSrc === 'base_costs') {
+            setSystemConstructionCosts(prev => ({ ...prev, [developmentType]: d.construction_cost_per_sqm }))
+            setConstructionCostSource('Data Hub base costs')
+          } else if (ccSrc === 'user') {
+            setConstructionCostSource('valuer override')
+          }
+        }
+        // Echo the engine's resolved finance rate (live from economic_indicators / BoG) into the
+        // field when the valuer hasn't overridden it, and record the system value + provenance.
+        if (d.finance_rate) {
+          const ratePct = Math.round(d.finance_rate * 1000) / 10
+          if (!interestRateOverridden) setInterestRate(ratePct)
+          const frSrc = response?.meta?.sources?.finance_rate
+          if (frSrc === 'economic_indicators') {
+            setSystemInterestRate(ratePct)
+            setInterestRateSource('Bank of Ghana benchmark')
+          } else if (frSrc === 'user') {
+            setInterestRateSource('valuer override')
+          }
+        }
 
         // Evidence + provenance from meta.
         if (response?.meta?.sale_price_evidence) {
@@ -289,68 +463,67 @@ export default function ResidualMethodPage() {
     // Debounce the calculation
     const timer = setTimeout(calculateResidual, 500)
     return () => clearTimeout(timer)
-  }, [valuation, valuationId, developmentType, plotSize, plotCoverage, numberOfFloors, efficiency, salePricePerSqm, constructionCostPerSqm, costBasis, professionalFees, contingency, marketingCost, salesCommission, legalFees, interestRate, loanToValue, targetProfit])
+  }, [valuation, valuationId, developmentType, plotSize, plotCoverage, numberOfFloors, efficiency, salePricePerSqm, salePriceOverridden, constructionCostPerSqm, costBasis, professionalFees, contingency, marketingCost, salesCommission, legalFees, interestRate, interestRateOverridden, loanToValue, targetProfit, useAdvancedFinance, constructionCostOverridden])
 
-  // Save and continue
-  const handleSave = async () => {
+  // The valuer's editable inputs — persisted so adjustments survive navigation.
+  const collectInputs = () => ({
+    developmentType, plotSize, plotCoverage, numberOfFloors, efficiency,
+    salePricePerSqm, salePriceOverridden, constructionCostPerSqm, constructionCostOverridden,
+    costBasis, professionalFees, contingency, marketingCost, salesCommission, legalFees,
+    interestRate, interestRateOverridden, loanToValue, targetProfit, useAdvancedFinance,
+  })
+
+  // Persist the residual result + the valuer's inputs. Returns false if nothing to save yet.
+  const persist = async () => {
+    if (!pythonResult) return false
+    await valuationsApi.update(valuationId, {
+      method_results: {
+        ...(valuation?.method_results || {}),
+        residual_method: {
+          value: pythonResult.estimated_value,
+          confidence: pythonResult.confidence_score,
+          confidence_level: pythonResult.confidence_level,
+          value_range: pythonResult.value_range,
+          details: pythonResult.details,
+          assumptions: pythonResult.assumptions ?? [],
+          limitations: pythonResult.limitations ?? [],
+          developmentType,
+          costBasis,
+          calculated_by: 'python_rics_engine',
+          inputs: collectInputs(),
+        },
+      },
+      current_step: 8,
+    })
+    return true
+  }
+
+  // Save and navigate. goBack=true persists best-effort then steps to the previous methodology.
+  const handleSave = async (goBack = false) => {
     try {
       setSaving(true)
       setError(null)
 
-      // Strict: only the engine result is persisted — no local fallback calculation.
-      if (!pythonResult) {
-        setError('Cannot save — the residual engine has not returned a value yet. Resolve the required inputs first.')
-        setSaving(false)
-        return
+      if (goBack) {
+        try { await persist() } catch (e) { console.warn('residual back-save failed', e) }
+      } else {
+        // Strict: only the engine result is persisted — no local fallback calculation.
+        if (!pythonResult) {
+          setError('Cannot save — the residual engine has not returned a value yet. Resolve the required inputs first.')
+          setSaving(false)
+          return
+        }
+        await persist()
       }
 
-      await valuationsApi.update(valuationId, {
-        method_results: {
-          ...(valuation?.method_results || {}),
-          residual_method: {
-            value: pythonResult.estimated_value,
-            confidence: pythonResult.confidence_score,
-            confidence_level: pythonResult.confidence_level,
-            value_range: pythonResult.value_range,
-            details: pythonResult.details,
-            assumptions: pythonResult.assumptions ?? [],
-            limitations: pythonResult.limitations ?? [],
-            developmentType,
-            costBasis,
-            calculated_by: 'python_rics_engine',
-          },
-        },
-        current_step: 8,
-      })
-
-      // Navigate to reconciliation (Residual is typically last specialized method)
-      router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('residual', methods) : getNextStep('residual', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
-  }
-
-  // Determine back navigation
-  const getBackPath = () => {
-    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-    if (selectedMethods.includes('profits_method')) {
-      return `/dashboard/valuations/${valuationId}/profits`
-    }
-    if (selectedMethods.includes('drc_method')) {
-      return `/dashboard/valuations/${valuationId}/drc`
-    }
-    if (selectedMethods.includes('income_approach')) {
-      return `/dashboard/valuations/${valuationId}/income`
-    }
-    if (selectedMethods.includes('cost_approach')) {
-      return `/dashboard/valuations/${valuationId}/cost`
-    }
-    if (selectedMethods.includes('sales_comparison')) {
-      return `/dashboard/valuations/${valuationId}/market`
-    }
-    return `/dashboard/valuations/${valuationId}/comparables`
   }
 
   if (loading) {
@@ -367,9 +540,9 @@ export default function ResidualMethodPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href={getBackPath()} className="p-2 hover:bg-muted transition-colors">
+          <button onClick={() => handleSave(true)} disabled={saving} className="p-2 hover:bg-muted transition-colors disabled:opacity-50">
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-xl text-foreground">RESIDUAL METHOD</h1>
@@ -547,38 +720,21 @@ export default function ResidualMethodPage() {
           {/* Gross Development Value */}
           <TerminalPanel title="GROSS DEVELOPMENT VALUE (GDV)">
             <div className="p-4 space-y-4">
-              {salePriceSource && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded font-mono text-[9px] text-green-600 dark:text-green-400">
-                    {loadingMarketData ? 'LOADING...' : `EVIDENCE: ${salePriceSource.toUpperCase()}`}
-                  </span>
-                  {comparableEvidence[developmentType] && (
-                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
-                      P25: GH₵{comparableEvidence[developmentType].p25.toLocaleString()} | MEDIAN: GH₵{comparableEvidence[developmentType].median.toLocaleString()} | P75: GH₵{comparableEvidence[developmentType].p75.toLocaleString()}
-                    </span>
-                  )}
-                  {systemSalePrices[developmentType] && salePricePerSqm !== systemSalePrices[developmentType] && (
-                    <button
-                      onClick={() => setSalePricePerSqm(systemSalePrices[developmentType])}
-                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                    >
-                      ↺ RESET TO MEDIAN (GH₵{systemSalePrices[developmentType].toLocaleString()})
-                    </button>
-                  )}
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
-                    SALE PRICE/SQM (GH₵) <Tooltip text={TOOLTIPS.salePricePerSqm} />
-                  </label>
-                  <input
-                    type="number"
-                    value={salePricePerSqm}
-                    onChange={(e) => setSalePricePerSqm(Number(e.target.value))}
-                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
-                  />
-                </div>
+                <EvidenceRateField
+                  label="SALE PRICE/SQM (GH₵)"
+                  tooltip={TOOLTIPS.salePricePerSqm}
+                  value={salePricePerSqm}
+                  onChange={setSalePricePerSqm}
+                  isUser={salePriceOverridden}
+                  onModeChange={(user) => {
+                    setSalePriceOverridden(user)
+                    if (!user && systemSalePrices[developmentType]) setSalePricePerSqm(systemSalePrices[developmentType])
+                  }}
+                  systemValue={systemSalePrices[developmentType] ?? null}
+                  systemLabel={salePriceSource}
+                  evidence={comparableEvidence[developmentType] ?? null}
+                />
                 <div className="flex items-end">
                   <div className="w-full p-3 bg-green-500/20 border border-green-500/30">
                     <div className="flex items-center gap-1">
@@ -597,21 +753,6 @@ export default function ResidualMethodPage() {
           {/* Development Costs */}
           <TerminalPanel title="DEVELOPMENT COSTS">
             <div className="p-4 space-y-4">
-              {constructionCostSource && (
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded font-mono text-[9px] text-cyan-600 dark:text-cyan-400">
-                    {loadingMarketData ? 'LOADING...' : `SOURCE: ${constructionCostSource.toUpperCase()}`}
-                  </span>
-                  {systemConstructionCosts[developmentType] && constructionCostPerSqm !== systemConstructionCosts[developmentType] && (
-                    <button
-                      onClick={() => setConstructionCostPerSqm(systemConstructionCosts[developmentType])}
-                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                    >
-                      ↺ RESET TO SYSTEM (GH₵{systemConstructionCosts[developmentType].toLocaleString()})
-                    </button>
-                  )}
-                </div>
-              )}
               {/* Cost Basis Toggle */}
               <div className="flex items-center justify-between p-3 bg-card border border-border">
                 <div>
@@ -648,14 +789,18 @@ export default function ResidualMethodPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
-                    CONSTRUCTION/SQM (GH₵) <Tooltip text={TOOLTIPS.constructionCost} />
-                  </label>
-                  <input
-                    type="number"
+                  <EvidenceRateField
+                    label="CONSTRUCTION/SQM (GH₵)"
+                    tooltip={TOOLTIPS.constructionCost}
                     value={constructionCostPerSqm}
-                    onChange={(e) => setConstructionCostPerSqm(Number(e.target.value))}
-                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
+                    onChange={setConstructionCostPerSqm}
+                    isUser={constructionCostOverridden}
+                    onModeChange={(user) => {
+                      setConstructionCostOverridden(user)
+                      if (!user && systemConstructionCosts[developmentType]) setConstructionCostPerSqm(systemConstructionCosts[developmentType])
+                    }}
+                    systemValue={systemConstructionCosts[developmentType] ?? null}
+                    systemLabel={constructionCostSource}
                   />
                   {costBasis === 'net' && (
                     <span className="font-mono text-[10px] text-muted-foreground">
@@ -724,20 +869,20 @@ export default function ResidualMethodPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
-                    INTEREST RATE % <Tooltip text={TOOLTIPS.interestRate} />
-                    {interestRateSource && (
-                      <span className="text-muted-foreground ml-1">({interestRateSource})</span>
-                    )}
-                  </label>
-                  <input
-                    type="number"
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(Number(e.target.value))}
-                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
-                  />
-                </div>
+                <EvidenceRateField
+                  label="INTEREST RATE %"
+                  tooltip={TOOLTIPS.interestRate}
+                  unit="percent"
+                  value={interestRate}
+                  onChange={setInterestRate}
+                  isUser={interestRateOverridden}
+                  onModeChange={(user) => {
+                    setInterestRateOverridden(user)
+                    if (!user && systemInterestRate != null) setInterestRate(systemInterestRate)
+                  }}
+                  systemValue={systemInterestRate}
+                  systemLabel={interestRateSource}
+                />
                 <div>
                   <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     LOAN TO VALUE % <Tooltip text={TOOLTIPS.loanToValue} />
@@ -761,32 +906,6 @@ export default function ResidualMethodPage() {
                   />
                 </div>
               </div>
-
-              {/* BOG Rate Reference */}
-              {economicData && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  {economicData.lending_rate && (
-                    <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded font-mono text-[9px] text-blue-600 dark:text-blue-400">
-                      LENDING: {parseFloat(economicData.lending_rate).toFixed(1)}%
-                    </span>
-                  )}
-                  {economicData.interest_rate_prime && (
-                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
-                      PRIME: {parseFloat(economicData.interest_rate_prime).toFixed(1)}%
-                    </span>
-                  )}
-                  {economicData.interest_rate_policy && (
-                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
-                      POLICY: {parseFloat(economicData.interest_rate_policy).toFixed(1)}%
-                    </span>
-                  )}
-                  {economicData.mortgage_rate_avg && (
-                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
-                      MORTGAGE: {parseFloat(economicData.mortgage_rate_avg).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              )}
 
               {/* Finance Model Toggle */}
               <div className="flex items-center justify-between p-3 bg-card border border-border">
@@ -919,13 +1038,13 @@ export default function ResidualMethodPage() {
               <div className="font-mono text-[10px] text-muted-foreground mb-3">Test impact of changes:</div>
               <div className="grid grid-cols-2 gap-2">
                 <button 
-                  onClick={() => setSalePricePerSqm(Math.round(salePricePerSqm * 1.1))}
+                  onClick={() => { setSalePricePerSqm(Math.round(salePricePerSqm * 1.1)); setSalePriceOverridden(true) }}
                   className="p-2 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-colors"
                 >
                   <span className="font-mono text-xs text-green-600 dark:text-green-400">Sale +10%</span>
                 </button>
                 <button 
-                  onClick={() => setConstructionCostPerSqm(Math.round(constructionCostPerSqm * 0.9))}
+                  onClick={() => { setConstructionCostPerSqm(Math.round(constructionCostPerSqm * 0.9)); setConstructionCostOverridden(true) }}
                   className="p-2 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-colors"
                 >
                   <span className="font-mono text-xs text-green-600 dark:text-green-400">Cost -10%</span>
@@ -1128,19 +1247,20 @@ export default function ResidualMethodPage() {
 
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
-        <Link
-          href={getBackPath()}
-          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
-        >
-          ← BACK
-        </Link>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
+          disabled={saving}
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground disabled:opacity-50 transition-colors"
+        >
+          ← BACK TO {getPrevStep('residual', getSelectedMethods(valuation)).label}
+        </button>
+        <button
+          onClick={() => handleSave(false)}
           disabled={saving}
           className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          SAVE & CONTINUE TO RECONCILIATION →
+          SAVE & CONTINUE TO {getNextStep('residual', getSelectedMethods(valuation)).label} →
         </button>
       </div>
     </div>

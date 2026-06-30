@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   TerminalPanel,
   AlertBanner,
@@ -11,6 +11,7 @@ import {
   PropertyTypeBadge,
 } from '@/components/ui/terminal'
 import { valuationsApi, incomeApproachApi, pythonMethodsApi, type RentalComparable } from '@/lib/valuation-api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import type { Valuation, IncomeApproachData } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -133,6 +134,7 @@ export default function IncomeApproachPage() {
   const valuationId = params.id as string
 
   const [valuation, setValuation] = useState<Valuation | null>(null)
+  const hydratedRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -330,6 +332,36 @@ export default function IncomeApproachPage() {
         if (!valuationRes.data) throw new Error('Valuation not found')
 
         setValuation(valuationRes.data as Valuation)
+
+        // Rehydrate user-editable inputs ONCE from a prior save so navigating away and
+        // back does not lose them (engine-echoed outputs are NOT restored here).
+        const savedInputs = (valuationRes.data as any)?.method_results?.income_approach?.inputs
+        if (!hydratedRef.current && savedInputs) {
+          if (savedInputs.rentMode !== undefined) setRentMode(savedInputs.rentMode)
+          if (savedInputs.incomeSources !== undefined) setIncomeSources(savedInputs.incomeSources)
+          if (savedInputs.parkingIncome !== undefined) setParkingIncome(savedInputs.parkingIncome)
+          if (savedInputs.otherIncome !== undefined) setOtherIncome(savedInputs.otherIncome)
+          if (savedInputs.vacancyRate !== undefined) setVacancyRate(savedInputs.vacancyRate)
+          if (savedInputs.collectionLoss !== undefined) setCollectionLoss(savedInputs.collectionLoss)
+          if (savedInputs.managementFee !== undefined) setManagementFee(savedInputs.managementFee)
+          if (savedInputs.maintenance !== undefined) setMaintenance(savedInputs.maintenance)
+          if (savedInputs.insurance !== undefined) setInsurance(savedInputs.insurance)
+          if (savedInputs.propertyTax !== undefined) setPropertyTax(savedInputs.propertyTax)
+          if (savedInputs.utilities !== undefined) setUtilities(savedInputs.utilities)
+          if (savedInputs.security !== undefined) setSecurity(savedInputs.security)
+          if (savedInputs.reserves !== undefined) setReserves(savedInputs.reserves)
+          if (savedInputs.otherExpenses !== undefined) setOtherExpenses(savedInputs.otherExpenses)
+          if (savedInputs.capRate !== undefined) setCapRate(savedInputs.capRate)
+          if (savedInputs.capRateMode !== undefined) setCapRateMode(savedInputs.capRateMode)
+          if (savedInputs.discountRate !== undefined) setDiscountRate(savedInputs.discountRate)
+          if (savedInputs.discountRateMode !== undefined) setDiscountRateMode(savedInputs.discountRateMode)
+          if (savedInputs.discountRateMethod !== undefined) setDiscountRateMethod(savedInputs.discountRateMethod)
+          if (savedInputs.holdingPeriod !== undefined) setHoldingPeriod(savedInputs.holdingPeriod)
+          if (savedInputs.terminalCapRate !== undefined) setTerminalCapRate(savedInputs.terminalCapRate)
+          if (savedInputs.rentGrowth !== undefined) setRentGrowth(savedInputs.rentGrowth)
+          if (savedInputs.incomeMethod !== undefined) setIncomeMethod(savedInputs.incomeMethod)
+          hydratedRef.current = true
+        }
 
         // Set default cap rate based on property type
         const propType = valuationRes.data.property?.property_type || 'residential'
@@ -683,8 +715,9 @@ export default function IncomeApproachPage() {
     return Math.min(score, 1)
   }
 
-  // Save and continue
-  const handleSave = async () => {
+  // Save and continue. goBack=true persists best-effort then steps to the previous
+  // methodology (so editable inputs are never lost on BACK).
+  const handleSave = async (goBack = false) => {
     try {
       setSaving(true)
       setError(null)
@@ -789,6 +822,32 @@ export default function IncomeApproachPage() {
         method_results: {
           ...(valuation?.method_results || {}),
           income_approach: {
+            // Persist EVERY user-editable engine input so the page rehydrates on return.
+            inputs: {
+              rentMode,
+              incomeSources,
+              parkingIncome,
+              otherIncome,
+              vacancyRate,
+              collectionLoss,
+              managementFee,
+              maintenance,
+              insurance,
+              propertyTax,
+              utilities,
+              security,
+              reserves,
+              otherExpenses,
+              capRate,
+              capRateMode,
+              discountRate,
+              discountRateMode,
+              discountRateMethod,
+              holdingPeriod,
+              terminalCapRate,
+              rentGrowth,
+              incomeMethod,
+            },
             // Python RICS Engine result as primary
             value: finalValue,
             confidence: finalConfidence,
@@ -828,36 +887,21 @@ export default function IncomeApproachPage() {
         current_step: 7,
       })
 
-      // Navigate to next step based on selected methods
-      const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-      const hasDRC = selectedMethods.includes('drc_method')
-      const hasProfits = selectedMethods.includes('profits_method')
-      const hasResidual = selectedMethods.includes('residual_method')
-      
-      if (hasDRC) {
-        router.push(`/dashboard/valuations/${valuationId}/drc`)
-      } else if (hasProfits) {
-        router.push(`/dashboard/valuations/${valuationId}/profits`)
-      } else if (hasResidual) {
-        router.push(`/dashboard/valuations/${valuationId}/residual`)
-      } else {
-        router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
-      }
+      // Navigate to the previous/next active methodology (driven by methods_applied).
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('income', methods) : getNextStep('income', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
+      // On BACK, persist is best-effort — navigate anyway so inputs aren't trapped.
+      if (goBack) {
+        const methods = getSelectedMethods(valuation)
+        router.push(stepPath(valuationId, getPrevStep('income', methods)))
+        return
+      }
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
-  }
-  
-  // Determine back navigation path - always goes to rental-market now
-  const getBackPath = () => {
-    // Income approach always comes from rental-market page
-    return `/dashboard/valuations/${valuationId}/rental-market`
-  }
-  
-  const getBackLabel = () => {
-    return '← BACK TO RENTAL MARKET'
   }
 
   // Property reference data
@@ -877,12 +921,13 @@ export default function IncomeApproachPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link
-            href={getBackPath()}
-            className="p-2 hover:bg-muted transition-colors"
+          <button
+            onClick={() => handleSave(true)}
+            disabled={saving}
+            className="p-2 hover:bg-muted transition-colors disabled:opacity-50"
           >
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-xl text-foreground">INCOME APPROACH</h1>
@@ -2266,25 +2311,20 @@ export default function IncomeApproachPage() {
 
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
-        <Link
-          href={getBackPath()}
-          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
-        >
-          {getBackLabel()}
-        </Link>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
+          disabled={saving}
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground disabled:opacity-50 transition-colors"
+        >
+          ← BACK TO {getPrevStep('income', getSelectedMethods(valuation)).label}
+        </button>
+        <button
+          onClick={() => handleSave(false)}
           disabled={saving}
           className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {(() => {
-            const methods = valuation?.methods_applied || []
-            if (methods.includes('drc_method')) return 'SAVE & CONTINUE TO DRC →'
-            if (methods.includes('profits_method')) return 'SAVE & CONTINUE TO PROFITS →'
-            if (methods.includes('residual_method')) return 'SAVE & CONTINUE TO RESIDUAL →'
-            return 'SAVE & CONTINUE TO RECONCILIATION →'
-          })()}
+          SAVE & CONTINUE TO {getNextStep('income', getSelectedMethods(valuation)).label} →
         </button>
       </div>
     </div>

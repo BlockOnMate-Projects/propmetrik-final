@@ -49,6 +49,7 @@ import ComprehensivePropertyForm from '@/components/forms/ComprehensivePropertyF
 import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
 import { contributionsApi } from '@/lib/contributions-api'
 import { valuationsApi, comparableBasketApi } from '@/lib/valuation-api'
+import { getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 
 // =====================================================
 // TYPES
@@ -313,26 +314,14 @@ function ComparablesPageContent() {
 
   // Check which methods are selected
   const hasSalesComparison = selectedMethods.includes('sales_comparison')
-  const hasCostApproach = selectedMethods.includes('cost_approach')
-  const hasIncomeApproach = selectedMethods.includes('income_approach')
-  const hasDRC = selectedMethods.includes('drc_method')
-  const hasProfits = selectedMethods.includes('profits_method')
-  const hasResidual = selectedMethods.includes('residual_method')
-  
+
   // Minimum comparables required (3 for sales comparison, 0 otherwise but still useful)
   const minComparablesRequired = hasSalesComparison ? 3 : 0
   const canProceed = selectedComparables.length >= minComparablesRequired
 
-  // Determine next step based on selected methods (in workflow order)
-  const getNextStep = () => {
-    if (hasSalesComparison) return { path: 'market', label: 'MARKET ANALYSIS' }
-    if (hasCostApproach) return { path: 'cost', label: 'COST APPROACH' }
-    if (hasIncomeApproach) return { path: 'income', label: 'INCOME APPROACH' }
-    if (hasDRC) return { path: 'drc', label: 'DRC METHOD' }
-    if (hasProfits) return { path: 'profits', label: 'PROFITS METHOD' }
-    if (hasResidual) return { path: 'residual', label: 'RESIDUAL METHOD' }
-    return { path: 'reconciliation', label: 'RECONCILIATION' }
-  }
+  // Next/previous steps come from the shared workflow sequence (driven by methods_applied).
+  const nextStep = getNextStep('comparables', selectedMethods)
+  const prevStep = getPrevStep('comparables', selectedMethods)
 
   // Save selected comparables to basket and proceed
   const saveAndProceed = async () => {
@@ -377,10 +366,9 @@ function ComparablesPageContent() {
         }
       }
       
-      // Navigate to next step
-      const nextStep = getNextStep()
-      router.push(`/dashboard/valuations/${valuationId}/${nextStep.path}`)
-      
+      // Navigate to the next active step in the shared workflow sequence.
+      router.push(stepPath(valuationId, nextStep))
+
     } catch (err) {
       console.error('Failed to save basket:', err)
       alert('Failed to save selected comparables. Please try again.')
@@ -478,11 +466,11 @@ function ComparablesPageContent() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
-              href={`/dashboard/valuations/${valuationId}/methods`}
+              href={stepPath(valuationId, prevStep)}
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="font-mono text-sm">BACK TO METHODS</span>
+              <span className="font-mono text-sm">BACK TO {prevStep.label}</span>
             </Link>
             <div className="h-6 w-px bg-muted" />
             <div>
@@ -511,7 +499,7 @@ function ComparablesPageContent() {
                 </>
               ) : (
                 <>
-                  CONTINUE TO {getNextStep().label}
+                  CONTINUE TO {nextStep.label}
                   <ArrowLeft className="w-4 h-4 rotate-180" />
                 </>
               )}

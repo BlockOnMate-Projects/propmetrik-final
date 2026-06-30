@@ -12,8 +12,7 @@
  */
 
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   TerminalPanel,
   AlertBanner,
@@ -21,6 +20,7 @@ import {
   ConfidenceBar,
 } from '@/components/ui/terminal'
 import { valuationsApi } from '@/lib/valuation-api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import { fetchApi } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
@@ -120,6 +120,10 @@ export default function ProfitsMethodPage() {
   // Python calculation results
   const [pythonResult, setPythonResult] = useState<any>(null)
 
+  // Hydrate saved inputs once on load; skip the next type-reset so hydration isn't clobbered.
+  const hydratedRef = useRef(false)
+  const skipNextResetRef = useRef(false)
+
   // ── Render-only: every figure comes from the Python profits engine (single source of truth). ──
   const det: any = pythonResult?.details || {}
   // When actual Fair Maintainable Turnover is entered it is the valuation basis (RICS-preferred);
@@ -155,6 +159,25 @@ export default function ProfitsMethodPage() {
           // rate + benchmarks now come from the Data Hub via the /profits/value route, not here.
           if (prop.bedrooms) setUnitCount(prop.bedrooms)
           else if (prop.built_area_sqm) setUnitCount(Math.round(prop.built_area_sqm))
+        }
+
+        // Rehydrate the valuer's saved inputs (overrides the property-based defaults) so
+        // adjustments survive navigating away and back. Runs once.
+        const saved = (res.data as any)?.method_results?.profits_method?.inputs
+        if (!hydratedRef.current && saved && typeof saved === 'object') {
+          if (saved.propertyType !== undefined && saved.propertyType !== propertyType) {
+            skipNextResetRef.current = true // don't let the type-change effect wipe these inputs
+            setPropertyType(saved.propertyType)
+          }
+          if (saved.unitCount !== undefined) setUnitCount(saved.unitCount)
+          if (saved.occupancyRate !== undefined) setOccupancyRate(saved.occupancyRate)
+          if (saved.revenuePerUnit !== undefined) setRevenuePerUnit(saved.revenuePerUnit)
+          if (saved.useCustomRevenue !== undefined) setUseCustomRevenue(saved.useCustomRevenue)
+          if (saved.actualTurnover !== undefined) setActualTurnover(saved.actualTurnover)
+          if (saved.operatingCostOverrides !== undefined) setOperatingCostOverrides(saved.operatingCostOverrides)
+          if (saved.capRate !== undefined) setCapRate(saved.capRate)
+          if (saved.useCustomCapRate !== undefined) setUseCustomCapRate(saved.useCustomCapRate)
+          hydratedRef.current = true
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
@@ -219,75 +242,71 @@ export default function ProfitsMethodPage() {
     return () => clearTimeout(timer)
   }, [valuation, valuationId, propertyType, unitCount, occupancyRate, revenuePerUnit, useCustomRevenue, capRate, useCustomCapRate, actualTurnover, operatingCostOverrides])
 
-  // Reset overrides when the trading type changes (benchmarks differ per type).
+  // Reset overrides when the trading type changes (benchmarks differ per type) — but NOT when the
+  // type change came from rehydrating saved inputs (that would wipe the restored adjustments).
   useEffect(() => {
+    if (skipNextResetRef.current) { skipNextResetRef.current = false; return }
     setOperatingCostOverrides({})
     setUseCustomRevenue(false)
     setUseCustomCapRate(false)
   }, [propertyType])
 
-  // Save and continue
-  const handleSave = async () => {
+  // The valuer's editable inputs — persisted so adjustments survive navigation.
+  const collectInputs = () => ({
+    propertyType, unitCount, occupancyRate, revenuePerUnit, useCustomRevenue,
+    actualTurnover, operatingCostOverrides, capRate, useCustomCapRate,
+  })
+
+  // Persist the profits result + the valuer's inputs. Returns false if nothing to save yet.
+  const persist = async () => {
+    if (!pythonResult) return false
+    await valuationsApi.update(valuationId, {
+      method_results: {
+        ...(valuation?.method_results || {}),
+        profits_method: {
+          value: pythonResult.estimated_value,
+          confidence: pythonResult.confidence_score,
+          confidence_level: pythonResult.confidence_level,
+          value_range: pythonResult.value_range,
+          details: { ...pythonResult.details, propertyType, unitCount },
+          assumptions: pythonResult.assumptions ?? [],
+          limitations: pythonResult.limitations ?? [],
+          calculated_by: 'python_rics_engine',
+          inputs: collectInputs(),
+        },
+      },
+      current_step: 8,
+    })
+    return true
+  }
+
+  // Save and navigate. goBack=true persists best-effort then steps to the previous methodology.
+  const handleSave = async (goBack = false) => {
     try {
       setSaving(true)
       setError(null)
 
-      // Strict: only the engine result is persisted — no local fallback calculation.
-      if (!pythonResult) {
-        setError('Cannot save — the profits engine has not returned a value yet. Resolve the required inputs first.')
-        setSaving(false)
-        return
-      }
-
-      await valuationsApi.update(valuationId, {
-        method_results: {
-          ...(valuation?.method_results || {}),
-          profits_method: {
-            value: pythonResult.estimated_value,
-            confidence: pythonResult.confidence_score,
-            confidence_level: pythonResult.confidence_level,
-            value_range: pythonResult.value_range,
-            details: { ...pythonResult.details, propertyType, unitCount },
-            assumptions: pythonResult.assumptions ?? [],
-            limitations: pythonResult.limitations ?? [],
-            calculated_by: 'python_rics_engine',
-          },
-        },
-        current_step: 8,
-      })
-
-      // Navigate to next step
-      const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-      const hasResidual = selectedMethods.includes('residual_method')
-
-      if (hasResidual) {
-        router.push(`/dashboard/valuations/${valuationId}/residual`)
+      if (goBack) {
+        // Best-effort save (never trap the valuer on BACK), then navigate.
+        try { await persist() } catch (e) { console.warn('profits back-save failed', e) }
       } else {
-        router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
+        // Strict: only the engine result is persisted — no local fallback calculation.
+        if (!pythonResult) {
+          setError('Cannot save — the profits engine has not returned a value yet. Resolve the required inputs first.')
+          setSaving(false)
+          return
+        }
+        await persist()
       }
+
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('profits', methods) : getNextStep('profits', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
-  }
-
-  // Determine back navigation
-  const getBackPath = () => {
-    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-    if (selectedMethods.includes('drc_method')) {
-      return `/dashboard/valuations/${valuationId}/drc`
-    }
-    if (selectedMethods.includes('income_approach')) {
-      return `/dashboard/valuations/${valuationId}/income`
-    }
-    if (selectedMethods.includes('cost_approach')) {
-      return `/dashboard/valuations/${valuationId}/cost`
-    }
-    if (selectedMethods.includes('sales_comparison')) {
-      return `/dashboard/valuations/${valuationId}/market`
-    }
-    return `/dashboard/valuations/${valuationId}/comparables`
   }
 
   const currentTypeInfo = PROPERTY_TYPES.find(t => t.id === propertyType)
@@ -308,9 +327,9 @@ export default function ProfitsMethodPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href={getBackPath()} className="p-2 hover:bg-muted transition-colors">
+          <button onClick={() => handleSave(true)} disabled={saving} className="p-2 hover:bg-muted transition-colors disabled:opacity-50">
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-xl text-foreground">PROFITS METHOD</h1>
@@ -729,23 +748,20 @@ export default function ProfitsMethodPage() {
 
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
-        <Link
-          href={getBackPath()}
-          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
-        >
-          ← BACK
-        </Link>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
+          disabled={saving}
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground disabled:opacity-50 transition-colors"
+        >
+          ← BACK TO {getPrevStep('profits', getSelectedMethods(valuation)).label}
+        </button>
+        <button
+          onClick={() => handleSave(false)}
           disabled={saving || capitalValue <= 0}
           className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {(() => {
-            const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-            if (selectedMethods.includes('residual_method')) return 'SAVE & CONTINUE TO RESIDUAL →'
-            return 'SAVE & CONTINUE TO RECONCILIATION →'
-          })()}
+          SAVE & CONTINUE TO {getNextStep('profits', getSelectedMethods(valuation)).label} →
         </button>
       </div>
     </div>
