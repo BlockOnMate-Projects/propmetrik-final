@@ -1,8 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   TerminalPanel,
   AlertBanner,
@@ -13,6 +12,7 @@ import {
 import { EditableConstructionCostPanel, type ConstructionCostEditableData, type MaterialIndex } from '@/components/valuation/EditableConstructionCostPanel'
 import { valuationsApi, costApproachApi, overridesApi, landValueApi, pythonMethodsApi } from '@/lib/valuation-api'
 import { valuationConfigApi, mapPropertyRegionToConstructionCluster, mapShortRegionToDataHub } from '@/lib/api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import type { Valuation, CostApproachData } from '@/types/valuation'
 import type { RegionCode as DataHubRegionCode } from '@/types/data-hub'
 import {
@@ -97,6 +97,7 @@ export default function CostApproachPage() {
   const valuationId = params.id as string
 
   const [valuation, setValuation] = useState<Valuation | null>(null)
+  const hydratedRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [loadingCosts, setLoadingCosts] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -184,6 +185,27 @@ export default function CostApproachPage() {
         if (!valuationRes.data) throw new Error('Valuation not found')
 
         setValuation(valuationRes.data as Valuation)
+
+        // Rehydrate user-editable inputs once, so adjustments survive navigation.
+        // Only restore user inputs (never engine-echoed results) and only on first load.
+        const savedInputs = (valuationRes.data as any)?.method_results?.cost_approach?.inputs
+        if (!hydratedRef.current && savedInputs) {
+          if (savedInputs.landValue !== undefined) setLandValue(savedInputs.landValue)
+          if (savedInputs.landValueMode !== undefined) setLandValueMode(savedInputs.landValueMode)
+          if (savedInputs.constructionQuality !== undefined) setConstructionQuality(savedInputs.constructionQuality)
+          if (savedInputs.constructionRate !== undefined) setConstructionRate(savedInputs.constructionRate)
+          if (savedInputs.hasOverride !== undefined) setHasOverride(savedInputs.hasOverride)
+          if (savedInputs.overrideReason !== undefined) setOverrideReason(savedInputs.overrideReason)
+          if (savedInputs.physicalDepreciation !== undefined) setPhysicalDepreciation(savedInputs.physicalDepreciation)
+          if (savedInputs.functionalObsolescence !== undefined) setFunctionalObsolescence(savedInputs.functionalObsolescence)
+          if (savedInputs.externalObsolescence !== undefined) setExternalObsolescence(savedInputs.externalObsolescence)
+          if (savedInputs.softCosts !== undefined) setSoftCosts(savedInputs.softCosts)
+          if (savedInputs.entrepreneurialProfit !== undefined) setEntrepreneurialProfit(savedInputs.entrepreneurialProfit)
+          if (savedInputs.siteworks !== undefined) setSiteworks(savedInputs.siteworks)
+          if (savedInputs.components !== undefined) setComponents(savedInputs.components)
+          if (savedInputs.materialOverrides !== undefined) setMaterialOverrides(savedInputs.materialOverrides)
+          hydratedRef.current = true
+        }
         // API returns property with camelCase fields: builtArea, grossFloorArea, landArea, plotSize
         const property = valuationRes.data.property
         setGfa(property?.builtArea || property?.grossFloorArea || property?.building_area_sqm || property?.totalArea || property?.total_area_sqm || 200)
@@ -519,10 +541,11 @@ export default function CostApproachPage() {
     }
   }
 
-  // Save and continue
-  const handleSave = async () => {
-    // Validate override reason if user has overridden the rate
-    if (hasOverride && !overrideReason.trim()) {
+  // Save and continue. goBack=true persists best-effort then steps to the
+  // previous methodology (so user inputs are never lost on BACK).
+  const handleSave = async (goBack = false) => {
+    // Validate override reason if user has overridden the rate (forward only — BACK never blocks)
+    if (!goBack && hasOverride && !overrideReason.trim()) {
       setError('Please provide a justification for using a custom construction rate')
       return
     }
@@ -620,11 +643,25 @@ export default function CostApproachPage() {
             is_primary: false,
             notes: hasOverride ? 'Includes user overrides' : 'System-calculated',
             calculated_at: new Date().toISOString(),
+            // Persist EVERY user-editable engine input so adjustments survive navigation.
             inputs: {
               landValue,
+              landValueMode,
+              constructionQuality,
+              constructionRate,
+              hasOverride,
+              overrideReason,
+              physicalDepreciation,
+              functionalObsolescence,
+              externalObsolescence,
+              softCosts,
+              entrepreneurialProfit,
+              siteworks,
+              components,
+              materialOverrides,
+              // Echoed results (kept for backward compatibility / display)
               buildingValue: depreciatedBuildingValue,
               totalDepreciation,
-              hasOverride,
             },
           },
         },
@@ -635,28 +672,18 @@ export default function CostApproachPage() {
         cost_approach_confidence: finalConfidence,
       })
 
-      // Navigate to next step based on selected methods
-      const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-      const hasIncomeApproach = selectedMethods.includes('income_approach')
-      const hasDRC = selectedMethods.includes('drc_method')
-      const hasProfits = selectedMethods.includes('profits_method')
-      const hasResidual = selectedMethods.includes('residual_method')
-      
-      if (hasIncomeApproach) {
-        // Route to rental-market first for rental comparable analysis
-        router.push(`/dashboard/valuations/${valuationId}/rental-market`)
-      } else if (hasDRC) {
-        router.push(`/dashboard/valuations/${valuationId}/drc`)
-      } else if (hasProfits) {
-        router.push(`/dashboard/valuations/${valuationId}/profits`)
-      } else if (hasResidual) {
-        router.push(`/dashboard/valuations/${valuationId}/residual`)
-      } else {
-        // No more methods selected - go directly to reconciliation
-        router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
-      }
+      // Navigate to the previous/next active methodology (driven by methods_applied).
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('cost', methods) : getNextStep('cost', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      // On BACK, persist is best-effort — never block navigation on a save error.
+      if (goBack) {
+        const methods = getSelectedMethods(valuation)
+        router.push(stepPath(valuationId, getPrevStep('cost', methods)))
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save')
+      }
     } finally {
       setSaving(false)
     }
@@ -670,24 +697,6 @@ export default function CostApproachPage() {
     if (totalDepreciation < 50) score += 0.1
     if (totalDepreciation > 0) score += 0.1
     return Math.min(score, 1)
-  }
-  
-  // Determine back navigation path based on selected methods
-  const getBackPath = () => {
-    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-    const hasSalesComparison = selectedMethods.includes('sales_comparison')
-    if (hasSalesComparison) {
-      // If Sales Comparison is selected, we came from Market page
-      return `/dashboard/valuations/${valuationId}/market`
-    }
-    // If no Sales Comparison, we came directly from Methods (skipped Comparables)
-    return `/dashboard/valuations/${valuationId}/methods`
-  }
-  
-  const getBackLabel = () => {
-    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-    const hasSalesComparison = selectedMethods.includes('sales_comparison')
-    return hasSalesComparison ? '← BACK TO MARKET DATA' : '← BACK TO METHODS'
   }
 
   if (loading) {
@@ -704,12 +713,13 @@ export default function CostApproachPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link
-            href={getBackPath()}
-            className="p-2 hover:bg-muted transition-colors"
+          <button
+            onClick={() => handleSave(true)}
+            disabled={saving}
+            className="p-2 hover:bg-muted transition-colors disabled:opacity-50"
           >
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-xl text-foreground">COST APPROACH</h1>
@@ -1645,25 +1655,20 @@ export default function CostApproachPage() {
 
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
-        <Link
-          href={getBackPath()}
-          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
-        >
-          {getBackLabel()}
-        </Link>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
+          disabled={saving}
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground disabled:opacity-50 transition-colors"
+        >
+          ← BACK TO {getPrevStep('cost', getSelectedMethods(valuation)).label}
+        </button>
+        <button
+          onClick={() => handleSave(false)}
           disabled={saving}
           className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {(() => {
-            const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-            const hasIncomeApproach = selectedMethods.includes('income_approach')
-            return hasIncomeApproach 
-              ? 'SAVE & CONTINUE TO RENTAL MARKET →' 
-              : 'SAVE & CONTINUE TO RECONCILIATION →'
-          })()}
+          SAVE & CONTINUE TO {getNextStep('cost', getSelectedMethods(valuation)).label} →
         </button>
       </div>
     </div>

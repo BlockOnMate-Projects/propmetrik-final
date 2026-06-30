@@ -24,6 +24,7 @@ import {
   PropertyTypeBadge,
 } from '@/components/ui/terminal'
 import { valuationsApi, comparablesApi, marketApi } from '@/lib/valuation-api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import type { Valuation, ComparableProperty, ComparableBasket } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -576,8 +577,9 @@ export default function MarketDataPage() {
     }
   }
 
-  // Save basket and continue
-  const handleSave = async () => {
+  // Save basket and navigate. goBack=true persists best-effort then steps to the
+  // previous methodology (so selected comparables are never lost on BACK).
+  const handleSave = async (goBack = false) => {
     try {
       setSaving(true)
       setError(null)
@@ -597,7 +599,7 @@ export default function MarketDataPage() {
       // Re-read value after potential recalculation
       const finalValue = pythonValuationResult?.estimated_value || pythonValuationResult?.rics_result?.estimated_value || ricsValue
       
-      if (finalValue === 0 && selectedComparables.length > 0) {
+      if (!goBack && finalValue === 0 && selectedComparables.length > 0) {
         setError('Valuation calculation is still in progress. Please wait and try again.')
         setSaving(false)
         return
@@ -613,9 +615,19 @@ export default function MarketDataPage() {
 
       const confidenceValue = ricsConfidence
       const indicatedValue = ricsValue
-      
+
       // Get value range from Python RICS result or calculate from comparables
       const ricsValueRange = pythonValuationResult?.value_range || pythonValuationResult?.rics_result?.value_range || valueRange
+
+      // Evidence detail for the report + sensitivity analysis. `indicated_value` is the engine's
+      // adjustment-weighted value, so the adjustment `total_multiplier` is 1 here (the value already
+      // incorporates the comparable adjustments); the sales-comparison sensitivity scales it linearly.
+      const avgAdjustedPricePerSqm =
+        selectedComparables.reduce((sum, c) => sum + (c.adjustedPricePerSqm || 0), 0) /
+        (selectedComparables.length || 1)
+      const signedAvgAdjustmentPct =
+        selectedComparables.reduce((sum, c) => sum + (c.totalAdjustment || 0), 0) /
+        (selectedComparables.length || 1)
 
       // Update valuation method result and summary fields
       await valuationsApi.update(valuationId, {
@@ -632,6 +644,16 @@ export default function MarketDataPage() {
               (selectedComparables.length || 1),
             method: 'rics_sales_comparison',
             valueRange: ricsValueRange,
+            // Standard `details` block (parity with the other methods) — the sensitivity route reads
+            // indicated_value + adjustments.total_multiplier from here instead of falling back.
+            details: {
+              indicated_value: indicatedValue,
+              price_per_sqm: avgAdjustedPricePerSqm,
+              comparables_count: selectedComparables.length,
+              avg_adjustment_pct: signedAvgAdjustmentPct,
+              value_range: ricsValueRange,
+              adjustments: { total_multiplier: 1 },
+            },
           },
         },
         current_step: 7, // Market analysis complete, advance to next method step
@@ -645,30 +667,10 @@ export default function MarketDataPage() {
         value_range_high: ricsValueRange?.max || (indicatedValue * 1.1),
       })
 
-      // Navigate to next step based on selected methods
-      // Check which methods are selected (in workflow order)
-      const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-      const hasCostApproach = selectedMethods.includes('cost_approach')
-      const hasIncomeApproach = selectedMethods.includes('income_approach')
-      const hasDRC = selectedMethods.includes('drc_method')
-      const hasProfits = selectedMethods.includes('profits_method')
-      const hasResidual = selectedMethods.includes('residual_method')
-      
-      if (hasCostApproach) {
-        router.push(`/dashboard/valuations/${valuationId}/cost`)
-      } else if (hasIncomeApproach) {
-        // Route to rental-market first for rental comparable analysis
-        router.push(`/dashboard/valuations/${valuationId}/rental-market`)
-      } else if (hasDRC) {
-        router.push(`/dashboard/valuations/${valuationId}/drc`)
-      } else if (hasProfits) {
-        router.push(`/dashboard/valuations/${valuationId}/profits`)
-      } else if (hasResidual) {
-        router.push(`/dashboard/valuations/${valuationId}/residual`)
-      } else {
-        // Only sales comparison selected - go directly to reconciliation
-        router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
-      }
+      // Navigate to the previous/next active methodology (driven by methods_applied).
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('market', methods) : getNextStep('market', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -990,32 +992,20 @@ export default function MarketDataPage() {
 
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
-        <Link
-          href={`/dashboard/valuations/${valuationId}/comparables`}
-          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
-        >
-          ← BACK TO COMPARABLES
-        </Link>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
+          disabled={saving}
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground disabled:opacity-50 transition-colors"
+        >
+          ← BACK TO {getPrevStep('market', getSelectedMethods(valuation)).label}
+        </button>
+        <button
+          onClick={() => handleSave(false)}
           disabled={saving || selectedComparables.length < 3}
           className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {(() => {
-            const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-            const hasCostApproach = selectedMethods.includes('cost_approach')
-            const hasIncomeApproach = selectedMethods.includes('income_approach')
-            const hasDRC = selectedMethods.includes('drc_method')
-            const hasProfits = selectedMethods.includes('profits_method')
-            const hasResidual = selectedMethods.includes('residual_method')
-            if (hasCostApproach) return 'SAVE & CONTINUE TO COST APPROACH →'
-            if (hasIncomeApproach) return 'SAVE & CONTINUE TO INCOME APPROACH →'
-            if (hasDRC) return 'SAVE & CONTINUE TO DRC →'
-            if (hasProfits) return 'SAVE & CONTINUE TO PROFITS →'
-            if (hasResidual) return 'SAVE & CONTINUE TO RESIDUAL →'
-            return 'SAVE & CONTINUE TO RECONCILIATION →'
-          })()}
+          SAVE & CONTINUE TO {getNextStep('market', getSelectedMethods(valuation)).label} →
         </button>
       </div>
     </div>

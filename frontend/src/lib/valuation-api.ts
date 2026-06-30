@@ -2243,7 +2243,7 @@ export const pythonMethodsApi = {
     options?: any
   ): Promise<{ success: boolean; data: PythonMethodResponse | null; error?: string }> {
     try {
-      const response = await fetchPythonApi('/methods/sales-comparison-rics', {
+      const response = await fetchPythonApi('/methods/sales-comparison', {
         method: 'POST',
         body: JSON.stringify({ property, comparables, options }),
       });
@@ -2609,107 +2609,6 @@ export const salesComparisonApi = {
     };
   },
 
-  /**
-   * Auto-calculate adjustments using Python valuation engine
-   * Falls back to TypeScript calculation if Python service unavailable
-   * 
-   * Includes Ghana-specific adjustments:
-   * - Neighborhood premiums (Airport Res: +30%, Cantonments: +28%, etc.)
-   * - Tenure risk (Freehold: 0%, Stool Land: -12%, Family Land: -18%)
-   */
-  async autoCalculate(
-    valuationId: string,
-    data: {
-      subject_property: {
-        property_type?: string;
-        region?: string;
-        city?: string;
-        address?: string;
-        neighborhood?: string;
-        gfa?: number;
-        plot_size?: number;
-        bedrooms?: number;
-        bathrooms?: number;
-        year_built?: number;
-        age?: number;
-        condition?: string;
-        quality_rating?: string;
-        tenure_type?: string;
-        price?: number;
-        latitude?: number;
-        longitude?: number;
-      };
-      comparables: Array<{
-        id: string;
-        property_type?: string;
-        region?: string;
-        city?: string;
-        address?: string;
-        neighborhood?: string;
-        gfa?: number;
-        plot_size?: number;
-        bedrooms?: number;
-        bathrooms?: number;
-        year_built?: number;
-        age?: number;
-        condition?: string;
-        quality_rating?: string;
-        tenure_type?: string;
-        sale_price?: number;
-        price?: number;
-        sale_date?: string;
-        evidence_type?: string;
-        latitude?: number;
-        longitude?: number;
-      }>;
-      options?: {
-        include_ghana_adjustments?: boolean;
-        include_tenure_risk?: boolean;
-        include_neighborhood_premiums?: boolean;
-      };
-    }
-  ): Promise<{
-    success: boolean;
-    data: {
-      valuation_id: string;
-      comparables: Array<{
-        id: string;
-        adjustments: Record<string, number>;
-        total_adjustment_pct: number;
-        adjusted_price: number;
-        adjusted_price_per_sqm: number | null;
-        similarity_score?: number;
-        weight?: number;
-        calculation_source: 'python_valuation_engine' | 'typescript_fallback';
-      }>;
-      indicated_value: number;
-      confidence_score?: number;
-      confidence_level?: 'high' | 'medium' | 'low';
-      value_range?: { low: number; high: number };
-      avg_adjustment_pct: number;
-      calculation_source: 'python_valuation_engine' | 'typescript_fallback';
-      python_available: boolean;
-      methodology_notes?: string[];
-      assumptions?: string[];
-      limitations?: string[];
-      ghana_adjustments_applied?: {
-        tenure_risk: boolean;
-        neighborhood_premiums: boolean;
-      };
-    } | null;
-    error?: string;
-    message?: string;
-  }> {
-    try {
-      const response = await fetchTypescriptApi(`/${valuationId}/sales-comparison/auto-calculate`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      return response;
-    } catch (error: any) {
-      return { success: false, data: null, error: error.message };
-    }
-  },
 };
 
 // ============================================================================

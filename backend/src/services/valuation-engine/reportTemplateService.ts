@@ -912,19 +912,29 @@ class ReportTemplateService {
       comparable_sales: 'Market Comparison Method',
       sales_comparison: 'Market Comparison Method',
       income_approach: 'Income Capitalisation Method',
-      cost_approach: 'Depreciated Replacement Cost Method',
+      cost_approach: 'Cost Approach',
+      drc_method: 'Depreciated Replacement Cost (DRC) Method',
       residual_method: 'Residual Method',
       profits_method: 'Profits Method',
     };
+    // Humanise any method key not explicitly mapped (e.g. "drc_method" → "Drc Method") so a raw key
+    // never leaks into the prose.
+    const humanizeMethodKey = (k: string) =>
+      String(k || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
     const methodNames = methods_used.map((m: any) => {
-      return methodMap[m.method_type] || m.method_type;
+      return methodMap[m.method_type] || humanizeMethodKey(m.method_type);
     });
+    // Proper list grammar: "A", "A and B", "A, B and C".
+    const joinList = (items: string[]) =>
+      items.length <= 1 ? (items[0] || '')
+        : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 
     // Build Part Four: Valuation Process dynamic content
     const methodTypesList = methods_used.map((m: any) => m.method_type);
     const hasComparableSales = methodTypesList.includes('comparable_sales') || methodTypesList.includes('sales_comparison');
     const hasIncomeApproach = methodTypesList.includes('income_approach');
     const hasCostApproach = methodTypesList.includes('cost_approach');
+    const hasDRCMethod = methodTypesList.includes('drc_method');
     const hasResidualMethod = methodTypesList.includes('residual_method');
     const hasProfitsMethod = methodTypesList.includes('profits_method');
 
@@ -942,11 +952,19 @@ class ReportTemplateService {
       let justifications = '';
       
       if (hasCostApproach) {
-        justifications += `<h4 style="margin-top: 16px;">THE DEPRECIATED REPLACEMENT COST METHOD</h4>
+        justifications += `<h4 style="margin-top: 16px;">THE COST APPROACH</h4>
 <ol style="margin-left: 20px; margin-bottom: 16px;">
 <li style="margin-bottom: 8px;">The nature of the building is very different from most houses in the <u>neighbourhood</u>. Also, type of finishing, fittings and construction were considered.</li>
 <li style="margin-bottom: 8px;">There is not enough evidence of recent sale of properties with similar attributes on the market within the area.</li>
 <li style="margin-bottom: 8px;">Considering the inflationary nature of our economy this method takes into account the current cost of replacing an asset while factoring in depreciation. This provides a more accurate reflection of an asset's value.</li>
+</ol>`;
+      }
+
+      if (hasDRCMethod) {
+        justifications += `<h4 style="margin-top: 16px;">THE DEPRECIATED REPLACEMENT COST (DRC) METHOD</h4>
+<ol style="margin-left: 20px; margin-bottom: 16px;">
+<li style="margin-bottom: 8px;">The subject is a specialised property that is rarely, if ever, sold on the open market, so direct comparable evidence is not available.</li>
+<li style="margin-bottom: 8px;">The method estimates the cost of a modern equivalent asset and deducts allowances for physical deterioration and all relevant forms of obsolescence, in accordance with RICS guidance on the valuation of specialised assets.</li>
 </ol>`;
       }
 
@@ -1313,7 +1331,7 @@ class ReportTemplateService {
         exchange_rate_date: exchangeRateData.date,
         exchange_rate_is_historical: exchangeRateData.is_historical,
         is_retrospective: isRetrospective,
-        methods_applied: methodNames.length > 0 ? methodNames.join(' and ') : 'Appropriate valuation methods',
+        methods_applied: methodNames.length > 0 ? joinList(methodNames) : 'Appropriate valuation methods',
         methods_used: methods_used.map((m: any) => ({
           name: m.method_type?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
           value: m.indicated_value,
@@ -1358,6 +1376,7 @@ class ReportTemplateService {
         has_comparable_sales: hasComparableSales,
         has_income_approach: hasIncomeApproach,
         has_cost_approach: hasCostApproach,
+        has_drc_method: hasDRCMethod,
         has_residual_method: hasResidualMethod,
         has_profits_method: hasProfitsMethod,
       },
@@ -1412,12 +1431,19 @@ class ReportTemplateService {
           has: true,
           driver_label: sa.driver_label || 'a key input',
           range_pct: Math.round(Number(sa.range_pct) || 10),
-          rows: sa.rows.map((r: any) => ({
-            pct_label: `${Number(r.pct) > 0 ? '+' : ''}${Number(r.pct)}%`,
-            value_formatted: this.formatCurrency(Number(r.value) || 0, 'GHS'),
-            change_label: `${Number(r.change_pct) > 0 ? '+' : ''}${(Number(r.change_pct) || 0).toFixed(1)}%`,
-            is_base: Number(r.pct) === 0,
-          })),
+          rows: sa.rows.map((r: any) => {
+            const changePct = Number(r.change_pct) || 0;
+            const isBase = Number(r.pct) === 0;
+            // Colour by the direction of the VALUE change: green = value increases, red = decreases.
+            const arrow = isBase || changePct === 0 ? '' : (changePct > 0 ? '▲ ' : '▼ ');
+            return {
+              pct_label: `${Number(r.pct) > 0 ? '+' : ''}${Number(r.pct)}%`,
+              value_formatted: this.formatCurrency(Number(r.value) || 0, 'GHS'),
+              change_label: `${arrow}${changePct > 0 ? '+' : ''}${changePct.toFixed(1)}%`,
+              change_color: isBase || changePct === 0 ? '#71717a' : (changePct > 0 ? '#16a34a' : '#dc2626'),
+              is_base: isBase,
+            };
+          }),
         };
       })(),
 
@@ -1576,56 +1602,77 @@ class ReportTemplateService {
    * Simple template rendering (replace placeholders)
    */
   renderTemplate(template: string, context: Record<string, any>): string {
-    let rendered = template;
+    // A proper recursive block renderer. The previous regex-based approach used non-greedy matches
+    // that could not handle NESTED blocks — e.g. {{#if this.is_base}} inside {{#each}} inside
+    // {{#if sensitivity.has}} caused the outer {{#if}} to bind to the inner {{/if}}, leaving the
+    // outer {{/if}} to leak into the report as literal text.
+    return this.renderBlocks(template, context);
+  }
 
-    // Handle conditionals {{#if condition}}...{{else}}...{{/if}} FIRST
-    // This regex handles both with and without else clause
-    const ifElseRegex = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g;
-    rendered = rendered.replace(ifElseRegex, (match, condition, ifContent, elseContent) => {
-      const value = this.getNestedValue(context, condition.trim());
-      return value ? ifContent : elseContent;
-    });
-
-    // Handle simple conditionals {{#if condition}}...{{/if}} (no else)
-    const ifRegex = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
-    rendered = rendered.replace(ifRegex, (match, condition, content) => {
-      const value = this.getNestedValue(context, condition.trim());
-      return value ? content : '';
-    });
-
-    // Handle each loops {{#each array}}...{{/each}}
-    const eachRegex = /\{\{#each\s+([^}]+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
-    rendered = rendered.replace(eachRegex, (match, arrayPath, itemTemplate) => {
-      const array = this.getNestedValue(context, arrayPath.trim());
-      if (!Array.isArray(array) || array.length === 0) {
-        return '';
+  // Recursively render {{#if}}/{{#each}} blocks (nesting-aware) and {{placeholder}} tokens.
+  private renderBlocks(tpl: string, context: Record<string, any>): string {
+    let out = '';
+    let i = 0;
+    const openRe = /\{\{#(if|each)\s+([^}]+)\}\}/g;
+    while (i < tpl.length) {
+      openRe.lastIndex = i;
+      const open = openRe.exec(tpl);
+      if (!open) { out += this.renderPlaceholders(tpl.slice(i), context); break; }
+      out += this.renderPlaceholders(tpl.slice(i, open.index), context);
+      const kind = open[1];
+      const expr = open[2].trim();
+      const { inner, elseInner, end } = this.extractBlock(tpl, open.index + open[0].length);
+      if (kind === 'if') {
+        const val = this.getNestedValue(context, expr);
+        out += this.renderBlocks(val ? inner : (elseInner ?? ''), context);
+      } else {
+        const arr = this.getNestedValue(context, expr);
+        if (Array.isArray(arr)) {
+          for (let idx = 0; idx < arr.length; idx++) {
+            out += this.renderBlocks(inner, { ...context, this: arr[idx], '@index': idx });
+          }
+        }
       }
-      return array.map((item, index) => {
-        let itemRendered = itemTemplate;
-        // Replace {{this.property}} with item properties
-        const thisRegex = /\{\{this\.([^}]+)\}\}/g;
-        itemRendered = itemRendered.replace(thisRegex, (m: string, prop: string) => {
-          const val = item[prop.trim()];
-          return val !== undefined && val !== null ? String(val) : '';
-        });
-        // Replace {{@index}}
-        itemRendered = itemRendered.replace(/\{\{@index\}\}/g, String(index));
-        return itemRendered;
-      }).join('');
-    });
+      i = end;
+    }
+    return out;
+  }
 
-    // Replace simple placeholders {{path.to.value}} LAST
-    const placeholderRegex = /\{\{([^}#@/]+)\}\}/g;
-    
-    rendered = rendered.replace(placeholderRegex, (match, path) => {
-      const value = this.getNestedValue(context, path.trim());
-      if (value === undefined || value === null) {
-        return '';
+  // From the index just after an opening {{#if}}/{{#each}}, find its MATCHING close via depth
+  // counting over all block tokens, returning the inner content, optional {{else}} branch, and the
+  // index after the close tag.
+  private extractBlock(tpl: string, start: number): { inner: string; elseInner: string | null; end: number } {
+    const tokenRe = /\{\{#(?:if|each)\s+[^}]*\}\}|\{\{\/(?:if|each)\}\}|\{\{else\}\}/g;
+    tokenRe.lastIndex = start;
+    let depth = 0;
+    let elsePos = -1;
+    let m: RegExpExecArray | null;
+    while ((m = tokenRe.exec(tpl)) !== null) {
+      const tok = m[0];
+      if (tok.startsWith('{{#')) { depth++; }
+      else if (tok === '{{else}}') { if (depth === 0 && elsePos === -1) elsePos = m.index; }
+      else {
+        if (depth === 0) {
+          const end = m.index + tok.length;
+          if (elsePos >= 0) {
+            return { inner: tpl.slice(start, elsePos), elseInner: tpl.slice(elsePos + 8, m.index), end };
+          }
+          return { inner: tpl.slice(start, m.index), elseInner: null, end };
+        }
+        depth--;
       }
-      return String(value);
-    });
+    }
+    return { inner: tpl.slice(start), elseInner: null, end: tpl.length };
+  }
 
-    return rendered;
+  // Resolve {{path}} and {{this.path}} placeholders. Leaves block tokens ({{#…}}, {{/…}}) untouched.
+  private renderPlaceholders(tpl: string, context: Record<string, any>): string {
+    return tpl.replace(/\{\{([^}#/][^}]*)\}\}/g, (match: string, raw: string) => {
+      const path = String(raw).trim();
+      if (path === 'else') return '';
+      const value = this.getNestedValue(context, path);
+      return value === undefined || value === null ? '' : String(value);
+    });
   }
 
   /**

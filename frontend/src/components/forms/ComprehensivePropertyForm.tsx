@@ -206,6 +206,25 @@ export default function ComprehensivePropertyForm({
     onChange({ ...data, [field]: value })
   }
 
+  // The Property Risk Assessment <select>s show "Average" as a visual default, but an untouched
+  // select never fires onChange — so the value was never written into `data` and the field saved
+  // blank (showing empty in the report). Backfill any missing rating with 'average' so the on-screen
+  // default is actually persisted. Converges in one pass (early-returns once all keys are present).
+  useEffect(() => {
+    const RISK_KEYS = [
+      'employment_stability', 'convenience_employment', 'convenience_shopping', 'convenience_school',
+      'public_transportation', 'utilities_adequacy', 'recreation_facilities', 'police_fire_protection',
+      'accessibility',
+    ]
+    const current = (data.risk_assessment || {}) as Record<string, string>
+    const missing = RISK_KEYS.filter((k) => !current[k])
+    if (missing.length === 0) return
+    const filled: Record<string, string> = { ...current }
+    for (const k of missing) filled[k] = 'average'
+    updateField('risk_assessment', filled)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.risk_assessment])
+
   // Saved clients (valuation_clients) for the "Select existing client" picker.
   const [savedClients, setSavedClients] = useState<Array<{ id: string; name: string; company_name?: string | null; email?: string | null; phone?: string | null; address?: string | null }>>([])
   useEffect(() => {

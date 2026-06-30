@@ -17,7 +17,6 @@
  */
 
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   TerminalPanel,
@@ -28,6 +27,7 @@ import {
   PropertyTypeBadge,
 } from '@/components/ui/terminal'
 import { valuationsApi, rentalComparablesApi, type RentalComparable, type RentalSearchResponse } from '@/lib/valuation-api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -301,7 +301,16 @@ export default function RentalMarketPage() {
       }
 
       setSearchResponse(response)
-      setSearchResults(response.data || [])
+      // Postgres returns numeric columns as STRINGS — coerce here so all downstream math and
+      // `.toFixed()` calls (e.g. adjustedRentPerSqm) operate on real numbers, not strings.
+      setSearchResults((response.data || []).map((c: any) => ({
+        ...c,
+        asking_rent_monthly: Number(c.asking_rent_monthly) || 0,
+        rent_per_sqm_monthly: Number(c.rent_per_sqm_monthly) || 0,
+        distance_km: Number(c.distance_km) || 0,
+        similarity_score: Number(c.similarity_score) || 0,
+        gfa_sqm: c.gfa_sqm != null ? Number(c.gfa_sqm) : c.gfa_sqm,
+      })))
 
       // Fetch benchmark if few results
       const compCount = response.data?.length || 0
@@ -546,8 +555,9 @@ export default function RentalMarketPage() {
   // SAVE & NAVIGATION
   // =====================================================
 
-  // Save and continue to income approach
-  const handleSave = async () => {
+  // Save and navigate. goBack=true persists best-effort then steps to the previous
+  // methodology (so selected rental comparables + weighting are never lost on BACK).
+  const handleSave = async (goBack = false) => {
     try {
       setSaving(true)
       setError(null)
@@ -594,8 +604,9 @@ export default function RentalMarketPage() {
         },
       })
 
-      // Check if save was successful
-      if (result.error) {
+      // Check if save was successful. On forward, a save error blocks navigation;
+      // on BACK we persist best-effort and step away regardless so nothing is lost.
+      if (result.error && !goBack) {
         console.error('Failed to save rental market analysis:', result.error)
         setError(result.error)
         return
@@ -603,29 +614,22 @@ export default function RentalMarketPage() {
 
       console.log('Rental market analysis saved successfully:', result.data?.rental_market_analysis)
 
-      // Navigate to income approach
-      router.push(`/dashboard/valuations/${valuationId}/income`)
+      // Navigate to the previous/next active methodology (driven by methods_applied).
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('rental-market', methods) : getNextStep('rental-market', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
       console.error('Exception saving rental market analysis:', err)
+      // On BACK, never block navigation on a save failure.
+      if (goBack) {
+        const methods = getSelectedMethods(valuation)
+        router.push(stepPath(valuationId, getPrevStep('rental-market', methods)))
+        return
+      }
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
-  }
-
-  // Determine back navigation
-  const getBackPath = () => {
-    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-    const hasCostApproach = selectedMethods.includes('cost_approach')
-    const hasSalesComparison = selectedMethods.includes('sales_comparison')
-
-    if (hasCostApproach) {
-      return `/dashboard/valuations/${valuationId}/cost`
-    }
-    if (hasSalesComparison) {
-      return `/dashboard/valuations/${valuationId}/market`
-    }
-    return `/dashboard/valuations/${valuationId}/methods`
   }
 
   // =====================================================
@@ -654,12 +658,13 @@ export default function RentalMarketPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link
-            href={getBackPath()}
-            className="p-2 hover:bg-muted transition-colors"
+          <button
+            onClick={() => handleSave(true)}
+            disabled={saving}
+            className="p-2 hover:bg-muted transition-colors disabled:opacity-50"
           >
             <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-sm text-muted-foreground">VALUATION:</span>
@@ -677,7 +682,7 @@ export default function RentalMarketPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={handleSave}
+            onClick={() => handleSave(false)}
             disabled={saving || selectedComparables.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
@@ -688,7 +693,7 @@ export default function RentalMarketPage() {
               </>
             ) : (
               <>
-                SAVE & CONTINUE TO INCOME
+                SAVE & CONTINUE TO {getNextStep('rental-market', getSelectedMethods(valuation)).label}
                 <ArrowRight className="w-3 h-3" />
               </>
             )}
@@ -1095,7 +1100,7 @@ export default function RentalMarketPage() {
                       </div>
                       <div>
                         <div className="font-mono text-[10px] text-muted-foreground">₵/SQM/MO</div>
-                        <div className="font-mono text-foreground">{comp.adjustedRentPerSqm?.toFixed(1) || '-'}</div>
+                        <div className="font-mono text-foreground">{Number.isFinite(Number(comp.adjustedRentPerSqm)) && Number(comp.adjustedRentPerSqm) > 0 ? Number(comp.adjustedRentPerSqm).toFixed(1) : '-'}</div>
                       </div>
                     </div>
 
@@ -1129,13 +1134,14 @@ export default function RentalMarketPage() {
       {/* Fixed Footer Navigation */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link
-            href={getBackPath()}
-            className="flex items-center gap-2 px-4 py-2 border border-border text-muted-foreground hover:bg-card font-mono text-sm transition-colors"
+          <button
+            onClick={() => handleSave(true)}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 border border-border text-muted-foreground hover:bg-card font-mono text-sm transition-colors disabled:opacity-50"
           >
             <ArrowLeft className="w-4 h-4" />
-            BACK TO METHODS
-          </Link>
+            BACK TO {getPrevStep('rental-market', getSelectedMethods(valuation)).label}
+          </button>
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 text-sm font-mono">
@@ -1150,7 +1156,7 @@ export default function RentalMarketPage() {
             </div>
 
             <button
-              onClick={handleSave}
+              onClick={() => handleSave(false)}
               disabled={saving || comparablesCount === 0}
               className={cn(
                 'flex items-center gap-2 px-6 py-2 font-mono text-sm transition-colors',
@@ -1166,7 +1172,7 @@ export default function RentalMarketPage() {
                 </>
               ) : (
                 <>
-                  CONTINUE TO INCOME APPROACH
+                  SAVE & CONTINUE TO {getNextStep('rental-market', getSelectedMethods(valuation)).label}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

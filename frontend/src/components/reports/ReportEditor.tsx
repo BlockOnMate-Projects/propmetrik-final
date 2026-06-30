@@ -182,7 +182,11 @@ const DEFAULT_SECTIONS: ReportSection[] = [
 // CUSTOM TIPTAP EXTENSIONS
 // ============================================================================
 
-const FontSize = TextStyle.extend({
+// A single TextStyle extension carrying BOTH fontSize and lineHeight attributes. Previously these
+// were two separate `TextStyle.extend()` extensions — but each keeps the name "textStyle", so
+// registering both produced a duplicate-extension warning. Merged into one (the toolbar sets these
+// as attributes on the same `textStyle` mark, so behaviour is unchanged).
+const TextStyleExtended = TextStyle.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -194,14 +198,6 @@ const FontSize = TextStyle.extend({
           return { style: `font-size: ${attributes.fontSize}` }
         },
       },
-    }
-  },
-})
-
-const LineHeight = TextStyle.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
       lineHeight: {
         default: null,
         parseHTML: element => element.style.lineHeight || null,
@@ -800,10 +796,13 @@ export function ReportEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4] },
+        // StarterKit v3 bundles Link + Underline; disable them so our explicitly-configured
+        // versions register without a duplicate-extension warning.
+        link: false,
+        underline: false,
       }),
       Underline,
-      FontSize,
-      LineHeight,
+      TextStyleExtended,
       FontFamily.configure({
         types: ['textStyle'],
       }),

@@ -13,7 +13,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   TerminalPanel,
   AlertBanner,
@@ -23,6 +23,7 @@ import {
 import { valuationsApi, pythonMethodsApi, landValueApi, PythonMethodResponse } from '@/lib/valuation-api'
 import { fetchApi } from '@/lib/api'
 import { valuationConfigApi, mapShortRegionToDataHub } from '@/lib/api'
+import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -51,6 +52,8 @@ export default function DRCMethodPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Rehydrate saved user inputs exactly once on load (avoids clobbering live edits).
+  const hydratedRef = useRef(false)
 
   // Asset details
   const [assetType, setAssetType] = useState('institutional_other')
@@ -62,6 +65,9 @@ export default function DRCMethodPage() {
   const [costsByFunction, setCostsByFunction] = useState<Record<string, Record<string, number>>>({})
   const [assetTypeLabels, setAssetTypeLabels] = useState<Record<string, string>>({})
   const [qualityLevel, setQualityLevel] = useState<'basic' | 'standard' | 'premium' | 'luxury'>('standard')
+  // Building condition — a required RICS DRC input (drives physical depreciation). Prefilled from the
+  // property when set; the valuer confirms/overrides it. Sent on every run (no silent backend default).
+  const [condition, setCondition] = useState<string>('good')
   const [costsLoading, setCostsLoading] = useState(true)
   
   // Land Value - follows system-wide Land Value Calculation (not from Cost Approach)
@@ -122,6 +128,28 @@ export default function DRCMethodPage() {
         if (!res.data) throw new Error('Valuation not found')
         setValuation(res.data as Valuation)
 
+        // Rehydrate previously-saved user inputs ONCE so editable fields survive
+        // navigating away and back (results alone are not enough).
+        const savedInputs = (res.data as any)?.method_results?.drc_method?.inputs
+        if (!hydratedRef.current && savedInputs) {
+          if (savedInputs.assetType !== undefined) setAssetType(savedInputs.assetType)
+          if (savedInputs.qualityLevel !== undefined) setQualityLevel(savedInputs.qualityLevel)
+          if (savedInputs.condition !== undefined) setCondition(savedInputs.condition)
+          if (savedInputs.effectiveAge !== undefined) setEffectiveAge(savedInputs.effectiveAge)
+          if (savedInputs.gfa !== undefined) setGfa(savedInputs.gfa)
+          if (savedInputs.gfaSource !== undefined) setGfaSource(savedInputs.gfaSource)
+          if (savedInputs.replacementCostPerSqm !== undefined) setReplacementCostPerSqm(savedInputs.replacementCostPerSqm)
+          if (savedInputs.useCustomCost !== undefined) setUseCustomCost(savedInputs.useCustomCost)
+          if (savedInputs.meaOverride !== undefined) setMeaOverride(savedInputs.meaOverride)
+          if (savedInputs.physicalDepreciation !== undefined) setPhysicalDepreciation(savedInputs.physicalDepreciation)
+          if (savedInputs.physicalDepMode !== undefined) setPhysicalDepMode(savedInputs.physicalDepMode)
+          if (savedInputs.economicObsolescence !== undefined) setEconomicObsolescence(savedInputs.economicObsolescence)
+          if (savedInputs.economicObsMode !== undefined) setEconomicObsMode(savedInputs.economicObsMode)
+          if (savedInputs.landValueMode !== undefined) setLandValueMode(savedInputs.landValueMode)
+          if (savedInputs.userLandValue !== undefined) setUserLandValue(savedInputs.userLandValue)
+          hydratedRef.current = true
+        }
+
         const prop = res.data.property as any
         if (prop) {
           // Try multiple possible field names for building area / GFA
@@ -139,7 +167,8 @@ export default function DRCMethodPage() {
           const yearBuilt = prop.year_built || prop.yearBuilt
           const actualAge = yearBuilt ? new Date().getFullYear() - yearBuilt : 0
           setEffectiveAge(prop.age || actualAge)
-          
+          if (prop.condition) setCondition(String(prop.condition))
+
           console.log('📊 DRC Property Data:', {
             gfa: gfaValue || 'estimated',
             yearBuilt,
@@ -286,7 +315,7 @@ export default function DRCMethodPage() {
       setCalculating(true)
       setError(null)
       try {
-        const body: any = { building_function: assetType, quality_level: qualityLevel }
+        const body: any = { building_function: assetType, quality_level: qualityLevel, condition }
         // Only send a field as an OVERRIDE when the valuer has explicitly set it; otherwise the
         // Node route resolves it from the Data Hub / property.
         if (gfaSource === 'user' && gfa > 0) body.gfa_sqm = gfa
@@ -340,60 +369,80 @@ export default function DRCMethodPage() {
 
     const timer = setTimeout(calculateDRC, 500)
     return () => clearTimeout(timer)
-  }, [valuation, valuationId, assetType, qualityLevel, gfa, gfaSource, useCustomCost, replacementCostPerSqm, landValue, landValueMode, meaOverride, physicalDepreciation, physicalDepMode, economicObsolescence, economicObsMode])
+  }, [valuation, valuationId, assetType, qualityLevel, condition, gfa, gfaSource, useCustomCost, replacementCostPerSqm, landValue, landValueMode, meaOverride, physicalDepreciation, physicalDepMode, economicObsolescence, economicObsMode])
 
-  // Save and continue
-  const handleSave = async () => {
+  // Save and navigate. goBack=true persists best-effort then steps to the previous
+  // methodology (so editable inputs are never lost on BACK); forward keeps validation.
+  const handleSave = async (goBack = false) => {
     try {
       setSaving(true)
       setError(null)
 
-      // Strict: only the engine result is persisted — no local fallback calculation.
-      if (!pythonResult) {
+      // Strict (forward only): only the engine result is persisted — no local fallback.
+      // On BACK we still persist whatever inputs exist even if the engine hasn't run.
+      if (!goBack && !pythonResult) {
         setError('Cannot save — the DRC engine has not returned a value yet. Resolve the required inputs first.')
         setSaving(false)
         return
       }
-      const d: any = pythonResult.details || {}
+      const d: any = pythonResult?.details || {}
 
-      await valuationsApi.update(valuationId, {
-        method_results: {
-          ...(valuation?.method_results || {}),
-          drc_method: {
-            value: pythonResult.estimated_value,
-            confidence: pythonResult.confidence_score,
-            confidence_level: pythonResult.confidence_level,
-            value_range: pythonResult.value_range,
-            grossReplacementCost: d.gross_replacement_cost,
-            meaAdjustedCost: d.mea_adjusted_grc,
-            physicalDepreciation: d.depreciation?.physical?.rate,
-            functionalObsolescence: d.depreciation?.functional?.rate,
-            economicObsolescence: d.depreciation?.external?.rate,
-            totalDepreciation: d.depreciation?.total?.rate,
-            depreciatedReplacementCost: d.depreciated_building_value,
-            landValue: d.land_value,
-            buildingAge: d.building_age_years,
-            assetType,
-            assumptions: pythonResult.assumptions || [],
-            limitations: pythonResult.limitations || [],
-            calculated_by: 'python_rics_engine',
-          },
-        },
-        current_step: 7,
-      })
-
-      // Navigate to next step
-      const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-      const hasProfits = selectedMethods.includes('profits_method')
-      const hasResidual = selectedMethods.includes('residual_method')
-
-      if (hasProfits) {
-        router.push(`/dashboard/valuations/${valuationId}/profits`)
-      } else if (hasResidual) {
-        router.push(`/dashboard/valuations/${valuationId}/residual`)
-      } else {
-        router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
+      // Every user-editable engine input — persisted so the page can rehydrate on return.
+      const inputs = {
+        assetType,
+        qualityLevel,
+        condition,
+        effectiveAge,
+        gfa,
+        gfaSource,
+        replacementCostPerSqm,
+        useCustomCost,
+        meaOverride,
+        physicalDepreciation,
+        physicalDepMode,
+        economicObsolescence,
+        economicObsMode,
+        landValueMode,
+        userLandValue,
       }
+
+      try {
+        await valuationsApi.update(valuationId, {
+          method_results: {
+            ...(valuation?.method_results || {}),
+            drc_method: {
+              ...((valuation?.method_results as any)?.drc_method || {}),
+              value: pythonResult?.estimated_value,
+              confidence: pythonResult?.confidence_score,
+              confidence_level: pythonResult?.confidence_level,
+              value_range: pythonResult?.value_range,
+              grossReplacementCost: d.gross_replacement_cost,
+              meaAdjustedCost: d.mea_adjusted_grc,
+              physicalDepreciation: d.depreciation?.physical?.rate,
+              functionalObsolescence: d.depreciation?.functional?.rate,
+              economicObsolescence: d.depreciation?.external?.rate,
+              totalDepreciation: d.depreciation?.total?.rate,
+              depreciatedReplacementCost: d.depreciated_building_value,
+              landValue: d.land_value,
+              buildingAge: d.building_age_years,
+              assetType,
+              assumptions: pythonResult?.assumptions || [],
+              limitations: pythonResult?.limitations || [],
+              calculated_by: 'python_rics_engine',
+              inputs,
+            },
+          },
+          current_step: 7,
+        })
+      } catch (saveErr) {
+        // On BACK, navigate anyway (best-effort persistence). On forward, surface the error.
+        if (!goBack) throw saveErr
+      }
+
+      // Navigate to the previous/next active methodology (driven by methods_applied).
+      const methods = getSelectedMethods(valuation)
+      const dest = goBack ? getPrevStep('drc', methods) : getNextStep('drc', methods)
+      router.push(stepPath(valuationId, dest))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -403,21 +452,6 @@ export default function DRCMethodPage() {
 
   // Confidence comes from the engine (no local heuristic / hardcoded thresholds).
   const calculateConfidence = () => pythonResult?.confidence_score ?? 0
-
-  // Determine back navigation
-  const getBackPath = () => {
-    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
-    if (selectedMethods.includes('income_approach')) {
-      return `/dashboard/valuations/${valuationId}/income`
-    }
-    if (selectedMethods.includes('cost_approach')) {
-      return `/dashboard/valuations/${valuationId}/cost`
-    }
-    if (selectedMethods.includes('sales_comparison')) {
-      return `/dashboard/valuations/${valuationId}/market`
-    }
-    return `/dashboard/valuations/${valuationId}/comparables`
-  }
 
   if (loading) {
     return (
@@ -433,7 +467,7 @@ export default function DRCMethodPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href={getBackPath()} className="p-2 hover:bg-muted transition-colors">
+          <Link href={stepPath(valuationId, getPrevStep('drc', getSelectedMethods(valuation)))} className="p-2 hover:bg-muted transition-colors">
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
@@ -503,6 +537,26 @@ export default function DRCMethodPage() {
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* Building condition — required RICS DRC input (drives physical depreciation) */}
+              <div className="mt-4">
+                <label className="font-mono text-[10px] text-muted-foreground block mb-1">BUILDING CONDITION</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['excellent', 'good', 'fair', 'poor'] as const).map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setCondition(c)}
+                      className={`p-3 border text-center transition-colors ${
+                        condition === c
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                          : 'bg-card border-border text-muted-foreground hover:border-zinc-500'
+                      }`}
+                    >
+                      <div className="font-mono text-[10px] font-bold uppercase">{c}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -1035,24 +1089,20 @@ export default function DRCMethodPage() {
 
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
-        <Link
-          href={getBackPath()}
-          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
-        >
-          ← BACK
-        </Link>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave(true)}
+          disabled={saving}
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground disabled:opacity-50 transition-colors"
+        >
+          ← BACK TO {getPrevStep('drc', getSelectedMethods(valuation)).label}
+        </button>
+        <button
+          onClick={() => handleSave(false)}
           disabled={saving || totalValue <= 0}
           className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {(() => {
-            const methods = valuation?.methods_applied || []
-            if (methods.includes('profits_method')) return 'SAVE & CONTINUE TO PROFITS →'
-            if (methods.includes('residual_method')) return 'SAVE & CONTINUE TO RESIDUAL →'
-            return 'SAVE & CONTINUE TO RECONCILIATION →'
-          })()}
+          SAVE & CONTINUE TO {getNextStep('drc', getSelectedMethods(valuation)).label} →
         </button>
       </div>
     </div>
