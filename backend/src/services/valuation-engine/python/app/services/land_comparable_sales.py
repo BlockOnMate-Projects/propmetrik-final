@@ -176,9 +176,13 @@ class LandComparableSalesService:
         # Configuration
         self.MIN_COMPARABLES = 3
         self.MAX_COMPARABLES = 7
-        self.MAX_DISTANCE_KM = 10.0
-        self.MAX_AGE_DAYS = 730  # 2 years for land
+        self.MAX_DISTANCE_KM = 15.0
+        self.MAX_AGE_DAYS = 1095  # 3 years for land
         self.MIN_SCORE_THRESHOLD = 0.50
+        # "Conventional" baseline — comps beyond this are flagged as an extended-search
+        # disclosure (land markets are thinner, so we widen but must declare it).
+        self.CONVENTIONAL_DISTANCE_KM = 10.0
+        self.CONVENTIONAL_AGE_DAYS = 730  # 2 years
         
         # Outlier detection
         self.OUTLIER_IQR_MULTIPLIER = 1.5

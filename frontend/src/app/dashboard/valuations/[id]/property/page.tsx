@@ -227,10 +227,10 @@ export default function PropertySetupPage() {
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
         <Link
-          href={`/dashboard/valuations/${valuationId}`}
+          href={`/dashboard/valuations/${valuationId}/documents`}
           className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
-          ← BACK TO VALUATION
+          ← BACK TO DOCUMENTS
         </Link>
         <button
           onClick={handleSaveAndContinue}

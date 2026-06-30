@@ -704,6 +704,55 @@ router.get(
   }
 );
 
+/**
+ * GET /api/reports/valuation/:valuationId/download
+ * Resolve the valuation's FINALIZED report and return a direct download URL for the
+ * sealed/signed PDF. Returns { available:false, finalized:false } when no finalized report
+ * exists, so the UI can disable the Download action. Prefers the client-signed PDF
+ * (signed_report_url) over the valuer-sealed PDF (pdf_storage_key).
+ */
+router.get(
+  '/valuation/:valuationId/download',
+  validateUUID('valuationId'),
+  async (req: Request, res: Response) => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT id, status, content, pdf_storage_key, signed_report_url, client_esign_status
+         FROM valuation_reports WHERE valuation_id = $1 ORDER BY created_at DESC`,
+        [req.params.valuationId]
+      );
+      if (!rows.length) {
+        return res.json({ available: false, finalized: false, reason: 'no_report' });
+      }
+      const FINAL = ['approved', 'completed'];
+      const report =
+        rows.find((r: any) => FINAL.includes(String(r.status)) || r.client_esign_status === 'completed') || rows[0];
+      const finalized = FINAL.includes(String(report.status)) || report.client_esign_status === 'completed';
+      if (!finalized) {
+        return res.json({ available: false, finalized: false, reason: 'not_finalized' });
+      }
+      // Prefer the client-countersigned PDF (already a URL); else presign the valuer-sealed PDF.
+      if (report.signed_report_url) {
+        return res.json({ available: true, finalized: true, download_url: report.signed_report_url, filename: 'Valuation_Report.pdf' });
+      }
+      const content = typeof report.content === 'string' ? JSON.parse(report.content) : report.content || {};
+      const key = report.pdf_storage_key || content.pdf_storage_key;
+      if (!key) {
+        return res.json({ available: false, finalized: true, reason: 'no_pdf' });
+      }
+      const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-documents';
+      const url = await getPresignedDownloadUrl(bucket, key, 60 * 60);
+      return res.json({ available: true, finalized: true, download_url: url, filename: 'Valuation_Report.pdf' });
+    } catch (error: any) {
+      logger.error('Failed to get finalized report download', {
+        valuationId: req.params.valuationId,
+        error: error.message,
+      });
+      res.status(500).json({ error: 'Internal Server Error', message: 'Failed to get report download' });
+    }
+  }
+);
+
 // =====================================================
 // DOCUMENT GENERATION ENDPOINTS (Phase 2)
 // =====================================================
@@ -1551,6 +1600,47 @@ router.get('/:id/approval-check', validateUUID('id'), async (req: Request, res: 
 });
 
 /**
+ * POST /api/reports/:id/revise
+ * Create a new DRAFT revision of a (typically sealed) report. Clones the content into a fresh
+ * row with version+1, links it to the source via supersedes_report_id, and records a reason.
+ * The original is retained untouched (it flips to 'superseded' only when the revision is sealed).
+ */
+router.post('/:id/revise', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const reason = (req.body?.reason ?? '').toString().trim();
+    const src = await pool.query(
+      `SELECT valuation_id, template, content, version, created_by FROM valuation_reports WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!src.rows.length) {
+      return res.status(404).json({ error: 'Not Found', message: 'Report not found' });
+    }
+    const s = src.rows[0];
+    const ins = await pool.query(
+      `INSERT INTO valuation_reports
+        (valuation_id, template, content, status, version, supersedes_report_id, revision_reason, created_by, created_at, updated_at)
+       VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, NOW(), NOW())
+       RETURNING id, version`,
+      [s.valuation_id, s.template, s.content, (Number(s.version) || 1) + 1, req.params.id, reason || null, s.created_by || null]
+    );
+    logger.info('Report revision created', {
+      sourceReportId: req.params.id,
+      newReportId: ins.rows[0].id,
+      version: ins.rows[0].version,
+    });
+    return res.status(201).json({
+      id: ins.rows[0].id,
+      version: ins.rows[0].version,
+      supersedes: req.params.id,
+      valuation_id: s.valuation_id,
+    });
+  } catch (err: any) {
+    logger.error('Failed to create report revision', { reportId: req.params.id, error: err.message });
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to create revision' });
+  }
+});
+
+/**
  * POST /api/reports/:id/approve
  * Approve a report
  */
@@ -1562,6 +1652,17 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
       return res.status(400).json({
         error: 'Bad Request',
         message: 'valuer_id is required',
+      });
+    }
+
+    // Lock-on-seal: a report that is already sealed cannot be re-approved/re-signed in place.
+    // To change it, the valuer must create a revision (a new draft version) and seal that.
+    const lockCheck = await pool.query(`SELECT status FROM valuation_reports WHERE id = $1`, [req.params.id]);
+    if (lockCheck.rows.length && lockCheck.rows[0].status === 'approved') {
+      return res.status(409).json({
+        error: 'Already Sealed',
+        message: 'This report is already sealed. Create a revision to make changes.',
+        alreadySealed: true,
       });
     }
 

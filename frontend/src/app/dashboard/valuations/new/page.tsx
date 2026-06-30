@@ -9,6 +9,7 @@ import {
   AlertBanner,
 } from '@/components/ui/terminal'
 import { valuationsApi } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import type { Property, ValuationPurpose } from '@/types/valuation'
 import ComprehensivePropertyForm from '@/components/forms/ComprehensivePropertyForm'
 import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
@@ -69,6 +70,7 @@ export default function NewValuationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialPropertyId = searchParams?.get('property_id')
+  const initialClientId = searchParams?.get('client_id')
 
   // Form state
   const [step, setStep] = useState(1)
@@ -113,6 +115,30 @@ export default function NewValuationPage() {
 
     loadProperty()
   }, [initialPropertyId])
+
+  // Pre-fill the Instructing Client when arriving from a saved client (Clients tab → "New Valuation").
+  useEffect(() => {
+    if (!initialClientId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetchApi<any>(`/valuation-clients/${initialClientId}`)
+        const c = res?.client || res?.data || res
+        if (!cancelled && c?.id) {
+          setNewProperty(prev => ({
+            ...prev,
+            client_id: c.id,
+            client_name: c.name || prev.client_name,
+            client_company: c.company_name || (prev as any).client_company,
+            client_email: c.email || prev.client_email,
+            client_phone: c.phone || prev.client_phone,
+            client_address: c.address || prev.client_address,
+          } as any))
+        }
+      } catch { /* non-fatal — the valuer can still fill the client manually */ }
+    })()
+    return () => { cancelled = true }
+  }, [initialClientId])
 
   // Search for existing properties
   useEffect(() => {
@@ -208,6 +234,8 @@ export default function NewValuationPage() {
           instruction_date: newProperty.instruction_date || null,
           report_date: newProperty.report_date || null,
           is_retrospective: newProperty.is_retrospective || false,
+          // Link the saved client (backend auto-populates the engagement from the client registry).
+          client_id: (newProperty as any).client_id || initialClientId || undefined,
         });
 
         console.log('Valuation response:', valuationResponse);
@@ -221,6 +249,7 @@ export default function NewValuationPage() {
           property_id: selectedProperty.id,
           valuation_type: 'professional',
           valuation_purpose: valuationPurpose,
+          client_id: (newProperty as any).client_id || initialClientId || undefined,
         })
       }
 
@@ -228,8 +257,8 @@ export default function NewValuationPage() {
         throw new Error('Failed to create valuation')
       }
 
-      // Navigate to the valuation workflow — skip property setup (already filled), go to floor plan
-      router.push(`/dashboard/valuations/${valuationResponse.data.id}/floor-plan`)
+      // Navigate to the valuation workflow — Subject is filled; next is Documents & Photos, then Floor Plan
+      router.push(`/dashboard/valuations/${valuationResponse.data.id}/documents`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create valuation')
     } finally {

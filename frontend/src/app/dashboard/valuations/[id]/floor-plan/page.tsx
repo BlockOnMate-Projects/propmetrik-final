@@ -269,6 +269,10 @@ export default function FloorPlanPage() {
         </div>
         <div className="h-[calc(100vh-64px)]">
             <ProfessionalFloorPlanBuilder
+              key={activeFloor}
+              floorNumber={activeFloor}
+              floorLabel={floorPlans.find(f => f.floorNumber === activeFloor)?.name || `Floor ${activeFloor}`}
+              valuationId={valuationId}
               onMeasurementsChange={setCurrentMeasurements}
               onFloorPlanChange={handleFloorPlanChange}
               initialFloorPlan={floorPlans.find(f => f.floorNumber === activeFloor)?.canvasData}

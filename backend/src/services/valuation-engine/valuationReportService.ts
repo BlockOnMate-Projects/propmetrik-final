@@ -217,7 +217,7 @@ class ValuationReportService {
           city: property.address_city || '',
           region: this.formatRegion(property.region),
           type: this.formatPropertyType(property.property_type),
-          size_sqm: property.building_size_sqm || property.total_area_sqm || 0,
+          size_sqm: property.built_area_sqm || property.building_size_sqm || property.total_area_sqm || 0,
           land_area_sqm: property.land_area_sqm,
           bedrooms: property.bedrooms,
           bathrooms: property.bathrooms,

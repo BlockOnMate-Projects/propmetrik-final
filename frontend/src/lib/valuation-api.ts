@@ -2067,6 +2067,10 @@ export interface ProfitsMethodOptions {
 export interface CostApproachOptions {
   land_value_per_sqm?: number;
   construction_cost_per_sqm?: number;
+  hard_costs?: number;                     // component-breakdown override (else rate × area)
+  soft_costs_percent?: number;             // % of hard costs (design/permits/supervision)
+  siteworks?: number;                      // absolute ₵ (drainage/landscaping/utilities)
+  entrepreneurial_profit_percent?: number; // % of construction cost (developer margin)
   depreciation_overrides?: {
     physical?: number;
     functional?: number;
@@ -2079,9 +2083,26 @@ export interface CostApproachOptions {
  */
 export interface IncomeApproachOptions {
   monthly_rent?: number;
+  parking_income?: number;            // monthly
+  other_income?: number;              // monthly
   vacancy_rate?: number;
-  operating_expenses?: number;
+  collection_loss?: number;
+  operating_expenses?: number;        // legacy single-ratio (deprecated)
+  management_fee_percent?: number;    // % of EGI
+  reserves_percent?: number;          // % of EGI
+  maintenance?: number;               // annual ₵
+  insurance?: number;
+  property_tax?: number;
+  utilities?: number;
+  security?: number;
+  other_expenses?: number;
   cap_rate?: number;
+  // DCF
+  discount_rate?: number;
+  real_rent_growth?: number;
+  terminal_cap_rate?: number;
+  holding_period?: number;
+  inflation_rate?: number;
 }
 
 /**

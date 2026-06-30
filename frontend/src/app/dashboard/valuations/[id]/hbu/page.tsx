@@ -12,6 +12,7 @@ import {
   StepIndicator,
 } from '@/components/ui/terminal'
 import { valuationsApi, hbuApi } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import type { Valuation, HBUAnalysis, HBUTest, UseScenario } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -29,6 +30,7 @@ import {
   DollarSign,
   TrendingUp,
   Info,
+  Wand2,
 } from 'lucide-react'
 
 // HBU Test structure
@@ -133,6 +135,28 @@ export default function HBUAnalysisPage() {
   const [scenarios, setScenarios] = useState<UseScenarioState[]>([])
   const [recommendedUse, setRecommendedUse] = useState('')
   const [analysisNotes, setAnalysisNotes] = useState('')
+  const [hbuAiBusy, setHbuAiBusy] = useState(false)
+
+  // Draft the HBU justification from the concluded use + the four-test analysis on screen.
+  const generateHbuJustification = async () => {
+    if (!recommendedUse.trim() || hbuAiBusy) return
+    setHbuAiBusy(true)
+    setError(null)
+    try {
+      const res = await fetchApi<{ text: string }>(`/valuations/${valuationId}/ai/hbu-justification`, {
+        method: 'POST',
+        body: JSON.stringify({
+          conclusion: recommendedUse,
+          tests: tests.map((t) => ({ name: t.name, passed: t.passed, notes: t.notes })),
+        }),
+      })
+      if (res?.text) setAnalysisNotes(res.text)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not generate the HBU justification')
+    } finally {
+      setHbuAiBusy(false)
+    }
+  }
 
   // Fetch valuation data
   useEffect(() => {
@@ -753,6 +777,21 @@ export default function HBUAnalysisPage() {
 
       {/* Analysis Notes */}
       <TerminalPanel title="ANALYSIS NOTES / JUSTIFICATION" className="mt-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-mono text-[10px] text-muted-foreground">
+            Drafts from your concluded use + the four-test analysis above
+          </span>
+          <button
+            type="button"
+            onClick={generateHbuJustification}
+            disabled={!recommendedUse.trim() || hbuAiBusy}
+            title={recommendedUse.trim() ? 'Draft the justification from your HBU conclusion + the four tests' : 'Select a Highest & Best Use conclusion first'}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {hbuAiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            Generate with AI
+          </button>
+        </div>
         <textarea
           value={analysisNotes}
           onChange={(e) => setAnalysisNotes(e.target.value)}

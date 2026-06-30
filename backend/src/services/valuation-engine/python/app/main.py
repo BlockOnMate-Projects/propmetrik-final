@@ -219,7 +219,9 @@ class RICSSalesComparisonRequest(BaseModel):
     property: PropertyInput
     comparables: List[ComparableInput] = Field(..., min_items=1)
     valuation_date: Optional[str] = None
-    usd_to_ghs_rate: float = Field(default=16.0, description="Exchange rate USD to GHS")
+    # REQUIRED: the Node route sources the live rate from the DB and passes it. No default —
+    # a missing rate must fail loudly, never silently use a guessed number.
+    usd_to_ghs_rate: float = Field(..., description="Live USD->GHS rate; caller-supplied, required")
     options: Optional[Dict[str, Any]] = Field(default_factory=dict)
     
     class Config:
@@ -236,6 +238,8 @@ class ComparableAnalysis(BaseModel):
     weight: float
     weighted_value: float
     confidence_contribution: float
+    adjusted_price_per_sqm: float = 0.0
+    quality_score: float = 0.0  # comparability 0-100 (similarity/recency/adjustment magnitude)
 
 
 class RICSSalesComparisonResponse(BaseModel):
@@ -246,7 +250,9 @@ class RICSSalesComparisonResponse(BaseModel):
     confidence_score: float
     confidence_level: str
     value_range: Dict[str, float]
-    
+    subject_gfa: float = 0.0           # building area (m²) used as the size basis
+    implied_price_per_sqm: float = 0.0 # estimated_value / subject_gfa
+
     # RICS-specific details
     comparables_analyzed: List[ComparableAnalysis]
     adjustment_grid: Dict[str, Dict[str, float]]
@@ -506,99 +512,7 @@ async def health_check():
 # VALUATION METHOD ENDPOINTS
 # ============================================================================
 
-@app.post("/api/v1/methods/sales-comparison", response_model=ValuationMethodResponse)
-async def calculate_sales_comparison(request: ValuationMethodRequest):
-    """
-    Sales Comparison Approach (Legacy/Simple)
-    
-    Simple sales comparison using user-provided comparable data.
-    For RICS-compliant analysis, use /methods/sales-comparison-rics instead.
-    
-    Accepts options:
-        - indicated_value: pre-calculated value from comparable basket
-        - price_per_sqm: market-derived price per sqm
-        - comparables_count: number of comparables used
-        - adjustments: adjustment details from the basket analysis
-    """
-    start_time = datetime.now()
-    prop = request.property
-    opts = request.options or {}
-    
-    try:
-        building_sqm = prop.building_size_sqm or 150
-        land_sqm = prop.land_area_sqm or 300
-        
-        # Use user-provided indicated value if available (from comparable basket)
-        indicated_value = opts.get("indicated_value")
-        price_per_sqm = opts.get("price_per_sqm")
-        comparables_count = opts.get("comparables_count", 0)
-        
-        if indicated_value and indicated_value > 0:
-            adjusted_value = indicated_value
-        elif price_per_sqm and price_per_sqm > 0:
-            adjusted_value = building_sqm * price_per_sqm
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Either indicated_value or price_per_sqm is required in options (from comparable basket analysis)"
-            )
-        
-        # Apply any user-specified adjustments
-        adjustments = opts.get("adjustments", {})
-        total_multiplier = adjustments.get("total_multiplier", 1.0)
-        adjusted_value = adjusted_value * total_multiplier
-        
-        # Confidence based on data quality
-        confidence = 0.60  # Base
-        if comparables_count >= 5:
-            confidence += 0.20
-        elif comparables_count >= 3:
-            confidence += 0.15
-        elif comparables_count >= 1:
-            confidence += 0.05
-        if prop.bedrooms and prop.bathrooms and prop.year_built:
-            confidence += 0.05
-        confidence = min(confidence, 0.95)
-        
-        calc_time = (datetime.now() - start_time).total_seconds() * 1000
-        
-        data_source = "comparable_basket" if indicated_value else "market_price_per_sqm"
-        
-        return ValuationMethodResponse(
-            success=True,
-            method="sales_comparison",
-            estimated_value=round(adjusted_value, 2),
-            confidence_score=confidence,
-            confidence_level=_get_confidence_level(confidence),
-            value_range={
-                "low": round(adjusted_value * 0.90, 2),
-                "high": round(adjusted_value * 1.10, 2),
-            },
-            details={
-                "indicated_value": round(adjusted_value, 2),
-                "price_per_sqm": price_per_sqm or (round(adjusted_value / building_sqm, 2) if building_sqm > 0 else 0),
-                "adjustments": adjustments,
-                "comparables_analyzed": comparables_count,
-                "data_source": data_source,
-            },
-            assumptions=[
-                f"Analysis based on {comparables_count} comparable properties" if comparables_count > 0 else "Value derived from market price per sqm",
-                "Property condition is as stated",
-                "No hidden defects or legal encumbrances",
-            ],
-            limitations=[
-                "Limited comparable data in some regions" if comparables_count < 3 else "Adequate comparable data available",
-                "Values may not reflect recent market changes",
-                "Subject to property inspection verification",
-            ],
-            calculation_time_ms=calc_time
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Sales comparison failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# calculate_sales_comparison moved to app/methods/sales_comparison.py (router included at the bottom).
 
 
 # ============================================================================
@@ -716,7 +630,20 @@ async def calculate_sales_comparison_rics(request: RICSSalesComparisonRequest):
                 elif not subject_premium and comp_premium:
                     location_adj = -15.0  # Comp in premium area
             adjustments["location"] = location_adj
-            
+
+            # 7. TIME ADJUSTMENT (market movement since the comparable's transaction/listing date)
+            months_since = 0.0
+            try:
+                raw_date = getattr(comp, "transaction_date", None)
+                if raw_date:
+                    comp_date = datetime.fromisoformat(str(raw_date).replace("Z", "").split("T")[0])
+                    months_since = max(0.0, (datetime.now() - comp_date).days / 30.0)
+            except Exception:
+                months_since = 0.0
+            annual_appreciation = 9.0  # %/yr Ghana residential
+            time_adj = min(15.0, months_since * (annual_appreciation / 12.0))
+            adjustments["time"] = round(time_adj, 1)
+
             # CALCULATE TOTAL ADJUSTMENT
             total_adj_pct = sum(adjustments.values()) / 100
             
@@ -746,6 +673,13 @@ async def calculate_sales_comparison_rics(request: RICSSalesComparisonRequest):
             else:
                 conf_contribution = 0.50  # Marginal comparable
             
+            # Per-comparable quality (comparability): high when similar size, recent, low adjustment
+            adj_per_sqm = round(adjusted_price / comp_gfa, 2) if comp_gfa > 0 else 0.0
+            size_sim = max(0.0, 1.0 - abs(subject_gfa - comp_gfa) / subject_gfa) if subject_gfa > 0 else 0.5
+            recency = max(0.0, 1.0 - months_since / 24.0)
+            adj_penalty = max(0.0, 1.0 - adj_magnitude / 0.30)
+            quality_score = round((0.45 * size_sim + 0.35 * adj_penalty + 0.20 * recency) * 100, 0)
+
             analyzed_comparables.append(ComparableAnalysis(
                 id=comp.id,
                 original_price_ghs=round(price_ghs, 2),
@@ -754,7 +688,9 @@ async def calculate_sales_comparison_rics(request: RICSSalesComparisonRequest):
                 total_adjustment_percent=round(total_adj_pct * 100, 1),
                 weight=weight,
                 weighted_value=round(adjusted_price * weight, 2),
-                confidence_contribution=conf_contribution
+                confidence_contribution=conf_contribution,
+                adjusted_price_per_sqm=adj_per_sqm,
+                quality_score=quality_score
             ))
             
             total_weighted_value += adjusted_price * weight
@@ -789,6 +725,8 @@ async def calculate_sales_comparison_rics(request: RICSSalesComparisonRequest):
                 "high": round(value_high, 2),
                 "most_probable": round(estimated_value, 2)
             },
+            subject_gfa=round(subject_gfa, 2),
+            implied_price_per_sqm=round(estimated_value / subject_gfa, 2) if subject_gfa > 0 else 0.0,
             comparables_analyzed=analyzed_comparables,
             adjustment_grid=adjustment_grid,
             methodology_notes=[
@@ -877,24 +815,41 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
         # Defaults to 0 if not yet available (frontend calculates indicatedValue independently)
         land_value_per_sqm = opts.get("land_value_per_sqm", 0) or 0
         
-        # Calculate construction cost new (hard costs only — frontend adds soft costs/profit)
-        construction_cost_new = building_sqm * cost_per_sqm
-        
-        # Calculate land value from provided per-sqm rate
+        # ---- Reproduction Cost New (full RICS/GhIS cost approach) ----
+        # Hard costs: component breakdown if supplied, else market rate × building area.
+        hard_costs = opts.get("hard_costs") or (building_sqm * cost_per_sqm)
+
+        # Soft costs (% of hard), siteworks (absolute), entrepreneurial profit (% of construction cost).
+        soft_costs_pct = (opts.get("soft_costs_percent", 10) or 0) / 100.0
+        siteworks = opts.get("siteworks", 0) or 0
+        profit_pct = (opts.get("entrepreneurial_profit_percent", 15) or 0) / 100.0
+
+        soft_costs = hard_costs * soft_costs_pct
+        total_construction_cost = hard_costs + soft_costs + siteworks
+        entrepreneurial_profit = total_construction_cost * profit_pct
+        reproduction_cost_new = total_construction_cost + entrepreneurial_profit
+
+        # Land value from provided per-sqm rate
         land_value = land_sqm * land_value_per_sqm
-        
-        # Use depreciation from the depreciation service (via frontend overrides)
+
+        # Depreciation from the depreciation service. Inputs are PERCENTAGES (e.g. 1.8),
+        # kept to full precision (no rounding). Applied to the FULL reproduction cost new —
+        # hard costs, soft costs and profit all depreciate, not just hard costs.
         depreciation_overrides = opts.get("depreciation_overrides", {})
-        physical_dep = depreciation_overrides.get("physical", 0) / 100 if depreciation_overrides.get("physical", 0) > 1 else depreciation_overrides.get("physical", 0)
-        functional_dep = depreciation_overrides.get("functional", 0) / 100 if depreciation_overrides.get("functional", 0) > 1 else depreciation_overrides.get("functional", 0)
-        external_dep = depreciation_overrides.get("external", 0) / 100 if depreciation_overrides.get("external", 0) > 1 else depreciation_overrides.get("external", 0)
+        physical_dep = (depreciation_overrides.get("physical", 0) or 0) / 100.0
+        functional_dep = (depreciation_overrides.get("functional", 0) or 0) / 100.0
+        external_dep = (depreciation_overrides.get("external", 0) or 0) / 100.0
         total_depreciation_pct = physical_dep + functional_dep + external_dep
-        
-        depreciation_amount = construction_cost_new * total_depreciation_pct
-        depreciated_cost = construction_cost_new - depreciation_amount
-        
+
+        depreciation_amount = reproduction_cost_new * total_depreciation_pct
+        depreciated_building_value = reproduction_cost_new - depreciation_amount
+
+        # Keep legacy alias for any older consumer
+        construction_cost_new = reproduction_cost_new
+        depreciated_cost = depreciated_building_value
+
         # Total value
-        total_value = land_value + depreciated_cost
+        total_value = land_value + depreciated_building_value
         
         # Confidence based on data quality
         confidence = 0.55  # Base confidence
@@ -932,18 +887,36 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
                 "high": round(total_value * 1.10, 2),
             },
             details={
-                "land_value": round(land_value, 2),
-                "construction_cost_new": round(construction_cost_new, 2),
+                # Full cost-approach breakdown — the single source the UI renders
+                "hard_costs": round(hard_costs, 2),
+                "soft_costs": round(soft_costs, 2),
+                "soft_costs_pct": round(soft_costs_pct * 100, 2),
+                "siteworks": round(siteworks, 2),
+                "total_construction_cost": round(total_construction_cost, 2),
+                "entrepreneurial_profit": round(entrepreneurial_profit, 2),
+                "entrepreneurial_profit_pct": round(profit_pct * 100, 2),
+                "reproduction_cost_new": round(reproduction_cost_new, 2),
+                "construction_cost_new": round(reproduction_cost_new, 2),  # legacy alias
                 "depreciation_amount": round(depreciation_amount, 2),
-                "depreciated_building_value": round(depreciated_cost, 2),
+                "depreciated_building_value": round(depreciated_building_value, 2),
+                "land_value": round(land_value, 2),
+                "indicated_value": round(total_value, 2),
                 "cost_per_sqm": cost_per_sqm,
-                "land_value_per_sqm": land_value_per_sqm,
+                "building_size_sqm": building_sqm,
+                "land_area_sqm": land_sqm,
+                "land_value_per_sqm": round(land_value_per_sqm, 2),
                 "building_age_years": age,
-                "depreciation_pct": round(total_depreciation_pct * 100, 1),
-                "physical_depreciation_pct": round(physical_dep * 100, 1),
-                "functional_obsolescence_pct": round(functional_dep * 100, 1),
-                "external_obsolescence_pct": round(external_dep * 100, 1),
+                "depreciation_pct": round(total_depreciation_pct * 100, 2),
+                "physical_depreciation_pct": round(physical_dep * 100, 2),
+                "functional_obsolescence_pct": round(functional_dep * 100, 2),
+                "external_obsolescence_pct": round(external_dep * 100, 2),
                 "condition_factor": condition,
+                # Value composition for the UI bars
+                "value_composition": {
+                    "land_pct": round(land_value / total_value * 100, 1) if total_value > 0 else 0,
+                    "building_pct": round(depreciated_building_value / total_value * 100, 1) if total_value > 0 else 0,
+                    "depreciation_pct": round(-depreciation_amount / total_value * 100, 1) if total_value > 0 else 0,
+                },
                 "data_sources": {
                     "construction_cost": "data_hub",
                     "land_value": "comparable_sales",
@@ -966,6 +939,193 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# =====================================================================
+# MARKET RENT (rental comparison) — single source of truth for rent estimation
+# Adjustment factors are SUPPLIED by the caller (from valuation_adjustment_factors),
+# never hardcoded here. Rents arrive already in GHS (the Node route converts once).
+# =====================================================================
+
+class RentAdjustmentFactor(BaseModel):
+    base_adjustment_percent: float = 0.0
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    unit: Optional[str] = None
+
+
+class RentSubjectInput(BaseModel):
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    building_size_sqm: Optional[float] = None
+    year_built: Optional[int] = None
+    furnishing: Optional[str] = None
+
+    class Config:
+        extra = "allow"
+
+
+class RentComparableInput(BaseModel):
+    id: str
+    monthly_rent_ghs: float            # already GHS (caller converts via live FX)
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    gfa_sqm: Optional[float] = None
+    year_built: Optional[int] = None
+    furnishing: Optional[str] = None
+    transaction_date: Optional[str] = None
+    weight: Optional[float] = 1.0
+
+
+class MarketRentRequest(BaseModel):
+    subject: RentSubjectInput
+    comparables: List[RentComparableInput]
+    adjustment_factors: Dict[str, RentAdjustmentFactor] = Field(default_factory=dict)
+
+
+class RentComparableAnalysis(BaseModel):
+    id: str
+    original_rent_ghs: float
+    adjusted_rent_ghs: float
+    adjusted_rent_per_sqm: float
+    adjustments_applied: Dict[str, float]
+    total_adjustment_percent: float
+    weight: float
+    quality_score: float
+
+
+class MarketRentResponse(BaseModel):
+    success: bool
+    method: str = "market_rent"
+    indicated_monthly_rent: float
+    rent_per_sqm: float
+    confidence_score: float
+    confidence_level: str
+    value_range: Dict[str, float]
+    comparables_analyzed: List[RentComparableAnalysis]
+    methodology_notes: List[str]
+    calculation_time_ms: float
+
+
+_FURNISH_LEVEL = {"furnished": 3, "semi-furnished": 2, "semi_furnished": 2, "unfurnished": 1, "unfurnished/none": 1}
+
+
+@app.post("/api/v1/methods/market-rent", response_model=MarketRentResponse)
+async def calculate_market_rent(request: MarketRentRequest):
+    """RICS/GhIS market-rent comparison. Adjustment percentages come from the caller
+    (valuation_adjustment_factors) — nothing is hardcoded. Returns the weighted indicated
+    monthly rent, range, per-comparable adjustments and comparability quality."""
+    start_time = datetime.now()
+    subj = request.subject
+    comps = request.comparables
+    factors = request.adjustment_factors
+
+    try:
+        if not comps:
+            raise HTTPException(status_code=400, detail="At least one rental comparable required")
+
+        def furnish(v: Optional[str]) -> int:
+            return _FURNISH_LEVEL.get((v or "unfurnished").lower(), 1)
+
+        def pct(key: str) -> float:
+            f = factors.get(key)
+            return f.base_adjustment_percent if f else 0.0
+
+        def cap(val: float, key: str) -> float:
+            f = factors.get(key)
+            lo = f.min_value if (f and f.min_value is not None) else -100.0
+            hi = f.max_value if (f and f.max_value is not None) else 100.0
+            return max(lo, min(hi, val))
+
+        now_year = datetime.now().year
+        subj_beds = subj.bedrooms or 0
+        subj_baths = subj.bathrooms or 0
+        subj_gfa = subj.building_size_sqm or 0
+        subj_year = subj.year_built or now_year
+        subj_furnish = furnish(subj.furnishing)
+
+        analyzed: List[RentComparableAnalysis] = []
+        for c in comps:
+            adj: Dict[str, float] = {}
+            if subj_beds and c.bedrooms is not None:
+                adj["bedrooms"] = round(cap((subj_beds - c.bedrooms) * pct("bedrooms"), "bedrooms"), 2)
+            if subj_baths and c.bathrooms is not None:
+                adj["bathrooms"] = round(cap((subj_baths - c.bathrooms) * pct("bathrooms"), "bathrooms"), 2)
+            adj["furnishing"] = round(cap((subj_furnish - furnish(c.furnishing)) * pct("furnishing"), "furnishing"), 2)
+            months_since = 0.0
+            if c.year_built:
+                comp_age = now_year - c.year_built
+                subj_age = now_year - subj_year
+                adj["age"] = round(cap((comp_age - subj_age) * pct("age"), "age"), 2)
+            try:
+                if c.transaction_date:
+                    d = datetime.fromisoformat(str(c.transaction_date).replace("Z", "").split("T")[0])
+                    months_since = max(0.0, (datetime.now() - d).days / 30.0)
+            except Exception:
+                months_since = 0.0
+
+            total_adj = sum(adj.values())
+            adjusted_rent = c.monthly_rent_ghs * (1 + total_adj / 100.0)
+            rps = adjusted_rent / c.gfa_sqm if c.gfa_sqm else 0.0
+
+            # Comparability quality: size similarity / low adjustment / recency
+            size_sim = max(0.0, 1.0 - abs(subj_gfa - (c.gfa_sqm or subj_gfa)) / subj_gfa) if subj_gfa else 0.5
+            adj_penalty = max(0.0, 1.0 - abs(total_adj) / 30.0)
+            recency = max(0.0, 1.0 - months_since / 12.0)
+            quality = round((0.45 * size_sim + 0.35 * adj_penalty + 0.20 * recency) * 100, 0)
+
+            analyzed.append(RentComparableAnalysis(
+                id=c.id,
+                original_rent_ghs=round(c.monthly_rent_ghs, 2),
+                adjusted_rent_ghs=round(adjusted_rent, 2),
+                adjusted_rent_per_sqm=round(rps, 2),
+                adjustments_applied=adj,
+                total_adjustment_percent=round(total_adj, 2),
+                weight=c.weight or 1.0,
+                quality_score=quality,
+            ))
+
+        total_weight = sum(a.weight for a in analyzed)
+        indicated = (sum(a.adjusted_rent_ghs * a.weight for a in analyzed) / total_weight) if total_weight > 0 \
+            else (sum(a.adjusted_rent_ghs for a in analyzed) / len(analyzed))
+        adjusted_rents = [a.adjusted_rent_ghs for a in analyzed]
+        rent_per_sqm = (indicated / subj_gfa) if subj_gfa > 0 else (
+            sum(a.adjusted_rent_per_sqm for a in analyzed) / len(analyzed))
+
+        # Confidence: comparable count + value spread + average quality
+        n = len(analyzed)
+        mean_rent = sum(adjusted_rents) / n
+        spread = (max(adjusted_rents) - min(adjusted_rents)) / mean_rent if mean_rent > 0 else 1.0
+        avg_quality = sum(a.quality_score for a in analyzed) / n / 100.0
+        confidence = max(0.1, min(0.95,
+            min(1.0, n / 5.0) * 0.30 + max(0.0, 1.0 - spread) * 0.30 + avg_quality * 0.40))
+
+        calc_time = (datetime.now() - start_time).total_seconds() * 1000
+        return MarketRentResponse(
+            success=True,
+            indicated_monthly_rent=round(indicated, 2),
+            rent_per_sqm=round(rent_per_sqm, 2),
+            confidence_score=round(confidence, 2),
+            confidence_level=_get_confidence_level(confidence),
+            value_range={
+                "low": round(min(adjusted_rents), 2),
+                "high": round(max(adjusted_rents), 2),
+                "most_probable": round(indicated, 2),
+            },
+            comparables_analyzed=analyzed,
+            methodology_notes=[
+                "GhIS/RICS market-rent comparison (weighted average of adjusted comparable rents)",
+                f"Adjustment factors sourced from valuation_adjustment_factors: {', '.join(sorted(factors.keys())) or 'none supplied'}",
+                f"{n} comparable(s) analysed; rents normalised to GHS before adjustment",
+            ],
+            calculation_time_ms=calc_time,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Market rent failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/v1/methods/income-approach", response_model=ValuationMethodResponse)
 async def calculate_income_approach(request: ValuationMethodRequest):
     """
@@ -983,92 +1143,125 @@ async def calculate_income_approach(request: ValuationMethodRequest):
         building_sqm = prop.building_size_sqm or 150
         prop_type = _normalize_property_type(prop.property_type)
         
-        # Monthly rent — MUST come from options (Rental Market Analysis / rental comparables basket
-        # or user manual entry). Property.monthly_rent_ghs is NOT used as a fallback.
-        monthly_rent = opts.get("monthly_rent")
+        def fnum(v, default=0.0):
+            # Coerce any numeric-ish input (incl. strings from form fields) to float.
+            if v is None or v == "":
+                return default
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return default
+
+        def as_rate(v, default):
+            if v is None or v == "":
+                return default
+            v = fnum(v, default)
+            return v / 100 if v > 1 else v
+
+        # ---- Income (required: from Rental Market Analysis or user entry) ----
+        monthly_rent = fnum(opts.get("monthly_rent"))
         if not monthly_rent or monthly_rent <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail="monthly_rent is required. Provide from Rental Market Analysis (rental comparables basket) or user entry."
-            )
-        annual_rent = monthly_rent * 12
-        rent_source = "workflow_provided"
-        
-        # Get expense ratio from options or use default
-        expense_ratio = opts.get("operating_expenses")
-        if expense_ratio is not None and expense_ratio > 0:
-            # Convert from percentage to decimal if needed
-            expense_ratio = expense_ratio / 100 if expense_ratio > 1 else expense_ratio
-        else:
-            expense_ratio = 0.30
-        
-        # Get vacancy rate from options or use default
-        vacancy_rate = opts.get("vacancy_rate")
-        if vacancy_rate is not None and vacancy_rate > 0:
-            vacancy_rate = vacancy_rate / 100 if vacancy_rate > 1 else vacancy_rate
-        else:
-            vacancy_rate = 0.05
-        
-        # Calculate effective gross income after vacancy
-        effective_gross_income = annual_rent * (1 - vacancy_rate)
-        
-        # Calculate NOI
-        noi = effective_gross_income * (1 - expense_ratio)
-        
-        # Cap rate — MUST come from CapRateService (RICS A/B/C grade hierarchy)
-        # or from user manual entry. No hardcoded fallback.
-        cap_rate = opts.get("cap_rate")
-        if cap_rate is not None and cap_rate > 0:
-            # Convert from percentage to decimal if needed (e.g., 6.5 -> 0.065)
-            cap_rate = cap_rate / 100 if cap_rate > 1 else cap_rate
-            cap_rate_source = "workflow_provided"
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="cap_rate is required. Provide from CapRateService (RICS A/B/C hierarchy) or user entry."
-            )
-        
-        # Calculate value
-        value = noi / cap_rate if cap_rate > 0 else 0
-        
-        # High confidence since both rent and cap rate are from proper sources
+            raise HTTPException(status_code=400, detail="monthly_rent is required (from Rental Market Analysis or user entry).")
+        parking_income = fnum(opts.get("parking_income"))        # monthly
+        other_income = fnum(opts.get("other_income"))            # monthly
+        potential_gross_income = (monthly_rent + parking_income + other_income) * 12
+
+        # ---- Vacancy + collection loss -> EGI ----
+        vacancy_rate = as_rate(opts.get("vacancy_rate"), 0.05)
+        collection_loss = as_rate(opts.get("collection_loss"), 0.0)
+        effective_gross_income = potential_gross_income * (1 - vacancy_rate - collection_loss)
+
+        # ---- Operating expenses: % of EGI (management, reserves) + fixed annual amounts ----
+        mgmt_pct = as_rate(opts.get("management_fee_percent"), 0.0)
+        reserves_pct = as_rate(opts.get("reserves_percent"), 0.0)
+        fixed_opex = sum(float(opts.get(k, 0) or 0) for k in
+                         ("maintenance", "insurance", "property_tax", "utilities", "security", "other_expenses"))
+        operating_expenses = effective_gross_income * (mgmt_pct + reserves_pct) + fixed_opex
+        noi = effective_gross_income - operating_expenses
+
+        # ---- Cap rate (required) ----
+        cap_rate = fnum(opts.get("cap_rate"))
+        if not cap_rate or cap_rate <= 0:
+            raise HTTPException(status_code=400, detail="cap_rate is required (from CapRateService or user entry).")
+        cap_rate = cap_rate / 100 if cap_rate > 1 else cap_rate
+
+        # ---- Direct capitalization ----
+        direct_cap_value = noi / cap_rate if cap_rate > 0 else 0
+
+        # ---- DCF cross-check (inflation-coherent) ----
+        # In Ghana rents track inflation, so the projection growth is NOMINAL and inflation-anchored:
+        # nominal_growth = (1 + real_growth) * (1 + inflation) - 1. This keeps the DCF on the SAME
+        # (nominal) basis as the build-up discount rate, eliminating the real-cap-vs-nominal-discount
+        # incoherence that previously collapsed the DCF. Inflation comes from live economic data.
+        inflation = as_rate(opts.get("inflation_rate"), 0.0)
+        real_rent_growth = as_rate(opts.get("real_rent_growth"), 0.0)
+        nominal_growth = (1 + real_rent_growth) * (1 + inflation) - 1
+        # Discount rate: use the supplied (build-up) rate, else default to the cap-coherent rate.
+        discount_rate = as_rate(opts.get("discount_rate"), cap_rate + nominal_growth)
+        terminal_cap_rate = as_rate(opts.get("terminal_cap_rate"), cap_rate)
+        holding_period = int(fnum(opts.get("holding_period"), 10)) or 10
+
+        pv_cash_flows = 0.0
+        current_noi = noi
+        for year in range(1, holding_period + 1):
+            current_noi *= (1 + nominal_growth)
+            pv_cash_flows += current_noi / ((1 + discount_rate) ** year)
+        terminal_value = (current_noi * (1 + nominal_growth)) / terminal_cap_rate if terminal_cap_rate > 0 else 0
+        pv_terminal = terminal_value / ((1 + discount_rate) ** holding_period)
+        dcf_value = pv_cash_flows + pv_terminal
+        dcf_variance = (dcf_value - direct_cap_value) / direct_cap_value if direct_cap_value > 0 else 0
+
         confidence = 0.85
-        
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         return ValuationMethodResponse(
             success=True,
             method="income_approach",
-            estimated_value=round(value, 2),
+            estimated_value=round(direct_cap_value, 2),
             confidence_score=confidence,
             confidence_level=_get_confidence_level(confidence),
             value_range={
-                "low": round(value * 0.92, 2),
-                "high": round(value * 1.08, 2),
+                "low": round(direct_cap_value * 0.92, 2),
+                "high": round(direct_cap_value * 1.08, 2),
             },
             details={
-                "gross_annual_income": round(annual_rent, 2),
+                # Pro forma
+                "potential_gross_income": round(potential_gross_income, 2),
                 "monthly_rent": round(monthly_rent, 2),
-                "rent_source": rent_source,
+                "parking_income": round(parking_income, 2),
+                "other_income": round(other_income, 2),
                 "vacancy_rate": round(vacancy_rate * 100, 2),
+                "vacancy_loss": round(potential_gross_income * vacancy_rate, 2),
+                "collection_loss_pct": round(collection_loss * 100, 2),
+                "collection_loss": round(potential_gross_income * collection_loss, 2),
                 "effective_gross_income": round(effective_gross_income, 2),
-                "expense_ratio": round(expense_ratio * 100, 2),
+                "operating_expenses": round(operating_expenses, 2),
+                "expense_ratio": round(operating_expenses / effective_gross_income * 100, 2) if effective_gross_income > 0 else 0,
                 "net_operating_income": round(noi, 2),
-                "cap_rate_pct": round(cap_rate * 100, 2),
-                "cap_rate_source": cap_rate_source,
-                "gross_rent_multiplier": round(value / annual_rent, 2) if annual_rent > 0 else 0,
+                "cap_rate_pct": round(cap_rate * 100, 4),
+                "direct_cap_value": round(direct_cap_value, 2),
+                "gross_rent_multiplier": round(direct_cap_value / potential_gross_income, 2) if potential_gross_income > 0 else 0,
+                # DCF cross-check
+                "dcf_value": round(dcf_value, 2),
+                "dcf_variance_pct": round(dcf_variance * 100, 1),
+                "discount_rate_pct": round(discount_rate * 100, 2),
+                "nominal_rent_growth_pct": round(nominal_growth * 100, 2),
+                "real_rent_growth_pct": round(real_rent_growth * 100, 2),
+                "inflation_pct": round(inflation * 100, 2),
+                "terminal_cap_rate_pct": round(terminal_cap_rate * 100, 2),
+                "holding_period_years": holding_period,
+                "pv_cash_flows": round(pv_cash_flows, 2),
+                "pv_terminal": round(pv_terminal, 2),
             },
             assumptions=[
-                f"Monthly rent: GH₵{monthly_rent:,.2f} ({rent_source})",
-                f"Vacancy rate: {vacancy_rate * 100:.1f}%",
-                f"Expense ratio: {expense_ratio * 100:.1f}%",
-                f"Capitalization rate: {cap_rate * 100:.2f}% ({cap_rate_source})",
-                "Property is rentable and income-producing",
+                f"Monthly rent: GH₵{monthly_rent:,.2f}",
+                f"Vacancy {vacancy_rate*100:.1f}%, collection loss {collection_loss*100:.1f}%",
+                f"Capitalization rate: {cap_rate*100:.2f}%",
+                f"DCF: nominal rent growth {nominal_growth*100:.1f}% (inflation {inflation*100:.1f}% + real {real_rent_growth*100:.1f}%), discount {discount_rate*100:.1f}%, {holding_period}-yr hold",
             ],
             limitations=[
-                "Rental market data may be limited",
                 "Assumes stabilized occupancy",
-                "Does not account for specific tenant improvements",
+                "DCF is a reasonableness cross-check; coherence assumes rents track inflation",
             ],
             calculation_time_ms=calc_time
         )
@@ -1102,99 +1295,148 @@ async def calculate_residual_method(request: ValuationMethodRequest):
     start_time = datetime.now()
     prop = request.property
     opts = request.options or {}
-    
+
+    def _frac(v):
+        """Accept a ratio as a fraction (0.20) or a percentage (20) → fraction."""
+        v = float(v)
+        return v / 100 if v > 1 else v
+
+    def _req(key, label):
+        """Required numeric option — strict-fail (no fallback)."""
+        v = opts.get(key)
+        if v is None or float(v) <= 0:
+            raise HTTPException(status_code=400, detail=f"{label} is required for the residual method")
+        return float(v)
+
     try:
-        land_sqm = prop.land_area_sqm or 500
-        
-        # Development parameters from user options or sensible defaults
-        plot_coverage = opts.get("plot_coverage", 0.40)
-        floors = opts.get("floors", 2)
-        buildable_sqm = land_sqm * plot_coverage
-        total_buildable = buildable_sqm * floors
-        
-        # Construction cost per sqm — require from user
-        construction_cost_per_sqm = opts.get("construction_cost_per_sqm")
-        if not construction_cost_per_sqm or construction_cost_per_sqm <= 0:
-            raise HTTPException(
-                status_code=400,
-                detail="construction_cost_per_sqm is required in options (from Data Hub market rates)"
-            )
-        
-        # GDV from user or derive from sale_price_per_sqm
-        gdv = opts.get("gdv")
-        sale_price_per_sqm = opts.get("sale_price_per_sqm")
-        if gdv and gdv > 0:
-            pass  # Use provided GDV directly
-        elif sale_price_per_sqm and sale_price_per_sqm > 0:
-            gdv = total_buildable * sale_price_per_sqm
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Either gdv or sale_price_per_sqm is required in options"
-            )
-        
-        # Development costs
-        construction_cost = total_buildable * construction_cost_per_sqm
-        professional_fees_pct = opts.get("professional_fees_pct", 0.10)
-        marketing_costs_pct = opts.get("marketing_costs_pct", 0.03)
-        finance_costs_pct = opts.get("finance_costs_pct", 0.08)
-        developer_profit_pct = opts.get("developer_profit_pct", 0.20)
-        
-        professional_fees = construction_cost * professional_fees_pct
-        marketing_costs = gdv * marketing_costs_pct
-        finance_costs = construction_cost * finance_costs_pct
-        developer_profit = gdv * developer_profit_pct
-        
-        total_costs = construction_cost + professional_fees + marketing_costs + finance_costs + developer_profit
-        
-        # Residual land value
-        land_value = gdv - total_costs
-        land_value = max(0, land_value)
-        
-        confidence = 0.60
+        # ── Scheme geometry ──────────────────────────────────────────────────
+        plot_size = prop.land_area_sqm
+        if not plot_size or plot_size <= 0:
+            raise HTTPException(status_code=400, detail="land_area_sqm (plot size) is required for the residual method")
+        plot_coverage = _frac(_req("plot_coverage", "plot_coverage"))
+        floors = _req("floors", "floors")
+        efficiency = _frac(_req("efficiency", "efficiency"))
+        gross_building_area = plot_size * plot_coverage * floors
+        net_saleable_area = gross_building_area * efficiency
+
+        # ── Gross Development Value (always on NET saleable area) ─────────────
+        sale_price_per_sqm = _req("sale_price_per_sqm", "sale_price_per_sqm")
+        gdv = net_saleable_area * sale_price_per_sqm
+
+        # ── Construction + soft costs ────────────────────────────────────────
+        cost_basis = opts.get("cost_basis", "gross")
+        construction_cost_per_sqm = _req("construction_cost_per_sqm", "construction_cost_per_sqm")
+        # A NET-quoted rate is grossed up to a gross-area basis for calculation.
+        effective_cost_per_sqm = (construction_cost_per_sqm / efficiency) if cost_basis == "net" else construction_cost_per_sqm
+        construction_cost = gross_building_area * effective_cost_per_sqm
+        professional_fees = construction_cost * _frac(_req("professional_fees_pct", "professional_fees_pct"))
+        contingency = construction_cost * _frac(_req("contingency_pct", "contingency_pct"))
+        total_construction_cost = construction_cost + professional_fees + contingency
+
+        # ── Sales & marketing costs (on GDV) ─────────────────────────────────
+        marketing = gdv * _frac(_req("marketing_pct", "marketing_pct"))
+        sales_commission = gdv * _frac(_req("sales_commission_pct", "sales_commission_pct"))
+        legal_fees = gdv * _frac(_req("legal_fees_pct", "legal_fees_pct"))
+        total_sales_cost = marketing + sales_commission + legal_fees
+
+        # ── Finance — S-curve drawdown model (interest during construction) ──
+        interest_rate = _frac(_req("finance_rate", "finance_rate"))
+        ltv = _frac(_req("finance_ltv_pct", "finance_ltv_pct"))
+        avg_balance_factor = _req("finance_avg_balance_factor", "finance_avg_balance_factor")
+        construction_months = _req("construction_months", "construction_months")
+        loan_amount = total_construction_cost * ltv
+        monthly_rate = interest_rate / 12
+        finance_cost = loan_amount * avg_balance_factor * monthly_rate * construction_months
+
+        # ── Total development costs + developer's profit (ON COST) ───────────
+        total_development_costs = total_construction_cost + total_sales_cost + finance_cost
+        developer_profit_pct = _frac(_req("developer_profit_pct", "developer_profit_pct"))
+        developer_profit = total_development_costs * developer_profit_pct
+
+        # ── Residual land value (RICS: floored at nil; raw shown for viability) ──
+        raw_residual = gdv - total_development_costs - developer_profit
+        residual_land_value = max(0.0, raw_residual)
+        land_value_per_sqm = residual_land_value / plot_size if plot_size > 0 else 0
+
+        # ── Viability analytics ──────────────────────────────────────────────
+        break_even_profit = gdv - total_development_costs
+        break_even_profit_pct = (break_even_profit / total_development_costs) if total_development_costs > 0 else 0
+        min_profit_pct = _frac(opts.get("min_profit_pct") or 0.15)
+        min_profit_amount = total_development_costs * min_profit_pct
+        min_viable_land_value = max(0.0, gdv - total_development_costs - min_profit_amount)
+        is_viable = raw_residual > 0
+
+        confidence = 0.62 if is_viable else 0.50
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         return ValuationMethodResponse(
             success=True,
             method="residual_method",
-            estimated_value=round(land_value, 2),
+            estimated_value=round(residual_land_value, 2),
             confidence_score=confidence,
             confidence_level=_get_confidence_level(confidence),
             value_range={
-                "low": round(land_value * 0.85, 2),
-                "high": round(land_value * 1.15, 2),
+                "low": round(residual_land_value * 0.85, 2),
+                "high": round(residual_land_value * 1.15, 2),
             },
             details={
+                # Scheme
+                "plot_size_sqm": round(plot_size, 2),
+                "plot_coverage": round(plot_coverage, 4),
+                "floors": floors,
+                "efficiency": round(efficiency, 4),
+                "gross_building_area": round(gross_building_area, 2),
+                "net_saleable_area": round(net_saleable_area, 2),
+                # GDV
                 "gross_development_value": round(gdv, 2),
-                "total_buildable_sqm": round(total_buildable, 2),
+                "sale_price_per_sqm": sale_price_per_sqm,
+                # Construction
                 "construction_cost": round(construction_cost, 2),
                 "construction_cost_per_sqm": construction_cost_per_sqm,
+                "cost_basis": cost_basis,
                 "professional_fees": round(professional_fees, 2),
-                "marketing_costs": round(marketing_costs, 2),
-                "finance_costs": round(finance_costs, 2),
+                "contingency": round(contingency, 2),
+                "total_construction_cost": round(total_construction_cost, 2),
+                # Sales
+                "marketing": round(marketing, 2),
+                "sales_commission": round(sales_commission, 2),
+                "legal_fees": round(legal_fees, 2),
+                "total_sales_cost": round(total_sales_cost, 2),
+                # Finance
+                "finance_cost": round(finance_cost, 2),
+                "finance_rate": round(interest_rate, 4),
+                "finance_ltv": round(ltv, 4),
+                "construction_months": construction_months,
+                # Totals
+                "total_development_costs": round(total_development_costs, 2),
+                "developer_profit_pct": round(developer_profit_pct, 4),
                 "developer_profit": round(developer_profit, 2),
-                "land_value_per_sqm": round(land_value / land_sqm, 2) if land_sqm > 0 else 0,
-                "data_sources": {
-                    "construction_cost": "data_hub",
-                    "gdv": "user_provided" if opts.get("gdv") else "derived_from_sale_price",
-                },
+                # Residual + viability
+                "raw_residual_land_value": round(raw_residual, 2),
+                "residual_land_value": round(residual_land_value, 2),
+                "land_value_per_sqm": round(land_value_per_sqm, 2),
+                "is_viable": is_viable,
+                "break_even_profit": round(break_even_profit, 2),
+                "break_even_profit_pct": round(break_even_profit_pct, 4),
+                "min_viable_land_value": round(min_viable_land_value, 2),
             },
             assumptions=[
-                f"Plot coverage: {plot_coverage*100:.0f}%, Floors: {floors}",
-                f"Construction cost: ₵{construction_cost_per_sqm:,.0f}/sqm from Data Hub",
-                f"Developer profit margin: {developer_profit_pct*100:.0f}%",
-                f"Finance costs: {finance_costs_pct*100:.0f}% of construction",
-                f"Professional fees: {professional_fees_pct*100:.0f}% of construction",
+                f"Gross building area {gross_building_area:,.0f} sqm at {plot_coverage*100:.0f}% coverage over {floors:.0f} floor(s)",
+                f"Net saleable area {net_saleable_area:,.0f} sqm at {efficiency*100:.0f}% efficiency",
+                f"GDV from sale price ₵{sale_price_per_sqm:,.0f}/sqm (market comparables)",
+                f"Construction ₵{construction_cost_per_sqm:,.0f}/sqm (Data Hub base costs)",
+                f"Finance at {interest_rate*100:.1f}% over {construction_months:.0f} months (S-curve drawdown)",
+                f"Developer's profit {developer_profit_pct*100:.0f}% on cost",
             ],
             limitations=[
-                "Highly sensitive to GDV assumptions",
-                "Development costs may vary significantly",
-                "Market conditions may change during development",
+                "Highly sensitive to GDV and cost assumptions",
+                "Land value floored at nil where the scheme is not viable (RICS)",
+                "Market conditions may change during the development period",
                 "Planning approvals assumed",
             ],
             calculation_time_ms=calc_time
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1230,109 +1472,139 @@ async def calculate_profits_method(request: ValuationMethodRequest):
 
     try:
         region = _normalize_region(prop.region)
-        building_sqm = prop.building_size_sqm or 500
         opts: dict = request.options or {}
 
-        # ── 1. Gross annual revenue ──────────────────────────────────────────
-        if opts.get("gross_annual_revenue"):
-            gross_revenue = float(opts["gross_annual_revenue"])
-            revenue_per_sqm_annual = gross_revenue / building_sqm if building_sqm else None
-            revenue_source = "workflow_provided"
+        def _frac(v):
+            """Accept a ratio as a fraction (0.25) or a percentage (25) and return a fraction."""
+            v = float(v)
+            return v / 100 if v > 1 else v
+
+        # ── 1. Gross revenue — prefer actual Fair Maintainable Turnover, else unit benchmark ──
+        #     No hardcoded revenue fallback: one of the two paths must be supplied.
+        gross_annual_revenue = opts.get("gross_annual_revenue")
+        unit_count = opts.get("unit_count")
+        revenue_per_unit = opts.get("revenue_per_unit")
+        if gross_annual_revenue and float(gross_annual_revenue) > 0:
+            potential_gross_revenue = float(gross_annual_revenue)
+            occupancy = 1.0
+            effective_gross_revenue = potential_gross_revenue
+            revenue_source = "actual_turnover"
         else:
-            revenue_per_sqm_annual = float(opts.get("revenue_per_sqm_annual") or 2000)
-            gross_revenue = building_sqm * revenue_per_sqm_annual
-            revenue_source = "benchmark_estimate"
+            occupancy_rate = opts.get("occupancy_rate")
+            rev_missing = []
+            if not unit_count or float(unit_count) <= 0:
+                rev_missing.append("unit_count")
+            if not revenue_per_unit or float(revenue_per_unit) <= 0:
+                rev_missing.append("revenue_per_unit")
+            if occupancy_rate is None:
+                rev_missing.append("occupancy_rate")
+            if rev_missing:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Provide gross_annual_revenue (actual turnover) OR all of: {', '.join(rev_missing)}",
+                )
+            unit_count = float(unit_count)
+            revenue_per_unit = float(revenue_per_unit)
+            occupancy = _frac(occupancy_rate)
+            potential_gross_revenue = unit_count * revenue_per_unit
+            effective_gross_revenue = potential_gross_revenue * occupancy
+            revenue_source = "unit_benchmark"
 
-        # ── 2. Operating costs ───────────────────────────────────────────────
-        # Per-category dict takes precedence; then aggregate ratio; then default.
-        operating_cost_ratios: dict = opts.get("operating_cost_ratios") or {}
-        if operating_cost_ratios:
-            # Normalise any values accidentally supplied as percentages
-            normalised = {k: (v / 100 if v > 1 else v) for k, v in operating_cost_ratios.items()}
-            if "total" not in normalised:
-                normalised["total"] = sum(v for k, v in normalised.items() if k != "total")
-            operating_ratio = normalised["total"]
-            ratios_source = "workflow_override"
-        elif opts.get("operating_ratio") is not None:
-            raw = float(opts["operating_ratio"])
-            operating_ratio = raw / 100 if raw > 1 else raw
-            normalised = {}
-            ratios_source = "workflow_override"
-        else:
-            operating_ratio = 0.60
-            normalised = {}
-            ratios_source = "benchmark_defaults"
+        # ── 2. Operating costs — per-category ratios required (from Data Hub config) ──
+        ratios_in = opts.get("operating_cost_ratios")
+        if not ratios_in or not isinstance(ratios_in, dict) or len(ratios_in) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="operating_cost_ratios is required (from trading benchmarks config)",
+            )
+        ratios = {k: _frac(v) for k, v in ratios_in.items() if k != "total"}
+        operating_ratio = sum(ratios.values())
+        operating_costs = effective_gross_revenue * operating_ratio
+        net_profit = effective_gross_revenue - operating_costs
 
-        operating_costs = gross_revenue * operating_ratio
-        net_profit = gross_revenue - operating_costs
+        # ── 3. Operator's remuneration (divisible balance) — required, no default ──
+        #     The reward to the Reasonably Efficient Operator; the remainder is the profit
+        #     attributable to the PROPERTY (Fair Maintainable Operating Profit).
+        op_rem = opts.get("operator_remuneration_pct")
+        if op_rem is None:
+            raise HTTPException(
+                status_code=400,
+                detail="operator_remuneration_pct is required (from trading benchmarks config)",
+            )
+        operator_remuneration_pct = _frac(op_rem)
+        operator_remuneration = net_profit * operator_remuneration_pct
 
-        # ── 3. Owner remuneration ────────────────────────────────────────────
-        raw_rem = opts.get("owner_remuneration_pct")
-        if raw_rem is not None:
-            owner_rem_pct = float(raw_rem)
-            owner_rem_pct = owner_rem_pct / 100 if owner_rem_pct > 1 else owner_rem_pct
-        else:
-            owner_rem_pct = 0.15
+        # ── 3b. Return on the operator's capital (FF&E + trade stock) ──────────
+        # Institutional divisible balance: the operator also earns a return on the capital tied up in
+        # fixtures, fittings, equipment and stock; this is deducted before the residual profit is
+        # attributable to the PROPERTY. operator_capital_pct expresses that capital as a fraction of
+        # turnover; return_on_operator_capital_pct is the required return on it.
+        op_capital_pct = opts.get("operator_capital_pct")
+        roc_pct = opts.get("return_on_operator_capital_pct")
+        operator_capital = effective_gross_revenue * _frac(op_capital_pct) if op_capital_pct is not None else 0.0
+        return_on_capital_pct = _frac(roc_pct) if roc_pct is not None else 0.0
+        return_on_operator_capital = operator_capital * return_on_capital_pct
 
-        owner_remuneration = net_profit * owner_rem_pct
-        maintainable_profit = net_profit - owner_remuneration
+        maintainable_profit = net_profit - operator_remuneration - return_on_operator_capital
 
-        # ── 4. Years' Purchase / cap rate ────────────────────────────────────
-        if opts.get("cap_rate") is not None:
-            cap_rate = float(opts["cap_rate"])
-            cap_rate = cap_rate / 100 if cap_rate > 1 else cap_rate
-            yp = 1 / cap_rate if cap_rate > 0 else 8
-            yp_source = "cap_rate_provided"
-        elif opts.get("years_purchase") is not None or opts.get("yp") is not None:
-            yp = float(opts.get("years_purchase") or opts.get("yp"))
-            cap_rate = 1 / yp if yp > 0 else None
-            yp_source = "years_purchase_provided"
-        else:
-            yp = 8
-            cap_rate = None
-            yp_source = "benchmark_defaults"
-
+        # ── 4. Capitalisation — trading cap rate required (no YP fallback) ──
+        cap_rate_in = opts.get("cap_rate")
+        if cap_rate_in is None or float(cap_rate_in) <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="cap_rate is required (trading yield from config or valuer)",
+            )
+        cap_rate = _frac(cap_rate_in)
+        yp = 1 / cap_rate
         value = maintainable_profit * yp
+        cap_low = opts.get("cap_rate_low")
+        cap_high = opts.get("cap_rate_high")
 
-        # ── 5. Confidence ────────────────────────────────────────────────────
+        # ── 5. Confidence — driven by evidence quality, not a magic constant ──
         confidence = 0.55
-        if revenue_source == "workflow_provided":
-            confidence += 0.15
-        if ratios_source == "workflow_override":
-            confidence += 0.10
-        if yp_source in ("cap_rate_provided", "years_purchase_provided"):
-            confidence += 0.10
+        confidence += 0.20 if revenue_source == "actual_turnover" else 0.05
+        if opts.get("ratios_source") == "user":
+            confidence += 0.05
+        if opts.get("cap_rate_source") == "user":
+            confidence += 0.05
         confidence = min(confidence, 0.90)
 
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
 
         details = {
-            "gross_revenue": round(gross_revenue, 2),
+            "potential_gross_revenue": round(potential_gross_revenue, 2),
+            "occupancy_rate": round(occupancy * 100, 2),
+            "effective_gross_revenue": round(effective_gross_revenue, 2),
             "revenue_source": revenue_source,
-            "operating_ratio": operating_ratio,
-            "ratios_source": ratios_source,
+            "operating_cost_ratios": {k: round(v, 4) for k, v in ratios.items()},
+            "operating_ratio": round(operating_ratio, 4),
             "operating_costs": round(operating_costs, 2),
             "net_profit": round(net_profit, 2),
-            "owner_remuneration_pct": owner_rem_pct,
-            "owner_remuneration": round(owner_remuneration, 2),
+            "operator_remuneration_pct": round(operator_remuneration_pct, 4),
+            "operator_remuneration": round(operator_remuneration, 2),
+            "operator_capital_pct": round(_frac(op_capital_pct), 4) if op_capital_pct is not None else 0.0,
+            "operator_capital": round(operator_capital, 2),
+            "return_on_operator_capital_pct": round(return_on_capital_pct, 4),
+            "return_on_operator_capital": round(return_on_operator_capital, 2),
             "maintainable_profit": round(maintainable_profit, 2),
+            "cap_rate": round(cap_rate, 6),
             "years_purchase": round(yp, 4),
-            "yp_source": yp_source,
         }
-        if revenue_per_sqm_annual is not None:
-            details["revenue_per_sqm_annual"] = round(revenue_per_sqm_annual, 2)
-        if cap_rate is not None:
-            details["cap_rate"] = round(cap_rate, 6)
-        if normalised:
-            details["operating_cost_ratios"] = {k: round(v, 4) for k, v in normalised.items()}
+        if cap_low is not None and cap_high is not None:
+            details["cap_rate_range"] = {"low": round(_frac(cap_low), 6), "high": round(_frac(cap_high), 6)}
+        if unit_count:
+            details["unit_count"] = unit_count
+        if revenue_per_unit:
+            details["revenue_per_unit"] = round(revenue_per_unit, 2)
 
         assumptions = [
-            "Trading property with business attached",
-            f"Revenue source: {revenue_source.replace('_', ' ')}",
-            f"Operating costs: {operating_ratio * 100:.1f}% of gross revenue ({ratios_source.replace('_', ' ')})",
-            f"Owner remuneration: {owner_rem_pct * 100:.1f}% of net profit",
-            f"Years' Purchase: {yp:.2f} ({yp_source.replace('_', ' ')})",
-            "Reasonably efficient operator assumed",
+            "Trade-related property valued by the profits method",
+            f"Revenue basis: {revenue_source.replace('_', ' ')}",
+            f"Operating costs: {operating_ratio * 100:.1f}% of effective gross revenue",
+            f"Operator's remuneration: {operator_remuneration_pct * 100:.1f}% of net profit",
+            f"Return on operator's capital (FF&E + stock): {return_on_capital_pct * 100:.1f}% of {(_frac(op_capital_pct) * 100 if op_capital_pct is not None else 0):.0f}% of turnover",
+            f"Capitalised at {cap_rate * 100:.2f}% (YP {yp:.2f})",
+            "Reasonably Efficient Operator assumed; profit attributable to the property is the divisible balance",
         ]
 
         return ValuationMethodResponse(
@@ -1356,9 +1628,83 @@ async def calculate_profits_method(request: ValuationMethodRequest):
             calculation_time_ms=calc_time
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Profits method failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _drc_feature_mea(baseline: float, feature_range: float, features: dict) -> dict:
+    """
+    Feature-driven Modern Equivalent Asset (MEA) factor for DRC — RICS "Model A" single-obsolescence
+    path. The class baseline (from the Data Hub) is the anchor for an *average* asset of the class;
+    the building's OWN features modulate it within +/- feature_range to reflect its functional/design
+    adequacy relative to a modern equivalent (design era, specification appropriateness, services,
+    configuration). Because functional/design adequacy is captured HERE, functional obsolescence is
+    NOT deducted again downstream (no double counting).
+
+    Each dimension is a 1-5 adequacy score (3 = neutral / at baseline, 5 = matches a modern
+    equivalent, 1 = highly divergent). MISSING data scores a neutral 3 and is noted — never a silent
+    skew. Final MEA = clamp(baseline * (1 + ((wavg-3)/2) * feature_range), 0.5, 1.0).
+    """
+    dims = []
+
+    # 1. Design era — older designs diverge further from a modern equivalent.
+    age = features.get("age_years")
+    if age is None:
+        dims.append(("design_era", 3.0, 0.35, "design era: unknown (neutral)"))
+    else:
+        era = (5.0 if age <= 5 else 4.5 if age <= 15 else 3.5 if age <= 30
+               else 2.5 if age <= 50 else 1.5)
+        dims.append(("design_era", era, 0.35, f"design era: ~{int(age)}y old"))
+
+    # 2. Specification appropriateness — deviation from the function-appropriate ('standard')
+    #    specification reduces the match (super-adequacy/over-build is optimised out of the MEA).
+    q = str(features.get("quality_rating") or "").strip().lower()
+    spec_map = {"standard": 5.0, "basic": 4.0, "high": 3.5, "premium": 3.5,
+                "luxury": 2.5, "substandard": 2.5}
+    if q in spec_map:
+        dims.append(("specification", spec_map[q], 0.30, f"specification: {q}"))
+    else:
+        dims.append(("specification", 3.0, 0.30, "specification: unknown (neutral)"))
+
+    # 3. Services adequacy — fraction of the modern-equivalent service set present.
+    svc = features.get("services") or {}
+    expected = ["generator", "security", "water", "drainage"]
+    if isinstance(svc, dict) and (svc.get("elevator") is not None or features.get("floors", 0) and features.get("floors", 0) > 2):
+        expected.append("elevator")
+    present = sum(1 for k in expected if bool(svc.get(k)))
+    if isinstance(svc, dict) and len(svc) > 0:
+        frac = present / max(1, len(expected))
+        dims.append(("services", 1.0 + frac * 4.0, 0.20, f"services: {present}/{len(expected)} modern services present"))
+    else:
+        dims.append(("services", 3.0, 0.20, "services: not assessed (neutral)"))
+
+    # 4. Configuration / storey efficiency — taller specialised buildings diverge mildly.
+    floors = features.get("floors")
+    if not floors or floors <= 0:
+        dims.append(("configuration", 3.0, 0.15, "configuration: unknown (neutral)"))
+    else:
+        cfg = (5.0 if floors <= 2 else 4.0 if floors <= 4 else 3.5 if floors <= 6 else 3.0)
+        dims.append(("configuration", cfg, 0.15, f"configuration: {int(floors)} floor(s)"))
+
+    wsum = sum(w for _, _, w, _ in dims) or 1.0
+    adequacy = sum(s * w for _, s, w, _ in dims) / wsum          # 1..5
+    normalized = (adequacy - 3.0) / 2.0                          # -1..+1
+    mea = baseline * (1.0 + normalized * (feature_range or 0.0))
+    mea = max(0.5, min(1.0, mea))
+    return {
+        "source": "feature_model",
+        "mea_factor": round(mea, 4),
+        "baseline": round(baseline, 4),
+        "feature_range": round(feature_range or 0.0, 3),
+        "adequacy_score": round(adequacy, 2),
+        "dimensions": [
+            {"key": k, "score": round(s, 2), "weight": w, "note": n}
+            for k, s, w, n in dims
+        ],
+    }
 
 
 @app.post("/api/v1/methods/drc", response_model=ValuationMethodResponse)
@@ -1398,27 +1744,52 @@ async def calculate_drc_method(request: ValuationMethodRequest):
     
     try:
         region = _normalize_region(prop.region)
-        building_sqm = prop.building_size_sqm or 500
-        land_sqm = prop.land_area_sqm or 1000
-        year_built = prop.year_built or datetime.now().year - 20
-        
-        # Get replacement cost from user options — required
+
+        # All value-affecting inputs are REQUIRED — no hardcoded fallbacks. The Node DRC route
+        # (/valuations/:id/drc/value) resolves them from the Data Hub config / property / valuer
+        # overrides and strict-fails before calling here; we re-validate as defence in depth.
+        building_sqm = prop.building_size_sqm
+        if not building_sqm or building_sqm <= 0:
+            raise HTTPException(status_code=400, detail="building_size_sqm (GFA) is required for DRC")
+
+        year_built = prop.year_built
+        if not year_built or year_built <= 0:
+            raise HTTPException(status_code=400, detail="year_built is required for DRC depreciation")
+
+        land_sqm = prop.land_area_sqm  # informational only; may be None
+
         replacement_cost_per_sqm = opts.get("replacement_cost_per_sqm")
         if not replacement_cost_per_sqm or replacement_cost_per_sqm <= 0:
             raise HTTPException(
                 status_code=400,
-                detail="replacement_cost_per_sqm is required in options (from Data Hub market rates)"
+                detail="replacement_cost_per_sqm is required in options (from Data Hub specialized cost rates)"
             )
-        
+
         # Gross Replacement Cost (GRC)
         grc = building_sqm * replacement_cost_per_sqm
-        
-        # MEA Factor (Modern Equivalent Asset)
-        mea_factor = opts.get("mea_factor", 0.95)
+
+        # MEA Factor (Modern Equivalent Asset). The Data Hub supplies the per-class BASELINE (anchor);
+        # the building's own features modulate it (feature-driven, RICS Model A — see _drc_feature_mea).
+        # A valuer may instead post an explicit final MEA override. No default — baseline is required.
+        mea_baseline = opts.get("mea_factor")
+        if not mea_baseline or mea_baseline <= 0:
+            raise HTTPException(status_code=400, detail="mea_factor (baseline) is required in options (from Data Hub config)")
+        mea_override = opts.get("mea_factor_override")
+        if mea_override and float(mea_override) > 0:
+            mea_factor = float(mea_override)
+            mea_breakdown = {"source": "valuer_override", "mea_factor": round(mea_factor, 4),
+                             "baseline": round(float(mea_baseline), 4)}
+        else:
+            mea_breakdown = _drc_feature_mea(float(mea_baseline),
+                                             float(opts.get("mea_feature_range") or 0.0),
+                                             opts.get("features") or {})
+            mea_factor = mea_breakdown["mea_factor"]
         mea_adjusted_grc = grc * mea_factor
-        
-        # Useful life (from options or default by asset type)
-        useful_life = opts.get("useful_life", 60)
+
+        # Economic (useful) life — required from Data Hub config, no default.
+        useful_life = opts.get("useful_life")
+        if not useful_life or useful_life <= 0:
+            raise HTTPException(status_code=400, detail="useful_life is required in options (from Data Hub config)")
         
         # ========================================
         # DEPRECIATION CALCULATION (Using Services)
@@ -1434,7 +1805,9 @@ async def calculate_drc_method(request: ValuationMethodRequest):
             "poor": PropertyCondition.POOR,
             "very_poor": PropertyCondition.RENOVATION_NEEDED,  # Map to RENOVATION_NEEDED
         }
-        condition_str = (prop.condition or "good").lower()
+        condition_str = (prop.condition or "").strip().lower()
+        if not condition_str:
+            raise HTTPException(status_code=400, detail="condition is required for DRC depreciation assessment")
         condition_enum = condition_map.get(condition_str, PropertyCondition.GOOD)
         
         # Map region to GhanaRegion enum (use available values)
@@ -1486,7 +1859,7 @@ async def calculate_drc_method(request: ValuationMethodRequest):
             ),
             specifications=PropertySpecifications(
                 built_area_sqm=building_sqm if building_sqm > 0 else None,
-                land_size_sqm=land_sqm if land_sqm > 0 else None,
+                land_size_sqm=land_sqm if (land_sqm and land_sqm > 0) else None,
                 year_built=year_built if year_built else None,
                 bedrooms=getattr(prop, 'bedrooms', None),
                 bathrooms=getattr(prop, 'bathrooms', None),
@@ -1533,19 +1906,13 @@ async def calculate_drc_method(request: ValuationMethodRequest):
         
         physical_depreciation = mea_adjusted_grc * physical_rate
         
-        # 2. FUNCTIONAL OBSOLESCENCE
-        functional_calculator = FunctionalObsolescenceCalculator()
-        functional_result = functional_calculator.calculate(property_data=property_schema)
-        
-        if functional_override is not None and functional_override >= 0:
-            functional_rate = float(functional_override)
-            functional_source = "user_override"
-        else:
-            functional_rate = functional_result.depreciation_rate
-            functional_source = "calculated"
-        
-        functional_obsolescence = mea_adjusted_grc * functional_rate
-        
+        # 2. FUNCTIONAL OBSOLESCENCE — under the DRC single-obsolescence path (Model A), functional /
+        #    design adequacy is captured ENTIRELY by the feature-driven MEA factor above, so it is NOT
+        #    deducted again here (RICS: avoid double counting). Reported as 0, source 'captured_in_mea'.
+        functional_rate = 0.0
+        functional_source = "captured_in_mea"
+        functional_obsolescence = 0.0
+
         # 3. EXTERNAL OBSOLESCENCE
         external_calculator = ExternalObsolescenceCalculator()
         external_result = external_calculator.calculate(
@@ -1553,30 +1920,18 @@ async def calculate_drc_method(request: ValuationMethodRequest):
             location_data={},
             market_data={},
         )
-        
+
         if external_override is not None and external_override >= 0:
             external_rate = float(external_override)
             external_source = "user_override"
         else:
             external_rate = external_result.depreciation_rate
             external_source = "calculated"
-        
+
         external_obsolescence = mea_adjusted_grc * external_rate
-        
-        # 4. TOTAL DEPRECIATION with age-based cap
-        reconciliation_service = DepreciationReconciliationService()
+
+        # 4. TOTAL DEPRECIATION = physical + external (functional folded into MEA), age-capped.
         property_age = datetime.now().year - year_built
-        
-        total_result = reconciliation_service.reconcile(
-            physical=physical_result,
-            functional=functional_result,
-            external=external_result,
-            property_age=property_age,
-            rcn=mea_adjusted_grc,
-        )
-        
-        # If any overrides were used, recalculate total
-        # Calculate age-based max rate first
         max_rates = {
             (0, 5): 0.15, (5, 15): 0.35, (15, 30): 0.55,
             (30, 50): 0.75, (50, 999): 0.90
@@ -1586,15 +1941,11 @@ async def calculate_drc_method(request: ValuationMethodRequest):
             if min_age <= property_age < max_age:
                 max_rate = cap
                 break
-        
-        if physical_override is not None or functional_override is not None or external_override is not None:
-            raw_total_rate = physical_rate + functional_rate + external_rate
-            total_depreciation_rate = min(raw_total_rate, max_rate)
-            was_capped = total_depreciation_rate < raw_total_rate
-        else:
-            total_depreciation_rate = total_result.total_rate
-            was_capped = total_result.was_capped
-        
+
+        raw_total_rate = physical_rate + external_rate
+        total_depreciation_rate = min(raw_total_rate, max_rate)
+        was_capped = total_depreciation_rate < raw_total_rate
+
         total_depreciation = mea_adjusted_grc * total_depreciation_rate
         
         # Depreciated Replacement Cost
@@ -1636,7 +1987,8 @@ async def calculate_drc_method(request: ValuationMethodRequest):
                 # Building Cost Details
                 "gross_replacement_cost": round(grc, 2),
                 "replacement_cost_per_sqm": replacement_cost_per_sqm,
-                "mea_factor": mea_factor,
+                "mea_factor": round(mea_factor, 4),
+                "mea_breakdown": mea_breakdown,
                 "mea_adjusted_grc": round(mea_adjusted_grc, 2),
                 "building_size_sqm": building_sqm,
                 
@@ -1655,9 +2007,7 @@ async def calculate_drc_method(request: ValuationMethodRequest):
                         "rate": round(functional_rate * 100, 2),
                         "amount": round(functional_obsolescence, 2),
                         "source": functional_source,
-                        "items_detected": len(functional_result.items_detected),
-                        "curable_rate": round(functional_result.curable_rate * 100, 2),
-                        "incurable_rate": round(functional_result.incurable_rate * 100, 2),
+                        "note": "Functional/design adequacy is captured in the MEA factor (Model A) — not deducted again.",
                     },
                     "external": {
                         "rate": round(external_rate * 100, 2),

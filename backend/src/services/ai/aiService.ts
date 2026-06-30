@@ -41,6 +41,14 @@ export interface GenerateTextOptions {
    * ```json fences). Use generateJson() for parsing.
    */
   json?: boolean;
+  /**
+   * Enable Google Search grounding (Gemini only). The model retrieves real,
+   * citable web facts before answering — used to enrich location/area narratives
+   * with verifiable local context. NOTE: grounding is incompatible with Gemini's
+   * strict-JSON mode, so when set we skip response_mime_type; ask for JSON in the
+   * prompt and rely on generateJson()'s tolerant parse. Ignored by DeepSeek.
+   */
+  searchGrounding?: boolean;
   /** Per-attempt network timeout (ms). Default 30_000. */
   timeoutMs?: number;
   /** Number of RETRIES per provider on transient errors (total attempts = retries + 1). Default 1. */
@@ -210,11 +218,21 @@ class AIService {
    */
   async generateJson<T = unknown>(options: GenerateTextOptions): Promise<{ data: T; meta: AIResult }> {
     const meta = await this.generateText({ ...options, json: true });
+    const cleaned = stripCodeFences(meta.text);
     try {
-      return { data: JSON.parse(stripCodeFences(meta.text)) as T, meta };
-    } catch (err) {
+      return { data: JSON.parse(cleaned) as T, meta };
+    } catch {
+      // Grounded responses (searchGrounding) aren't in strict-JSON mode and may wrap
+      // the object in prose/citations — extract the outermost { … } and retry.
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start !== -1 && end > start) {
+        try {
+          return { data: JSON.parse(cleaned.slice(start, end + 1)) as T, meta };
+        } catch { /* fall through to error */ }
+      }
       throw new AIServiceError(
-        `Model did not return valid JSON: ${(err as Error).message}`,
+        'Model did not return valid JSON',
         'INVALID_JSON',
         [{ provider: meta.provider, error: meta.text.slice(0, 200) }]
       );
@@ -238,7 +256,8 @@ class AIService {
       thinkingConfig: { thinkingBudget: 0 },
     };
     if (options.maxOutputTokens) generationConfig.maxOutputTokens = options.maxOutputTokens;
-    if (options.json) generationConfig.response_mime_type = 'application/json';
+    // Grounding is incompatible with strict-JSON mode — skip the mime-type when grounding.
+    if (options.json && !options.searchGrounding) generationConfig.response_mime_type = 'application/json';
 
     const body: Record<string, unknown> = {
       contents: [{ role: 'user', parts: [{ text: options.prompt }] }],
@@ -246,6 +265,10 @@ class AIService {
     };
     if (options.system) {
       body.system_instruction = { parts: [{ text: options.system }] };
+    }
+    // Google Search grounding (gemini-2.5+) — model retrieves real web facts first.
+    if (options.searchGrounding) {
+      body.tools = [{ google_search: {} }];
     }
 
     const resp = await axios.post(`${url}?key=${apiKey}`, body, {

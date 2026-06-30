@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   TerminalPanel,
   StatusBadge,
@@ -13,6 +13,7 @@ import {
   StepIndicator,
 } from '@/components/ui/terminal'
 import { valuationsApi, reconciliationApi, sensitivityApi, costApproachApi, comparablesApi } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import type { Valuation, MethodResult, Reconciliation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -31,6 +32,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Wand2,
 } from 'lucide-react'
 import {
   Tooltip,
@@ -38,6 +40,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+
+// Drivers whose sensitivity is computed by re-running the Python valuation engine
+// via POST /valuations/:id/sensitivity. Anything not here falls back to a local approximation.
+const NODE_SUPPORTED = new Set<string>([
+  // /value-route re-runs (profits / residual / drc)
+  'profits_cap_rate', 'profits_revenue', 'profits_operator_share',
+  'residual_gdv', 'residual_build_cost', 'residual_finance',
+  'drc_replacement_cost', 'drc_land_value',
+  // reconstruction re-runs (cost / sales) + engine-variable perturbation (income)
+  'construction_cost', 'land_value', 'depreciation',
+  'price_per_sqm', 'comparable_adjustments',
+  'rental_rate', 'cap_rate', 'vacancy_rate',
+])
 
 export default function ReconciliationPage() {
   const params = useParams()
@@ -55,13 +70,17 @@ export default function ReconciliationPage() {
   // Reconciliation weights
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [reconciliationNotes, setReconciliationNotes] = useState('')
+  // Forced Sale Value discount (% below market value) — valuer's professional judgment, NOT a
+  // hardcoded constant. Seeded from the valuation's saved value; editable here and persisted so
+  // the report reads the valuer-set figure instead of a hardcoded fallback.
+  const [fsvDiscount, setFsvDiscount] = useState<number>(10)
   const [adjustmentRationale, setAdjustmentRationale] = useState('')
   const [reconciliationId, setReconciliationId] = useState<string | null>(null)
 
   // Sensitivity analysis
   const [showSensitivity, setShowSensitivity] = useState(true) // Auto-load sensitivity
   const [sensitivityRange, setSensitivityRange] = useState(10) // +/- percentage
-  type SensitivityDriverType = 
+  type SensitivityDriverType =
     // Cost approach drivers
     | 'construction_cost' | 'land_value' | 'depreciation'
     // Sales comparison drivers
@@ -70,7 +89,14 @@ export default function ReconciliationPage() {
     | 'rental_rate' | 'cap_rate' | 'vacancy_rate'
     // Residual/DRC drivers
     | 'gdv' | 'replacement_cost'
+    // Profits method drivers (Node engine-backed)
+    | 'profits_cap_rate' | 'profits_revenue' | 'profits_operator_share'
+    // Residual method drivers (Node engine-backed)
+    | 'residual_gdv' | 'residual_build_cost' | 'residual_finance'
+    // DRC method drivers (Node engine-backed)
+    | 'drc_replacement_cost' | 'drc_land_value'
   const [sensitivityDriver, setSensitivityDriver] = useState<SensitivityDriverType>('construction_cost')
+  const [sensitivityData, setSensitivityData] = useState<{ percentage: number; value: number; change: number; changePercent: number }[]>([])
 
   // Weight locking and governance
   const [lockedWeights, setLockedWeights] = useState<Record<string, boolean>>({})
@@ -100,6 +126,9 @@ export default function ReconciliationPage() {
         if (!valuationRes.data) throw new Error('Valuation not found')
 
         setValuation(valuationRes.data as Valuation)
+        // Seed the FSV discount from the saved valuation (valuer-set; default if not yet chosen).
+        const savedFsv = (valuationRes.data as any).fsv_discount_percent
+        if (savedFsv != null && Number.isFinite(Number(savedFsv))) setFsvDiscount(Number(savedFsv))
 
         // Get method results - check both camelCase and snake_case, and normalize structure
         const rawResults = valuationRes.data.methodResults || valuationRes.data.method_results || {}
@@ -134,9 +163,21 @@ export default function ReconciliationPage() {
                              method === 'market' || method === 'sales' ? 'sales_comparison' :
                              method === 'income' ? 'income_approach' : method
 
+            // For the income approach, honor the valuer's SELECTED technique (Direct Cap vs DCF)
+            // by resolving from primaryMethod + the per-technique values — robust even if the
+            // saved top-level `value` predates the method-selection fix (stale snapshot).
+            let valueGhs = Number(result.value_ghs || result.value || result.indicatedValue || 0)
+            if (methodKey === 'income_approach' && result.primaryMethod) {
+              if (result.primaryMethod === 'dcf' && Number(result.dcfValue) > 0) {
+                valueGhs = Number(result.dcfValue)
+              } else if (result.primaryMethod === 'direct_cap' && Number(result.directCapValue) > 0) {
+                valueGhs = Number(result.directCapValue)
+              }
+            }
+
             normalizedResults[methodKey] = {
               method: methodKey as any,
-              value_ghs: Number(result.value_ghs || result.value || result.indicatedValue || 0),
+              value_ghs: valueGhs,
               confidence_score: Number(result.confidence_score || result.confidence || 0.5),
               weight: result.weight || 0,
               is_primary: result.is_primary || false,
@@ -271,7 +312,13 @@ export default function ReconciliationPage() {
         if (reconRes.data) {
           setReconciliationId(reconRes.data.id)
           if (reconRes.data.weights) setWeights(reconRes.data.weights)
-          if (reconRes.data.reconciliation_narrative) setReconciliationNotes(reconRes.data.reconciliation_narrative)
+          // Load only the valuer's own rationale (before the auto-generated block) so re-saving
+          // doesn't keep re-appending the machine narrative and duplicating it.
+          if (reconRes.data.reconciliation_narrative) {
+            setReconciliationNotes(
+              String(reconRes.data.reconciliation_narrative).split('--- AUTO-GENERATED NARRATIVE ---')[0].trim()
+            )
+          }
           if (reconRes.data.special_assumptions && Array.isArray(reconRes.data.special_assumptions)) {
             setAdjustmentRationale(reconRes.data.special_assumptions.join('\n'))
           }
@@ -301,6 +348,9 @@ export default function ReconciliationPage() {
 
     return totalWeight > 0 ? weightedSum : 0
   }, [methodResults, weights])
+
+  // Forced Sale Value = reconciled market value less the valuer-set FSV discount.
+  const forcedSaleValue = Math.round(reconciledValue * (1 - fsvDiscount / 100))
 
   // Calculate value range
   const valueRange = useMemo(() => {
@@ -363,28 +413,41 @@ export default function ReconciliationPage() {
         { value: 'vacancy_rate', label: 'Vacancy Rate', method: 'income_approach', tooltip: 'Shows effect of vacancy allowance assumptions on effective gross income.' },
       )
     }
-    if (methods.includes('residual')) {
+    if (methodResults['profits_method']) {
       drivers.push(
-        { value: 'gdv', label: 'Gross Development Value', method: 'residual', tooltip: 'Shows sensitivity to GDV assumptions. Key for development/residual valuations.' },
+        { value: 'profits_cap_rate', label: 'Capitalisation Rate', method: 'profits_method', tooltip: 'Re-runs the trade/profits engine at varied cap rates. Inverse relationship — a higher cap rate lowers the capitalised value.' },
+        { value: 'profits_revenue', label: 'Revenue per Unit', method: 'profits_method', tooltip: 'Re-runs the profits engine with varied trading revenue per unit. Directly scales the divisible balance.' },
+        { value: 'profits_operator_share', label: "Operator's Remuneration", method: 'profits_method', tooltip: "Re-runs the profits engine with a varied operator's share of the divisible balance. Higher remuneration leaves less for rent." },
       )
     }
-    if (methods.includes('drc')) {
+    if (methodResults['residual_method']) {
       drivers.push(
-        { value: 'replacement_cost', label: 'Replacement Cost', method: 'drc', tooltip: 'Shows impact of replacement cost assumptions on DRC valuation output.' },
+        { value: 'residual_gdv', label: 'GDV — Sale Price/sqm', method: 'residual_method', tooltip: 'Re-runs the residual engine with varied gross development value (sale price per sqm). Key value driver for development appraisals.' },
+        { value: 'residual_build_cost', label: 'Construction Cost/sqm', method: 'residual_method', tooltip: 'Re-runs the residual engine with varied build cost per sqm. Higher costs erode the residual land value.' },
+        { value: 'residual_finance', label: 'Finance Rate', method: 'residual_method', tooltip: 'Re-runs the residual engine with a varied development finance rate. Higher finance costs reduce the residual value.' },
+      )
+    }
+    if (methodResults['drc_method']) {
+      drivers.push(
+        { value: 'drc_replacement_cost', label: 'Replacement Cost/sqm', method: 'drc_method', tooltip: 'Re-runs the DRC engine with varied gross replacement cost per sqm before depreciation.' },
+        { value: 'drc_land_value', label: 'Land Value', method: 'drc_method', tooltip: 'Re-runs the DRC engine with a varied site/land value component.' },
       )
     }
     return drivers
   }, [methodResults])
 
-  // Auto-select first available driver when methods change
+  // Auto-select an available driver when methods change. Prefer a driver for the
+  // valuation's primary method, otherwise fall back to the first available driver.
   useEffect(() => {
     if (availableDrivers.length > 0 && !availableDrivers.find(d => d.value === sensitivityDriver)) {
-      setSensitivityDriver(availableDrivers[0].value)
+      const primary = availableDrivers.find(d => d.method === valuation?.primary_method)
+      setSensitivityDriver((primary ?? availableDrivers[0]).value)
     }
-  }, [availableDrivers, sensitivityDriver])
+  }, [availableDrivers, sensitivityDriver, valuation?.primary_method])
 
-  // Sensitivity data - driver-aware with fixed 5 key points
-  const sensitivityData = useMemo(() => {
+  // Local fallback approximation — used when the driver isn't engine-backed or the
+  // backend re-run fails. Keeps the exact shape the JSX expects.
+  const computeLocalSensitivity = useCallback((): { percentage: number; value: number; change: number; changePercent: number }[] => {
     const costResult = methodResults['cost_approach'] as any
     const costWeight = (weights['cost_approach'] || 0) / 100
     const salesWeight = (weights['sales_comparison'] || 0) / 100
@@ -476,10 +539,59 @@ export default function ReconciliationPage() {
         percentage: pct,
         value: adjustedValue,
         change: adjustedValue - reconciledValue,
-        changePercent: ((adjustedValue - reconciledValue) / reconciledValue) * 100
+        changePercent: reconciledValue > 0 ? ((adjustedValue - reconciledValue) / reconciledValue) * 100 : 0
       }
     })
   }, [reconciledValue, sensitivityRange, sensitivityDriver, methodResults, weights])
+
+  // Real, method-specific sensitivity: when the driver is engine-backed, re-run the
+  // Python valuation engine via the backend and recompose the reconciled value by
+  // swapping the selected method's perturbed value back into the weighted sum.
+  // Otherwise (and on any failure) fall back to the local approximation.
+  useEffect(() => {
+    let cancelled = false
+
+    const timer = setTimeout(async () => {
+      if (NODE_SUPPORTED.has(sensitivityDriver) && Object.keys(methodResults).length > 0) {
+        try {
+          const res: any = await fetchApi(`/valuations/${valuationId}/sensitivity`, {
+            method: 'POST',
+            body: JSON.stringify({ driver: sensitivityDriver, range_pct: sensitivityRange }),
+          })
+          if (cancelled) return
+          if (res?.points) {
+            const sumOthers = Object.entries(methodResults).reduce(
+              (s, [m, r]: any) => (m === res.method ? s : s + (r.value_ghs || 0) * ((weights[m] || 0) / 100)),
+              0,
+            )
+            const wSel = (weights[res.method] || 0) / 100
+            const data = res.points.map((point: any) => {
+              const mv = point.method_value ?? res.base_method_value
+              const reconciled = sumOthers + mv * wSel
+              return {
+                percentage: point.pct,
+                value: reconciled,
+                change: reconciled - reconciledValue,
+                changePercent: reconciledValue > 0 ? ((reconciled - reconciledValue) / reconciledValue) * 100 : 0,
+              }
+            })
+            setSensitivityData(data)
+            return
+          }
+          setSensitivityData(computeLocalSensitivity())
+        } catch {
+          if (!cancelled) setSensitivityData(computeLocalSensitivity())
+        }
+      } else {
+        setSensitivityData(computeLocalSensitivity())
+      }
+    }, 400)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [sensitivityDriver, sensitivityRange, methodResults, weights, reconciledValue, valuationId, computeLocalSensitivity])
 
   // Auto-generated reconciliation narrative (RICS/GhIS compliant)
   const autoNarrative = useMemo(() => {
@@ -548,6 +660,7 @@ export default function ReconciliationPage() {
 
   // Helper function to convert number to words (simplified)
   function numberToWords(num: number): string {
+    num = Math.round(num) // amounts in words are whole cedis; also avoids float artifacts
     if (num === 0) return 'Zero'
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
     const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
@@ -556,12 +669,12 @@ export default function ReconciliationPage() {
     if (num >= 1000000) {
       const millions = Math.floor(num / 1000000)
       const remainder = num % 1000000
-      return `${ones[millions] || 'Several'} Million${remainder > 0 ? ' ' + numberToWords(remainder) : ''}`
+      return `${numberToWords(millions)} Million${remainder > 0 ? ' ' + numberToWords(remainder) : ''}`
     }
     if (num >= 1000) {
       const thousands = Math.floor(num / 1000)
       const remainder = num % 1000
-      return `${thousands < 20 ? (thousands < 10 ? ones[thousands] : teens[thousands - 10]) : tens[Math.floor(thousands / 10)] + (thousands % 10 > 0 ? '-' + ones[thousands % 10] : '')} Thousand${remainder > 0 ? ' ' + numberToWords(remainder) : ''}`
+      return `${numberToWords(thousands)} Thousand${remainder > 0 ? ' ' + numberToWords(remainder) : ''}`
     }
     if (num >= 100) {
       const hundreds = Math.floor(num / 100)
@@ -575,6 +688,40 @@ export default function ReconciliationPage() {
       return teens[num - 10]
     }
     return ones[num]
+  }
+
+  // AI draft of the Weight Rationale, grounded in the live on-screen method values + weights.
+  const [rationaleAiBusy, setRationaleAiBusy] = useState(false)
+  const handleGenerateRationale = async () => {
+    setRationaleAiBusy(true)
+    try {
+      const names: Record<string, string> = {
+        cost_approach: 'Cost Approach',
+        sales_comparison: 'Sales Comparison Approach',
+        income_approach: 'Income Capitalisation Approach',
+      }
+      const methods = Object.keys(methodResults)
+        .map((m) => ({
+          name: names[m] || m.replace('_', ' '),
+          value: Number((methodResults as any)[m]?.value ?? (methodResults as any)[m]) || 0,
+          weight: Number(weights[m]) || 0,
+        }))
+        .filter((m) => m.weight > 0 || m.value > 0)
+      const res = await fetchApi<{ text: string }>(`/valuations/${valuationId}/ai/weight-rationale`, {
+        method: 'POST',
+        body: JSON.stringify({
+          methods,
+          reconciledValue,
+          spreadPct: valueRange?.spread ?? null,
+          propertyType: (valuation as any)?.property_type ?? null,
+        }),
+      })
+      if (res?.text) setReconciliationNotes(res.text)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not generate weight rationale')
+    } finally {
+      setRationaleAiBusy(false)
+    }
   }
 
   // Update weight
@@ -712,7 +859,9 @@ export default function ReconciliationPage() {
       await reconciliationApi.finalize(currentReconId, {
         final_value_selection: 'manual',
         final_market_value: reconciledValue,
-        reconciliation_narrative: `${reconciliationNotes}\n\n--- AUTO-GENERATED NARRATIVE ---\n${autoNarrative}`,
+        // Store ONLY the valuer's (AI-drafted, editable) rationale — the local auto-narrative
+        // generator is no longer persisted (it was buggy and duplicated on each save).
+        reconciliation_narrative: reconciliationNotes,
         special_assumptions: adjustmentRationale ? adjustmentRationale.split('\n').filter(Boolean) : [],
       })
 
@@ -722,6 +871,18 @@ export default function ReconciliationPage() {
       await valuationsApi.update(valuationId, {
         final_value_ghs: reconciledValue,
         confidence_score: confidenceScore,
+        // Persist the valuer-set FSV so the report reads it (replaces the hardcoded 30% fallback).
+        fsv_discount_percent: fsvDiscount,
+        force_sale_value: forcedSaleValue,
+        // Persist the reviewed sensitivity analysis (RICS VPS 3) so the signed report evidences it.
+        sensitivity_analysis: sensitivityData.length > 0 ? {
+          driver: sensitivityDriver,
+          driver_label: availableDrivers.find(d => d.value === sensitivityDriver)?.label || sensitivityDriver,
+          method: availableDrivers.find(d => d.value === sensitivityDriver)?.method || null,
+          range_pct: sensitivityRange,
+          base_value: Math.round(reconciledValue),
+          rows: sensitivityData.map(r => ({ pct: r.percentage, value: Math.round(r.value), change_pct: Number(r.changePercent.toFixed(2)) })),
+        } : undefined,
         current_step: 9,
         reconciliation_data: {
           weights,
@@ -1111,6 +1272,31 @@ export default function ReconciliationPage() {
                 </div>
                 <ConfidenceBar score={confidenceScore * 100} showValue={false} />
               </div>
+
+              {/* Forced Sale Value — valuer-set discount, persisted for the report (not hardcoded) */}
+              <div className="mt-4 pt-4 border-t border-border text-left">
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-[10px] text-muted-foreground">FORCED SALE VALUE</span>
+                  <span className="font-mono text-lg text-amber-600 dark:text-amber-400">
+                    ₵{forcedSaleValue.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="font-mono text-[10px] text-muted-foreground">Discount below MV</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={fsvDiscount}
+                    onChange={(e) => setFsvDiscount(Math.max(0, Math.min(60, Number(e.target.value) || 0)))}
+                    className="w-16 bg-background border border-border px-2 py-1 font-mono text-xs text-foreground text-right"
+                  />
+                  <span className="font-mono text-[10px] text-muted-foreground">%</span>
+                </div>
+                <p className="font-mono text-[9px] text-muted-foreground mt-1 leading-tight">
+                  Professional judgment (e.g. bank collateral). FSV = Market Value × (1 − discount). Saved to the report.
+                </p>
+              </div>
             </div>
           </TerminalPanel>
 
@@ -1378,6 +1564,15 @@ export default function ReconciliationPage() {
               {reconciliationNotes.trim().length < 20 && (
                 <span className="font-mono text-[9px] text-amber-600 dark:text-amber-400">Min 20 chars required</span>
               )}
+              <button
+                type="button"
+                onClick={handleGenerateRationale}
+                disabled={rationaleAiBusy}
+                className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-50"
+              >
+                {rationaleAiBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                {rationaleAiBusy ? 'Generating…' : 'Generate with AI'}
+              </button>
             </div>
             <textarea
               value={reconciliationNotes}
@@ -1426,7 +1621,7 @@ export default function ReconciliationPage() {
                   <HelpCircle className="w-3 h-3 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
-                  <p className="text-xs">This narrative is automatically generated from your reconciliation data and will appear in the final valuation report. You can edit it before finalization.</p>
+                  <p className="text-xs">A suggested narrative generated from your reconciliation data, for reference. The Weight Rationale field above is what appears in the report — use “Generate with AI” there, or copy this as a starting point and edit it.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1456,7 +1651,7 @@ export default function ReconciliationPage() {
             </div>
             <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
               <span className="font-mono text-[9px] text-muted-foreground">
-                {autoNarrative.length} characters • This text will appear in Section 8 of the valuation report
+                {autoNarrative.length} characters • Reference draft — the Weight Rationale field above is what appears in the report
               </span>
               <button
                 onClick={() => navigator.clipboard.writeText(autoNarrative)}

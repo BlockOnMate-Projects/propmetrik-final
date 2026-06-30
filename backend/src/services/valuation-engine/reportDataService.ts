@@ -325,16 +325,18 @@ class ReportDataService {
       title: 'VALUATION REPORT',
       subtitle: `ON ${(property?.title || 'PROPERTY').toUpperCase()}`,
       property_location: propertyLocation,
-      ghana_post_address: property?.ghana_post_gps || null,
+      ghana_post_address: property?.digital_address || property?.ghana_post_gps || null,
       requested_by: {
-        name: engagement?.client_name || 'Client',
-        company: engagement?.client_company || null,
-        address: engagement?.client_address || 'Address not provided',
+        // Client = the CLIENT the valuer entered (engagement, then the saved comprehensive-form
+        // client). The property OWNER is NOT the client — do not fall back to it.
+        name: engagement?.client_name || property?.metadata?.client_name || 'Client',
+        company: engagement?.client_company || property?.metadata?.client_company || null,
+        address: engagement?.client_address || property?.metadata?.client_address || 'Address not provided',
       },
       prepared_for: {
-        name: engagement?.intended_user_name || engagement?.client_name || 'Client',
+        name: engagement?.intended_user_name || engagement?.client_name || property?.metadata?.client_name || 'Client',
         relationship: engagement?.intended_user_relationship || null,
-        address: engagement?.intended_user_address || engagement?.client_address || '',
+        address: engagement?.intended_user_address || engagement?.client_address || property?.metadata?.client_address || '',
       },
       certified_by: {
         name: valuer?.name || '[Valuer Name]',
@@ -359,11 +361,12 @@ class ReportDataService {
     const valuation = await this.getValuationData(report.valuation_id);
 
     const marketValue = Number(valuation?.final_value_ghs || valuation?.estimated_value || 0);
-    // FSV: use DB-stored value, or calculate from DB discount %, never hardcode
-    const fsvDiscount = Number(valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30);
-    const forcedSaleValue = valuation?.force_sale_value
+    // FSV is the valuer's figure set on the reconciliation page — NO hardcoded fallback.
+    // If neither the stored value nor the discount is set, FSV is omitted (0), not fabricated.
+    const fsvDiscountRaw = valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount;
+    const forcedSaleValue = valuation?.force_sale_value != null
       ? Number(valuation.force_sale_value)
-      : Math.round(marketValue * (1 - fsvDiscount / 100));
+      : (fsvDiscountRaw != null ? Math.round(marketValue * (1 - Number(fsvDiscountRaw) / 100)) : 0);
     const effectiveDate = report.effective_date || valuation?.effective_date || new Date();
     // Use exchange rate from reconciliation if available, else fetch for valuation date
     const exchangeRate = valuation?.recon_exchange_rate && Number(valuation.recon_exchange_rate) > 0
@@ -419,11 +422,12 @@ class ReportDataService {
     const valuation = await this.getValuationData(report.valuation_id);
 
     const marketValue = Number(valuation?.final_value_ghs || valuation?.estimated_value || 0);
-    // FSV: use DB-stored value, or calculate from DB discount %, never hardcode
-    const fsvDiscount = Number(valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30);
-    const forcedSaleValue = valuation?.force_sale_value
+    // FSV is the valuer's figure set on the reconciliation page — NO hardcoded fallback.
+    // If neither the stored value nor the discount is set, FSV is omitted (0), not fabricated.
+    const fsvDiscountRaw = valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount;
+    const forcedSaleValue = valuation?.force_sale_value != null
       ? Number(valuation.force_sale_value)
-      : Math.round(marketValue * (1 - fsvDiscount / 100));
+      : (fsvDiscountRaw != null ? Math.round(marketValue * (1 - Number(fsvDiscountRaw) / 100)) : 0);
     const effectiveDate = report.effective_date || valuation?.effective_date || new Date();
     // Use exchange rate from reconciliation if available, else fetch for valuation date
     const exchangeRate = valuation?.recon_exchange_rate && Number(valuation.recon_exchange_rate) > 0
@@ -542,13 +546,15 @@ class ReportDataService {
     // Return defaults from property table
     return {
       property_id: propertyId,
-      tenure_type: property?.tenure_type || 'freehold',
+      // Subject form saves tenure into properties.metadata (no tenure_type column exists).
+      tenure_type: property?.metadata?.tenure_type || property?.tenure_type || 'freehold',
       tenure_details: {
-        lease_term_years: null,
+        // Subject form captures the unexpired term as metadata.lease_years_remaining.
+        lease_term_years: property?.metadata?.lease_years_remaining ?? null,
         lease_start_date: null,
-        remaining_years: null,
-        ground_rent: null,
-        lessor: null,
+        remaining_years: property?.metadata?.lease_years_remaining ?? null,
+        ground_rent: property?.metadata?.ground_rent ?? null,
+        lessor: property?.metadata?.lessor ?? null,
       },
       title_registration: {
         status: 'unregistered',

@@ -12,6 +12,7 @@ import { pool } from '../../database';
 import { economicDataService } from '../data-hub/economicDataService';
 import { GHANA_GPS_DISTRICTS } from '../data-hub/ghanaPostGeocodingService';
 import { floorPlanService } from './floorPlanService';
+import { valuationDocumentService } from './valuationDocumentService';
 
 /**
  * Fetch the last known USD/GHS rate from the DB.
@@ -519,12 +520,15 @@ class ReportTemplateService {
       if ((reconciliation as any)?.method_weights) {
         const weights = (reconciliation as any).method_weights;
         // Only include methods with weight > 0 (actually used methods)
+        const methodResults = (reconciliation as any)?.method_results || {};
         methods_used = Object.entries(weights)
           .filter(([_, weight]) => Number(weight) > 0)
           .map(([method_type, weight]) => ({
             method_type,
-            weight,
-            indicated_value: (reconciliation as any)?.method_values?.[method_type] || 0,
+            // method_weights stores a percentage (e.g. 33), not a fraction.
+            weight: Number(weight),
+            // The indicated value per method lives in method_results[type].value.
+            indicated_value: Number(methodResults?.[method_type]?.value) || 0,
           }));
       }
     } catch (e: any) {
@@ -707,6 +711,46 @@ class ReportTemplateService {
    * Build floor plan images HTML for Appendix B
    * Uses proxy URLs (never expire) instead of presigned URLs
    */
+  /**
+   * Build Appendix C/D/E images HTML for the VIEWER — uses non-expiring proxy stream URLs so the
+   * valuer sees the actual location map / photos / title documents before finalising the report.
+   */
+  private async buildDocAppendixHtml(
+    valuationId: string,
+    docType: 'location_map' | 'photo' | 'title_document'
+  ): Promise<string> {
+    try {
+      const docs = await valuationDocumentService.list(valuationId, docType);
+      if (!docs || docs.length === 0) return '';
+      const apiBase = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+      const isImg = (m?: string | null) => !m || String(m).startsWith('image/');
+      return docs.map((d: any, i: number) => {
+        const proxyUrl = `${apiBase}/api/v1/valuations/${valuationId}/documents/${d.id}/image-stream`;
+        const caption = docType === 'photo'
+          ? (d.caption || `Plate ${i + 1}`)
+          : (d.caption || d.filename || '');
+        if (isImg(d.mime_type)) {
+          return `
+            <div style="margin-bottom: 24px; page-break-inside: avoid; text-align: center;">
+              <img src="${proxyUrl}" alt="${caption}" style="max-width: 100%; max-height: 520px; border: 1px solid #ccc;" />
+              ${caption ? `<p style="font-size: 11pt; color: #444; margin-top: 6px;">${caption}</p>` : ''}
+            </div>`;
+        }
+        // PDF (e.g. title deed) — render its pages as ONE image and show via <img>.
+        // (Cannot use <iframe>: the stream sets X-Frame-Options:sameorigin, so cross-origin framing is blocked.)
+        const pagesUrl = `${apiBase}/api/v1/valuations/${valuationId}/documents/${d.id}/image-pages`;
+        return `
+          <div style="margin-bottom: 24px; page-break-inside: avoid; text-align: center;">
+            ${caption ? `<p style="font-size: 11pt; color: #444; margin: 0 0 6px 0;">${caption}</p>` : ''}
+            <img src="${pagesUrl}" alt="${caption}" style="max-width: 100%; border: 1px solid #ccc;" />
+          </div>`;
+      }).join('');
+    } catch (error: any) {
+      logger.warn('Failed to build document appendix HTML', { error: error.message, valuationId, docType });
+      return '';
+    }
+  }
+
   private async buildFloorPlanImagesHtml(valuationId: string, floorPlans: any[]): Promise<string> {
     if (!floorPlans || floorPlans.length === 0) {
       return '';
@@ -844,10 +888,13 @@ class ReportTemplateService {
     const finalValueGhs = valuation.final_value_ghs || reconciliation.final_value || 0;
     const finalValueUsd = valuation.final_value_usd || (exchangeRateData.rate > 0 ? finalValueGhs / exchangeRateData.rate : 0);
     
-    // Calculate FSV — use DB-stored values (from valuations table), never hardcode
-    const fsvDiscountPercent = valuation.fsv_discount_percent || 30;
-    const forceSaleValue = valuation.force_sale_value || (finalValueGhs * (1 - fsvDiscountPercent / 100));
-    const forceSaleValueUsd = valuation.force_sale_value_usd || (exchangeRateData.rate > 0 ? forceSaleValue / exchangeRateData.rate : 0);
+    // FSV is the valuer's figure set on the reconciliation page — NO hardcoded fallback.
+    // If neither the stored value nor the discount is set, FSV is omitted (0), not fabricated.
+    const fsvDiscountPercent = valuation.fsv_discount_percent != null ? Number(valuation.fsv_discount_percent) : null;
+    const forceSaleValue = valuation.force_sale_value != null
+      ? Number(valuation.force_sale_value)
+      : (fsvDiscountPercent != null ? finalValueGhs * (1 - fsvDiscountPercent / 100) : 0);
+    const forceSaleValueUsd = valuation.force_sale_value_usd || (forceSaleValue > 0 && exchangeRateData.rate > 0 ? forceSaleValue / exchangeRateData.rate : 0);
 
     // Format dates
     const formatDate = (date: any): string => {
@@ -986,7 +1033,21 @@ class ReportTemplateService {
       } else {
         description += '.';
       }
-      
+
+      // Amenities selected by the valuer on the subject form (saved as metadata.has_*).
+      const amenityLabels: Array<[string, string]> = [
+        ['has_pool', 'swimming pool'], ['has_garden', 'garden'], ['has_security', 'security'],
+        ['has_elevator', 'elevator'], ['has_balcony', 'balcony'], ['has_terrace', 'terrace'],
+        ['has_gym', 'gym'], ['has_generator', 'standby generator'], ['has_solar', 'solar power'],
+        ['has_borehole', 'borehole'], ['has_air_conditioning', 'air-conditioning'], ['has_parking', 'parking'],
+      ];
+      const selectedAmenities = amenityLabels
+        .filter(([k]) => (metadata as any)[k] === true || (property as any)[k] === true)
+        .map(([, label]) => label);
+      if (selectedAmenities.length > 0) {
+        description += ` The property benefits from the following amenities: ${selectedAmenities.join(', ')}.`;
+      }
+
       return description;
     };
 
@@ -1092,6 +1153,10 @@ class ReportTemplateService {
       });
     }
 
+    // Strip inline "[3, 5]" citation markers left in older search-grounded AI narratives.
+    const stripCites = (s: any): string =>
+      String(s || '').replace(/\s*\[\s*\d+(?:\s*,\s*\d+)*\s*\]/g, '').replace(/\s{2,}/g, ' ').trim();
+
     return {
       brand: {
         services_url: servicesUrl,
@@ -1163,6 +1228,9 @@ class ReportTemplateService {
         condition: property.condition || 'Good',
         tenure: property.tenure || 'Freehold/Leasehold',
         tenure_description: buildTenureDescription(),
+        // Tenure-aware flag so the Limiting Conditions premise matches the actual interest.
+        tenure_is_leasehold: /lease/i.test(String(property.tenure_type || property.tenure || '')),
+        lease_years: property.lease_years || '',
         use_classification: property.use_classification || property.property_type || 'Residential',
         use_classification_display: buildUseClassificationDisplay(),
         neighborhood: property.neighborhood || property.city || 'Not specified',
@@ -1177,27 +1245,36 @@ class ReportTemplateService {
         owner_address_display: property.owner_address || client.address || '[Not provided]',
         // Chapter 3: Data Influencing Property Values - NO FALLBACKS, user data only
         digital_address: property.digital_address || property.gps_address || '[Not provided]',
-        location_description: metadata.location_description || property.location_description || '[Location description not provided]',
+        location_description: stripCites(metadata.location_description || property.location_description || ''),
         brief_description: metadata.brief_description || property.brief_description || property.description || '[Property description not provided]',
-        grounds_external_works: metadata.grounds_external_works || property.grounds_external_works || '[Grounds and external works not provided]',
-        floor_finish: metadata.floor_finish || property.floor_finish || '[Not provided]',
-        wall_construction: metadata.wall_construction || property.wall_construction || '[Not provided]',
-        doors: metadata.doors || property.doors || '[Not provided]',
-        windows: metadata.windows || property.windows || '[Not provided]',
-        ceiling: metadata.ceiling || property.ceiling || '[Not provided]',
-        roofing: metadata.roofing || property.roofing || property.roof_type || '[Not provided]',
-        fixtures_fittings: metadata.fixtures_fittings || property.fixtures_fittings || '[Not provided]',
-        drainage_sanitation: metadata.drainage_sanitation || property.drainage_sanitation || '[Not provided]',
-        condition_state: metadata.condition_state || property.condition_state || property.condition_details || '[Condition assessment not provided]',
-        services_description: metadata.services_description || property.services_description || '[Services description not provided]',
-        accommodation_description: metadata.accommodation_description || property.accommodation_description || '[Accommodation not provided]',
-        land_value_evidence: metadata.land_value_evidence || property.land_value_evidence || '[Land value evidence not provided]',
+        // Free-text writeup sections: empty (not a "[not provided]" placeholder) so the
+        // template can HIDE the heading entirely via {{#if}} until the valuer drafts/fills it.
+        grounds_external_works: metadata.grounds_external_works || property.grounds_external_works || '',
+        floor_finish: metadata.floor_finish || property.floor_finish || '',
+        wall_construction: metadata.wall_construction || property.wall_construction || '',
+        doors: metadata.doors || property.doors || '',
+        windows: metadata.windows || property.windows || '',
+        ceiling: metadata.ceiling || property.ceiling || '',
+        roofing: metadata.roofing || property.roofing || property.roof_type || '',
+        fixtures_fittings: metadata.fixtures_fittings || property.fixtures_fittings || '',
+        drainage_sanitation: metadata.drainage_sanitation || property.drainage_sanitation || '',
+        condition_state: metadata.condition_state || property.condition_state || property.condition_details || '',
+        services_description: metadata.services_description || property.services_description || '',
+        accommodation_description: metadata.accommodation_description || property.accommodation_description || '',
+        land_value_evidence: metadata.land_value_evidence || property.land_value_evidence || '',
+        // True if any structured construction field is present (controls the Construction table).
+        has_construction: !!(metadata.floor_finish || property.floor_finish || metadata.wall_construction || property.wall_construction
+          || metadata.roofing || property.roofing || property.roof_type || metadata.doors || property.doors
+          || metadata.windows || property.windows || metadata.ceiling || property.ceiling),
+        // True when a floor-plan/accommodation schedule exists (controls the Accommodation table).
+        has_floor_plans: Array.isArray(floor_plans) && floor_plans.length > 0,
       },
 
-      // Location data (for Chapter 3) - NO FALLBACKS
+      // Location data (for Chapter 3) — empty (not a placeholder) so empty sections hide.
+      // stripCites also cleans inline "[3, 5]" citation markers left by older search-grounded drafts.
       location: {
-        city_description: metadata.city_description || property.city_description || '[City/regional data not provided]',
-        neighborhood_description: metadata.neighbourhood_description || metadata.neighborhood_description || property.neighbourhood_description || property.neighborhood_description || '[Neighbourhood data not provided]',
+        city_description: stripCites(metadata.city_description || property.city_description || ''),
+        neighborhood_description: stripCites(metadata.neighbourhood_description || metadata.neighborhood_description || property.neighbourhood_description || property.neighborhood_description || ''),
         neighborhood_class: metadata.neighbourhood_class || metadata.neighborhood_class || property.neighbourhood_class || property.neighborhood_class || '[Not specified]',
         resident_income_level: metadata.resident_income_level || property.resident_income_level || '[Not specified]',
         primary_use: metadata.primary_use || property.primary_use || '[Not specified]',
@@ -1246,6 +1323,32 @@ class ReportTemplateService {
         methods_used_verb: methodNames.length === 1 ? 'was' : 'were',
         method_justifications: buildMethodJustifications(),
         hbu_conclusion: hbu.hbu_conclusion || 'Current use as the highest and best use',
+        // Full HBU narrative. Prefer the valuer's saved justification (drafted/edited on the HBU
+        // page — "Generate with AI" + manual review); fall back to a synthesised four-test
+        // paragraph only when no justification was recorded.
+        hbu_narrative: (() => {
+          const saved = (hbu.hbu_justification || '').trim();
+          if (saved) return saved;
+          const use = (hbu.hbu_conclusion && hbu.hbu_conclusion !== 'Pending Analysis')
+            ? hbu.hbu_conclusion : 'the current use';
+          const tf = (passed: boolean, yes: string, no: string) => (passed ? yes : no);
+          return [
+            'In arriving at the Highest and Best Use of the subject property, the four established criteria — legal permissibility, physical possibility, financial feasibility and maximum productivity — were considered.',
+            `The use is ${tf(!!hbu.legal_test_passed,
+              'legally permissible, conforming to the applicable land-use, planning and zoning requirements with no legal impediments to its continuation',
+              'subject to legal constraints that limit its permissibility')}.`,
+            `It is ${tf(!!hbu.physical_test_passed,
+              'physically possible, the size, shape, topography and existing improvements of the site being suitable for the use',
+              'constrained by physical limitations of the site')}.`,
+            `The use is ${tf(!!hbu.financial_test_passed,
+              'financially feasible, being capable of generating a return sufficient to justify its continuation and to support the assessed value',
+              'not presently financially feasible')}.`,
+            `It is further ${tf(!!hbu.productivity_test_passed,
+              'maximally productive, representing the use that yields the highest value among the feasible alternatives examined',
+              'not the most productive of the feasible alternatives examined')}.`,
+            `Having regard to the foregoing, the Highest and Best Use of the subject property is concluded to be ${use}.`,
+          ].join(' ');
+        })(),
         special_assumptions: valuation.special_assumptions || [],
         method_selection_rationale: 'The selection of valuation methods was based on the property type, availability of market data, purpose of the valuation, and GhIS/RICS guidance.',
       },
@@ -1275,17 +1378,48 @@ class ReportTemplateService {
 
       // Reconciliation data
       reconciliation: {
-        narrative: reconciliation.narrative || 'The indicated values from each approach have been reconciled considering the reliability and relevance of each method to the subject property.',
+        // The valuer's Weight Rationale is stored in `reconciliation_narrative`. Show that — but
+        // take only the valuer's own portion (before the redundant auto-generated block) and skip
+        // it if it carries the known auto-narrative artifacts, falling back to a clean default.
+        narrative: (() => {
+          const raw = String((reconciliation as any).reconciliation_narrative || (reconciliation as any).narrative || '');
+          const userPart = raw.split('--- AUTO-GENERATED NARRATIVE ---')[0].trim();
+          return userPart && !/undefined|\.\d{3,}\b/.test(userPart)
+            ? userPart
+            : 'The indicated values from each approach have been reconciled considering the reliability and relevance of each method to the subject property.';
+        })(),
         has_multiple_methods: methods_used.length > 1,
-        method_values: methods_used.map((m: any) => ({
-          method: m.method_type?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-          value: m.indicated_value,
-          value_formatted: this.formatCurrency(m.indicated_value, 'GHS'),
-          weight: (reconciliation.weights?.[m.method_type] || 0) * 100,
-          weighted_value: (m.indicated_value || 0) * (reconciliation.weights?.[m.method_type] || 0),
-          weighted_value_formatted: this.formatCurrency((m.indicated_value || 0) * (reconciliation.weights?.[m.method_type] || 0), 'GHS'),
-        })),
+        method_values: methods_used.map((m: any) => {
+          const weightPct = Number(m.weight) || 0; // already a percentage (e.g. 33)
+          const weightedValue = (m.indicated_value || 0) * (weightPct / 100);
+          return {
+            method: m.method_type?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+            value: m.indicated_value,
+            value_formatted: this.formatCurrency(m.indicated_value, 'GHS'),
+            weight: Math.round(weightPct),
+            weighted_value: weightedValue,
+            weighted_value_formatted: this.formatCurrency(weightedValue, 'GHS'),
+          };
+        }),
       },
+
+      // Sensitivity analysis (RICS VPS 3 uncertainty disclosure) — the table the valuer reviewed at
+      // reconciliation, persisted on valuations.sensitivity_analysis (real per-method engine re-runs).
+      sensitivity: (() => {
+        const sa: any = (valuation as any).sensitivity_analysis;
+        if (!sa || !Array.isArray(sa.rows) || sa.rows.length === 0) return { has: false };
+        return {
+          has: true,
+          driver_label: sa.driver_label || 'a key input',
+          range_pct: Math.round(Number(sa.range_pct) || 10),
+          rows: sa.rows.map((r: any) => ({
+            pct_label: `${Number(r.pct) > 0 ? '+' : ''}${Number(r.pct)}%`,
+            value_formatted: this.formatCurrency(Number(r.value) || 0, 'GHS'),
+            change_label: `${Number(r.change_pct) > 0 ? '+' : ''}${(Number(r.change_pct) || 0).toFixed(1)}%`,
+            is_base: Number(r.pct) === 0,
+          })),
+        };
+      })(),
 
       // Floor plans - extract room data from canvas_json if rooms column is empty
       floor_plans: floor_plans.map((fp: any) => {
@@ -1325,6 +1459,11 @@ class ReportTemplateService {
 
       // Floor plans images for Appendix B (fetched from MinIO with presigned URLs)
       floor_plans_images: await this.buildFloorPlanImagesHtml(valuation.id, floor_plans),
+
+      // Appendix C/D/E images for the VIEWER (location map, photos, title documents)
+      location_map_image: await this.buildDocAppendixHtml(valuation.id, 'location_map'),
+      photos_gallery: await this.buildDocAppendixHtml(valuation.id, 'photo'),
+      title_documents_gallery: await this.buildDocAppendixHtml(valuation.id, 'title_document'),
 
       // Comparables
       comparables: comparables.map((c: any) => ({

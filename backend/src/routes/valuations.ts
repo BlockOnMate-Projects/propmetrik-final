@@ -344,6 +344,255 @@ router.post('/ai/area-narrative', async (req: Request, res: Response) => {
 });
 
 /**
+ * @route POST /api/valuations/ai/property-description
+ * @desc Draft the formal "Description of Property" prose for the subject step,
+ *       grounded STRICTLY in the structured features the valuer has entered
+ *       (type, beds/baths, area, floors, condition, tenure, etc.) — no invented
+ *       amenities or claims. Returns DRAFT text for the valuer to review/edit.
+ * @access Private
+ */
+router.post('/ai/property-description', async (req: Request, res: Response) => {
+  try {
+    const { aiService } = await import('../services/ai/aiService');
+    if (!aiService.isAvailable()) {
+      return res.status(503).json({ error: 'AI text generation is not configured' });
+    }
+    const { generatePropertyDescription } = await import('../services/ai/propertyDescriptionService');
+    const result = await generatePropertyDescription(req.body, 'valuation');
+    return res.json({ description: result.text, provider: result.provider });
+  } catch (err: any) {
+    if (err?.statusCode === 400) return res.status(400).json({ error: err.message });
+    return res.status(502).json({ error: err?.message || 'AI generation failed' });
+  }
+});
+
+const WRITEUP_SECTIONS = [
+  'land_value_evidence',
+  'grounds_external_works',
+  'condition_state',
+  'services_description',
+  'accommodation_description',
+] as const;
+
+/**
+ * @route POST /api/valuations/:id/ai/writeup
+ * @desc Draft a free-text report writeup section (Evidence of Land Values, Grounds,
+ *       Condition, Services, Accommodation) grounded in the subject's data — and, for
+ *       land evidence, the real land comparables. Returns DRAFT text for valuer review.
+ * @access Private
+ */
+router.post('/:id/ai/writeup', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const { aiService } = await import('../services/ai/aiService');
+    if (!aiService.isAvailable()) {
+      return res.status(503).json({ error: 'AI text generation is not configured' });
+    }
+    const section = String(req.body?.section || '');
+    if (!(WRITEUP_SECTIONS as readonly string[]).includes(section)) {
+      return res.status(400).json({ error: `Invalid section. Expected one of: ${WRITEUP_SECTIONS.join(', ')}` });
+    }
+    const r = await query(
+      `SELECT v.*, p.* FROM valuations v JOIN properties p ON p.id = v.property_id WHERE v.id = $1`,
+      [req.params.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Valuation not found' });
+    const row = r.rows[0];
+
+    const subject: any = {
+      property_type: row.property_type,
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      floors: row.floors,
+      year_built: row.year_built,
+      condition: row.condition,
+      land_area_sqm: row.land_area_sqm || row.land_size_sqm,
+      building_area_sqm: row.built_area_sqm || row.building_size_sqm,
+      amenities: row.amenities,
+      neighbourhood: row.neighbourhood || row.address_neighbourhood,
+      city: row.address_city || row.city,
+      region: row.region,
+      tenure: row.tenure,
+      currency: 'GH₵',
+    };
+
+    if (section === 'land_value_evidence') {
+      try {
+        const propertyInput = {
+          id: row.property_id,
+          property_type: row.property_type || 'residential',
+          region: row.region || 'greater_accra',
+          address_city: row.address_city,
+          address_street: row.address_street,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          land_area_sqm: row.land_area_sqm || row.land_size_sqm,
+          building_size_sqm: row.building_size_sqm || row.built_area_sqm,
+        };
+        const lc: any = await pythonClient.getLandComparables(propertyInput, { max_distance_km: 10, max_results: 8 });
+        const rawComps: any[] = Array.isArray(lc) ? lc : lc?.comparables || lc?.data?.comparables || [];
+        subject.landComparables = rawComps.map((c: any) => ({
+          address: c.address || c.address_street || c.title || null,
+          land_area_sqm: Number(c.land_area_sqm || c.land_size_sqm) || null,
+          price: Number(c.price || c.sale_price || c.adjusted_price) || null,
+          price_per_sqm: Number(c.price_per_sqm || c.rate_per_sqm) || null,
+          distance_km: Number(c.distance_km) || null,
+        }));
+        subject.landRatePerSqm =
+          Number(lc?.land_rate_per_sqm || lc?.adopted_rate_per_sqm || lc?.data?.land_rate_per_sqm) || null;
+      } catch (e: any) {
+        logger.warn('writeup: land comparables fetch failed, drafting without comps', { error: e?.message });
+      }
+    }
+
+    const { valuationWriteupService } = await import('../services/valuation-engine/valuationWriteupService');
+    const out = await valuationWriteupService.generate(section as any, subject);
+    return res.json({ section, text: out.text, provider: out.provider });
+  } catch (err: any) {
+    return res.status(502).json({ error: err?.message || 'AI generation failed' });
+  }
+});
+
+/**
+ * @route POST /api/valuations/:id/ai/hbu-justification
+ * @desc Draft the Highest-and-Best-Use justification from the valuer's concluded use + the
+ *       four-test analysis posted from the HBU page. Reasons only from the supplied facts.
+ */
+router.post('/:id/ai/hbu-justification', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const { aiService } = await import('../services/ai/aiService');
+    if (!aiService.isAvailable()) {
+      return res.status(503).json({ error: 'AI text generation is not configured' });
+    }
+    const conclusion = String(req.body?.conclusion || '').trim();
+    if (!conclusion) {
+      return res.status(400).json({ error: 'Select a Highest & Best Use conclusion first.' });
+    }
+    const tests = Array.isArray(req.body?.tests) ? req.body.tests : [];
+
+    const r = await query(
+      `SELECT v.*, p.* FROM valuations v JOIN properties p ON p.id = v.property_id WHERE v.id = $1`,
+      [req.params.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Valuation not found' });
+    const row = r.rows[0];
+
+    const { valuationWriteupService } = await import('../services/valuation-engine/valuationWriteupService');
+    const out = await valuationWriteupService.generateHbuJustification({
+      conclusion,
+      tests,
+      propertyType: row.property_type,
+      currentUse: row.property_use || row.property_type,
+      city: row.address_city || row.city,
+      neighbourhood: row.neighbourhood || row.address_neighbourhood,
+      region: row.region,
+      tenure: row.tenure,
+    });
+    return res.json({ text: out.text, provider: out.provider });
+  } catch (err: any) {
+    return res.status(502).json({ error: err?.message || 'AI generation failed' });
+  }
+});
+
+/**
+ * @route POST /api/valuations/:id/ai/weight-rationale
+ * @desc Draft the reconciliation "Weight Rationale" from the method indications + weights.
+ *       Prefers the live values posted by the reconciliation page (so it reflects on-screen
+ *       edits); falls back to the saved reconciliation row. Returns DRAFT text for review.
+ * @access Private
+ */
+router.post('/:id/ai/weight-rationale', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const { aiService } = await import('../services/ai/aiService');
+    if (!aiService.isAvailable()) {
+      return res.status(503).json({ error: 'AI text generation is not configured' });
+    }
+    const NAMES: Record<string, string> = {
+      cost_approach: 'Cost Approach',
+      sales_comparison: 'Sales Comparison Approach',
+      income_approach: 'Income Capitalisation Approach',
+      drc_method: 'Depreciated Replacement Cost',
+      residual_method: 'Residual Method',
+      profits_method: 'Profits Method',
+    };
+    const body = req.body || {};
+    let methods: Array<{ name: string; value: number; weight: number }> = Array.isArray(body.methods)
+      ? body.methods
+          .map((m: any) => ({ name: String(m.name || m.method || ''), value: Number(m.value) || 0, weight: Number(m.weight) || 0 }))
+          .filter((m: any) => m.name && (m.weight > 0 || m.value > 0))
+      : [];
+    let reconciledValue = Number(body.reconciledValue) || 0;
+    let spreadPct = body.spreadPct != null ? Number(body.spreadPct) : null;
+    let propertyType = body.propertyType || null;
+
+    if (!methods.length || !reconciledValue) {
+      const r = await query(
+        `SELECT vr.method_results, vr.final_market_value, vr.value_spread_percentage, p.property_type
+         FROM valuation_reconciliations vr
+         JOIN valuations v ON v.id = vr.valuation_id
+         JOIN properties p ON p.id = v.property_id
+         WHERE vr.valuation_id = $1`,
+        [req.params.id]
+      );
+      if (!r.rows.length) return res.status(404).json({ error: 'Reconciliation not found' });
+      const row = r.rows[0];
+      const mr = row.method_results || {};
+      if (!methods.length) {
+        methods = Object.entries(mr)
+          .map(([k, v]: any) => ({ name: NAMES[k] || k, value: Number(v?.value) || 0, weight: Number(v?.weight) || 0 }))
+          .filter((m) => m.weight > 0 || m.value > 0);
+      }
+      if (!reconciledValue) reconciledValue = Number(row.final_market_value) || 0;
+      if (spreadPct == null && row.value_spread_percentage != null) spreadPct = Number(row.value_spread_percentage);
+      propertyType = propertyType || row.property_type;
+    }
+
+    if (!methods.length) {
+      return res.status(400).json({ error: 'No weighted methods to summarise — set the method weights first.' });
+    }
+
+    const { valuationWriteupService } = await import('../services/valuation-engine/valuationWriteupService');
+    const out = await valuationWriteupService.generateWeightRationale({
+      methods,
+      reconciledValue,
+      spreadPct,
+      propertyType,
+      currency: 'GH₵',
+    });
+    return res.json({ text: out.text, provider: out.provider });
+  } catch (err: any) {
+    return res.status(502).json({ error: err?.message || 'AI generation failed' });
+  }
+});
+
+/**
+ * @route PUT /api/valuations/:id/writeups
+ * @desc Persist valuer-reviewed writeup sections into properties.metadata (the report
+ *       reads them from there). Only the known writeup keys are accepted.
+ * @access Private
+ */
+router.put('/:id/writeups', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const body = req.body || {};
+    const updates: Record<string, string> = {};
+    for (const k of WRITEUP_SECTIONS) {
+      if (typeof body[k] === 'string') updates[k] = body[k];
+    }
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ error: 'No writeup fields provided' });
+    }
+    const r = await query(`SELECT property_id FROM valuations WHERE id = $1`, [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Valuation not found' });
+    await query(
+      `UPDATE properties SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb WHERE id = $1`,
+      [r.rows[0].property_id, JSON.stringify(updates)]
+    );
+    return res.json({ saved: Object.keys(updates) });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message || 'Failed to save writeups' });
+  }
+});
+
+/**
  * @route POST /api/valuations
  * @desc Create a new valuation for a property
  * @access Private
@@ -440,12 +689,14 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
           digital_address, latitude, longitude, property_type, transaction_type, title, description,
           bedrooms, bathrooms, land_area_sqm, built_area_sqm, year_built, price, price_currency,
           data_source, status, created_by, 
-          owner_name, owner_email, owner_phone, owner_address, owner_contact_preference
+          owner_name, owner_email, owner_phone, owner_address, owner_contact_preference,
+          metadata
         ) VALUES (
           $1, $2, $3, $4, $5,
           $6, $7, $8, $9, $10, $11, $12,
           $13, $14, $15, $16, $17, $18, $19,
-          $20, $21, $22, $23, $24, $25, $26, $27
+          $20, $21, $22, $23, $24, $25, $26, $27,
+          $28
         ) RETURNING id`,
         [
           refNumber,
@@ -477,6 +728,10 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
           property.owner_phone || null,
           property.owner_address || null,
           property.owner_contact_preference || 'email',
+          // Persist the full comprehensive form snapshot so the valuation report's
+          // metadata.* lookups (city/neighbourhood/location/brief descriptions, building
+          // elements, risk assessment, etc.) resolve. Previously dropped on save.
+          property.comprehensive_data || {},
         ]
       );
 
@@ -590,8 +845,11 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
       }
     }
 
-    // Create valuation engagement record with client info if provided (inline fields)
-    else if (property?.client_name || property?.request_type) {
+    // Create valuation engagement record from the client the valuer entered. The
+    // comprehensive form nests client fields under comprehensive_data, so read there too.
+    // The property OWNER is NOT the client — do not substitute it.
+    else if (property?.client_name || property?.comprehensive_data?.client_name || property?.request_type || property?.comprehensive_data?.request_type) {
+      const cd = property?.comprehensive_data || {};
       try {
         await query(
           `INSERT INTO valuation_engagements (
@@ -606,11 +864,11 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             result.id,
-            property.client_name || property.owner_name || null,
-            property.client_address || property.owner_address || null,
-            property.client_email || property.owner_email || null,
-            property.client_phone || property.owner_phone || null,
-            property.request_type || 'written',
+            property.client_name || cd.client_name || null,
+            property.client_address || cd.client_address || null,
+            property.client_email || cd.client_email || null,
+            property.client_phone || cd.client_phone || null,
+            property.request_type || cd.request_type || 'written',
             instruction_date || new Date().toISOString().split('T')[0],
             valuation_purpose || 'sale',
           ]
@@ -685,6 +943,7 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
         p.bedrooms,
         p.bathrooms,
         p.land_area_sqm,
+        p.built_area_sqm,
         p.year_built,
         p.latitude,
         p.longitude
@@ -703,6 +962,25 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
 
     const valuation = valuationResult.rows[0];
 
+    // Single source of truth for currency: fetch the LIVE USD/GHS rate from the DB
+    // (same indicator the comparable search uses). All comparable prices are normalised
+    // to GHS exactly once, here, and tagged 'GHS' so nothing downstream re-converts.
+    const fxResult = await query(
+      `SELECT value FROM economic_indicators
+       WHERE indicator_type = 'exchange_rate_usd'
+       ORDER BY effective_date DESC LIMIT 1`
+    );
+    const usdToGhs = parseFloat(fxResult.rows[0]?.value);
+    // No fallback by design: refuse to value with a guessed rate rather than emit a wrong number.
+    if (!usdToGhs || usdToGhs <= 0) {
+      return res.status(503).json({
+        error: 'FX rate unavailable',
+        message: 'No live USD/GHS exchange rate is available. Valuation refused — a guessed rate is never used.',
+      });
+    }
+    const toGhs = (price: number, currency?: string | null): number =>
+      (currency || 'GHS').toUpperCase() === 'USD' ? price * usdToGhs : price;
+
     // Fetch basket comparables for RICS calculation
     const basketResult = await query(
       `SELECT vb.id as basket_id
@@ -717,8 +995,40 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
 
     // Use comparables from request body if provided (frontend sends them before basket is saved)
     if (req.body.comparables && Array.isArray(req.body.comparables) && req.body.comparables.length > 0) {
-      comparables = req.body.comparables;
-      logger.info('Using comparables from request body', { count: comparables.length });
+      // The engine NEVER trusts frontend-supplied prices/sizes. Resolve each comparable's
+      // authoritative price + currency + building area from the properties table by id, and
+      // convert to GHS exactly once. The frontend only contributes the selection + weights.
+      const bodyComps = req.body.comparables;
+      const ids = bodyComps.map((c: any) => c.id).filter(Boolean);
+      const propRows = ids.length
+        ? (await query(
+            `SELECT id, price, price_currency, built_area_sqm, land_area_sqm,
+                    bedrooms, bathrooms, year_built, address_district, evidence_type
+             FROM properties WHERE id = ANY($1)`,
+            [ids]
+          )).rows
+        : [];
+      const byId = new Map(propRows.map((r: any) => [String(r.id), r]));
+      comparables = bodyComps.map((c: any) => {
+        const p = byId.get(String(c.id));
+        if (!p) {
+          // Manual/unsaved comparable not in properties — convert its supplied native price once
+          return { ...c, price: toGhs(parseFloat(c.price) || 0, c.price_currency), price_currency: 'GHS' };
+        }
+        return {
+          ...c,
+          price: toGhs(parseFloat(p.price) || 0, p.price_currency), // DB-native price, converted ONCE
+          price_currency: 'GHS',
+          gfa_sqm: p.built_area_sqm || c.gfa_sqm || p.land_area_sqm, // building area is the size basis
+          land_area_sqm: p.land_area_sqm,
+          bedrooms: c.bedrooms ?? p.bedrooms,
+          bathrooms: c.bathrooms ?? p.bathrooms,
+          year_built: c.year_built ?? p.year_built,
+          address_district: c.address_district ?? p.address_district,
+          evidence_type: c.evidence_type ?? p.evidence_type ?? 'listing',
+        };
+      });
+      logger.info('Resolved request-body comparables from DB', { count: comparables.length, usdToGhs });
     } else if (basketResult.rows.length > 0) {
       const basketId = basketResult.rows[0].basket_id;
 
@@ -734,6 +1044,7 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
           p.bedrooms,
           p.bathrooms,
           p.land_area_sqm,
+          p.built_area_sqm,
           p.year_built,
           p.region,
           p.address_city,
@@ -750,11 +1061,12 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
 
       comparables = comparablesResult.rows.map((comp: any) => ({
         id: comp.comparable_property_id || comp.id,
-        price: parseFloat(comp.price) || 0,
-        price_currency: comp.price_currency || 'GHS',
+        // Normalise to GHS once, here, using the live rate; tag GHS so Python never re-converts
+        price: toGhs(parseFloat(comp.price) || 0, comp.price_currency),
+        price_currency: 'GHS',
         bedrooms: comp.bedrooms,
         bathrooms: comp.bathrooms,
-        gfa_sqm: comp.land_area_sqm, // Use land area as proxy for GFA
+        gfa_sqm: comp.built_area_sqm || comp.land_area_sqm, // building area is the GFA basis; land only as last resort
         land_area_sqm: comp.land_area_sqm,
         year_built: comp.year_built,
         condition: 'good',
@@ -783,7 +1095,8 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       bedrooms: valuation.bedrooms,
       bathrooms: valuation.bathrooms,
       land_area_sqm: valuation.land_area_sqm,
-      building_size_sqm: valuation.land_area_sqm, // Use land area as proxy
+      // GFA must be the BUILDING area, not the plot. Land area only as a last-resort fallback.
+      building_size_sqm: valuation.built_area_sqm || valuation.land_area_sqm,
       year_built: valuation.year_built,
       latitude: valuation.latitude,
       longitude: valuation.longitude,
@@ -809,7 +1122,7 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
         property: propertyData,
         comparables: comparables,
         valuation_date: new Date().toISOString(),
-        usd_to_ghs_rate: req.body.usd_to_ghs_rate || 16.0,
+        usd_to_ghs_rate: usdToGhs, // live DB rate (comps already GHS; passed only as a safety net)
         options: req.body.options || {},
       }
       : {
@@ -848,6 +1161,8 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       confidence_score: number;
       confidence_level: string;
       value_range: { low: number; high: number; most_probable?: number };
+      subject_gfa?: number;
+      implied_price_per_sqm?: number;
       details: Record<string, unknown>;
       assumptions: string[];
       limitations: string[];
@@ -909,6 +1224,8 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
             confidence_score: pythonResult.confidence_score,
             confidence_level: pythonResult.confidence_level,
             value_range: pythonResult.value_range,
+            subject_gfa: pythonResult.subject_gfa,
+            implied_price_per_sqm: pythonResult.implied_price_per_sqm,
             details: pythonResult.details,
             assumptions: pythonResult.assumptions,
             limitations: pythonResult.limitations,
@@ -1060,6 +1377,16 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       delete updateData.valuation_date;
     }
 
+    // Normalize date fields: empty string → NULL, ISO datetime → yyyy-MM-dd.
+    // (A native date picker / DateField can send '' or a full ISO timestamp, both of which a
+    // Postgres `date` column rejects — "invalid input syntax for type date".)
+    for (const df of ['effective_date', 'inspection_date', 'instruction_date']) {
+      const v = updateData[df];
+      if (v === undefined) continue;
+      if (v === '' || v === null) updateData[df] = null;
+      else if (typeof v === 'string') updateData[df] = v.split('T')[0];
+    }
+
     // Check if valuation exists
     const existing = await query('SELECT id FROM valuations WHERE id = $1', [id]);
     if (existing.rows.length === 0) {
@@ -1085,6 +1412,11 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       'final_value_ghs',
       'estimated_value',
       'confidence_score',
+      // Forced Sale Value (valuer-set on the reconciliation page; read by the report)
+      'fsv_discount_percent',
+      'force_sale_value',
+      'force_sale_value_usd',
+      'sensitivity_analysis',
       'methods_applied',
       'method_weights',
       'weighting_rationale',
@@ -1490,12 +1822,11 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
     let searchQuery = `
       WITH fx_rate AS (
         -- Get latest USD/GHS exchange rate
-        SELECT COALESCE(
-          (SELECT value FROM economic_indicators 
-           WHERE indicator_type = 'exchange_rate_usd' 
-           ORDER BY effective_date DESC LIMIT 1),
-          15.5  -- Fallback rate if no data
-        ) AS usd_to_ghs
+        SELECT (
+          SELECT value FROM economic_indicators
+           WHERE indicator_type = 'exchange_rate_usd'
+           ORDER BY effective_date DESC LIMIT 1
+        ) AS usd_to_ghs  -- no fallback: USD rows yield NULL (and are excluded) if no live rate
       )
       SELECT 
         p.id,
@@ -1681,6 +2012,24 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
         AND p.transaction_type = 'sale'
         -- Exclude deleted properties (PM delete sets deleted_at)
         AND p.deleted_at IS NULL
+        -- DATA-QUALITY SANITY BAND: drop implausible rows that would pollute the comparable
+        -- set AND the summary aggregates (e.g. GHS amounts mislabelled USD -> multi-₵100M rows,
+        -- or tiny built areas carrying huge prices -> ₵-millions/m²). Uses the GHS-normalised price.
+        AND (CASE WHEN p.price_currency = 'USD'
+                  THEN COALESCE(p.inferred_sale_price, p.price) * fx.usd_to_ghs
+                  ELSE COALESCE(p.inferred_sale_price, p.price) END)
+            BETWEEN 50000 AND 100000000               -- ₵50k .. ₵100M absolute sanity
+        AND (
+          COALESCE(p.built_area_sqm, p.total_area_sqm) IS NULL          -- unknown size: keep (no ₵/m² check)
+          OR (
+            COALESCE(p.built_area_sqm, p.total_area_sqm) >= 20          -- reject sub-20 m² "houses"
+            AND (CASE WHEN p.price_currency = 'USD'
+                      THEN COALESCE(p.inferred_sale_price, p.price) * fx.usd_to_ghs
+                      ELSE COALESCE(p.inferred_sale_price, p.price) END)
+                / COALESCE(p.built_area_sqm, p.total_area_sqm)
+                BETWEEN 500 AND 60000                  -- plausible Ghana ₵/m² band
+          )
+        )
     `;
 
     // Add optional filters
@@ -1757,13 +2106,23 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
 
     // Calculate aggregate statistics for the UI
     // Note: PostgreSQL numeric columns are returned as strings by node-pg, so parseFloat is required
+    // Median is the correct central tendency for comparables: robust to the odd high/low
+    // outlier so a single atypical sale can't distort the headline figures (mean can).
+    const median = (vals: number[]): number => {
+      const a = vals.filter((v) => Number.isFinite(v) && v > 0).sort((x, y) => x - y);
+      if (a.length === 0) return 0;
+      const mid = Math.floor(a.length / 2);
+      return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
+    };
+    const pricesGhs = result.rows.map((r: any) => parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0);
+    const pricePerSqm = result.rows.map((r: any) => {
+      const price = parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0;
+      const area = parseFloat(r.gfa) || parseFloat(r.plot_size) || 0;
+      return area > 0 ? price / area : 0;
+    });
     const aggregates = comparablesFound > 0 ? {
-      avgPrice: Math.round(result.rows.reduce((sum: number, r: any) => sum + (parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0), 0) / comparablesFound),
-      avgPricePerSqm: Math.round(result.rows.reduce((sum: number, r: any) => {
-        const price = parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0;
-        const area = parseFloat(r.gfa) || parseFloat(r.plot_size) || 1;
-        return sum + (price / area);
-      }, 0) / comparablesFound),
+      avgPrice: Math.round(median(pricesGhs)),            // median (robust), exposed under the same key
+      avgPricePerSqm: Math.round(median(pricePerSqm)),    // median (robust)
       avgDistance: Math.round((result.rows.reduce((sum: number, r: any) => sum + (parseFloat(r.distance_km) || 0), 0) / comparablesFound) * 10) / 10,
       avgSimilarity: Math.round(result.rows.reduce((sum: number, r: any) => sum + (parseFloat(r.similarity_score) || 0), 0) / comparablesFound),
       minPrice: Math.min(...result.rows.map((r: any) => parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0)),
@@ -1853,7 +2212,7 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
         // Currency conversion info
         currencyConversion: {
           targetCurrency: 'GHS',
-          fxRateUsed: result.rows[0]?.fx_rate_used || 15.5,
+          fxRateUsed: result.rows[0]?.fx_rate_used ?? null,
           fxRateDate: new Date().toISOString().split('T')[0],
           usdCount: result.rows.filter((r: any) => r.price_currency === 'USD').length,
           ghsCount: result.rows.filter((r: any) => r.price_currency === 'GHS').length,
@@ -1990,12 +2349,11 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
     let searchQuery = `
       WITH fx_rate AS (
         -- Get latest USD/GHS exchange rate
-        SELECT COALESCE(
-          (SELECT value FROM economic_indicators 
-           WHERE indicator_type = 'exchange_rate_usd' 
-           ORDER BY effective_date DESC LIMIT 1),
-          15.5  -- Fallback rate if no data
-        ) AS usd_to_ghs
+        SELECT (
+          SELECT value FROM economic_indicators
+           WHERE indicator_type = 'exchange_rate_usd'
+           ORDER BY effective_date DESC LIMIT 1
+        ) AS usd_to_ghs  -- no fallback: USD rows yield NULL (and are excluded) if no live rate
       )
       SELECT 
         p.id,
@@ -2063,7 +2421,13 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
           WHEN p.created_at >= NOW() - INTERVAL '3 months' THEN 20
           WHEN p.created_at >= NOW() - INTERVAL '6 months' THEN 12
           ELSE 5
-        END AS similarity_score
+        END AS similarity_score,
+        -- Collapse duplicate ingests of the same listing (same title + rent + location):
+        -- keep only the most recent row per distinct listing.
+        ROW_NUMBER() OVER (
+          PARTITION BY p.title, p.price, round(p.latitude::numeric, 5), round(p.longitude::numeric, 5)
+          ORDER BY p.created_at DESC NULLS LAST, p.id
+        ) AS dup_rn
       FROM properties p
       CROSS JOIN fx_rate fx
       WHERE p.id != COALESCE($6::uuid, p.id)
@@ -2123,9 +2487,11 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
       excludeIds.length > 0 ? excludeIds : ['00000000-0000-0000-0000-000000000000'], // $13
     ];
 
-    // Order by similarity score and distance, limit results
-    searchQuery += `
-      ORDER BY similarity_score DESC, distance_km ASC
+    // Keep one row per distinct listing (dup_rn = 1), then order + limit.
+    searchQuery = `
+      SELECT * FROM (${searchQuery}) dq
+      WHERE dq.dup_rn = 1
+      ORDER BY dq.similarity_score DESC, dq.distance_km ASC
       LIMIT $${params.length + 1}
     `;
     params.push(limit);
@@ -2202,7 +2568,7 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
         // Currency conversion info
         currencyConversion: {
           targetCurrency: 'GHS',
-          fxRateUsed: result.rows[0]?.fx_rate_used || 15.5,
+          fxRateUsed: result.rows[0]?.fx_rate_used ?? null,
           usdCount: result.rows.filter((r: any) => r.price_currency === 'USD').length,
           ghsCount: result.rows.filter((r: any) => r.price_currency === 'GHS').length,
         },
@@ -2236,6 +2602,816 @@ router.post('/:id/rental-comparables/search', validateUUID('id'), async (req: Re
       message: 'Failed to search for rental comparables',
       detail: error.message,
     });
+  }
+});
+
+/**
+ * POST /api/valuations/:id/rental-comparables/value
+ * Single source of truth for market-rent estimation. Sources the adjustment factors from
+ * valuation_adjustment_factors + the live USD/GHS rate, resolves comparable rents from the DB,
+ * and runs the Python market-rent engine. The frontend only renders the result.
+ */
+router.post('/:id/rental-comparables/value', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const valuationId = req.params.id;
+
+    const vRes = await query(
+      `SELECT p.id, p.region, p.property_type, p.bedrooms, p.bathrooms, p.built_area_sqm, p.year_built
+       FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+      [valuationId]
+    );
+    if (vRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Valuation not found' });
+    }
+    const subject = vRes.rows[0];
+
+    // Live FX — strict, no fallback.
+    const fxRes = await query(
+      `SELECT value FROM economic_indicators WHERE indicator_type='exchange_rate_usd' ORDER BY effective_date DESC LIMIT 1`
+    );
+    const usdToGhs = parseFloat(fxRes.rows[0]?.value);
+    if (!usdToGhs || usdToGhs <= 0) {
+      return res.status(503).json({ error: 'FX rate unavailable', message: 'No live USD/GHS rate. Valuation refused.' });
+    }
+    const toGhs = (price: number, cur?: string | null) =>
+      (cur || 'GHS').toUpperCase() === 'USD' ? price * usdToGhs : price;
+
+    // Adjustment factors from config — prefer region/type-specific, else global. No hardcoded factors.
+    const facRes = await query(
+      `SELECT adjustment_factor, base_adjustment_percent, min_value, max_value, unit,
+              (region IS NOT NULL)::int + (property_type IS NOT NULL)::int AS specificity
+       FROM valuation_adjustment_factors
+       WHERE adjustment_category = 'rental_market' AND is_active = TRUE
+         AND (effective_date IS NULL OR effective_date <= CURRENT_DATE)
+         AND (expiry_date IS NULL OR expiry_date >= CURRENT_DATE)
+         AND (region IS NULL OR region = $1)
+         AND (property_type IS NULL OR property_type::text = $2::text)
+       ORDER BY specificity DESC`,
+      [subject.region, subject.property_type]
+    );
+    const adjustment_factors: Record<string, any> = {};
+    for (const r of facRes.rows) {
+      if (!adjustment_factors[r.adjustment_factor]) {
+        adjustment_factors[r.adjustment_factor] = {
+          base_adjustment_percent: parseFloat(r.base_adjustment_percent) || 0,
+          min_value: r.min_value != null ? parseFloat(r.min_value) : null,
+          max_value: r.max_value != null ? parseFloat(r.max_value) : null,
+          unit: r.unit,
+        };
+      }
+    }
+    if (Object.keys(adjustment_factors).length === 0) {
+      return res.status(503).json({
+        error: 'No adjustment factors configured',
+        message: 'valuation_adjustment_factors has no active rental_market rows (run migration 251).',
+      });
+    }
+
+    // Resolve comparable rents from the DB by id (never trust frontend prices); convert to GHS once.
+    const bodyComps = Array.isArray(req.body.comparables) ? req.body.comparables : [];
+    const ids = bodyComps.map((c: any) => c.id).filter(Boolean);
+    const propRows = ids.length ? (await query(
+      `SELECT id, price, price_currency, built_area_sqm, bedrooms, bathrooms, year_built, created_at
+       FROM properties WHERE id = ANY($1)`, [ids]
+    )).rows : [];
+    const byId = new Map(propRows.map((r: any) => [String(r.id), r]));
+    const comparables = bodyComps.map((c: any) => {
+      const p: any = byId.get(String(c.id));
+      const nativeRent = p ? parseFloat(p.price) : parseFloat(c.monthly_rent_ghs ?? c.asking_rent_monthly ?? c.price);
+      const nativeCur = p ? p.price_currency : c.price_currency;
+      return {
+        id: String(c.id),
+        monthly_rent_ghs: toGhs(nativeRent || 0, nativeCur),
+        bedrooms: p?.bedrooms ?? c.bedrooms,
+        bathrooms: p?.bathrooms ?? c.bathrooms,
+        gfa_sqm: p?.built_area_sqm ?? c.gfa_sqm,
+        year_built: p?.year_built ?? c.year_built,
+        furnishing: c.furnishing,                 // not a DB column; only if the UI supplies it
+        transaction_date: p?.created_at ?? c.transaction_date,
+        weight: parseFloat(c.weight) || 1.0,
+      };
+    });
+
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
+    const pyRes = await fetch(`${pythonBase}/api/v1/methods/market-rent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: {
+          bedrooms: subject.bedrooms,
+          bathrooms: subject.bathrooms,
+          building_size_sqm: subject.built_area_sqm,
+          year_built: subject.year_built,
+          furnishing: req.body.subject_furnishing,
+        },
+        comparables,
+        adjustment_factors,
+      }),
+    });
+    if (!pyRes.ok) {
+      const txt = await pyRes.text();
+      logger.error('Market-rent engine failed', { status: pyRes.status, error: txt });
+      return res.status(502).json({
+        error: 'Engine error',
+        message: 'Market-rent engine failed',
+        details: process.env.NODE_ENV === 'development' ? txt : undefined,
+      });
+    }
+    const data = await pyRes.json();
+    return res.json({
+      success: true,
+      data,
+      meta: { engine: 'python', method: 'market_rent', usd_to_ghs: usdToGhs, factors_used: Object.keys(adjustment_factors) },
+    });
+  } catch (error: any) {
+    logger.error('rental-comparables/value failed', { error: error.message, stack: error.stack });
+    return res.status(500).json({ error: 'Internal error', message: error.message });
+  }
+});
+
+/**
+ * POST /api/valuations/:id/drc/value
+ * Single source of truth for the Depreciated Replacement Cost (DRC) method. Sources the
+ * replacement cost/sqm, MEA factor and economic (useful) life from specialized_construction_costs
+ * (Data Hub), the land value from the system-wide Land Value reconciliation, and the building
+ * attributes from the property — then runs the Python DRC engine. NO hardcoded fallbacks: any
+ * input not resolvable from the DB must be supplied explicitly by the valuer, otherwise the
+ * calculation strict-fails with a clear list of what's missing. The frontend only renders the result.
+ */
+router.post('/:id/drc/value', validateUUID('id'), async (req: Request, res: Response) => {
+  const num = (v: any): number | null => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  try {
+    const valuationId = req.params.id;
+    const b = req.body || {};
+
+    const buildingFunction = String(b.building_function || '').trim();
+    const qualityLevel = String(b.quality_level || '').trim();
+    if (!buildingFunction || !qualityLevel) {
+      return res.status(400).json({ error: 'Bad Request', message: 'building_function and quality_level are required.' });
+    }
+
+    // Subject property
+    const vRes = await query(
+      `SELECT p.id, p.region, p.built_area_sqm, p.land_area_sqm, p.year_built, p.condition,
+              p.floors, p.metadata, p.address_city, p.address_street
+       FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+      [valuationId]
+    );
+    if (vRes.rows.length === 0) return res.status(404).json({ error: 'Not Found', message: 'Valuation not found' });
+    const prop = vRes.rows[0];
+    const region = prop.region || 'greater_accra';
+
+    // DRC parameters from the Data Hub config table. Prefer the property's own region; otherwise the
+    // greater_accra published reference rate (surfaced in meta.cost_region so it is never silent).
+    const costRes = await query(
+      `SELECT base_cost_sqm, useful_life_years, mea_factor, mea_feature_range, region
+         FROM specialized_construction_costs
+        WHERE building_function::text = $1 AND quality_level::text = $2
+          AND region::text IN ($3, 'greater_accra')
+        ORDER BY (region::text = $3) DESC
+        LIMIT 1`,
+      [buildingFunction, qualityLevel, region]
+    );
+    const costRow = costRes.rows[0];
+
+    // Each input: explicit valuer override > DB config / property. Strict-fail if neither.
+    const replacementCostPerSqm = num(b.replacement_cost_per_sqm) ?? num(costRow?.base_cost_sqm);
+    // MEA: the DB value is the per-class BASELINE (anchor). Features modulate it within the range;
+    // the valuer may instead post an explicit final MEA (mea_factor_override).
+    const meaBaseline = num(b.mea_factor) ?? num(costRow?.mea_factor);
+    const meaFeatureRange = num(b.mea_feature_range) ?? num(costRow?.mea_feature_range) ?? 0;
+    const meaOverride = num(b.mea_factor_override);
+    const usefulLife = num(b.useful_life_years) ?? num(costRow?.useful_life_years);
+    const gfa = num(b.gfa_sqm) ?? num(prop.built_area_sqm);
+    const yearBuilt = num(b.year_built) ?? num(prop.year_built);
+    const condition = String(b.condition || prop.condition || '').trim();
+
+    // Feature set for the feature-driven MEA (RICS Model A). Pulled from the property + metadata;
+    // missing items are simply absent and the engine scores them neutral (never a silent skew).
+    const md: any = prop.metadata || {};
+    const floors = num(b.floors) ?? num(prop.floors) ?? num(md.total_floors) ?? num(md.floors);
+    const features = {
+      age_years: yearBuilt ? new Date().getFullYear() - yearBuilt : null,
+      quality_rating: b.quality_rating || md.quality_rating || qualityLevel,
+      floors: floors ?? null,
+      services: {
+        generator: !!md.has_generator,
+        security: !!md.has_security,
+        water: !!md.has_borehole,
+        drainage: !!md.drainage_sanitation,
+        elevator: !!md.has_elevator,
+        solar: !!md.has_solar,
+        ac: !!(md.has_ac ?? md.has_air_conditioning),
+      },
+    };
+
+    // Land value — explicit override > system-wide Land Value reconciliation.
+    let landValue = num(b.land_value);
+    let landSource = 'user_entered';
+    if (landValue == null || landValue <= 0) {
+      const lvRes = await query(
+        `SELECT calculated_value FROM valuation_method_inputs WHERE valuation_id = $1 AND method_type = 'land_value'`,
+        [valuationId]
+      );
+      landValue = num(lvRes.rows[0]?.calculated_value);
+      landSource = 'land_value_system';
+    }
+
+    const missing: string[] = [];
+    if (!replacementCostPerSqm || replacementCostPerSqm <= 0) missing.push(`replacement cost/sqm (no published rate for ${buildingFunction}/${qualityLevel} and none supplied)`);
+    if (!meaBaseline || meaBaseline <= 0) missing.push('MEA baseline factor');
+    if (!usefulLife || usefulLife <= 0) missing.push('economic (useful) life');
+    if (!gfa || gfa <= 0) missing.push('GFA (gross floor area)');
+    if (!yearBuilt || yearBuilt <= 0) missing.push('year built');
+    if (!condition) missing.push('building condition');
+    if (landValue == null || landValue <= 0) missing.push('land value (no Land Value reconciliation on file and none supplied)');
+    if (missing.length) {
+      return res.status(422).json({
+        error: 'Missing required DRC inputs',
+        message: `Cannot run DRC — resolve or supply: ${missing.join('; ')}.`,
+        missing,
+      });
+    }
+
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
+    const pyRes = await fetch(`${pythonBase}/api/v1/methods/drc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        property: {
+          id: prop.id,
+          property_type: buildingFunction,
+          region,
+          building_size_sqm: gfa,
+          land_area_sqm: num(prop.land_area_sqm),
+          year_built: yearBuilt,
+          condition,
+          address_city: prop.address_city,
+          address_street: prop.address_street,
+        },
+        options: {
+          replacement_cost_per_sqm: replacementCostPerSqm,
+          mea_factor: meaBaseline,                 // per-class baseline (anchor)
+          mea_feature_range: meaFeatureRange,      // bounded feature modulation
+          mea_factor_override: meaOverride ?? undefined,
+          features,
+          useful_life: usefulLife,
+          land_value: landValue,
+          depreciation_overrides: b.depreciation_overrides || {},
+        },
+      }),
+    });
+    if (!pyRes.ok) {
+      const txt = await pyRes.text();
+      logger.error('DRC engine failed', { status: pyRes.status, error: txt });
+      return res.status(502).json({ error: 'Engine error', message: 'DRC engine failed', details: process.env.NODE_ENV === 'development' ? txt : undefined });
+    }
+    const data = await pyRes.json();
+    return res.json({
+      success: true,
+      data,
+      meta: {
+        engine: 'python',
+        method: 'drc_method',
+        sources: {
+          replacement_cost_per_sqm: num(b.replacement_cost_per_sqm) != null ? 'user' : 'data_hub',
+          mea_factor: meaOverride != null ? 'valuer_override' : 'feature_model',
+          useful_life: num(b.useful_life_years) != null ? 'user' : 'data_hub',
+          gfa: num(b.gfa_sqm) != null ? 'user' : 'property',
+          land_value: landSource,
+          cost_region: costRow?.region || null,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('drc/value failed', { error: error.message, stack: error.stack });
+    return res.status(500).json({ error: 'Internal error', message: error.message });
+  }
+});
+
+/**
+ * POST /api/valuations/:id/profits/value
+ * Single source of truth for the Profits (trade-related) method. Sources the per-type trading
+ * benchmarks (revenue/unit, operating cost ratios, operator's remuneration %, trading cap rate)
+ * from trading_property_benchmarks (Data Hub), applies any valuer overrides / actual turnover,
+ * and runs the Python profits engine. NO hardcoded fallbacks — anything unresolved strict-fails
+ * with a clear list. The frontend renders the result only.
+ */
+router.post('/:id/profits/value', validateUUID('id'), async (req: Request, res: Response) => {
+  const num = (v: any): number | null => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  try {
+    const valuationId = req.params.id;
+    const b = req.body || {};
+    const tradingType = String(b.trading_property_type || b.property_type || '').trim();
+    if (!tradingType) {
+      return res.status(400).json({ error: 'Bad Request', message: 'trading_property_type is required.' });
+    }
+
+    const vRes = await query(
+      `SELECT p.id, p.region, p.building_size_sqm, p.built_area_sqm
+       FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+      [valuationId]
+    );
+    if (vRes.rows.length === 0) return res.status(404).json({ error: 'Not Found', message: 'Valuation not found' });
+    const prop = vRes.rows[0];
+    const region = prop.region || 'greater_accra';
+
+    // Trading benchmarks from the Data Hub config. Prefer the property's region; else greater_accra.
+    const bmRes = await query(
+      `SELECT unit_metric, revenue_per_unit, occupancy_default_pct, operating_cost_ratios,
+              operator_remuneration_pct, typical_cap_rate, cap_rate_low, cap_rate_high,
+              operator_capital_pct, return_on_operator_capital_pct, region
+         FROM trading_property_benchmarks
+        WHERE property_type = $1 AND region IN ($2, 'greater_accra')
+        ORDER BY (region = $2) DESC
+        LIMIT 1`,
+      [tradingType, region]
+    );
+    const bm = bmRes.rows[0];
+
+    // Resolve each input: explicit valuer override > DB benchmark.
+    const grossActual = num(b.gross_annual_revenue);
+    const haveActual = grossActual != null && grossActual > 0;
+    const unitCount = num(b.unit_count);
+    const revenuePerUnit = num(b.revenue_per_unit) ?? num(bm?.revenue_per_unit);
+    const occupancyRate = num(b.occupancy_rate) ?? num(bm?.occupancy_default_pct);
+    const ratiosOverride = b.operating_cost_ratios && typeof b.operating_cost_ratios === 'object'
+      && Object.keys(b.operating_cost_ratios).length > 0;
+    const operatingCostRatios = ratiosOverride ? b.operating_cost_ratios : bm?.operating_cost_ratios;
+    const operatorRemPct = num(b.operator_remuneration_pct) ?? num(bm?.operator_remuneration_pct);
+
+    // Cap rate resolution (priority): 1) valuer override, 2) LIVE market analytics (CapRateService,
+    // evidence from market_cap_rate_benchmarks / listing-derived) for the closest analytics class,
+    // 3) the seeded trading benchmark — used ONLY when analytics has no evidence. Provenance is
+    // surfaced so the report never presents a seed as if it were evidence.
+    const TRADING_TO_ANALYTICS_CLASS: Record<string, string> = {
+      hotel: 'commercial_office', hospital: 'commercial_office', healthcare: 'commercial_office',
+      school: 'commercial_office', restaurant: 'commercial_shop', fuel_station: 'commercial_shop',
+    };
+    let capRate = num(b.cap_rate);
+    let capLow: number | null = null;
+    let capHigh: number | null = null;
+    let capRateSource = 'valuer_override';
+    let capRateMeta: any = null;
+    if (capRate == null || capRate <= 0) {
+      const analyticsClass = TRADING_TO_ANALYTICS_CLASS[tradingType] || 'commercial_office';
+      try {
+        const mk = await capRateService.getMarketCapRate(region, analyticsClass);
+        if (mk && mk.sampleSize > 0 && mk.benchmarkCapRate > 0) {
+          capRate = mk.benchmarkCapRate;
+          capLow = mk.capRateRangeLow;
+          capHigh = mk.capRateRangeHigh;
+          capRateSource = 'market_analytics';
+          capRateMeta = {
+            analytics_class: analyticsClass,
+            sample_size: mk.sampleSize,
+            confidence: mk.confidenceScore,
+            data_quality: mk.dataQuality,
+            note: `Mapped from ${analyticsClass} (no trading-specific yield evidence in the hub yet).`,
+          };
+        }
+      } catch (e: any) {
+        logger.debug('CapRateService lookup failed for profits; falling back to seed', { error: e?.message });
+      }
+      if (capRate == null || capRate <= 0) {
+        capRate = num(bm?.typical_cap_rate);
+        capLow = num(bm?.cap_rate_low);
+        capHigh = num(bm?.cap_rate_high);
+        capRateSource = 'indicative_benchmark';
+        capRateMeta = { note: 'Seeded indicative trading yield — no market evidence available; valuer to confirm.' };
+      }
+    } else {
+      capLow = num(bm?.cap_rate_low);
+      capHigh = num(bm?.cap_rate_high);
+    }
+
+    const missing: string[] = [];
+    if (!operatingCostRatios || Object.keys(operatingCostRatios).length === 0) missing.push(`operating cost ratios (no benchmark for ${tradingType} and none supplied)`);
+    if (operatorRemPct == null || operatorRemPct <= 0) missing.push("operator's remuneration %");
+    if (capRate == null || capRate <= 0) missing.push('capitalisation rate');
+    if (!haveActual) {
+      if (unitCount == null || unitCount <= 0) missing.push('unit count (or supply actual turnover)');
+      if (revenuePerUnit == null || revenuePerUnit <= 0) missing.push('revenue per unit');
+      if (occupancyRate == null) missing.push('occupancy rate');
+    }
+    if (missing.length) {
+      return res.status(422).json({
+        error: 'Missing required Profits inputs',
+        message: `Cannot run the profits method — resolve or supply: ${missing.join('; ')}.`,
+        missing,
+      });
+    }
+
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
+    const pyRes = await fetch(`${pythonBase}/api/v1/methods/profits`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        property: {
+          id: prop.id,
+          property_type: tradingType,
+          region,
+          building_size_sqm: num(prop.building_size_sqm) ?? num(prop.built_area_sqm),
+        },
+        options: {
+          gross_annual_revenue: haveActual ? grossActual : undefined,
+          unit_count: unitCount ?? undefined,
+          revenue_per_unit: revenuePerUnit ?? undefined,
+          occupancy_rate: occupancyRate ?? undefined,
+          operating_cost_ratios: operatingCostRatios,
+          ratios_source: ratiosOverride ? 'user' : 'config',
+          operator_remuneration_pct: operatorRemPct,
+          // Institutional divisible balance: return on the operator's capital (FF&E + stock).
+          operator_capital_pct: num(b.operator_capital_pct) ?? num(bm?.operator_capital_pct) ?? undefined,
+          return_on_operator_capital_pct: num(b.return_on_operator_capital_pct) ?? num(bm?.return_on_operator_capital_pct) ?? undefined,
+          cap_rate: capRate,
+          cap_rate_source: capRateSource === 'valuer_override' ? 'user' : 'config',
+          cap_rate_low: capLow ?? undefined,
+          cap_rate_high: capHigh ?? undefined,
+        },
+      }),
+    });
+    if (!pyRes.ok) {
+      const txt = await pyRes.text();
+      logger.error('Profits engine failed', { status: pyRes.status, error: txt });
+      return res.status(502).json({ error: 'Engine error', message: 'Profits engine failed', details: process.env.NODE_ENV === 'development' ? txt : undefined });
+    }
+    const data = await pyRes.json();
+    return res.json({
+      success: true,
+      data,
+      meta: {
+        engine: 'python',
+        method: 'profits_method',
+        unit_metric: bm?.unit_metric || null,
+        benchmark_region: bm?.region || null,
+        cap_rate_provenance: { source: capRateSource, ...(capRateMeta || {}) },
+        sources: {
+          revenue: haveActual ? 'actual_turnover' : (num(b.revenue_per_unit) != null ? 'user' : 'benchmark'),
+          operating_cost_ratios: ratiosOverride ? 'user' : 'benchmark',
+          operator_remuneration_pct: num(b.operator_remuneration_pct) != null ? 'user' : 'benchmark',
+          cap_rate: capRateSource,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('profits/value failed', { error: error.message, stack: error.stack });
+    return res.status(500).json({ error: 'Internal error', message: error.message });
+  }
+});
+
+/**
+ * POST /api/valuations/:id/residual/value
+ * Single source of truth for the Residual (development land) method. Sources the sale price/sqm
+ * (market comparables), construction cost/sqm (base_construction_costs), development finance rate
+ * (economic_indicators — live), and the development assumptions (residual_development_assumptions)
+ * from the Data Hub, applies any valuer overrides, and runs the full Python residual engine.
+ * NO hardcoded fallbacks — anything unresolved strict-fails with a clear list. Frontend renders only.
+ */
+router.post('/:id/residual/value', validateUUID('id'), async (req: Request, res: Response) => {
+  const num = (v: any): number | null => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  // dev type → property_type for the two evidence sources
+  const DEV_TO_SALE_TYPE: Record<string, string> = {
+    house: 'residential_house', townhouse: 'residential_house', apartment: 'apartment_flat',
+    commercial: 'commercial_shop', office: 'commercial_shop', industrial: 'commercial_shop', warehouse: 'commercial_shop',
+  };
+  const DEV_TO_COST_TYPE: Record<string, string> = {
+    house: 'residential', townhouse: 'residential', apartment: 'residential',
+    commercial: 'commercial', office: 'commercial', industrial: 'industrial', warehouse: 'industrial',
+  };
+  try {
+    const valuationId = req.params.id;
+    const b = req.body || {};
+
+    const vRes = await query(
+      `SELECT p.id, p.region, p.land_area_sqm, p.built_area_sqm, p.floors, p.property_type, p.property_sub_type
+       FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+      [valuationId]
+    );
+    if (vRes.rows.length === 0) return res.status(404).json({ error: 'Not Found', message: 'Valuation not found' });
+    const prop = vRes.rows[0];
+    const region = prop.region || 'greater_accra';
+
+    // Development type: explicit body, else inferred from the property type.
+    let devType = String(b.development_type || '').trim();
+    if (!devType) {
+      const pt = `${prop.property_type || ''} ${prop.property_sub_type || ''}`.toLowerCase();
+      devType = pt.includes('commercial') ? 'commercial' : pt.includes('office') ? 'office'
+        : pt.includes('industrial') ? 'industrial' : pt.includes('warehouse') ? 'warehouse'
+        : (pt.includes('apartment') || pt.includes('flat')) ? 'apartment'
+        : pt.includes('townhouse') ? 'townhouse' : 'house';
+    }
+
+    // Development assumptions from config (region-aware).
+    const aRes = await query(
+      `SELECT * FROM residual_development_assumptions
+        WHERE development_type = $1 AND region IN ($2, 'greater_accra')
+        ORDER BY (region = $2) DESC LIMIT 1`,
+      [devType, region]
+    );
+    const a = aRes.rows[0];
+
+    // Sale price/sqm from market comparables (evidence); construction cost from base costs.
+    let salePriceEvidence: any = null;
+    let basePrice: number | null = null;
+    let baseCost: number | null = null;
+    try {
+      const comps = await constructionCostService.getComparablePricePerSqm(region, DEV_TO_SALE_TYPE[devType]);
+      const match = comps.find((c: any) => c.property_type === DEV_TO_SALE_TYPE[devType]) || comps[0];
+      if (match) { basePrice = num(match.median_price_sqm); salePriceEvidence = { count: match.comparable_count, p25: match.p25_price_sqm, p75: match.p75_price_sqm, median: match.median_price_sqm }; }
+    } catch (e: any) { logger.debug('residual sale-price lookup failed', { error: e?.message }); }
+    try {
+      const costs = await constructionCostService.getBaseCosts(DEV_TO_COST_TYPE[devType], region);
+      const std = costs.find((c: any) => c.quality_tier === 'standard') || costs[0];
+      if (std) baseCost = num(std.base_cost_per_sqm);
+    } catch (e: any) { logger.debug('residual base-cost lookup failed', { error: e?.message }); }
+
+    // Live development finance rate (most recent of lending/prime/policy), unless overridden.
+    let financeRate = num(b.finance_rate);
+    if (financeRate == null || financeRate <= 0) {
+      const fr = await query(
+        `SELECT value::float AS value FROM economic_indicators
+          WHERE indicator_type::text = ANY($1)
+          ORDER BY effective_date DESC, array_position($1, indicator_type::text) LIMIT 1`,
+        [['lending_rate', 'interest_rate_prime', 'interest_rate_policy']]
+      );
+      financeRate = num(fr.rows[0]?.value);
+    }
+
+    // Resolve every input: valuer override > evidence/config. Floors/coverage from property when known.
+    const plotSize = num(b.plot_size) ?? num(prop.land_area_sqm);
+    const floors = num(b.floors) ?? num(prop.floors) ?? 1;
+    const builtArea = num(prop.built_area_sqm);
+    let plotCoverage = num(b.plot_coverage);
+    if (plotCoverage == null && plotSize && builtArea && floors && plotSize * floors > 0) {
+      const c = builtArea / (plotSize * floors);
+      if (c > 0 && c <= 1) plotCoverage = c;
+    }
+    if (plotCoverage == null) plotCoverage = num(a?.plot_coverage_default);
+
+    const salePricePerSqm = num(b.sale_price_per_sqm) ?? basePrice;
+    const constructionCostPerSqm = num(b.construction_cost_per_sqm) ?? baseCost;
+    const efficiency = num(b.efficiency) ?? num(a?.efficiency_pct);
+
+    const missing: string[] = [];
+    if (!a) missing.push(`development assumptions (no config for ${devType})`);
+    if (plotSize == null || plotSize <= 0) missing.push('plot size (land area)');
+    if (salePricePerSqm == null || salePricePerSqm <= 0) missing.push('sale price/sqm (no comparables for this type/region and none supplied)');
+    if (constructionCostPerSqm == null || constructionCostPerSqm <= 0) missing.push('construction cost/sqm (no base cost for this type/region and none supplied)');
+    if (financeRate == null || financeRate <= 0) missing.push('development finance rate (no economic indicator and none supplied)');
+    if (missing.length) {
+      return res.status(422).json({ error: 'Missing required residual inputs', message: `Cannot run the residual method — resolve or supply: ${missing.join('; ')}.`, missing });
+    }
+
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
+    const pyRes = await fetch(`${pythonBase}/api/v1/methods/residual`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        property: { id: prop.id, property_type: devType, region, land_area_sqm: plotSize },
+        options: {
+          plot_coverage: plotCoverage,
+          floors,
+          efficiency,
+          sale_price_per_sqm: salePricePerSqm,
+          construction_cost_per_sqm: constructionCostPerSqm,
+          cost_basis: b.cost_basis || 'gross',
+          professional_fees_pct: num(b.professional_fees_pct) ?? num(a.professional_fees_pct),
+          contingency_pct: num(b.contingency_pct) ?? num(a.contingency_pct),
+          marketing_pct: num(b.marketing_pct) ?? num(a.marketing_pct),
+          sales_commission_pct: num(b.sales_commission_pct) ?? num(a.sales_commission_pct),
+          legal_fees_pct: num(b.legal_fees_pct) ?? num(a.legal_fees_pct),
+          finance_rate: financeRate,
+          finance_ltv_pct: num(b.finance_ltv_pct) ?? num(a.finance_ltv_pct),
+          finance_avg_balance_factor: num(b.finance_avg_balance_factor) ?? num(a.finance_avg_balance_factor),
+          construction_months: num(b.construction_months) ?? num(a.construction_months),
+          developer_profit_pct: num(b.developer_profit_pct) ?? num(a.developer_profit_pct),
+          min_profit_pct: num(a.min_profit_pct),
+        },
+      }),
+    });
+    if (!pyRes.ok) {
+      const txt = await pyRes.text();
+      logger.error('Residual engine failed', { status: pyRes.status, error: txt });
+      return res.status(502).json({ error: 'Engine error', message: 'Residual engine failed', details: process.env.NODE_ENV === 'development' ? txt : undefined });
+    }
+    const data = await pyRes.json();
+    return res.json({
+      success: true,
+      data,
+      meta: {
+        engine: 'python',
+        method: 'residual_method',
+        development_type: devType,
+        sale_price_evidence: salePriceEvidence,
+        sources: {
+          sale_price_per_sqm: num(b.sale_price_per_sqm) != null ? 'user' : 'comparables',
+          construction_cost_per_sqm: num(b.construction_cost_per_sqm) != null ? 'user' : 'base_costs',
+          finance_rate: num(b.finance_rate) != null ? 'user' : 'economic_indicators',
+          assumptions: 'config',
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('residual/value failed', { error: error.message, stack: error.stack });
+    return res.status(500).json({ error: 'Internal error', message: error.message });
+  }
+});
+
+/**
+ * POST /api/valuations/:id/sensitivity
+ * Real, method-specific sensitivity analysis (RICS VPS 3). For the selected driver, it RE-RUNS the
+ * actual Python method engine (via that method's /value route, which sources Data Hub inputs and
+ * accepts overrides) at ±range around the base input, returning the true engine value at each point.
+ * NO weight×% approximation — every point is an actual engine re-run with the driver perturbed.
+ * The frontend re-weights these into the reconciled value using the weights it already holds.
+ * Body: { driver, range_pct=10, points=5 }
+ */
+router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Response) => {
+  // driver → which method engine to re-run, which input to perturb, and where to read its base value.
+  const SENS_DRIVERS: Record<string, { method: string; endpoint: string; overrideKey: string; detailKey: string; label: string }> = {
+    // Profits (trade-related)
+    profits_cap_rate:       { method: 'profits_method',  endpoint: 'profits',  overrideKey: 'cap_rate',                   detailKey: 'cap_rate',                   label: 'Capitalisation Rate' },
+    profits_revenue:        { method: 'profits_method',  endpoint: 'profits',  overrideKey: 'revenue_per_unit',           detailKey: 'revenue_per_unit',           label: 'Revenue per Unit' },
+    profits_operator_share: { method: 'profits_method',  endpoint: 'profits',  overrideKey: 'operator_remuneration_pct',  detailKey: 'operator_remuneration_pct',  label: "Operator's Remuneration" },
+    // Residual (development land)
+    residual_gdv:           { method: 'residual_method', endpoint: 'residual', overrideKey: 'sale_price_per_sqm',         detailKey: 'sale_price_per_sqm',         label: 'GDV (Sale Price/sqm)' },
+    residual_build_cost:    { method: 'residual_method', endpoint: 'residual', overrideKey: 'construction_cost_per_sqm',  detailKey: 'construction_cost_per_sqm',  label: 'Construction Cost/sqm' },
+    residual_finance:       { method: 'residual_method', endpoint: 'residual', overrideKey: 'finance_rate',              detailKey: 'finance_rate',               label: 'Finance Rate' },
+    // DRC (specialised)
+    drc_replacement_cost:   { method: 'drc_method',      endpoint: 'drc',      overrideKey: 'replacement_cost_per_sqm',   detailKey: 'replacement_cost_per_sqm',   label: 'Replacement Cost/sqm' },
+    drc_land_value:         { method: 'drc_method',      endpoint: 'drc',      overrideKey: 'land_value',                 detailKey: 'land_value',                 label: 'Land Value' },
+  };
+  // Methods WITHOUT a /value route (cost/income/sales): re-run the Python engine from the inputs the
+  // engine echoed into the saved method_results.details, perturbing one driver. (Income is computed
+  // from its echoed NOI/cap — exact for the cap-rate driver — since its engine recomputes NOI from
+  // opex components not all echoed.)
+  const RECON: Record<string, { method: string; pyEndpoint?: string; detailKey: string; kind: 'cost' | 'sales' | 'income'; overrideKey?: string; label: string }> = {
+    construction_cost:     { method: 'cost_approach',     pyEndpoint: 'cost-approach',   kind: 'cost',  overrideKey: 'construction_cost_per_sqm', detailKey: 'cost_per_sqm',            label: 'Construction Cost/sqm' },
+    land_value:            { method: 'cost_approach',     pyEndpoint: 'cost-approach',   kind: 'cost',  overrideKey: 'land_value_per_sqm',        detailKey: 'land_value_per_sqm',      label: 'Land Value/sqm' },
+    depreciation:          { method: 'cost_approach',     pyEndpoint: 'cost-approach',   kind: 'cost',  overrideKey: 'physical_dep',              detailKey: 'physical_depreciation_pct', label: 'Depreciation' },
+    price_per_sqm:         { method: 'sales_comparison',  pyEndpoint: 'sales-comparison', kind: 'sales', overrideKey: 'indicated_value',          detailKey: 'indicated_value',         label: 'Price per SQM' },
+    comparable_adjustments:{ method: 'sales_comparison',  pyEndpoint: 'sales-comparison', kind: 'sales', overrideKey: 'total_multiplier',         detailKey: 'indicated_value',         label: 'Comparable Adjustments' },
+    rental_rate:           { method: 'income_approach',   kind: 'income', detailKey: 'rental_rate',  label: 'Rental Rate' },
+    cap_rate:              { method: 'income_approach',   kind: 'income', detailKey: 'cap_rate',     label: 'Capitalisation Rate' },
+    vacancy_rate:          { method: 'income_approach',   kind: 'income', detailKey: 'vacancy_rate', label: 'Vacancy Rate' },
+  };
+
+  try {
+    const valuationId = req.params.id;
+    const b = req.body || {};
+    const driver = String(b.driver || '').trim();
+    const map = SENS_DRIVERS[driver];
+    const recon = RECON[driver];
+    if (!map && !recon) {
+      return res.status(400).json({ error: 'Bad Request', message: `Unknown or unsupported sensitivity driver '${driver}'.`, supported: [...Object.keys(SENS_DRIVERS), ...Object.keys(RECON)] });
+    }
+
+    // ── Reconstruction path (cost / income / sales) ──────────────────────────
+    if (recon) {
+      const rangePctR = Number(b.range_pct) > 0 ? Number(b.range_pct) : 10;
+      const pctsR = [-rangePctR, -rangePctR / 2, 0, rangePctR / 2, rangePctR];
+      const vr = await query(
+        `SELECT v.method_results, p.building_size_sqm, p.built_area_sqm, p.land_area_sqm, p.year_built, p.condition, p.region
+           FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+        [valuationId]
+      );
+      if (vr.rows.length === 0) return res.status(404).json({ error: 'Not Found', message: 'Valuation not found' });
+      const prop = vr.rows[0];
+      const mr = (prop.method_results || {})[recon.method];
+      const d: any = mr?.details || {};
+      const baseValueR = Number(mr?.value);
+      const baseInputR = Number(d[recon.detailKey]);
+      if (!Number.isFinite(baseValueR) || !Number.isFinite(baseInputR) || baseInputR === 0) {
+        return res.status(422).json({ error: 'Sensitivity unavailable', message: `No saved ${recon.method} result/input for '${driver}' — run that method first.` });
+      }
+      const pyBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
+      const callPy = async (endpoint: string, property: any, options: any): Promise<number | null> => {
+        try {
+          const r = await fetch(`${pyBase}/api/v1/methods/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ property, options }) });
+          if (!r.ok) return null;
+          const j: any = await r.json();
+          return Number(j?.estimated_value);
+        } catch { return null; }
+      };
+
+      const points = await Promise.all(pctsR.map(async (pct) => {
+        const factor = 1 + pct / 100;
+        if (pct === 0) return { pct, method_value: baseValueR };
+        let mv: number | null = null;
+
+        if (recon.kind === 'cost') {
+          const property = { building_size_sqm: d.building_size_sqm, land_area_sqm: d.land_area_sqm, year_built: prop.year_built, condition: prop.condition, region: prop.region };
+          const opts: any = {
+            construction_cost_per_sqm: d.cost_per_sqm,
+            land_value_per_sqm: d.land_value_per_sqm,
+            soft_costs_percent: d.soft_costs_pct,
+            siteworks: d.siteworks,
+            entrepreneurial_profit_percent: d.entrepreneurial_profit_pct,
+            depreciation_overrides: { physical: d.physical_depreciation_pct, functional: d.functional_obsolescence_pct, external: d.external_obsolescence_pct },
+          };
+          if (recon.overrideKey === 'construction_cost_per_sqm') opts.construction_cost_per_sqm = baseInputR * factor;
+          else if (recon.overrideKey === 'land_value_per_sqm') opts.land_value_per_sqm = baseInputR * factor;
+          else if (recon.overrideKey === 'physical_dep') opts.depreciation_overrides.physical = baseInputR * factor;
+          mv = await callPy('cost-approach', property, opts);
+        } else if (recon.kind === 'sales') {
+          const property = { building_size_sqm: d.building_size_sqm ?? prop.building_size_sqm ?? prop.built_area_sqm };
+          const adj = { ...(d.adjustments || {}) };
+          let indicated = Number(d.indicated_value);
+          if (recon.overrideKey === 'indicated_value') indicated = indicated * factor;            // price per sqm scales value
+          else if (recon.overrideKey === 'total_multiplier') adj.total_multiplier = (Number(adj.total_multiplier) || 1) * factor;
+          mv = await callPy('sales-comparison', property, { indicated_value: indicated, adjustments: adj });
+        } else {
+          // income — analytical perturbation from the engine's echoed NOI / EGI / cap (actual variables).
+          const cap = Number(d.cap_rate_pct) / 100;
+          const noi = Number(d.net_operating_income);
+          const egi = Number(d.effective_gross_income);
+          const pgi = Number(d.potential_gross_income);
+          const opex = Number(d.operating_expenses);
+          const expenseRatio = egi > 0 ? opex / egi : 0;
+          const coll = Number(d.collection_loss_pct || 0) / 100;
+          if (cap > 0) {
+            if (recon.detailKey === 'cap_rate') {
+              mv = noi / (cap * factor);                                                          // exact: value = NOI / cap
+            } else if (recon.detailKey === 'rental_rate' && pgi > 0) {
+              const newEgi = egi * factor;                                                        // rent scales PGI→EGI
+              mv = (newEgi * (1 - expenseRatio)) / cap;
+            } else if (recon.detailKey === 'vacancy_rate' && pgi > 0) {
+              const vac = Number(d.vacancy_rate) / 100;
+              const newEgi = pgi * (1 - vac * factor - coll);
+              mv = (newEgi * (1 - expenseRatio)) / cap;
+            }
+          }
+        }
+        return { pct, method_value: Number.isFinite(mv as number) ? mv : null };
+      }));
+
+      return res.json({
+        success: true, driver, driver_label: recon.label, method: recon.method, range_pct: rangePctR,
+        base_input: baseInputR, base_method_value: baseValueR, points,
+        meta: { engine: 'python', basis: recon.kind === 'income' ? 'engine variables (NOI/cap) perturbed' : 'actual engine re-run per point' },
+      });
+    }
+    const rangePct = Number(b.range_pct) > 0 ? Number(b.range_pct) : 10;
+    const pcts = [-rangePct, -rangePct / 2, 0, rangePct / 2, rangePct];
+
+    // Re-run a method engine via its /value route (internal, on this same server).
+    const base = `http://127.0.0.1:${process.env.PORT || 4000}/api/v1/valuations/${valuationId}/${map.endpoint}/value`;
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (req.headers.authorization) headers['Authorization'] = req.headers.authorization;
+    if (req.headers.cookie) headers['Cookie'] = req.headers.cookie;
+    const runValue = async (override: Record<string, any>): Promise<any> => {
+      const r = await fetch(base, { method: 'POST', headers, body: JSON.stringify(override) });
+      if (!r.ok) { const t = await r.text(); throw new Error(`engine ${r.status}: ${t.slice(0, 200)}`); }
+      return r.json();
+    };
+
+    // Base run — resolves the input from the Data Hub and gives the base engine value.
+    const baseRes = await runValue({});
+    const baseMethodValue = Number(baseRes?.data?.estimated_value);
+    const baseInput = Number(baseRes?.data?.details?.[map.detailKey]);
+    if (!Number.isFinite(baseMethodValue) || !Number.isFinite(baseInput) || baseInput === 0) {
+      return res.status(422).json({ error: 'Sensitivity unavailable', message: `Could not resolve a base value/input for '${driver}' — the method may not be computable for this property.` });
+    }
+
+    // Perturb the driver input by each %, re-running the actual engine.
+    const points = await Promise.all(pcts.map(async (pct) => {
+      if (pct === 0) return { pct, input_value: baseInput, method_value: baseMethodValue };
+      const perturbedInput = baseInput * (1 + pct / 100);
+      try {
+        const r = await runValue({ [map.overrideKey]: perturbedInput });
+        return { pct, input_value: perturbedInput, method_value: Number(r?.data?.estimated_value) };
+      } catch {
+        return { pct, input_value: perturbedInput, method_value: null };
+      }
+    }));
+
+    return res.json({
+      success: true,
+      driver,
+      driver_label: map.label,
+      method: map.method,
+      range_pct: rangePct,
+      base_input: baseInput,
+      base_method_value: baseMethodValue,
+      points,
+      meta: { engine: 'python', basis: 'actual engine re-run per point' },
+    });
+  } catch (error: any) {
+    logger.error('sensitivity failed', { error: error.message });
+    return res.status(500).json({ error: 'Internal error', message: error.message });
   }
 });
 
@@ -2401,6 +3577,7 @@ router.get('/rental-benchmarks/:area', async (req: Request, res: Response) => {
 // =====================================================
 
 import { capRateService, CapRateMethodology, ListingDerivedCapRate } from '../services/valuation-engine/CapRateService';
+import { constructionCostService } from '../services/data-hub/constructionCostService';
 
 /**
  * @route GET /api/valuations/cap-rate/:region/:propertyType
@@ -3098,6 +4275,80 @@ router.post('/batch', async (req: Request, res: Response) => {
 // =====================================================
 
 import { floorPlanService } from '../services/valuation-engine/floorPlanService';
+import { valuationDocumentService, ValuationDocType } from '../services/valuation-engine/valuationDocumentService';
+
+// =====================================================
+// DOCUMENTS & PHOTOS (Appendices C/D/E): subject photos, title documents, location map.
+// Valuation-scoped, mirrors the floor-plan upload pattern (file in MinIO, ref in DB).
+// =====================================================
+
+/** POST /api/valuations/:id/documents — upload a photo or title document (base64 data URL). */
+router.post('/:id/documents', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const { dataUrl, filename, docType, caption, propertyId, displayOrder } = req.body || {};
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      return res.status(400).json({ error: 'Bad Request', message: 'dataUrl (base64 data URL) is required' });
+    }
+    const allowed: ValuationDocType[] = ['photo', 'title_document'];
+    const type: ValuationDocType = allowed.includes(docType) ? docType : 'photo';
+    const row = await valuationDocumentService.saveFromDataUrl({
+      valuationId: req.params.id,
+      propertyId: propertyId || null,
+      dataUrl,
+      filename: filename || null,
+      docType: type,
+      caption: caption || null,
+      displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
+      createdBy: (req as any).user?.id || null,
+    });
+    res.json({ success: true, data: row });
+  } catch (err: any) {
+    logger.error('Failed to upload valuation document', { error: err.message });
+    res.status(500).json({ error: 'Upload failed', message: err.message });
+  }
+});
+
+/** GET /api/valuations/:id/documents — list documents (optional ?type=photo|title_document|location_map). */
+router.get('/:id/documents', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const type = req.query.type as ValuationDocType | undefined;
+    const rows = await valuationDocumentService.list(req.params.id, type);
+    res.json({ success: true, data: rows });
+  } catch (err: any) {
+    res.status(500).json({ error: 'List failed', message: err.message });
+  }
+});
+
+/** DELETE /api/valuations/:id/documents/:docId */
+router.delete('/:id/documents/:docId', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    await valuationDocumentService.remove(req.params.docId, req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Delete failed', message: err.message });
+  }
+});
+
+/** POST /api/valuations/:id/documents/location-map — (re)generate the satellite/location map. */
+router.post('/:id/documents/location-map', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const propRes = await query(
+      `SELECT p.id, p.latitude, p.longitude FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+      [req.params.id]
+    );
+    const prop = propRes.rows[0];
+    const lat = prop?.latitude != null ? Number(prop.latitude) : null;
+    const lng = prop?.longitude != null ? Number(prop.longitude) : null;
+    if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({ error: 'Bad Request', message: 'Subject property has no coordinates to map' });
+    }
+    const row = await valuationDocumentService.generateLocationMap(req.params.id, lat, lng, { propertyId: prop.id });
+    if (!row) return res.status(502).json({ error: 'Map generation failed', message: 'Could not generate static map (check GOOGLE_MAPS_API_KEY)' });
+    res.json({ success: true, data: row });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Map generation failed', message: err.message });
+  }
+});
 
 // NOTE: LLM Design Intent routes were removed as part of Blender/LLM cleanup
 // The floor plan builder now uses pure Fabric.js canvas on the frontend
@@ -3277,6 +4528,61 @@ router.get('/floor-plans/:planId/image-stream', async (req: Request, res: Respon
   } catch (error: any) {
     logger.error('Failed to stream floor plan image', { planId: req.params.planId, error: error.message });
     res.status(500).json({ error: 'Failed to stream floor plan image', message: error.message });
+  }
+});
+
+/**
+ * GET /api/valuations/:id/documents/:docId/image-stream
+ * Stream a valuation document (location map / photo / title doc) from MinIO with a
+ * non-expiring URL, so the report VIEWER can render Appendix C/D/E (mirrors floor plans).
+ */
+router.get('/:id/documents/:docId/image-stream', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const r = await query(
+      `SELECT storage_url, mime_type, filename FROM valuation_documents WHERE id = $1 AND valuation_id = $2`,
+      [req.params.docId, req.params.id]
+    );
+    const doc = r.rows[0];
+    if (!doc?.storage_url) return res.status(404).json({ error: 'Document not found' });
+
+    const match = String(doc.storage_url).match(/^minio:\/\/([^/]+)\/(.+)$/);
+    if (!match) return res.status(400).json({ error: 'Invalid storage URL format' });
+
+    const [, bucket, key] = match;
+    const { getFile } = await import('../database/minio');
+    const file = await getFile(bucket, key);
+
+    const ext = (key.split('.').pop() || 'png').toLowerCase();
+    const mime = doc.mime_type
+      || (ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'pdf' ? 'application/pdf' : 'image/png');
+
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Content-Disposition', `inline; filename="${doc.filename || 'document.' + ext}"`);
+    res.send(Buffer.from(file.body));
+  } catch (error: any) {
+    logger.error('Failed to stream document image', { docId: req.params.docId, error: error.message });
+    res.status(500).json({ error: 'Failed to stream document', message: error.message });
+  }
+});
+
+/**
+ * GET /api/valuations/:id/documents/:docId/image-pages
+ * Render a document as ONE image (PDFs rasterized + stacked) for the report VIEWER's <img> —
+ * avoids the X-Frame-Options block that prevents PDFs from rendering in an <iframe>.
+ */
+router.get('/:id/documents/:docId/image-pages', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const result = await valuationDocumentService.getDocumentImage(req.params.id, req.params.docId);
+    if (!result) return res.status(404).json({ error: 'Document image not available' });
+    res.setHeader('Content-Type', result.mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.send(result.buffer);
+  } catch (error: any) {
+    logger.error('Failed to render document image', { docId: req.params.docId, error: error.message });
+    res.status(500).json({ error: 'Failed to render document', message: error.message });
   }
 });
 

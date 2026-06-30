@@ -136,14 +136,12 @@ export default function MarketDataPage() {
           if (basketRes.data && (basketRes.data as any).comparables?.length > 0) {
             setBasket(basketRes.data as unknown as ComparableBasket)
             
-            // Currency conversion helper
-            const convertToGHS = (price: number, currency: string) => {
-              if (currency === 'USD') {
-                return price * 15.7 // USD to GHS conversion
-              }
-              return price
-            }
-            
+            // The comparable search already normalises every price to GHS using the LIVE
+            // DB exchange rate (see /valuations search SQL). Prices arriving here are GHS,
+            // so we must NOT re-convert — doing so is what inflated values ~16x.
+            const ghsPrice = (comp: any): number =>
+              parseFloat(comp.asking_price_ghs ?? comp.sale_price ?? comp.price ?? 0)
+
             // GFA fallback helper
             const getGFA = (comp: any) => {
               const gfa = comp.gfa || comp.built_area_sqm || comp.building_size_sqm || comp.total_area_sqm
@@ -158,19 +156,17 @@ export default function MarketDataPage() {
             // Load existing comparables with adjustments
             setSelectedComparables(
               (basketRes.data as any).comparables.map((comp: any) => {
-                const originalPrice = parseFloat(comp.sale_price || comp.price || 0)
-                const currency = comp.price_currency || comp.currency || 'GHS'
-                const convertedPrice = convertToGHS(originalPrice, currency)
+                const convertedPrice = ghsPrice(comp) // already GHS (live-rate normalised by search)
                 const gfaValue = getGFA(comp)
-                
+
                 return {
                   ...comp,
-                  // Price fields
+                  // Price fields — all GHS; never re-converted downstream
                   sale_price: convertedPrice,
-                  asking_price_ghs: comp.asking_price_ghs || comp.asking_price || convertedPrice,
-                  price_original: originalPrice,
-                  price_currency: currency,
-                  fx_rate_used: currency === 'USD' ? 15.7 : 1,
+                  asking_price_ghs: convertedPrice,
+                  price_original: parseFloat(comp.asking_price ?? comp.price_original ?? comp.price ?? 0),
+                  price_currency: 'GHS',
+                  fx_rate_used: parseFloat(comp.fx_rate_used) || 1,
                   
                   // Size fields  
                   gfa: gfaValue,
@@ -257,93 +253,10 @@ export default function MarketDataPage() {
     fetchData()
   }, [valuationId])
 
-  // Auto-calculate adjustments for all comparables when loaded
-  // This runs every time valuation and comparables are available
-  useEffect(() => {
-    // Run when we have valuation, comparables, and not loading
-    if (!valuation?.property || selectedComparables.length === 0 || loading) return
-    
-    console.log('Auto-calculating adjustments for all comparables...')
-    
-    const subject = valuation.property as any
-    
-    setSelectedComparables(prev => 
-      prev.map(comp => {
-        if (comp.isLocked) return comp
-        
-        // Skip if this comparable already has significant adjustments (user has edited)
-        const hasUserAdjustments = comp.adjustments && Object.values(comp.adjustments).some(val => Math.abs(val || 0) > 0.1)
-        if (hasUserAdjustments) return comp
-        
-        // Auto-calculate adjustments based on subject vs comparable
-        const autoAdjustments: Record<string, number> = {}
-        
-        // Size adjustment (max ±25%)
-        if (subject.gfa && comp.gfa) {
-          const sizeDiff = (subject.gfa - comp.gfa) / comp.gfa * 100
-          autoAdjustments.gfa = Math.max(-25, Math.min(25, sizeDiff))
-        }
-        
-        // Age adjustment (0.5% per year)
-        const subjectAge = subject.age || (subject.year_built ? new Date().getFullYear() - subject.year_built : 0)
-        const compAge = comp.age || (comp.year_built ? new Date().getFullYear() - comp.year_built : 0)
-        if (subjectAge && compAge) {
-          autoAdjustments.age = (compAge - subjectAge) * 0.5
-        }
-        
-        // Time adjustment (0.5% per month based on market appreciation)
-        const saleDate = new Date(comp.sale_date)
-        const now = new Date()
-        const months = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
-        const annualAppreciation = marketContext?.market?.price_index_change_yoy || 6
-        autoAdjustments.time = Math.min(15, months * (annualAppreciation / 12))
-        
-        // Bedroom adjustment (2.5% per bedroom)
-        if (subject.bedrooms && comp.bedrooms) {
-          autoAdjustments.bedrooms = (subject.bedrooms - comp.bedrooms) * 2.5
-        }
-        
-        // Bathroom adjustment (2% per bathroom)
-        if (subject.bathrooms && comp.bathrooms) {
-          autoAdjustments.bathrooms = (subject.bathrooms - comp.bathrooms) * 2
-        }
-        
-        // Condition adjustment (5% per level)
-        const conditionLevels: Record<string, number> = { excellent: 4, good: 3, fair: 2, poor: 1 }
-        const subjectCondition = conditionLevels[subject.condition || 'good'] || 3
-        const compCondition = conditionLevels[comp.condition || 'good'] || 3
-        autoAdjustments.condition = (subjectCondition - compCondition) * 5
-        
-        // Quality adjustment (5% per level)
-        const qualityLevels: Record<string, number> = { luxury: 5, high: 4, standard: 3, basic: 2, substandard: 1 }
-        const subjectQuality = qualityLevels[subject.quality_rating || 'standard'] || 3
-        const compQuality = qualityLevels[comp.quality_rating || 'standard'] || 3
-        autoAdjustments.quality = (subjectQuality - compQuality) * 5
-        
-        // Floor level adjustment (2% per floor)
-        if (subject.floor_number && comp.floor_number) {
-          autoAdjustments.floor_level = (subject.floor_number - comp.floor_number) * 2
-        }
-        
-        // Parking adjustment (0.5% per space)
-        if (subject.parking_spaces !== undefined && comp.parking_spaces !== undefined) {
-          autoAdjustments.parking = ((subject.parking_spaces || 0) - (comp.parking_spaces || 0)) * 0.5
-        }
-        
-        const totalAdjustment = Object.values(autoAdjustments).reduce((sum, v) => sum + (v || 0), 0)
-        const adjustedPrice = (comp.sale_price || 0) * (1 + totalAdjustment / 100)
-        const adjustedPricePerSqm = adjustedPrice / (comp.gfa || 1)
-        
-        return {
-          ...comp,
-          adjustments: autoAdjustments,
-          totalAdjustment,
-          adjustedPrice,
-          adjustedPricePerSqm,
-        }
-      })
-    )
-  }, [valuation, selectedComparables.length, loading, marketContext])
+  // NOTE: The sales-comparison calculation lives ONLY in the Python engine now.
+  // When comparables load, runPythonValuation() (below) computes every adjustment,
+  // the adjusted prices, the weighted value, the range and per-comparable quality,
+  // and merges the result back into the grid. The frontend performs NO valuation math.
 
   // =====================================================
   // SEARCH & SELECTION
@@ -510,120 +423,22 @@ export default function MarketDataPage() {
   }, [])
 
   // Auto-calculate adjustments for a comparable
-  const handleAutoCalculate = useCallback((compId: string) => {
-    if (!valuation?.property) return
-    
-    setSelectedComparables(prev =>
-      prev.map(comp => {
-        if (comp.id !== compId || comp.isLocked) return comp
-        
-        // Auto-calculate adjustments based on subject vs comparable
-        const subject = valuation.property as any
-        const autoAdjustments: Record<string, number> = {}
-        
-        // Size adjustment (max ±25%)
-        if (subject.gfa && comp.gfa) {
-          const sizeDiff = (subject.gfa - comp.gfa) / comp.gfa * 100
-          autoAdjustments.gfa = Math.max(-25, Math.min(25, sizeDiff))
-        }
-        
-        // Age adjustment (0.5% per year)
-        const subjectAge = subject.age || (subject.year_built ? new Date().getFullYear() - subject.year_built : 0)
-        const compAge = comp.age || (comp.year_built ? new Date().getFullYear() - comp.year_built : 0)
-        if (subjectAge && compAge) {
-          autoAdjustments.age = (compAge - subjectAge) * 0.5
-        }
-        
-        // Time adjustment (0.5% per month based on market appreciation)
-        const saleDate = new Date(comp.sale_date)
-        const now = new Date()
-        const months = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
-        const annualAppreciation = marketContext?.market?.price_index_change_yoy || 6
-        autoAdjustments.time = Math.min(15, months * (annualAppreciation / 12))
-        
-        // Bedroom adjustment (2.5% per bedroom)
-        if (subject.bedrooms && comp.bedrooms) {
-          autoAdjustments.bedrooms = (subject.bedrooms - comp.bedrooms) * 2.5
-        }
-        
-        // Bathroom adjustment (2% per bathroom)
-        if (subject.bathrooms && comp.bathrooms) {
-          autoAdjustments.bathrooms = (subject.bathrooms - comp.bathrooms) * 2
-        }
-        
-        // Condition adjustment (5% per level)
-        const conditionLevels: Record<string, number> = { excellent: 4, good: 3, fair: 2, poor: 1 }
-        const subjectCondition = conditionLevels[subject.condition || 'good'] || 3
-        const compCondition = conditionLevels[comp.condition || 'good'] || 3
-        autoAdjustments.condition = (subjectCondition - compCondition) * 5
-        
-        // Quality adjustment (5% per level)
-        const qualityLevels: Record<string, number> = { luxury: 5, high: 4, standard: 3, basic: 2, substandard: 1 }
-        const subjectQuality = qualityLevels[subject.quality_rating || 'standard'] || 3
-        const compQuality = qualityLevels[comp.quality_rating || 'standard'] || 3
-        autoAdjustments.quality = (subjectQuality - compQuality) * 5
-        
-        // Floor level adjustment (2% per floor)
-        if (subject.floor_number && comp.floor_number) {
-          autoAdjustments.floor_level = (subject.floor_number - comp.floor_number) * 2
-        }
-        
-        // Parking adjustment (0.5% per space)
-        if (subject.parking_spaces !== undefined && comp.parking_spaces !== undefined) {
-          autoAdjustments.parking = ((subject.parking_spaces || 0) - (comp.parking_spaces || 0)) * 0.5
-        }
-        
-        const totalAdjustment = Object.values(autoAdjustments).reduce((sum, v) => sum + (v || 0), 0)
-        const adjustedPrice = (comp.sale_price || 0) * (1 + totalAdjustment / 100)
-        const adjustedPricePerSqm = adjustedPrice / (comp.gfa || 1)
-        
-        return {
-          ...comp,
-          adjustments: autoAdjustments,
-          totalAdjustment,
-          adjustedPrice,
-          adjustedPricePerSqm,
-        }
-      })
-    )
-  }, [valuation, marketContext])
+  // Re-run the engine. All adjustment math lives in Python; the grid's "auto-calc"
+  // simply asks the engine to recompute (compId is ignored — the engine values the basket).
+  const handleAutoCalculate = useCallback((_compId?: string) => {
+    runPythonValuation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valuation?.id, selectedComparables])
 
   // =====================================================
-  // VALUE CALCULATIONS
+  // VALUE CALCULATIONS (display only — the engine computes everything)
   // =====================================================
 
-  // Calculate quality scores for weighting
+  // Comparability/quality is computed by the engine; just read it through.
   const calculateQualityScore = useCallback((comp: ComparableWithAdjustments): number => {
-    let score = 50 // Base score
-    
-    // Similarity bonus (up to 20 points)
-    if ((comp as any).similarity_score) {
-      score += (comp as any).similarity_score * 20
-    }
-    
-    // Recency bonus (up to 15 points)
-    const saleDate = new Date(comp.sale_date)
-    const monthsAgo = (Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
-    score += Math.max(0, 15 - monthsAgo)
-    
-    // Low adjustment penalty
-    const absAdjustment = Math.abs(comp.totalAdjustment || 0)
-    score -= absAdjustment * 0.5
-    
-    // Distance penalty (if available)
-    if ((comp as any).distance_km) {
-      score -= (comp as any).distance_km * 2
-    }
-    
-    return Math.max(0, Math.min(100, score))
+    return Math.round((comp as any).qualityScore ?? 0)
   }, [])
 
-  // Calculate indicated value using Python valuation service
-  const calculateIndicatedValue = useMemo(() => {
-    // Return null - we'll fetch this from the Python service instead
-    return null
-  }, [])
-  
   // Fetch sales comparison result from Python service
   const [pythonValuationResult, setPythonValuationResult] = useState<any>(null)
   const [isCalculating, setIsCalculating] = useState(false)
@@ -672,6 +487,37 @@ export default function MarketDataPage() {
         const result = await response.json()
         setPythonValuationResult(result.data)
         console.log('Python valuation result:', result.data)
+
+        // Single source of truth: merge the engine's per-comparable results back into the grid.
+        // The grid only DISPLAYS these (price × adjustments) — it computes no valuation itself.
+        const analyzed = result.data?.sales_comparison?.comparables_analyzed || []
+        if (analyzed.length) {
+          // Map the engine's adjustment keys onto the grid's row ids so the grid reproduces
+          // the engine's adjusted price exactly (same additive model, same GHS base price).
+          const PY2GRID: Record<string, string> = {
+            size: 'gfa', bedrooms: 'bedrooms', bathrooms: 'bathrooms',
+            age_condition: 'age', evidence_type: 'listing_adjustment',
+            location: 'neighborhood_premium', time: 'time',
+          }
+          const byId = new Map<string, any>(analyzed.map((a: any) => [String(a.id), a]))
+          setSelectedComparables(prev => prev.map(c => {
+            const a = byId.get(String(c.id))
+            if (!a) return c
+            const adjustments: Record<string, number> = {}
+            Object.entries(a.adjustments_applied || {}).forEach(([k, v]) => {
+              adjustments[PY2GRID[k] || k] = v as number
+            })
+            return {
+              ...c,
+              sale_price: a.original_price_ghs,        // GHS — normalised by the engine
+              adjustments,                              // engine-computed, key-mapped to grid rows
+              totalAdjustment: a.total_adjustment_percent,
+              adjustedPrice: a.adjusted_price_ghs,
+              adjustedPricePerSqm: a.adjusted_price_per_sqm,
+              qualityScore: a.quality_score,
+            } as any
+          }))
+        }
       } else {
         console.error('Failed to run Python valuation:', response.statusText)
       }
@@ -683,28 +529,10 @@ export default function MarketDataPage() {
   }
 
   // Calculate confidence based on number and quality of comparables
+  // Confidence is computed by the engine (0-1); read it through.
   const calculateConfidence = useCallback(() => {
-    const count = selectedComparables.length
-    if (count === 0) return 0
-    
-    const avgAdjustment = selectedComparables.reduce(
-      (sum, c) => sum + Math.abs(c.totalAdjustment || 0), 0
-    ) / count
-
-    // Base confidence on count (max at 5+ comps)
-    const countScore = Math.min(count / 5, 1) * 0.4
-
-    // Reduce confidence for high adjustments
-    const adjustmentScore = Math.max(0, 1 - avgAdjustment / 30) * 0.3
-    
-    // Bonus for quality scores
-    const avgQuality = selectedComparables.reduce(
-      (sum, c) => sum + calculateQualityScore(c), 0
-    ) / count
-    const qualityScore = (avgQuality / 100) * 0.3
-
-    return Math.min(1, countScore + adjustmentScore + qualityScore)
-  }, [selectedComparables, calculateQualityScore])
+    return pythonValuationResult?.sales_comparison?.confidence_score ?? 0
+  }, [pythonValuationResult])
 
   // Value range calculation
   const valueRange = useMemo(() => {
@@ -858,7 +686,8 @@ export default function MarketDataPage() {
     return {
       id: prop?.id,
       address: prop?.address_street || prop?.full_address,
-      gfa: prop?.gfa || prop?.total_area_sqm || prop?.plot_size,
+      // GFA = BUILDING area (built_area_sqm). total_area_sqm/plot_size are the PLOT — never the GFA.
+      gfa: prop?.built_area_sqm || prop?.building_size_sqm || prop?.gfa,
       plot_size: prop?.plot_size,
       bedrooms: prop?.bedrooms,
       bathrooms: prop?.bathrooms,
@@ -1086,15 +915,15 @@ export default function MarketDataPage() {
               <div className="p-4 bg-muted/30 text-center">
                 <div className="font-mono text-[10px] text-muted-foreground mb-1">IMPLIED ₵/SQM</div>
                 <div className="font-mono text-xl text-foreground">
-                  ₵{pythonValuationResult?.sales_comparison?.estimated_value && subjectProperty.gfa
-                    ? Math.round(pythonValuationResult.sales_comparison.estimated_value / subjectProperty.gfa).toLocaleString()
+                  ₵{pythonValuationResult?.sales_comparison?.implied_price_per_sqm
+                    ? Math.round(pythonValuationResult.sales_comparison.implied_price_per_sqm).toLocaleString()
                     : '—'}
                 </div>
               </div>
               <div className="p-4 bg-muted/30 text-center">
                 <div className="font-mono text-[10px] text-muted-foreground mb-1">SUBJECT GFA</div>
                 <div className="font-mono text-xl text-foreground">
-                  {subjectProperty.gfa || '—'} sqm
+                  {pythonValuationResult?.sales_comparison?.subject_gfa || subjectProperty.gfa || '—'} sqm
                 </div>
               </div>
               <div className="p-4 bg-green-100 dark:bg-green-900/20 border border-green-800 text-center">

@@ -33,7 +33,8 @@ const COLORS = {
   textMedium: '3F3F46',
   textLight: '71717A',
   border: 'E4E4E7',
-  tableHeader: '27272A',
+  // PropMetrik brand — deep amber table headers (white text) instead of near-black.
+  tableHeader: 'B45309',
   tableStripe: 'F4F4F5',
   accent: 'F59E0B',
   white: 'FFFFFF',
@@ -133,13 +134,26 @@ function processParagraph($: any, el: any): Paragraph[] {
   const runs = extractTextRuns($, el, parentStyle);
   const spacing = parseSpacing(style, { before: 60, after: 60 });
 
-  // If the only content is &nbsp;, return an empty spacer paragraph
+  // If the only content is &nbsp;, return an empty spacer paragraph.
+  // keepNext so a blank line can't be the orphan that triggers a page break
+  // inside a signature/certification block.
   const textContent = el.text().trim();
   if (textContent === '' || textContent === '\u00a0') {
-    return [new Paragraph({ children: [], spacing: { before: 100, after: 100 } })];
+    return [new Paragraph({ children: [], spacing: { before: 100, after: 100 }, keepNext: true })];
   }
 
-  return [new Paragraph({ alignment, spacing, children: runs })];
+  // Keep the signature/certification block together (CERTIFIED BY \u2192 signature line \u2192
+  // valuer name / GhIS no. / firm) so the signee details don't spill onto a new page.
+  const isSignatureLine =
+    textContent.length <= 140 &&
+    /(CERTIFIED BY|PREPARED BY|\.{8,}|_{8,}|SURV\.|GhIS|Registration No|License No|Firm:|\(SR\.)/i.test(textContent);
+
+  return [new Paragraph({
+    alignment,
+    spacing,
+    children: runs,
+    ...(isSignatureLine ? { keepNext: true, keepLines: true } : {}),
+  })];
 }
 
 /**
@@ -160,7 +174,7 @@ function processListItems($: any, listEl: any, ordered: boolean): Paragraph[] {
         spacing: { before: 40, after: 40 },
         indent: { left: 720 },
         children: [
-          new TextRun({ text: prefix, font: 'Calibri', size: 22, color: COLORS.textDark }),
+          new TextRun({ text: prefix, font: 'Times New Roman', size: 22, color: COLORS.textDark }),
           ...runs,
         ],
       })
@@ -189,10 +203,12 @@ function processTable($: any, tableEl: any): Table {
     const trEl = $(tr);
     const cells: TableCell[] = [];
     const isHeader = isFirstRow || trEl.children('th').length > 0;
+    const rowBg = parseBackgroundColor(trEl.attr('style'));
 
     trEl.children('td, th').each((_j: any, cell: any) => {
       const cellEl = $(cell);
       const cellAlignment = parseAlignment(cellEl.attr('style')) || (isHeader ? AlignmentType.CENTER : AlignmentType.LEFT);
+      const cellBg = parseBackgroundColor(cellEl.attr('style')) || rowBg;
 
       // Handle colspan
       const colspanAttr = cellEl.attr('colspan');
@@ -211,13 +227,13 @@ function processTable($: any, tableEl: any): Table {
               spacing: { before: 40, after: 40 },
               children: cellRuns.length > 0
                 ? cellRuns
-                : [new TextRun({ text: '', font: 'Calibri', size: 20 })],
+                : [new TextRun({ text: '', font: 'Times New Roman', size: 20 })],
             }),
           ],
           columnSpan: colSpan > 1 ? colSpan : undefined,
           shading: isHeader
             ? { type: ShadingType.SOLID, color: COLORS.tableHeader }
-            : undefined,
+            : (cellBg ? { type: ShadingType.SOLID, color: cellBg } : undefined),
           verticalAlign: 'center' as any,
           width: _j === 0
             ? { size: 50, type: WidthType.PERCENTAGE }
@@ -298,7 +314,7 @@ function extractTextRuns(
           bold: parentStyle.bold,
           italics: parentStyle.italic,
           underline: parentStyle.underline ? {} : undefined,
-          font: 'Calibri',
+          font: 'Times New Roman',
           size: 22,
           color: parentStyle.color || COLORS.textDark,
         })
@@ -317,7 +333,7 @@ function extractTextRuns(
     if (childTag === 'u') childStyle.underline = true;
 
     if (childTag === 'br') {
-      runs.push(new TextRun({ text: '', break: 1, font: 'Calibri', size: 22 }));
+      runs.push(new TextRun({ text: '', break: 1, font: 'Times New Roman', size: 22 }));
       return;
     }
 
@@ -336,6 +352,16 @@ function extractTextRuns(
 // =====================================================
 // STYLE PARSING HELPERS
 // =====================================================
+
+/**
+ * Parse an inline background / background-color into a 6-digit hex (no #), for table
+ * row/cell shading (e.g. highlighted "Reconciled Market Value" rows). Returns null if absent.
+ */
+function parseBackgroundColor(style?: string | null): string | null {
+  if (!style) return null;
+  const m = style.match(/background(?:-color)?:\s*#?([0-9a-fA-F]{6})\b/);
+  return m ? m[1].toUpperCase() : null;
+}
 
 function parseAlignment(style?: string | null): any {
   if (!style) return undefined;
@@ -383,7 +409,7 @@ function bodyParagraph(
           bold: s.bold,
           italics: s.italic,
           underline: s.underline ? {} : undefined,
-          font: 'Calibri',
+          font: 'Times New Roman',
           size: 22,
           color: COLORS.textDark,
         })

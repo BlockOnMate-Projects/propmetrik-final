@@ -87,6 +87,9 @@ export default function SubjectPropertyPage() {
     }
   }
 
+  // Writeup AI drafting now lives inline in ComprehensivePropertyForm (next to each field),
+  // gated on valuationId — no separate panel/handler here.
+
   // Fetch valuation and property data
   useEffect(() => {
     async function fetchData() {
@@ -267,37 +270,48 @@ export default function SubjectPropertyPage() {
         },
       }
 
-      // Call property update API
-      await fetchApi(`/properties/${propertyId}`, {
-        method: 'PUT',
-        body: JSON.stringify(propertyUpdate),
-      })
+      // Save each part INDEPENDENTLY so a failure in one (e.g. valuation dates) doesn't drop the
+      // others — previously a mid-sequence 500 meant the client info (saved last) was lost.
+      let saveError: string | null = null
 
-      // Update valuation dates, purpose, and engagement
-      const valuationUpdate = {
-        effective_date: propertyData.valuation_date,
-        inspection_date: propertyData.inspection_date,
-        is_retrospective: propertyData.is_retrospective,
-        valuation_purpose: propertyData.valuation_purpose,
+      try {
+        await fetchApi(`/properties/${propertyId}`, { method: 'PUT', body: JSON.stringify(propertyUpdate) })
+      } catch (e: any) {
+        saveError = saveError || (e instanceof Error ? e.message : 'Failed to save property details')
       }
 
-      await valuationsApi.update(valuationId, valuationUpdate)
-
-      // Update engagement (client info) — always save to ensure it exists
-      if (propertyData.client_name) {
-        await fetchApi(`/valuations/${valuationId}/engagement`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            client_name: propertyData.client_name,
-            client_address: propertyData.client_address,
-            client_email: propertyData.client_email,
-            client_phone: propertyData.client_phone,
-            request_type: propertyData.request_type,
-          }),
+      try {
+        await valuationsApi.update(valuationId, {
+          // Empty/blank dates → null (Postgres rejects '' for a date column).
+          effective_date: propertyData.valuation_date || null,
+          inspection_date: propertyData.inspection_date || null,
+          is_retrospective: propertyData.is_retrospective,
+          valuation_purpose: propertyData.valuation_purpose,
         })
+      } catch (e: any) {
+        saveError = saveError || (e instanceof Error ? e.message : 'Failed to save valuation dates')
       }
 
-      setSuccess('Property information saved successfully')
+      // Client/engagement — always attempt, even if the steps above failed.
+      if (propertyData.client_name) {
+        try {
+          await fetchApi(`/valuations/${valuationId}/engagement`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              client_name: propertyData.client_name,
+              client_address: propertyData.client_address,
+              client_email: propertyData.client_email,
+              client_phone: propertyData.client_phone,
+              request_type: propertyData.request_type,
+            }),
+          })
+        } catch (e: any) {
+          saveError = saveError || (e instanceof Error ? e.message : 'Failed to save client information')
+        }
+      }
+
+      if (saveError) setError(saveError)
+      else setSuccess('Property information saved successfully')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save property')
     } finally {
@@ -309,7 +323,7 @@ export default function SubjectPropertyPage() {
   const handleSaveAndContinue = async () => {
     await handleSave()
     if (!error) {
-      router.push(`/dashboard/valuations/${valuationId}/property`)
+      router.push(`/dashboard/valuations/${valuationId}/documents`)
     }
   }
 
@@ -428,7 +442,8 @@ export default function SubjectPropertyPage() {
         )}
       </TerminalPanel>
 
-      {/* Property Form */}
+      {/* Property Form — the "Generate with AI" CTAs now live inline next to each writeup
+          field in the form (Land Value Evidence, Grounds, Condition, Services). */}
       <TerminalPanel title="EDIT PROPERTY DETAILS" className="mb-6">
         <ComprehensivePropertyForm
           data={propertyData}
@@ -436,6 +451,7 @@ export default function SubjectPropertyPage() {
           mode="subject"
           showValuationDates={true}
           showLocationFields={true}
+          valuationId={valuationId}
         />
       </TerminalPanel>
 
@@ -459,7 +475,7 @@ export default function SubjectPropertyPage() {
             </>
           ) : (
             <>
-              CONTINUE TO PROPERTY SETUP
+              CONTINUE TO DOCUMENTS
               <ArrowRight className="w-4 h-4" />
             </>
           )}

@@ -21,6 +21,8 @@ import { logger } from '../../utils/logger';
 import { uploadFile, getPresignedDownloadUrl } from '../../database/minio';
 import { reportDataService } from './reportDataService';
 import { valuationReportService } from './valuationReportService';
+import { reportTemplateService } from './reportTemplateService';
+import { valuationDocumentService } from './valuationDocumentService';
 import { floorPlanService } from './floorPlanService';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
@@ -64,6 +66,8 @@ export interface ReportSectionData {
   methods: any[];
   comparables: any[];
   photos: any[];
+  /** Valuation documents (location map / subject photos / title docs) → Appendices C/D/E. */
+  documentImages?: Array<{ docType: string; caption: string | null; filename: string | null; mime: string; buffer: Buffer }>;
   floorPlans: any[];
   floorPlanImages?: Array<{
     label: string;
@@ -229,6 +233,27 @@ class DocGenerationService {
       ? await this.getFloorPlanImagesWithData(valuationId)
       : [];
 
+    // Valuation documents → Appendices C (location map), D (photos), E (title docs).
+    // Auto-generate the location map from the subject coordinates if one isn't present.
+    try {
+      const existing = await valuationDocumentService.list(valuationId, 'location_map');
+      if (existing.length === 0) {
+        const coordRes = await query(
+          `SELECT p.id, p.latitude, p.longitude FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+          [valuationId]
+        );
+        const c = coordRes.rows[0];
+        if (c?.latitude != null && c?.longitude != null) {
+          await valuationDocumentService.generateLocationMap(valuationId, Number(c.latitude), Number(c.longitude), { propertyId: c.id });
+        }
+      }
+    } catch (e: any) {
+      logger.warn('Location map auto-generation skipped', { valuationId, error: e.message });
+    }
+    const documentImages = await valuationDocumentService.getImageBuffers(
+      valuationId, ['location_map', 'photo', 'title_document']
+    );
+
     // Load saved TipTap editor sections (user-edited report content)
     let editorSections: ReportSectionData['editorSections'] = undefined;
     try {
@@ -249,6 +274,28 @@ class DocGenerationService {
       logger.warn('Failed to load editor sections, will use programmatic builder', { error: err.message });
     }
 
+    // If the report was never hand-edited in the TipTap editor, render the SAME sections
+    // the report viewer shows (reportTemplateService) rather than letting professionalDocxBuilder
+    // re-assemble from raw DB (which diverges and shows N/A). The sealed PDF must match the
+    // report that was reviewed and approved — not a freshly rebuilt one.
+    if (!editorSections || editorSections.length === 0) {
+      try {
+        const generated = await reportTemplateService.generateReportSections(valuationId);
+        if (generated && generated.length > 0) {
+          editorSections = generated as ReportSectionData['editorSections'];
+          logger.info('Using reportTemplateService sections for DOCX (no hand-edited content)', {
+            reportId,
+            sectionCount: generated.length,
+          });
+        }
+      } catch (err: any) {
+        logger.warn('Failed to generate template sections for DOCX, falling back to programmatic builder', {
+          reportId,
+          error: err.message,
+        });
+      }
+    }
+
     return {
       cover,
       transmittal,
@@ -265,6 +312,7 @@ class DocGenerationService {
       methods: valuationReportData.methods,
       comparables: valuationReportData.comparables || [],
       photos,
+      documentImages,
       floorPlans,
       floorPlanImages,
       weightingRationale: (valuationReportData as any).weighting_rationale || null,

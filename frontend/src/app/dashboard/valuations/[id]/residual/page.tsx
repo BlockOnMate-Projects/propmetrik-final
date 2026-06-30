@@ -16,8 +16,8 @@ import {
   MethodBadge,
   ConfidenceBar,
 } from '@/components/ui/terminal'
-import { valuationsApi, pythonMethodsApi, PythonMethodResponse } from '@/lib/valuation-api'
-import { valuationConfigApi, mapShortRegionToDataHub } from '@/lib/api'
+import { valuationsApi, PythonMethodResponse } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -76,47 +76,6 @@ const Tooltip = ({ text }: { text: string }) => (
 // Development types available
 const DEVELOPMENT_TYPES = ['house', 'apartment', 'townhouse', 'commercial', 'office', 'industrial', 'warehouse']
 
-// Map development type to base_costs_per_sqm property_type
-const DEV_TYPE_TO_PROPERTY_TYPE: Record<string, string> = {
-  house: 'residential',
-  apartment: 'residential',
-  townhouse: 'residential',
-  commercial: 'commercial',
-  office: 'commercial',
-  industrial: 'industrial',
-  warehouse: 'industrial',
-}
-
-// Realistic efficiency rates by development type (Ghana market) - engineering constants
-const EFFICIENCY_RATES: Record<string, number> = {
-  house: 0.92,      // Houses have minimal common areas
-  apartment: 0.78,  // Corridors, stairs, lift lobbies
-  townhouse: 0.88,  // Some shared walls/access
-  commercial: 0.75, // Shopping mall common areas
-  office: 0.72,     // Lobbies, lifts, services, toilets
-  industrial: 0.90, // Mostly usable space
-  warehouse: 0.95,  // Minimal non-usable space
-}
-
-// Development timelines (months)
-const TIMELINES: Record<string, { construction: number; sales: number }> = {
-  house: { construction: 18, sales: 6 },
-  apartment: { construction: 24, sales: 12 },
-  townhouse: { construction: 20, sales: 8 },
-  commercial: { construction: 18, sales: 12 },
-  office: { construction: 24, sales: 18 },
-  industrial: { construction: 12, sales: 6 },
-  warehouse: { construction: 10, sales: 4 },
-}
-
-// S-curve drawdown factors (% of cost drawn at each stage)
-const S_CURVE_DRAWDOWN = {
-  month1_25: 0.15,   // First 25% of timeline: 15% of cost
-  month25_50: 0.35,  // 25-50%: additional 35%
-  month50_75: 0.35,  // 50-75%: additional 35%
-  month75_100: 0.15, // Last 25%: final 15%
-}
-
 export default function ResidualMethodPage() {
   const params = useParams()
   const router = useRouter()
@@ -171,90 +130,34 @@ export default function ResidualMethodPage() {
   const [pythonResult, setPythonResult] = useState<PythonMethodResponse | null>(null)
   const [calculating, setCalculating] = useState(false)
 
-  // Calculations
-  const grossBuildingArea = plotSize * plotCoverage * numberOfFloors
-  const netSaleableArea = grossBuildingArea * efficiency
-
-  // Gross Development Value (always on NET saleable area)
-  const gdv = netSaleableArea * salePricePerSqm
-
-  // Construction Costs - normalize based on cost basis
-  // If cost rate is NET-based, we need to gross it up
-  const effectiveConstructionCost = costBasis === 'net' 
-    ? constructionCostPerSqm / efficiency  // Convert NET rate to GROSS rate
-    : constructionCostPerSqm               // Already GROSS rate
-  
-  const constructionCost = grossBuildingArea * effectiveConstructionCost
-  const professionalFeesAmount = constructionCost * (professionalFees / 100)
-  const contingencyAmount = constructionCost * (contingency / 100)
-  const totalConstructionCost = constructionCost + professionalFeesAmount + contingencyAmount
-
-  // Sales & Marketing Costs
-  const marketingAmount = gdv * (marketingCost / 100)
-  const salesCommissionAmount = gdv * (salesCommission / 100)
-  const legalFeesAmount = gdv * (legalFees / 100)
-  const totalSalesCost = marketingAmount + salesCommissionAmount + legalFeesAmount
-
-  // Finance Costs - S-curve drawdown model (more realistic)
-  const timeline = TIMELINES[developmentType] || { construction: 18, sales: 12 }
-  const constructionMonths = timeline.construction
-  const totalMonths = timeline.construction + timeline.sales
-  
-  // Calculate finance using weighted average balance with S-curve
-  const calculateFinanceCost = () => {
-    const loanAmount = totalConstructionCost * (loanToValue / 100)
-    const monthlyRate = interestRate / 100 / 12
-    
-    if (useAdvancedFinance) {
-      // S-curve drawdown: average balance is ~50% due to progressive drawdown
-      // But we also account for timing - early months have lower balance
-      const avgBalanceFactor = 0.55 // Accounts for S-curve drawdown pattern
-      const avgBalance = loanAmount * avgBalanceFactor
-      
-      // Interest only during construction (sales period repays from proceeds)
-      const interestCost = avgBalance * monthlyRate * constructionMonths
-      
-      return interestCost
-    } else {
-      // Simple model (legacy): full balance for full period
-      const avgBalance = loanAmount * 0.5
-      const totalMonths = constructionMonths + timeline.sales
-      return avgBalance * (interestRate / 100) * (totalMonths / 12)
-    }
-  }
-  
-  const financeCost = calculateFinanceCost()
-  const financeAsPercentOfCost = totalConstructionCost > 0 
-    ? (financeCost / totalConstructionCost) * 100 
-    : 0
-
-  // Total Development Costs (before profit)
-  const totalDevelopmentCosts = totalConstructionCost + totalSalesCost + financeCost
-
-  // Developer's Profit Calculations
-  const targetProfitAmount = totalDevelopmentCosts * (targetProfit / 100)
-  
-  // Residual Land Value (with target profit)
-  // Raw calculation can be negative (indicates non-viable scheme)
-  const rawResidualLandValue = gdv - totalDevelopmentCosts - targetProfitAmount
-  // Per RICS Valuation of Development Property: market value of land cannot be negative.
-  // A negative residual indicates the scheme is not viable, but land value is floored at nil.
-  const residualLandValue = Math.max(0, rawResidualLandValue)
-  const landValuePerSqm = plotSize > 0 ? residualLandValue / plotSize : 0
-
-  // Break-even analysis - what profit is achievable at zero land value?
-  const breakEvenProfit = gdv - totalDevelopmentCosts
-  const breakEvenProfitPercent = totalDevelopmentCosts > 0 
-    ? (breakEvenProfit / totalDevelopmentCosts) * 100 
-    : 0
-  const isViable = rawResidualLandValue > 0
+  // ── Render-only: every figure comes from the Python residual engine (single source of truth). ──
+  const det: any = pythonResult?.details || {}
+  const grossBuildingArea = det.gross_building_area ?? 0
+  const netSaleableArea = det.net_saleable_area ?? 0
+  const gdv = det.gross_development_value ?? 0
+  const effectiveConstructionCost = det.construction_cost_per_sqm ?? 0
+  const constructionCost = det.construction_cost ?? 0
+  const professionalFeesAmount = det.professional_fees ?? 0
+  const contingencyAmount = det.contingency ?? 0
+  const totalConstructionCost = det.total_construction_cost ?? 0
+  const marketingAmount = det.marketing ?? 0
+  const salesCommissionAmount = det.sales_commission ?? 0
+  const legalFeesAmount = det.legal_fees ?? 0
+  const totalSalesCost = det.total_sales_cost ?? 0
+  const financeCost = det.finance_cost ?? 0
+  const constructionMonths = det.construction_months ?? 0
+  const financeAsPercentOfCost = totalConstructionCost > 0 ? (financeCost / totalConstructionCost) * 100 : 0
+  const totalDevelopmentCosts = det.total_development_costs ?? 0
+  const targetProfitAmount = det.developer_profit ?? 0
+  const rawResidualLandValue = det.raw_residual_land_value ?? 0
+  const residualLandValue = det.residual_land_value ?? (pythonResult?.estimated_value ?? 0)
+  const landValuePerSqm = det.land_value_per_sqm ?? 0
+  const breakEvenProfit = det.break_even_profit ?? 0
+  const breakEvenProfitPercent = (det.break_even_profit_pct ?? 0) * 100
+  const isViable = !!det.is_viable
+  const minViableLandValue = det.min_viable_land_value ?? 0
   const profitGap = targetProfitAmount - breakEvenProfit
-
-  // Minimum viable land value (at market minimum profit of 15%)
-  const minimumProfit = 0.15
-  const minProfitAmount = totalDevelopmentCosts * minimumProfit
-  const rawMinViableLandValue = gdv - totalDevelopmentCosts - minProfitAmount
-  const minViableLandValue = Math.max(0, rawMinViableLandValue)
+  const totalMonths = constructionMonths
 
   // Fetch valuation and economic data
   useEffect(() => {
@@ -296,9 +199,7 @@ export default function ResidualMethodPage() {
           }
           
           setDevelopmentType(devType)
-          // Set realistic efficiency for this development type
-          setEfficiency(EFFICIENCY_RATES[devType] || 0.78)
-          
+
           // Calculate plot coverage if we have both land and building size
           if (landSize > 0 && prop.building_area_sqm && floors > 0) {
             const calculatedCoverage = prop.building_area_sqm / (landSize * floors)
@@ -308,118 +209,8 @@ export default function ResidualMethodPage() {
           }
         }
         
-        // Fetch economic data for interest rate
-        try {
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
-          const econRes = await fetch(`${baseUrl}/data-hub/economic/snapshot`)
-          if (econRes.ok) {
-            const econJson = await econRes.json()
-            const econData = econJson.data || econJson
-            setEconomicData(econData)
-            // Priority: lending_rate (actual bank rate) > prime rate > policy rate
-            const lendingRate = parseFloat(econData.lending_rate || '0')
-            const primeRate = parseFloat(econData.interest_rate_prime || '0')
-            const policyRate = parseFloat(econData.interest_rate_policy || '0')
-            const mortgageRate = parseFloat(econData.mortgage_rate_avg || '0')
-            if (lendingRate > 0) {
-              setInterestRate(lendingRate)
-              setInterestRateSource('BOG Commercial Lending Rate')
-            } else if (primeRate > 0) {
-              setInterestRate(primeRate)
-              setInterestRateSource('Ghana Reference Rate (Prime)')
-            } else if (mortgageRate > 0) {
-              setInterestRate(mortgageRate)
-              setInterestRateSource('BOG Avg Mortgage Rate')
-            } else if (policyRate > 0) {
-              setInterestRate(policyRate + 5)
-              setInterestRateSource(`BOG Policy Rate + 5% spread`)
-            }
-          }
-        } catch {
-          // Economic data fetch failed, use defaults
-        }
-
-        // Fetch market data (comparable prices + construction costs) for this region
-        const regionCode = (res.data as any).property?.region || 'GAR'
-        const dataHubRegion = mapShortRegionToDataHub(regionCode)
-        setLoadingMarketData(true)
-        try {
-          const [comparablePricesRes, baseCostsRes] = await Promise.all([
-            valuationConfigApi.getComparablePrices({ region: dataHubRegion }),
-            valuationConfigApi.getBaseCosts({ region: dataHubRegion }),
-          ])
-
-          // Process comparable sale prices: map property_type → median price/sqm
-          if (comparablePricesRes.success && comparablePricesRes.data?.length) {
-            const pricesByPropType: Record<string, number> = {}
-            const evidenceByPropType: Record<string, { count: number; p25: number; p75: number; median: number }> = {}
-            comparablePricesRes.data.forEach((cp: any) => {
-              pricesByPropType[cp.property_type] = cp.median_price_sqm
-              evidenceByPropType[cp.property_type] = {
-                count: cp.comparable_count,
-                p25: cp.p25_price_sqm,
-                p75: cp.p75_price_sqm,
-                median: cp.median_price_sqm,
-              }
-            })
-            // Map to development types
-            const pricesByDevType: Record<string, number> = {}
-            const evidenceByDevType: Record<string, { count: number; p25: number; p75: number; median: number }> = {}
-            const devTypeToPropType: Record<string, string> = {
-              house: 'residential_house',
-              apartment: 'apartment_flat',
-              townhouse: 'residential_house',
-              commercial: 'commercial_shop',
-              office: 'commercial_shop',
-              industrial: 'commercial_shop',
-              warehouse: 'commercial_shop',
-            }
-            DEVELOPMENT_TYPES.forEach(dt => {
-              const propType = devTypeToPropType[dt]
-              if (pricesByPropType[propType]) {
-                pricesByDevType[dt] = pricesByPropType[propType]
-                evidenceByDevType[dt] = evidenceByPropType[propType]
-              }
-            })
-            setSystemSalePrices(pricesByDevType)
-            setComparableEvidence(evidenceByDevType)
-            const totalComps = comparablePricesRes.data.reduce((sum: number, cp: any) => sum + cp.comparable_count, 0)
-            setSalePriceSource(`${totalComps} comparable listings`)
-
-            // Set initial sale price for detected dev type
-            const detectedType = devType || 'apartment'
-            if (pricesByDevType[detectedType]) {
-              setSalePricePerSqm(pricesByDevType[detectedType])
-            }
-          }
-
-          // Process construction costs: group by property_type → standard quality cost
-          if (baseCostsRes.success && baseCostsRes.data?.length) {
-            const costsByDevType: Record<string, number> = {}
-            // Map base costs (by property_type) to each development type
-            DEVELOPMENT_TYPES.forEach(dt => {
-              const propType = DEV_TYPE_TO_PROPERTY_TYPE[dt]
-              const stdCost = baseCostsRes.data.find(
-                (c: any) => c.property_type === propType && c.quality_tier === 'standard'
-              )
-              if (stdCost) {
-                costsByDevType[dt] = stdCost.base_cost_per_sqm
-              }
-            })
-            setSystemConstructionCosts(costsByDevType)
-            setConstructionCostSource('Base cost calculation service')
-
-            // Set initial construction cost for detected dev type
-            const detectedType = devType || 'apartment'
-            if (costsByDevType[detectedType]) {
-              setConstructionCostPerSqm(costsByDevType[detectedType])
-            }
-          }
-        } catch {
-          // Market data fetch failed silently
-        } finally {
-          setLoadingMarketData(false)
-        }
+        // Sale prices, construction costs, finance rate and development assumptions are all
+        // resolved server-side by the /valuations/:id/residual/value route from the Data Hub.
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
       } finally {
@@ -429,50 +220,67 @@ export default function ResidualMethodPage() {
     fetchData()
   }, [valuationId])
 
-  // Update defaults when development type changes
-  useEffect(() => {
-    if (systemSalePrices[developmentType]) {
-      setSalePricePerSqm(systemSalePrices[developmentType])
-    }
-    if (systemConstructionCosts[developmentType]) {
-      setConstructionCostPerSqm(systemConstructionCosts[developmentType])
-    }
-    setEfficiency(EFFICIENCY_RATES[developmentType] || 0.78)
-  }, [developmentType, systemSalePrices, systemConstructionCosts])
-
-  // Call Python service for Residual Method calculation
+  // Run the residual engine via the Node route — the SINGLE source of truth. It resolves the sale
+  // price (from comparables), construction cost (base costs), finance rate (economic indicators) and
+  // development assumptions (config) from the Data Hub, applies any valuer overrides, and runs the
+  // Python RICS engine. The frontend renders the result only.
   useEffect(() => {
     const calculateResidual = async () => {
-      if (!valuation?.property || plotSize <= 0 || netSaleableArea <= 0) return
-      
+      if (!valuation?.property || plotSize <= 0) return
+
       setCalculating(true)
+      setError(null)
       try {
-        const prop = valuation.property as any
-        const response = await pythonMethodsApi.calculateResidual(
-          {
-            id: valuation.id,
-            property_type: developmentType,
-            region: prop.region || 'greater_accra',
-            land_area_sqm: plotSize,
-            building_size_sqm: grossBuildingArea,
-          },
-          {
-            proposed_gfa: netSaleableArea,
-            sale_price_per_sqm: salePricePerSqm,
-            construction_cost_per_sqm: constructionCostPerSqm,
-            developer_profit_pct: targetProfit,
-            finance_cost_pct: interestRate,
-            professional_fees_pct: professionalFees,
-            marketing_cost_pct: marketingCost,
-          }
-        )
-        
-        if (response.success && response.data) {
-          setPythonResult(response.data)
-          console.log('Residual Python result:', response.data)
+        const body: any = {
+          development_type: developmentType,
+          plot_size: plotSize,
+          plot_coverage: plotCoverage,
+          floors: numberOfFloors,
+          efficiency,
+          sale_price_per_sqm: salePricePerSqm,
+          construction_cost_per_sqm: constructionCostPerSqm,
+          cost_basis: costBasis,
+          professional_fees_pct: professionalFees,
+          contingency_pct: contingency,
+          marketing_pct: marketingCost,
+          sales_commission_pct: salesCommission,
+          legal_fees_pct: legalFees,
+          finance_rate: interestRate,
+          finance_ltv_pct: loanToValue,
+          developer_profit_pct: targetProfit,
         }
-      } catch (err) {
-        console.error('Failed to calculate Residual via Python:', err)
+
+        const response = await fetchApi<any>(`/valuations/${valuationId}/residual/value`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+        const data = response?.data
+        if (!data) { setPythonResult(null); return }
+        setPythonResult(data)
+
+        // Echo engine-resolved values into the editable fields for display.
+        const d = data.details || {}
+        if (d.efficiency) setEfficiency(d.efficiency)
+        if (d.plot_coverage) setPlotCoverage(d.plot_coverage)
+        if (d.sale_price_per_sqm) setSalePricePerSqm(d.sale_price_per_sqm)
+        if (d.construction_cost_per_sqm) setConstructionCostPerSqm(d.construction_cost_per_sqm)
+        if (d.finance_rate) setInterestRate(Math.round(d.finance_rate * 1000) / 10)
+
+        // Evidence + provenance from meta.
+        if (response?.meta?.sale_price_evidence) {
+          setComparableEvidence({
+            [developmentType]: {
+              count: response.meta.sale_price_evidence.count,
+              p25: response.meta.sale_price_evidence.p25,
+              p75: response.meta.sale_price_evidence.p75,
+              median: response.meta.sale_price_evidence.median,
+            },
+          })
+          setSalePriceSource(`${response.meta.sale_price_evidence.count} comparable listings`)
+        }
+      } catch (err: any) {
+        setPythonResult(null)
+        setError(err?.message || 'The residual engine could not value this scheme — check the required inputs.')
       } finally {
         setCalculating(false)
       }
@@ -481,7 +289,7 @@ export default function ResidualMethodPage() {
     // Debounce the calculation
     const timer = setTimeout(calculateResidual, 500)
     return () => clearTimeout(timer)
-  }, [valuation, plotSize, netSaleableArea, grossBuildingArea, developmentType, salePricePerSqm, constructionCostPerSqm, targetProfit, interestRate, professionalFees, marketingCost])
+  }, [valuation, valuationId, developmentType, plotSize, plotCoverage, numberOfFloors, efficiency, salePricePerSqm, constructionCostPerSqm, costBasis, professionalFees, contingency, marketingCost, salesCommission, legalFees, interestRate, loanToValue, targetProfit])
 
   // Save and continue
   const handleSave = async () => {
@@ -489,43 +297,27 @@ export default function ResidualMethodPage() {
       setSaving(true)
       setError(null)
 
-      // Use Python result as primary, fallback to local calculation
-      // Per RICS: land value floored at 0 (nil if scheme not viable)
-      const finalValue = Math.max(0, pythonResult?.estimated_value || residualLandValue)
-      const finalConfidence = pythonResult?.confidence_score || calculateConfidence()
+      // Strict: only the engine result is persisted — no local fallback calculation.
+      if (!pythonResult) {
+        setError('Cannot save — the residual engine has not returned a value yet. Resolve the required inputs first.')
+        setSaving(false)
+        return
+      }
 
       await valuationsApi.update(valuationId, {
         method_results: {
           ...(valuation?.method_results || {}),
           residual_method: {
-            value: finalValue,
-            confidence: finalConfidence,
-            confidence_level: pythonResult?.confidence_level || 'medium',
-            value_range: pythonResult?.value_range,
-            gdv: pythonResult?.details?.gross_development_value || gdv,
-            grossBuildingArea,
-            netSaleableArea,
-            totalConstructionCost: pythonResult?.details?.construction_cost || totalConstructionCost,
-            totalSalesCost,
-            financeCost: pythonResult?.details?.finance_cost || financeCost,
-            financeAsPercentOfCost,
-            targetProfit,
-            targetProfitAmount,
-            residualLandValue: pythonResult?.details?.residual_land_value || residualLandValue,
-            landValuePerSqm: pythonResult?.details?.land_value_per_sqm || landValuePerSqm,
+            value: pythonResult.estimated_value,
+            confidence: pythonResult.confidence_score,
+            confidence_level: pythonResult.confidence_level,
+            value_range: pythonResult.value_range,
+            details: pythonResult.details,
+            assumptions: pythonResult.assumptions ?? [],
+            limitations: pythonResult.limitations ?? [],
             developmentType,
             costBasis,
-            efficiency,
-            useAdvancedFinance,
-            isViable: pythonResult?.details?.is_viable ?? isViable,
-            breakEvenProfitPercent,
-            breakEvenProfit,
-            profitGap,
-            minViableLandValue,
-            professionalFees: pythonResult?.details?.professional_fees || professionalFeesAmount,
-            assumptions: pythonResult?.assumptions || [],
-            limitations: pythonResult?.limitations || [],
-            calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_calculation',
+            calculated_by: 'python_rics_engine',
           },
         },
         current_step: 8,
@@ -538,17 +330,6 @@ export default function ResidualMethodPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const calculateConfidence = () => {
-    let score = 0.35
-    if (plotSize > 0) score += 0.10
-    if (gdv > 0) score += 0.10
-    if (residualLandValue > 0) score += 0.20 // Viable scheme is important
-    if (targetProfit >= 15 && targetProfit <= 25) score += 0.10
-    if (financeAsPercentOfCost >= 8 && financeAsPercentOfCost <= 12) score += 0.10 // Realistic finance
-    if (efficiency >= 0.70 && efficiency <= 0.95) score += 0.05 // Realistic efficiency
-    return Math.min(score, 1)
   }
 
   // Determine back navigation
@@ -602,7 +383,7 @@ export default function ResidualMethodPage() {
           <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded">
             <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400">PURPOSE: DEVELOPMENT FEASIBILITY</span>
           </div>
-          <ConfidenceBar score={calculateConfidence() * 100} />
+          <ConfidenceBar score={(pythonResult?.confidence_score ?? 0) * 100} />
         </div>
       </div>
 
@@ -1179,9 +960,7 @@ export default function ResidualMethodPage() {
                     else if (propType.includes('industrial')) devType = 'industrial'
                     
                     setDevelopmentType(devType)
-                    setEfficiency(EFFICIENCY_RATES[devType] || 0.78)
-                    if (systemSalePrices[devType]) setSalePricePerSqm(systemSalePrices[devType])
-                    if (systemConstructionCosts[devType]) setConstructionCostPerSqm(systemConstructionCosts[devType])
+                    // Sale price, construction cost and efficiency are re-resolved by the engine.
                     setTargetProfit(20)
                   }
                 }}

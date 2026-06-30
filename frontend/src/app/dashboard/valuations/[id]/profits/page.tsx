@@ -20,7 +20,8 @@ import {
   MethodBadge,
   ConfidenceBar,
 } from '@/components/ui/terminal'
-import { valuationsApi, pythonMethodsApi, capRateApi } from '@/lib/valuation-api'
+import { valuationsApi } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -46,58 +47,20 @@ import {
 } from '@/components/ui/tooltip'
 
 // Property types for Profits Method
+// Trading types are only id/label/icon/metric here. Revenue/unit, operating cost ratios, operator's
+// remuneration and the trading cap rate ALL come from the Data Hub (trading_property_benchmarks),
+// resolved by the Node /profits/value route. No hardcoded values drive the valuation.
 const PROPERTY_TYPES = [
-  { id: 'hotel', label: 'Hotel', icon: Hotel, metric: 'rooms', revenuePerUnit: 120000 },
-  { id: 'hospital', label: 'Hospital', icon: Stethoscope, metric: 'beds', revenuePerUnit: 180000 },
-  { id: 'school', label: 'School', icon: GraduationCap, metric: 'students', revenuePerUnit: 24000 },
-  { id: 'restaurant', label: 'Restaurant', icon: Utensils, metric: 'sqm', revenuePerUnit: 6000 },
-  { id: 'fuel_station', label: 'Fuel Station', icon: Fuel, metric: 'pumps', revenuePerUnit: 480000 },
-  { id: 'healthcare', label: 'Healthcare', icon: Stethoscope, metric: 'sqm', revenuePerUnit: 4800 },
+  { id: 'hotel', label: 'Hotel', icon: Hotel, metric: 'rooms' },
+  { id: 'hospital', label: 'Hospital', icon: Stethoscope, metric: 'beds' },
+  { id: 'school', label: 'School', icon: GraduationCap, metric: 'students' },
+  { id: 'restaurant', label: 'Restaurant', icon: Utensils, metric: 'sqm' },
+  { id: 'fuel_station', label: 'Fuel Station', icon: Fuel, metric: 'pumps' },
+  { id: 'healthcare', label: 'Healthcare', icon: Stethoscope, metric: 'sqm' },
 ]
 
-// Operating cost ratios by property type
-const OPERATING_COSTS: Record<string, { label: string; value: number }[]> = {
-  hotel: [
-    { label: 'Cost of Sales', value: 25 },
-    { label: 'Staff Costs', value: 30 },
-    { label: 'Utilities', value: 8 },
-    { label: 'Maintenance', value: 5 },
-    { label: 'Admin & Marketing', value: 10 },
-  ],
-  hospital: [
-    { label: 'Cost of Sales (Medical)', value: 30 },
-    { label: 'Staff Costs', value: 40 },
-    { label: 'Utilities', value: 5 },
-    { label: 'Maintenance', value: 4 },
-    { label: 'Admin', value: 5 },
-  ],
-  school: [
-    { label: 'Staff Costs', value: 55 },
-    { label: 'Utilities', value: 5 },
-    { label: 'Maintenance', value: 5 },
-    { label: 'Admin', value: 8 },
-  ],
-  restaurant: [
-    { label: 'Cost of Sales (Food)', value: 35 },
-    { label: 'Staff Costs', value: 25 },
-    { label: 'Utilities', value: 6 },
-    { label: 'Maintenance', value: 3 },
-    { label: 'Admin & Marketing', value: 5 },
-  ],
-  fuel_station: [
-    { label: 'Cost of Sales (Fuel)', value: 85 },
-    { label: 'Staff Costs', value: 4 },
-    { label: 'Utilities', value: 2 },
-    { label: 'Maintenance', value: 2 },
-  ],
-  healthcare: [
-    { label: 'Cost of Sales', value: 25 },
-    { label: 'Staff Costs', value: 45 },
-    { label: 'Utilities', value: 5 },
-    { label: 'Maintenance', value: 4 },
-    { label: 'Admin', value: 5 },
-  ],
-}
+// Humanise an operating-cost ratio key (e.g. "cost_of_sales" → "Cost Of Sales") for display.
+const humanizeCost = (k: string) => k.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 
 // GhIS/RICS-aligned tooltips for Profits Method concepts
 const PROFITS_TOOLTIPS = {
@@ -119,16 +82,6 @@ const PROFITS_TOOLTIPS = {
   capitalValue: 'The estimated market value of the property based on its income-generating potential, calculated as MOP ÷ Cap Rate.',
 }
 
-// Map trading property types to cap rate property types for API lookup
-const TRADING_TO_CAP_RATE_TYPE: Record<string, string> = {
-  hotel: 'commercial_office',
-  hospital: 'commercial_office',
-  school: 'commercial_office',
-  restaurant: 'commercial_shop',
-  fuel_station: 'commercial_shop',
-  healthcare: 'commercial_office',
-}
-
 export default function ProfitsMethodPage() {
   const params = useParams()
   const router = useRouter()
@@ -145,44 +98,46 @@ export default function ProfitsMethodPage() {
   const [unitCount, setUnitCount] = useState(0)
   const [occupancyRate, setOccupancyRate] = useState(70)
 
-  // Revenue inputs
-  const [revenuePerUnit, setRevenuePerUnit] = useState(120000)
+  // Revenue inputs — benchmark revenue/unit is resolved server-side; the valuer may override it or
+  // enter actual audited turnover (Fair Maintainable Turnover, preferred).
+  const [revenuePerUnit, setRevenuePerUnit] = useState(0)
   const [useCustomRevenue, setUseCustomRevenue] = useState(false)
+  const [actualTurnover, setActualTurnover] = useState<number | ''>('')
 
-  // Operating costs (percentages)
+  // Operating cost overrides (keyed by ratio key, stored as percentages)
   const [operatingCostOverrides, setOperatingCostOverrides] = useState<Record<string, number>>({})
 
-  // Capitalization
-  const [capRate, setCapRate] = useState(10)
+  // Capitalization — trading cap rate from the benchmark (echoed from the result), overridable.
+  const [capRate, setCapRate] = useState(0)
   const [useCustomCapRate, setUseCustomCapRate] = useState(false)
   const [systemCapRate, setSystemCapRate] = useState<number | null>(null)
   const [capRateMethodology, setCapRateMethodology] = useState<string | null>(null)
   const [capRateConfidence, setCapRateConfidence] = useState<string | null>(null)
   const [capRateRange, setCapRateRange] = useState<{ low: number; high: number } | null>(null)
+  const [unitMetric, setUnitMetric] = useState<string | null>(null)
+  const [capRateProvenance, setCapRateProvenance] = useState<any>(null)
 
   // Python calculation results
   const [pythonResult, setPythonResult] = useState<any>(null)
 
-  // Local calculations (fallback/display while calculating)
-  const potentialGrossRevenue = unitCount * revenuePerUnit
-  const effectiveGrossRevenue = potentialGrossRevenue * (occupancyRate / 100)
-
-  const operatingCosts = OPERATING_COSTS[propertyType] || []
-  const totalOperatingCostPercent = operatingCosts.reduce((sum, cost) => {
-    return sum + (operatingCostOverrides[cost.label] ?? cost.value)
-  }, 0)
-  const totalOperatingCostAmount = effectiveGrossRevenue * (totalOperatingCostPercent / 100)
-
-  const netOperatingIncome = effectiveGrossRevenue - totalOperatingCostAmount
-
-  // Maintainable Operating Profit (MOP)
-  const mop = pythonResult?.details?.maintainable_profit ?? netOperatingIncome
-
-  // Capital Value - prefer Python result
-  const capitalValue = pythonResult?.estimated_value ?? (mop / (capRate / 100))
-
-  // Confidence from Python
-  const confidenceScore = pythonResult?.confidence_score ?? 0.5
+  // ── Render-only: every figure comes from the Python profits engine (single source of truth). ──
+  const det: any = pythonResult?.details || {}
+  // When actual Fair Maintainable Turnover is entered it is the valuation basis (RICS-preferred);
+  // the unit estimate is then disabled.
+  const hasActualTurnover = typeof actualTurnover === 'number' && actualTurnover > 0
+  const potentialGrossRevenue = det.potential_gross_revenue ?? 0
+  const effectiveGrossRevenue = det.effective_gross_revenue ?? 0
+  const operatingCosts = Object.entries(det.operating_cost_ratios || {}).map(
+    ([label, frac]: any) => ({ label, value: Math.round((frac as number) * 1000) / 10 })
+  )
+  const totalOperatingCostPercent = (det.operating_ratio ?? 0) * 100
+  const totalOperatingCostAmount = det.operating_costs ?? 0
+  const netOperatingIncome = det.net_profit ?? 0
+  const operatorRemuneration = det.operator_remuneration ?? 0
+  const returnOnOperatorCapital = det.return_on_operator_capital ?? 0
+  const mop = det.maintainable_profit ?? 0
+  const capitalValue = pythonResult?.estimated_value ?? 0
+  const confidenceScore = pythonResult?.confidence_score ?? 0
 
   // Fetch valuation
   useEffect(() => {
@@ -196,34 +151,10 @@ export default function ProfitsMethodPage() {
 
         const prop = res.data.property
         if (prop) {
-          // Try to infer unit count from property data
-          if (prop.bedrooms) setUnitCount(prop.bedrooms) // Rooms for hotel
+          // Infer a starting unit count from the property; the valuer adjusts it. The trading cap
+          // rate + benchmarks now come from the Data Hub via the /profits/value route, not here.
+          if (prop.bedrooms) setUnitCount(prop.bedrooms)
           else if (prop.built_area_sqm) setUnitCount(Math.round(prop.built_area_sqm))
-
-          // Fetch market cap rate from RICS-compliant methodology
-          const region = prop.region?.toLowerCase()?.replace(/\s+/g, '_') || 'greater_accra'
-          const capRatePropertyType = TRADING_TO_CAP_RATE_TYPE['hotel'] || 'commercial_office'
-          try {
-            const capRateRes = await capRateApi.getMarketCapRate(region, capRatePropertyType)
-            if (capRateRes.success && capRateRes.data?.capRate > 0) {
-              const ratePercent = capRateRes.data.capRate < 1
-                ? capRateRes.data.capRate * 100
-                : capRateRes.data.capRate
-              setSystemCapRate(ratePercent)
-              setCapRate(ratePercent)
-              setCapRateMethodology(capRateRes.data.methodology)
-              setCapRateConfidence(capRateRes.data.confidence)
-              if (capRateRes.data.range) {
-                setCapRateRange({
-                  low: capRateRes.data.range.low < 1 ? capRateRes.data.range.low * 100 : capRateRes.data.range.low,
-                  high: capRateRes.data.range.high < 1 ? capRateRes.data.range.high * 100 : capRateRes.data.range.high,
-                })
-              }
-              console.log('✅ Market cap rate from API:', ratePercent, '%', capRateRes.data.methodology)
-            }
-          } catch {
-            console.log('ℹ️ Market cap rate API unavailable, using defaults')
-          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
@@ -234,90 +165,66 @@ export default function ProfitsMethodPage() {
     fetchData()
   }, [valuationId])
 
-  // Calculate via Python service when inputs change
+  // Run the profits engine via the Node route — the SINGLE source of truth. It resolves the
+  // revenue/unit, operating cost ratios, operator's remuneration % and trading cap rate from the
+  // Data Hub (applying any valuer overrides / actual turnover) and runs the Python engine.
   useEffect(() => {
     const calculateProfits = async () => {
-      if (!valuation?.property || unitCount <= 0) return
-      
+      if (!valuation?.property || !propertyType) return
+      const hasActual = typeof actualTurnover === 'number' && actualTurnover > 0
+      if (!hasActual && unitCount <= 0) return
       setCalculating(true)
+      setError(null)
       try {
-        const prop = valuation.property
-        const result = await pythonMethodsApi.calculateProfits(
-          {
-            id: prop.id,
-            property_type: propertyType,
-            region: prop.region || 'greater_accra',
-            building_size_sqm: prop.building_area_sqm || (prop as any).gfa,
-            bedrooms: prop.bedrooms,
-          },
-          {
-            unit_count: unitCount,
-            revenue_per_unit: revenuePerUnit,
-            occupancy_rate: occupancyRate,
-            cap_rate: capRate,
-            operating_cost_overrides: operatingCostOverrides,
-            trading_property_type: propertyType,
-          }
-        )
-        
-        if (result.success && result.data) {
-          setPythonResult(result.data)
+        const body: any = { trading_property_type: propertyType }
+        if (hasActual) {
+          body.gross_annual_revenue = actualTurnover
+        } else {
+          body.unit_count = unitCount
+          if (occupancyRate > 0) body.occupancy_rate = occupancyRate
+          if (useCustomRevenue && revenuePerUnit > 0) body.revenue_per_unit = revenuePerUnit
         }
-      } catch (err) {
-        console.error('Python calculation error:', err)
-        // Keep using local calculation on error
+        if (useCustomCapRate && capRate > 0) body.cap_rate = capRate / 100
+        // Operating-cost overrides: send the full ratio set (benchmark values + the valuer's edits)
+        // whenever any slider has been changed.
+        if (Object.keys(operatingCostOverrides).length > 0) {
+          const merged: Record<string, number> = {}
+          for (const c of operatingCosts) merged[c.label] = (operatingCostOverrides[c.label] ?? c.value) / 100
+          body.operating_cost_ratios = merged
+        }
+
+        const response = await fetchApi<any>(`/valuations/${valuationId}/profits/value`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+        const data = response?.data
+        if (!data) { setPythonResult(null); return }
+        setPythonResult(data)
+
+        const d = data.details || {}
+        // Echo engine-resolved values into the editable fields (display only, when not overridden).
+        if (!useCustomCapRate && d.cap_rate) setCapRate(Math.round(d.cap_rate * 10000) / 100)
+        if (d.cap_rate_range) setCapRateRange({ low: d.cap_rate_range.low * 100, high: d.cap_rate_range.high * 100 })
+        if (!useCustomRevenue && d.revenue_per_unit) setRevenuePerUnit(d.revenue_per_unit)
+        if (response?.meta?.unit_metric) setUnitMetric(response.meta.unit_metric)
+        setCapRateProvenance(response?.meta?.cap_rate_provenance || null)
+      } catch (err: any) {
+        setPythonResult(null)
+        setError(err?.message || 'The profits engine could not value this property — check the required inputs (unit count or actual turnover).')
       } finally {
         setCalculating(false)
       }
     }
-
-    // Debounce calculation
     const timer = setTimeout(calculateProfits, 500)
     return () => clearTimeout(timer)
-  }, [valuation, propertyType, unitCount, revenuePerUnit, occupancyRate, capRate, operatingCostOverrides])
+  }, [valuation, valuationId, propertyType, unitCount, occupancyRate, revenuePerUnit, useCustomRevenue, capRate, useCustomCapRate, actualTurnover, operatingCostOverrides])
 
-  // Update defaults when property type changes
+  // Reset overrides when the trading type changes (benchmarks differ per type).
   useEffect(() => {
-    if (!useCustomRevenue) {
-      const typeInfo = PROPERTY_TYPES.find(t => t.id === propertyType)
-      if (typeInfo) {
-        setRevenuePerUnit(typeInfo.revenuePerUnit)
-      }
-    }
-    if (!useCustomCapRate && systemCapRate !== null) {
-      setCapRate(systemCapRate)
-    }
     setOperatingCostOverrides({})
-  }, [propertyType, useCustomRevenue, useCustomCapRate, systemCapRate])
-
-  // Fetch new cap rate when property type changes
-  useEffect(() => {
-    const fetchCapRate = async () => {
-      if (!valuation?.property) return
-      const region = valuation.property.region?.toLowerCase()?.replace(/\s+/g, '_') || 'greater_accra'
-      const capRatePropertyType = TRADING_TO_CAP_RATE_TYPE[propertyType] || 'commercial_office'
-      try {
-        const capRateRes = await capRateApi.getMarketCapRate(region, capRatePropertyType)
-        if (capRateRes.success && capRateRes.data?.capRate > 0) {
-          const ratePercent = capRateRes.data.capRate < 1
-            ? capRateRes.data.capRate * 100
-            : capRateRes.data.capRate
-          setSystemCapRate(ratePercent)
-          setCapRateMethodology(capRateRes.data.methodology)
-          setCapRateConfidence(capRateRes.data.confidence)
-          if (capRateRes.data.range) {
-            setCapRateRange({
-              low: capRateRes.data.range.low < 1 ? capRateRes.data.range.low * 100 : capRateRes.data.range.low,
-              high: capRateRes.data.range.high < 1 ? capRateRes.data.range.high * 100 : capRateRes.data.range.high,
-            })
-          }
-        }
-      } catch {
-        // Keep existing cap rate
-      }
-    }
-    fetchCapRate()
-  }, [propertyType, valuation])
+    setUseCustomRevenue(false)
+    setUseCustomCapRate(false)
+  }, [propertyType])
 
   // Save and continue
   const handleSave = async () => {
@@ -325,32 +232,25 @@ export default function ProfitsMethodPage() {
       setSaving(true)
       setError(null)
 
-      // Use Python result if available, otherwise use local calculation
-      const finalValue = pythonResult?.estimated_value ?? capitalValue
-      const finalConfidence = pythonResult?.confidence_score ?? 0.5
+      // Strict: only the engine result is persisted — no local fallback calculation.
+      if (!pythonResult) {
+        setError('Cannot save — the profits engine has not returned a value yet. Resolve the required inputs first.')
+        setSaving(false)
+        return
+      }
 
       await valuationsApi.update(valuationId, {
         method_results: {
           ...(valuation?.method_results || {}),
           profits_method: {
-            value: finalValue,
-            confidence: finalConfidence,
-            confidence_level: pythonResult?.confidence_level ?? 'medium',
-            value_range: pythonResult?.value_range ?? { low: finalValue * 0.8, high: finalValue * 1.2 },
-            details: pythonResult?.details ?? {
-              potentialGrossRevenue,
-              effectiveGrossRevenue,
-              occupancyRate,
-              totalOperatingCostPercent,
-              netOperatingIncome,
-              mop,
-              capRate,
-              propertyType,
-              unitCount,
-            },
-            assumptions: pythonResult?.assumptions ?? [],
-            limitations: pythonResult?.limitations ?? [],
-            calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_fallback',
+            value: pythonResult.estimated_value,
+            confidence: pythonResult.confidence_score,
+            confidence_level: pythonResult.confidence_level,
+            value_range: pythonResult.value_range,
+            details: { ...pythonResult.details, propertyType, unitCount },
+            assumptions: pythonResult.assumptions ?? [],
+            limitations: pythonResult.limitations ?? [],
+            calculated_by: 'python_rics_engine',
           },
         },
         current_step: 8,
@@ -485,8 +385,9 @@ export default function ProfitsMethodPage() {
                   <input
                     type="number"
                     value={unitCount}
+                    disabled={hasActualTurnover}
                     onChange={(e) => setUnitCount(Number(e.target.value))}
-                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
+                    className={`w-full bg-background border border-border p-2 font-mono text-sm text-foreground ${hasActualTurnover ? 'opacity-40' : ''}`}
                   />
                 </div>
                 <div>
@@ -506,11 +407,12 @@ export default function ProfitsMethodPage() {
                   <input
                     type="number"
                     value={revenuePerUnit}
+                    disabled={hasActualTurnover}
                     onChange={(e) => {
                       setUseCustomRevenue(true)
                       setRevenuePerUnit(Number(e.target.value))
                     }}
-                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
+                    className={`w-full bg-background border border-border p-2 font-mono text-sm text-foreground ${hasActualTurnover ? 'opacity-40' : ''}`}
                   />
                 </div>
                 <div>
@@ -528,10 +430,23 @@ export default function ProfitsMethodPage() {
                   <input
                     type="number"
                     value={occupancyRate}
+                    disabled={hasActualTurnover}
                     onChange={(e) => setOccupancyRate(Number(e.target.value))}
-                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
+                    className={`w-full bg-background border border-border p-2 font-mono text-sm text-foreground ${hasActualTurnover ? 'opacity-40' : ''}`}
                   />
                 </div>
+              </div>
+
+              {/* Actual audited turnover (Fair Maintainable Turnover) — preferred over the unit estimate. */}
+              <div className="flex items-center gap-3 p-3 bg-card border border-border">
+                <label className="font-mono text-[10px] text-muted-foreground whitespace-nowrap">ACTUAL ANNUAL TURNOVER (GH₵)</label>
+                <input
+                  type="number"
+                  value={actualTurnover}
+                  placeholder="optional — from trading accounts; overrides the unit estimate"
+                  onChange={(e) => setActualTurnover(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="flex-1 bg-background border border-border p-2 font-mono text-sm text-foreground placeholder-zinc-600"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4 p-3 bg-card border border-border">
@@ -587,7 +502,7 @@ export default function ProfitsMethodPage() {
             <div className="p-4 space-y-3">
               {operatingCosts.map(cost => (
                 <div key={cost.label} className="flex items-center gap-4">
-                  <span className="font-mono text-xs text-muted-foreground w-40">{cost.label}</span>
+                  <span className="font-mono text-xs text-muted-foreground w-40">{humanizeCost(cost.label)}</span>
                   <input
                     type="range"
                     min="0"
@@ -639,10 +554,34 @@ export default function ProfitsMethodPage() {
                   GH₵ {mop.toLocaleString()}
                 </span>
               </div>
+              {/* Divisible balance: net profit less the operator's share = profit to the property. */}
+              <div className="space-y-1 mb-3 px-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-muted-foreground">Net operating profit</span>
+                  <span className="font-mono text-xs text-foreground">GH₵ {netOperatingIncome.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    Less: operator&apos;s remuneration ({((det.operator_remuneration_pct ?? 0) * 100).toFixed(0)}%)
+                  </span>
+                  <span className="font-mono text-xs text-red-600 dark:text-red-400">− GH₵ {operatorRemuneration.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    Less: return on operator&apos;s capital ({((det.return_on_operator_capital_pct ?? 0) * 100).toFixed(0)}% on FF&amp;E + stock)
+                  </span>
+                  <span className="font-mono text-xs text-red-600 dark:text-red-400">− GH₵ {returnOnOperatorCapital.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-1">
+                  <span className="font-mono text-[11px] text-muted-foreground">= Maintainable profit (to property)</span>
+                  <span className="font-mono text-xs text-green-600 dark:text-green-400">GH₵ {mop.toLocaleString()}</span>
+                </div>
+              </div>
               <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30">
                 <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="font-mono text-xs text-blue-600 dark:text-blue-300">
-                  MOP represents the sustainable annual profit that a reasonably efficient operator would achieve
+                  MOP is the profit attributable to the property — net operating profit after the
+                  Reasonably Efficient Operator&apos;s remuneration (the divisible balance).
                 </div>
               </div>
             </div>
@@ -665,9 +604,9 @@ export default function ProfitsMethodPage() {
                 </div>
                 <input
                   type="range"
-                  min="5"
-                  max="18"
-                  step="0.5"
+                  min="3"
+                  max="20"
+                  step="0.25"
                   value={capRate}
                   onChange={(e) => {
                     setUseCustomCapRate(true)
@@ -675,40 +614,40 @@ export default function ProfitsMethodPage() {
                   }}
                   className="flex-1"
                 />
-                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-12 text-right">
-                  {capRate}%
+                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-14 text-right">
+                  {capRate ? `${capRate}%` : '—'}
                 </span>
               </div>
-              {capRateMethodology ? (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`font-mono text-[9px] px-1.5 py-0.5 ${
-                      capRateConfidence === 'high' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                      capRateConfidence === 'moderate' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
-                      'bg-red-500/20 text-red-600 dark:text-red-400'
-                    }`}>
-                      {capRateMethodology.replace(/_/g, ' ').toUpperCase()}
-                    </span>
-                    {useCustomCapRate && (
-                      <button
-                        onClick={() => { setUseCustomCapRate(false); if (systemCapRate !== null) setCapRate(systemCapRate) }}
-                        className="font-mono text-[9px] text-blue-600 dark:text-blue-400 hover:text-blue-300 underline"
-                      >
-                        Reset to system
-                      </button>
-                    )}
-                  </div>
-                  {capRateRange && (
-                    <div className="font-mono text-[10px] text-muted-foreground">
-                      Market range: {capRateRange.low.toFixed(1)}% – {capRateRange.high.toFixed(1)}%
-                    </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const src = useCustomCapRate ? 'valuer_override' : (capRateProvenance?.source || 'indicative_benchmark')
+                    const label = src === 'valuer_override' ? 'VALUER OVERRIDE'
+                      : src === 'market_analytics' ? `MARKET ANALYTICS${capRateProvenance?.sample_size ? ` · ${capRateProvenance.sample_size} comps` : ''}`
+                      : 'INDICATIVE BENCHMARK'
+                    const cls = src === 'market_analytics' ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                      : src === 'indicative_benchmark' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                      : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                    return <span className={`font-mono text-[9px] px-1.5 py-0.5 ${cls}`}>{label}</span>
+                  })()}
+                  {useCustomCapRate && (
+                    <button
+                      onClick={() => { setUseCustomCapRate(false); if (det?.cap_rate) setCapRate(Math.round(det.cap_rate * 10000) / 100) }}
+                      className="font-mono text-[9px] text-blue-600 dark:text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Reset to analytics
+                    </button>
                   )}
                 </div>
-              ) : (
-                <div className="font-mono text-xs text-muted-foreground">
-                  Loading market cap rate...
-                </div>
-              )}
+                {!useCustomCapRate && capRateProvenance?.note && (
+                  <div className="font-mono text-[10px] text-muted-foreground">{capRateProvenance.note}</div>
+                )}
+                {capRateRange && (
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    Yield range: {capRateRange.low.toFixed(2)}% – {capRateRange.high.toFixed(2)}%
+                  </div>
+                )}
+              </div>
             </div>
           </TerminalPanel>
 

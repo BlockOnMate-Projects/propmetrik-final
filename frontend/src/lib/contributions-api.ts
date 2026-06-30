@@ -6,6 +6,7 @@
  */
 
 import { fetchApi } from '@/lib/api'
+import { authedFetch } from '@/lib/authed-fetch'
 import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
 
 // Use relative path so requests go through Next.js proxy (/api/* → /api/v1/*)
@@ -64,15 +65,9 @@ export const submitContribution = async (input: ContributionInput): Promise<ApiR
 
     console.log('Submitting contribution:', contributionData)
 
-    const response = await fetch(`${CONTRIBUTIONS_BASE}`, {
+    const response = await authedFetch(`${CONTRIBUTIONS_BASE}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Add auth header if available
-        ...(typeof window !== 'undefined' && localStorage.getItem('auth_token') && {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        })
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(contributionData),
     })
 
@@ -172,13 +167,7 @@ export const submitComparable = async (
  */
 export const getContributionsForProperty = async (propertyId: string): Promise<ApiResponse<Contribution[]>> => {
   try {
-    const response = await fetch(`${CONTRIBUTIONS_BASE}?property_id=${propertyId}`, {
-      headers: {
-        ...(typeof window !== 'undefined' && localStorage.getItem('auth_token') && {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        })
-      }
-    })
+    const response = await authedFetch(`${CONTRIBUTIONS_BASE}?property_id=${propertyId}`)
 
     const result = await response.json()
 
@@ -208,13 +197,7 @@ export const getContributionsForProperty = async (propertyId: string): Promise<A
  */
 export const getUserContributions = async (): Promise<ApiResponse<Contribution[]>> => {
   try {
-    const response = await fetch(`${CONTRIBUTIONS_BASE}/my-contributions`, {
-      headers: {
-        ...(typeof window !== 'undefined' && localStorage.getItem('auth_token') && {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        })
-      }
-    })
+    const response = await authedFetch(`${CONTRIBUTIONS_BASE}/my-contributions`)
 
     const result = await response.json()
 

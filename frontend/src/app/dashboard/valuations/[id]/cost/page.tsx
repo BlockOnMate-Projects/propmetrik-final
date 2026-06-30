@@ -151,18 +151,22 @@ export default function CostApproachPage() {
   const [pythonResult, setPythonResult] = useState<any>(null)
   const [calculating, setCalculating] = useState(false)
 
-  // Calculated values
-  const hardCosts = components.reduce((sum, c) => sum + c.total, 0) || (gfa * constructionRate)
-  const softCostsAmount = hardCosts * (softCosts / 100)
-  const totalConstructionCost = hardCosts + softCostsAmount + siteworks
-  const entrepreneurialProfitAmount = totalConstructionCost * (entrepreneurialProfit / 100)
-  const reproductionCostNew = totalConstructionCost + entrepreneurialProfitAmount
-
+  // Hard-cost INPUT: the optional component breakdown (if used) overrides rate × area.
+  // Sent to the engine; the engine returns the authoritative figure.
+  const componentHardCosts = components.reduce((sum, c) => sum + c.total, 0)
   const totalDepreciation = physicalDepreciation + functionalObsolescence + externalObsolescence
-  const depreciationAmount = reproductionCostNew * (totalDepreciation / 100)
-  const depreciatedBuildingValue = reproductionCostNew - depreciationAmount
 
-  const indicatedValue = landValue + depreciatedBuildingValue
+  // ALL cost-approach OUTPUTS come from the Python engine (single source of truth).
+  // Nothing is computed in the browser — these read the engine's returned breakdown.
+  // (hardCosts keeps a rate×area echo only as a pre-load placeholder for the input row.)
+  const cd = pythonResult?.details || {}
+  const hardCosts = cd.hard_costs ?? (componentHardCosts || gfa * constructionRate)
+  const softCostsAmount = cd.soft_costs ?? 0
+  const entrepreneurialProfitAmount = cd.entrepreneurial_profit ?? 0
+  const reproductionCostNew = cd.reproduction_cost_new ?? 0
+  const depreciationAmount = cd.depreciation_amount ?? 0
+  const depreciatedBuildingValue = cd.depreciated_building_value ?? 0
+  const indicatedValue = pythonResult?.estimated_value ?? 0
 
   // Fetch existing data
   useEffect(() => {
@@ -251,6 +255,10 @@ export default function CostApproachPage() {
           {
             land_value_per_sqm: plotSize > 0 ? landValue / plotSize : undefined,
             construction_cost_per_sqm: constructionRate,
+            hard_costs: componentHardCosts > 0 ? componentHardCosts : undefined,
+            soft_costs_percent: softCosts,
+            siteworks: siteworks,
+            entrepreneurial_profit_percent: entrepreneurialProfit,
             depreciation_overrides: {
               physical: physicalDepreciation,
               functional: functionalObsolescence,
@@ -273,7 +281,7 @@ export default function CostApproachPage() {
     // Debounce calculation
     const timer = setTimeout(calculateCost, 500)
     return () => clearTimeout(timer)
-  }, [valuation, gfa, plotSize, constructionQuality, constructionRate, landValue, physicalDepreciation, functionalObsolescence, externalObsolescence])
+  }, [valuation, gfa, plotSize, constructionQuality, constructionRate, landValue, physicalDepreciation, functionalObsolescence, externalObsolescence, softCosts, siteworks, entrepreneurialProfit, componentHardCosts])
 
   // Fetch construction costs from Data Hub
   const fetchConstructionCosts = useCallback(async (shortRegionCode: string) => {
@@ -484,11 +492,13 @@ export default function CostApproachPage() {
 
       const data = result.data
       
-      // Update state with calculated values (convert from decimal to percentage)
-      setPhysicalDepreciation(Math.round(data.physical.depreciation_rate * 100))
-      setFunctionalObsolescence(Math.round(data.functional.depreciation_rate * 100))
+      // Update state with calculated values (decimal rate -> percentage, keep 1 dp — do NOT
+      // round to a whole number; rounding 1.8% -> 2% silently over-depreciates the value).
+      const toPct = (rate: number) => Math.round((rate || 0) * 1000) / 10
+      setPhysicalDepreciation(toPct(data.physical.depreciation_rate))
+      setFunctionalObsolescence(toPct(data.functional.depreciation_rate))
       if (data.external) {
-        setExternalObsolescence(Math.round(data.external.depreciation_rate * 100))
+        setExternalObsolescence(toPct(data.external.depreciation_rate))
       }
       
       console.log('Depreciation auto-calculated:', {

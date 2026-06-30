@@ -31,9 +31,13 @@ import {
   Scale,
   Home,
   Info,
-  FileText
+  FileText,
+  Wand2,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { fetchApi } from '@/lib/api'
+import { DateField } from '@/components/ui/date-field'
 import {
   PROPERTY_TYPES,
   QUALITY_RATINGS,
@@ -58,6 +62,7 @@ interface ComprehensivePropertyFormProps {
   showValuationDates?: boolean  // Show RICS/GhIS valuation date fields
   className?: string
   errors?: Record<string, string>
+  valuationId?: string  // When set, enables inline "Generate with AI" on the writeup fields
 }
 
 const REGIONS = [
@@ -82,9 +87,101 @@ export default function ComprehensivePropertyForm({
   showValuationDates = true,  // Default to showing for subject property valuations
   className = '',
   errors = {},
+  valuationId,
 }: ComprehensivePropertyFormProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [dateErrors, setDateErrors] = useState<Record<string, string>>({})
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiEvidence, setAiEvidence] = useState<{
+    latitude: number; longitude: number;
+    locality: string | null; district: string | null; region: string | null;
+    coordinateSource: string; inputCity: string | null; cityMismatch: boolean;
+  } | null>(null)
+  const [descBusy, setDescBusy] = useState(false)
+  const [descError, setDescError] = useState<string | null>(null)
+
+  // AI: draft city / neighbourhood / location / services narratives from the property's
+  // location (grounded via geocoding + Google Places — same endpoint as the Subject page).
+  const handleGenerateArea = async () => {
+    setAiError(null)
+    setAiEvidence(null)
+    setAiBusy(true)
+    try {
+      const res = await fetchApi<{ fields: Record<string, string>; evidence?: any }>(
+        '/valuations/ai/area-narrative',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            latitude: (data as any).latitude ?? null,
+            longitude: (data as any).longitude ?? null,
+            digitalAddress: data.digital_address || null,
+            address: data.address || null,
+            city: data.city || null,
+            region: data.region || null,
+            neighborhoodClass: (data as any).neighborhood_class || null,
+            propertyType: data.property_type || null,
+          }),
+        }
+      )
+      const f = res.fields || {}
+      // Drafts only — merged for the valuer to review/edit before approving.
+      // IMPORTANT: apply all fields in ONE onChange. Calling updateField repeatedly
+      // would each spread the same stale `data`, clobbering all but the last write.
+      const patch: Partial<ComprehensivePropertyData> = {}
+      const set = (k: keyof ComprehensivePropertyData, v?: string) => { if (v) (patch as any)[k] = v }
+      set('city_description' as any, f.city_description)
+      set('city_details' as any, f.city_details)
+      set('neighbourhood_description' as any, f.neighbourhood_description)
+      set('neighborhood_details' as any, f.neighborhood_details)
+      set('location_description' as any, f.location_description)
+      set('services_description' as any, f.services_description)
+      if (Object.keys(patch).length) onChange({ ...data, ...patch })
+      if (res.evidence) setAiEvidence(res.evidence)
+    } catch (e: any) {
+      setAiError(e?.message || 'AI generation failed. Enter the address/region first, then retry.')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  // AI: draft the formal "Description of Property" prose STRICTLY from the structured
+  // features the valuer has entered (no invented amenities/claims).
+  const handleGenerateDescription = async () => {
+    setDescError(null)
+    setDescBusy(true)
+    try {
+      const res = await fetchApi<{ description: string }>(
+        '/valuations/ai/property-description',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            property_type: data.property_type || null,
+            bedrooms: data.bedrooms ?? null,
+            bathrooms: data.bathrooms ?? null,
+            total_area_sqm: (data as any).gfa ?? (data as any).total_area_sqm ?? null,
+            land_area_sqm: (data as any).land_area ?? (data as any).plot_size ?? null,
+            number_of_floors: (data as any).total_floors ?? null,
+            year_built: data.year_built ?? null,
+            condition: data.condition || null,
+            quality_rating: (data as any).quality_rating || null,
+            tenure_type: (data as any).tenure_type || null,
+            address: data.address || null,
+            city: data.city || null,
+            region: data.region || null,
+            digital_address: data.digital_address || null,
+          }),
+        }
+      )
+      if (res.description) updateField('brief_description' as any, res.description)
+    } catch (e: any) {
+      setDescError(e?.message || 'AI generation failed. Enter the property features first, then retry.')
+    } finally {
+      setDescBusy(false)
+    }
+  }
 
   // Initialize with defaults
   useEffect(() => {
@@ -108,6 +205,64 @@ export default function ComprehensivePropertyForm({
   const updateBooleanField = (field: keyof ComprehensivePropertyData, value: boolean) => {
     onChange({ ...data, [field]: value })
   }
+
+  // Saved clients (valuation_clients) for the "Select existing client" picker.
+  const [savedClients, setSavedClients] = useState<Array<{ id: string; name: string; company_name?: string | null; email?: string | null; phone?: string | null; address?: string | null }>>([])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res: any = await fetchApi<any>('/valuation-clients')
+        const list = res?.data || res?.clients || (Array.isArray(res) ? res : [])
+        if (!cancelled && Array.isArray(list)) setSavedClients(list)
+      } catch { /* ignore — picker just stays empty; manual entry still works */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+  // Fill ALL client fields in ONE onChange — calling updateField repeatedly clobbers via stale `data`.
+  const applySavedClient = (id: string) => {
+    const c = savedClients.find(x => x.id === id)
+    if (!c) return
+    onChange({
+      ...data,
+      client_id: c.id,
+      client_name: c.name || '',
+      client_company: c.company_name || '',
+      client_email: c.email || '',
+      client_phone: c.phone || '',
+      client_address: c.address || '',
+    } as any)
+  }
+
+  // Inline "Generate with AI" for the free-text report writeups. Needs a created valuation
+  // (the endpoint grounds Land Value Evidence in the property's real land comparables).
+  const [writeupBusy, setWriteupBusy] = useState<string | null>(null)
+  type WriteupSection = 'land_value_evidence' | 'grounds_external_works' | 'condition_state' | 'services_description'
+  const generateWriteup = async (section: WriteupSection) => {
+    if (!valuationId || writeupBusy) return
+    setWriteupBusy(section)
+    try {
+      const res: any = await fetchApi<any>(`/valuations/${valuationId}/ai/writeup`, {
+        method: 'POST',
+        body: JSON.stringify({ section }),
+      })
+      if (res?.text) onChange({ ...data, [section]: res.text } as any)
+    } catch { /* ignore — the valuer can still type manually */ } finally {
+      setWriteupBusy(null)
+    }
+  }
+  const renderAiBtn = (section: WriteupSection) => (
+    <button
+      type="button"
+      onClick={() => generateWriteup(section)}
+      disabled={!valuationId || writeupBusy !== null}
+      title={valuationId ? 'Draft from the property data + comparables' : 'Available on the Subject step, after the valuation is created'}
+      className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      {writeupBusy === section ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+      {writeupBusy === section ? 'Generating…' : 'Generate with AI'}
+    </button>
+  )
 
   const isRequired = (field: string) => VALIDATION_RULES.required.includes(field)
   const hasError = (field: string) => !!errors[field]
@@ -147,8 +302,7 @@ export default function ComprehensivePropertyForm({
               <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 DATE OF INSPECTION *
               </label>
-              <input
-                type="date"
+              <DateField
                 value={data.inspection_date || ''}
                 onChange={(e) => updateField('inspection_date', e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
@@ -171,8 +325,7 @@ export default function ComprehensivePropertyForm({
               <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 DATE OF VALUATION (EFFECTIVE) *
               </label>
-              <input
-                type="date"
+              <DateField
                 value={data.valuation_date || ''}
                 onChange={(e) => {
                   const val = e.target.value
@@ -204,8 +357,7 @@ export default function ComprehensivePropertyForm({
               <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 DATE OF INSTRUCTION
               </label>
-              <input
-                type="date"
+              <DateField
                 value={data.instruction_date || ''}
                 onChange={(e) => {
                   const val = e.target.value
@@ -272,7 +424,26 @@ export default function ComprehensivePropertyForm({
               <span className="font-mono text-sm text-muted-foreground">INSTRUCTING CLIENT</span>
               <span className="font-mono text-[9px] text-muted-foreground ml-auto">Who requested this valuation</span>
             </div>
-            
+
+            {savedClients.length > 0 && (
+              <div className="mb-3">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">SELECT SAVED CLIENT</label>
+                <select
+                  value={(data as any).client_id || ''}
+                  onChange={(e) => { if (e.target.value) applySavedClient(e.target.value) }}
+                  className="w-full md:w-1/2 px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                >
+                  <option value="">— New / one-off client (enter below) —</option>
+                  {savedClients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}{c.company_name ? ` · ${c.company_name}` : ''}</option>
+                  ))}
+                </select>
+                <p className="font-mono text-[9px] text-muted-foreground mt-1">
+                  Pick a client from your Clients registry to auto-fill the details below, or enter a one-off client manually.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="lg:col-span-2">
                 <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
@@ -809,16 +980,19 @@ export default function ComprehensivePropertyForm({
             </p>
           </div>
 
-          {data.tenure_type === 'leasehold' && (
+          {/* Show unexpired term for any leasehold / lease-type tenure (values are
+              leasehold_99, leasehold_50_99, government_lease, stool_land_*, etc.). */}
+          {/lease|stool/i.test(data.tenure_type || '') && (
             <div>
-              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">LEASE YEARS REMAINING</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">UNEXPIRED TERM (YEARS REMAINING)</label>
               <input
                 type="number"
                 value={data.lease_years_remaining || ''}
                 onChange={(e) => updateField('lease_years_remaining', parseInt(e.target.value) || undefined)}
-                placeholder="99"
+                placeholder="e.g. 75"
                 className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">Remaining years on the lease as at the valuation date</p>
             </div>
           )}
         </div>
@@ -830,7 +1004,44 @@ export default function ComprehensivePropertyForm({
           <FileText className="w-4 h-4 text-amber-500" />
           <span className="font-mono text-sm text-amber-600 dark:text-amber-300">REPORT DATA (CHAPTER 3)</span>
           <span className="font-mono text-[9px] text-muted-foreground ml-2">Detailed descriptions for valuation report</span>
+          <button
+            type="button"
+            onClick={handleGenerateArea}
+            disabled={aiBusy}
+            className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/40 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 font-mono text-[10px] uppercase tracking-wider disabled:opacity-50 transition-colors"
+            title="Draft city, neighbourhood, location & services narratives from the property's location"
+          >
+            {aiBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+            {aiBusy ? 'Generating…' : 'Generate with AI'}
+          </button>
         </div>
+        {aiError && (
+          <p className="font-mono text-[9px] text-red-600 dark:text-red-400 -mt-1 mb-2">{aiError}</p>
+        )}
+        {aiEvidence && (
+          <div className="-mt-1 mb-2 space-y-1">
+            <p className="font-mono text-[9px] text-muted-foreground flex items-center gap-1.5">
+              <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+              Geocoded via <span className="text-foreground">{aiEvidence.coordinateSource}</span>
+              {' → '}
+              <span className="text-foreground">{aiEvidence.latitude.toFixed(5)}, {aiEvidence.longitude.toFixed(5)}</span>
+              {(aiEvidence.locality || aiEvidence.district || aiEvidence.region) && (
+                <span>· {[aiEvidence.locality, aiEvidence.district, aiEvidence.region].filter(Boolean).join(', ')}</span>
+              )}
+            </p>
+            {aiEvidence.cityMismatch && (
+              <p className="font-mono text-[9px] text-red-600 dark:text-red-400 flex items-start gap-1.5 border border-red-500/40 bg-red-500/5 px-2 py-1">
+                <Info className="h-3 w-3 shrink-0 mt-0.5" />
+                <span>
+                  Location mismatch: you entered city <span className="font-semibold">“{aiEvidence.inputCity}”</span>, but the
+                  {' '}{aiEvidence.coordinateSource.startsWith('ghana_post') ? 'digital address' : 'address'} resolves to{' '}
+                  <span className="font-semibold">{[aiEvidence.district, aiEvidence.region].filter(Boolean).join(', ') || 'a different area'}</span>.
+                  The descriptions above describe the <span className="font-semibold">resolved</span> location. Verify the digital address / coordinates before approving.
+                </span>
+              </p>
+            )}
+          </div>
+        )}
 
         {/* City Data */}
         <div className="space-y-3">
@@ -923,7 +1134,19 @@ export default function ComprehensivePropertyForm({
 
         {/* Brief Property Description */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">BRIEF DESCRIPTION OF PROPERTY</div>
+          <div className="flex items-center gap-2 border-b border-amber-500/20 pb-1">
+            <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400">BRIEF DESCRIPTION OF PROPERTY</div>
+            <button
+              type="button"
+              onClick={handleGenerateDescription}
+              disabled={descBusy}
+              className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/40 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 font-mono text-[10px] uppercase tracking-wider disabled:opacity-50 transition-colors"
+              title="Draft a formal property description from the features you've entered (no invented details)"
+            >
+              {descBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+              {descBusy ? 'Generating…' : 'Generate'}
+            </button>
+          </div>
           <div>
             <label className="font-mono text-[10px] text-muted-foreground mb-1 block">PROPERTY DESCRIPTION</label>
             <textarea
@@ -933,6 +1156,9 @@ export default function ComprehensivePropertyForm({
               rows={3}
               className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
+            {descError && (
+              <p className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">{descError}</p>
+            )}
           </div>
         </div>
 
@@ -940,7 +1166,7 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-3">
           <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">GROUNDS AND EXTERNAL WORKS</div>
           <div>
-            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">GROUNDS DESCRIPTION</label>
+            <div className="flex items-center gap-2 mb-1"><label className="font-mono text-[10px] text-muted-foreground">GROUNDS DESCRIPTION</label>{renderAiBtn('grounds_external_works')}</div>
             <textarea
               value={data.grounds_external_works || ''}
               onChange={(e) => updateField('grounds_external_works', e.target.value)}
@@ -1052,7 +1278,7 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-3">
           <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">GENERAL CONDITION AND STATE OF REPAIR</div>
           <div>
-            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">CONDITION NOTES</label>
+            <div className="flex items-center gap-2 mb-1"><label className="font-mono text-[10px] text-muted-foreground">CONDITION NOTES</label>{renderAiBtn('condition_state')}</div>
             <textarea
               value={data.condition_state || ''}
               onChange={(e) => updateField('condition_state', e.target.value)}
@@ -1067,7 +1293,7 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-3">
           <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">SERVICES</div>
           <div>
-            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">SERVICES DESCRIPTION</label>
+            <div className="flex items-center gap-2 mb-1"><label className="font-mono text-[10px] text-muted-foreground">SERVICES DESCRIPTION</label>{renderAiBtn('services_description')}</div>
             <textarea
               value={data.services_description || ''}
               onChange={(e) => updateField('services_description', e.target.value)}
@@ -1082,7 +1308,7 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-3">
           <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">EVIDENCE OF LAND VALUES</div>
           <div>
-            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">LAND VALUE ANALYSIS</label>
+            <div className="flex items-center gap-2 mb-1"><label className="font-mono text-[10px] text-muted-foreground">LAND VALUE ANALYSIS</label>{renderAiBtn('land_value_evidence')}</div>
             <textarea
               value={data.land_value_evidence || ''}
               onChange={(e) => updateField('land_value_evidence', e.target.value)}
@@ -1224,8 +1450,7 @@ export default function ComprehensivePropertyForm({
 
             <div>
               <label className="font-mono text-[10px] text-muted-foreground mb-1 block">SALE DATE</label>
-              <input
-                type="date"
+              <DateField
                 value={data.sale_date || ''}
                 onChange={(e) => updateField('sale_date', e.target.value)}
                 className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
