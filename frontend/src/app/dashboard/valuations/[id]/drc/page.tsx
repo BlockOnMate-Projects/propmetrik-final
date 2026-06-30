@@ -21,6 +21,7 @@ import {
   ConfidenceBar,
 } from '@/components/ui/terminal'
 import { valuationsApi, pythonMethodsApi, landValueApi, PythonMethodResponse } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import { valuationConfigApi, mapShortRegionToDataHub } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
@@ -35,59 +36,11 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-// Fallback specialized types (used only if API fetch fails)
-const FALLBACK_SPECIALIZED_TYPES = [
-  { id: 'institutional_other', label: 'Institutional (Other)', costPerSqm: 5500 },
-  { id: 'government', label: 'Government Office', costPerSqm: 6000 },
-  { id: 'religious', label: 'Religious (Church, Mosque)', costPerSqm: 4500 },
-  { id: 'educational', label: 'Educational (Schools, Universities)', costPerSqm: 4500 },
-  { id: 'health_clinic', label: 'Health Clinic', costPerSqm: 7000 },
-  { id: 'health_hospital', label: 'Health Hospital', costPerSqm: 9000 },
-  { id: 'library', label: 'Library', costPerSqm: 5500 },
-  { id: 'museum', label: 'Museum', costPerSqm: 7000 },
-  { id: 'heritage', label: 'Heritage / Conservation', costPerSqm: 8000 },
-  { id: 'recreation', label: 'Recreation Facility', costPerSqm: 6000 },
-  { id: 'stadium', label: 'Stadium / Sports', costPerSqm: 7000 },
-  { id: 'industrial_warehouse', label: 'Industrial Warehouse', costPerSqm: 4500 },
-  { id: 'industrial_factory', label: 'Industrial Factory', costPerSqm: 5500 },
-  { id: 'mixed_use', label: 'Mixed Use', costPerSqm: 7000 },
-]
-
-// Useful lives for specialized properties (years) — keyed by building_function_enum
-const USEFUL_LIVES: Record<string, number> = {
-  institutional_other: 60,
-  government: 60,
-  religious: 80,
-  educational: 50,
-  health_clinic: 50,
-  health_hospital: 50,
-  library: 55,
-  museum: 70,
-  heritage: 100,
-  recreation: 45,
-  stadium: 45,
-  industrial_warehouse: 50,
-  industrial_factory: 50,
-  mixed_use: 60,
-}
-
-// MEA (Modern Equivalent Asset) factors — keyed by building_function_enum
-const MEA_FACTORS: Record<string, number> = {
-  institutional_other: 0.95,
-  government: 0.90,
-  religious: 1.00,
-  educational: 0.85,
-  health_clinic: 0.90,
-  health_hospital: 0.90,
-  library: 0.80,
-  museum: 0.95,
-  heritage: 1.00,
-  recreation: 0.85,
-  stadium: 0.85,
-  industrial_warehouse: 0.90,
-  industrial_factory: 0.90,
-  mixed_use: 0.90,
-}
+// Specialized cost rates, MEA factors and useful lives all come from the Data Hub
+// (specialized_construction_costs) and are resolved by the Node DRC route — no hardcoded tables.
+// Human-readable label for a building_function id when the building-functions API has none.
+const humanizeFunction = (id: string) =>
+  id.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 
 export default function DRCMethodPage() {
   const params = useParams()
@@ -121,9 +74,11 @@ export default function DRCMethodPage() {
   const [landValueConfidence, setLandValueConfidence] = useState(0)
   const [landValueMethods, setLandValueMethods] = useState<string[]>([])
 
-  // Replacement cost inputs
-  const [replacementCostPerSqm, setReplacementCostPerSqm] = useState(5500)
-  const [meaFactor, setMeaFactor] = useState(0.95)
+  // Replacement cost inputs — initialised from the Data Hub config (no hardcoded defaults).
+  const [replacementCostPerSqm, setReplacementCostPerSqm] = useState(0)
+  const [meaFactor, setMeaFactor] = useState(0)
+  const [meaOverride, setMeaOverride] = useState<number | null>(null)
+  const [usefulLife, setUsefulLife] = useState(0)
   const [useCustomCost, setUseCustomCost] = useState(false)
 
   // Depreciation inputs - track whether user has overridden each component
@@ -143,19 +98,16 @@ export default function DRCMethodPage() {
   const [pythonResult, setPythonResult] = useState<PythonMethodResponse | null>(null)
   const [calculating, setCalculating] = useState(false)
 
-  // Calculations
-  const usefulLife = USEFUL_LIVES[assetType] || 60
-  const grossReplacementCost = gfa * replacementCostPerSqm
-  const meaAdjustedCost = grossReplacementCost * meaFactor
-
-  // Calculate age-based physical depreciation if not overridden
-  const calculatedPhysicalDep = Math.min((effectiveAge / usefulLife) * 100, 90)
-  const appliedPhysicalDep = physicalDepreciation > 0 ? physicalDepreciation : calculatedPhysicalDep
-
-  const totalDepreciation = appliedPhysicalDep + functionalObsolescence + economicObsolescence
-  const depreciationAmount = meaAdjustedCost * (totalDepreciation / 100)
-  const depreciatedReplacementCost = meaAdjustedCost - depreciationAmount
-  const totalValue = depreciatedReplacementCost + landValue
+  // ── Render-only: every figure below comes from the Python DRC engine (single source of truth).
+  //    No calculation happens in the browser. ──
+  const det: any = pythonResult?.details || {}
+  const grossReplacementCost = det.gross_replacement_cost ?? 0
+  const meaAdjustedCost = det.mea_adjusted_grc ?? 0
+  const appliedPhysicalDep = det.depreciation?.physical?.rate ?? 0
+  const totalDepreciation = det.depreciation?.total?.rate ?? 0
+  const depreciationAmount = det.depreciation?.total?.amount ?? 0
+  const depreciatedReplacementCost = det.depreciated_building_value ?? 0
+  const totalValue = pythonResult?.estimated_value ?? 0
 
   // Fetch valuation and land value from database
   useEffect(() => {
@@ -176,15 +128,9 @@ export default function DRCMethodPage() {
           const gfaValue = prop.built_area_sqm || prop.building_area_sqm || prop.gfa || 
                            prop.grossFloorArea || prop.builtArea || prop.gross_floor_area || 0
           
-          // If no GFA, estimate from land area (common for DRC properties)
-          if (gfaValue === 0 && (prop.land_area_sqm || prop.landArea || prop.plot_size_sqm)) {
-            // DRC properties often have 30-50% floor area ratio
-            const landArea = prop.land_area_sqm || prop.landArea || prop.plot_size_sqm || 0
-            const estimatedGfa = Math.round(landArea * 0.4) // 40% FAR estimate
-            setGfa(estimatedGfa)
-            setGfaSource('estimated')
-            console.log('⚠️ No GFA data - estimated from land area:', estimatedGfa)
-          } else if (gfaValue > 0) {
+          // GFA must be a real measured figure — NO land-area estimate. If the property has none,
+          // gfa stays 0 and the engine strict-fails until the valuer enters it manually.
+          if (gfaValue > 0) {
             setGfa(gfaValue)
             setGfaSource('property')
           }
@@ -322,91 +268,79 @@ export default function DRCMethodPage() {
     fetchData()
   }, [valuationId])
 
-  // Update cost when asset type or quality level changes
+  // Cost rate from the Data Hub config when the asset type / quality changes (no static fallback).
+  // MEA factor + useful life are resolved server-side and echoed back in the engine result.
   useEffect(() => {
     if (!useCustomCost) {
-      const costForFunction = costsByFunction[assetType]
-      if (costForFunction && costForFunction[qualityLevel]) {
-        setReplacementCostPerSqm(costForFunction[qualityLevel])
-      } else {
-        // Fallback to static defaults
-        const fallback = FALLBACK_SPECIALIZED_TYPES.find(t => t.id === assetType)
-        if (fallback) setReplacementCostPerSqm(fallback.costPerSqm)
-      }
-      setMeaFactor(MEA_FACTORS[assetType] || 0.95)
+      const rate = costsByFunction[assetType]?.[qualityLevel]
+      setReplacementCostPerSqm(rate ?? 0)
     }
   }, [assetType, qualityLevel, useCustomCost, costsByFunction])
 
-  // Call Python service for DRC calculation
+  // Run the DRC engine via the Node route — the SINGLE source of truth. It resolves the cost rate,
+  // MEA factor, useful life, land value and building attributes from the Data Hub / property
+  // (applying any explicit valuer overrides) and runs the Python engine. We only render the result.
   useEffect(() => {
     const calculateDRC = async () => {
-      if (!valuation?.property || gfa <= 0 || landValue <= 0) return
-      
+      if (!valuation?.property || !assetType || !qualityLevel) return
       setCalculating(true)
+      setError(null)
       try {
-        const prop = valuation.property as any
-        const response = await pythonMethodsApi.calculateDRC(
-          {
-            id: valuation.id,
-            property_type: assetType,
-            region: prop.region || 'greater_accra',
-            building_size_sqm: gfa,
-            year_built: prop.year_built,
-            land_area_sqm: prop.land_area_sqm || prop.plot_size_sqm || 0,
-          },
-          {
-            replacement_cost_per_sqm: replacementCostPerSqm,
-            land_value: landValue, // Pass land value from Land Value System (3-method reconciliation)
-            mea_factor: meaFactor,
-            useful_life: usefulLife,
-            // Only pass overrides when user has explicitly overridden
-            depreciation_overrides: {
-              physical: physicalDepMode === 'user' ? physicalDepreciation / 100 : undefined,
-              functional: functionalObsMode === 'user' ? functionalObsolescence / 100 : undefined,
-              external: economicObsMode === 'user' ? economicObsolescence / 100 : undefined,
-            },
+        const body: any = { building_function: assetType, quality_level: qualityLevel }
+        // Only send a field as an OVERRIDE when the valuer has explicitly set it; otherwise the
+        // Node route resolves it from the Data Hub / property.
+        if (gfaSource === 'user' && gfa > 0) body.gfa_sqm = gfa
+        if (useCustomCost && replacementCostPerSqm > 0) body.replacement_cost_per_sqm = replacementCostPerSqm
+        if (landValueMode === 'user' && landValue > 0) body.land_value = landValue
+        // MEA: send an explicit final override only when the valuer sets one; otherwise the engine
+        // computes it from the per-class baseline + the property's features.
+        if (meaOverride && meaOverride > 0) body.mea_factor_override = meaOverride
+        // Functional obsolescence is captured in the MEA factor (Model A) — never sent separately.
+        const depOv: any = {}
+        if (physicalDepMode === 'user') depOv.physical = physicalDepreciation / 100
+        if (economicObsMode === 'user') depOv.external = economicObsolescence / 100
+        if (Object.keys(depOv).length) body.depreciation_overrides = depOv
+
+        const response = await fetchApi<any>(`/valuations/${valuationId}/drc/value`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+        const data = response?.data
+        if (!data) { setPythonResult(null); return }
+        setPythonResult(data)
+
+        const d = data.details || {}
+        // Echo the engine's resolved inputs into the editable fields (display only, when not overridden).
+        if (d.mea_factor) setMeaFactor(d.mea_factor)
+        if (d.useful_life_years) setUsefulLife(d.useful_life_years)
+        if (landValueMode === 'system' && d.land_value) setLandValue(d.land_value)
+
+        const dep = d.depreciation
+        if (dep) {
+          if (dep.physical?.source === 'calculated') {
+            setSystemPhysicalDep(dep.physical.rate || 0)
+            if (physicalDepMode === 'system') setPhysicalDepreciation(dep.physical.rate || 0)
           }
-        )
-        
-        if (response.success && response.data) {
-          setPythonResult(response.data)
-          console.log('DRC Python result:', response.data)
-          
-          // Extract system-calculated depreciation values from Python result
-          const depDetails = response.data.details?.depreciation
-          if (depDetails) {
-            // Only update system values, not user-entered values
-            if (depDetails.physical?.source === 'calculated') {
-              setSystemPhysicalDep(depDetails.physical.rate || 0)
-              if (physicalDepMode === 'system') {
-                setPhysicalDepreciation(depDetails.physical.rate || 0)
-              }
-            }
-            if (depDetails.functional?.source === 'calculated') {
-              setSystemFunctionalObs(depDetails.functional.rate || 0)
-              if (functionalObsMode === 'system') {
-                setFunctionalObsolescence(depDetails.functional.rate || 0)
-              }
-            }
-            if (depDetails.external?.source === 'calculated') {
-              setSystemExternalObs(depDetails.external.rate || 0)
-              if (economicObsMode === 'system') {
-                setEconomicObsolescence(depDetails.external.rate || 0)
-              }
-            }
+          if (dep.functional?.source === 'calculated') {
+            setSystemFunctionalObs(dep.functional.rate || 0)
+            if (functionalObsMode === 'system') setFunctionalObsolescence(dep.functional.rate || 0)
+          }
+          if (dep.external?.source === 'calculated') {
+            setSystemExternalObs(dep.external.rate || 0)
+            if (economicObsMode === 'system') setEconomicObsolescence(dep.external.rate || 0)
           }
         }
-      } catch (err) {
-        console.error('Failed to calculate DRC via Python:', err)
+      } catch (err: any) {
+        setPythonResult(null)
+        setError(err?.message || 'The DRC engine could not value this property — check the required inputs (GFA, cost rate, land value).')
       } finally {
         setCalculating(false)
       }
     }
 
-    // Debounce the calculation
     const timer = setTimeout(calculateDRC, 500)
     return () => clearTimeout(timer)
-  }, [valuation, gfa, replacementCostPerSqm, meaFactor, usefulLife, physicalDepreciation, physicalDepMode, functionalObsolescence, functionalObsMode, economicObsolescence, economicObsMode, landValue, assetType])
+  }, [valuation, valuationId, assetType, qualityLevel, gfa, gfaSource, useCustomCost, replacementCostPerSqm, landValue, landValueMode, meaOverride, physicalDepreciation, physicalDepMode, economicObsolescence, economicObsMode])
 
   // Save and continue
   const handleSave = async () => {
@@ -414,31 +348,35 @@ export default function DRCMethodPage() {
       setSaving(true)
       setError(null)
 
-      // Use Python result as primary, fallback to local calculation
-      const finalValue = pythonResult?.estimated_value || totalValue
-      const finalConfidence = pythonResult?.confidence_score || calculateConfidence()
+      // Strict: only the engine result is persisted — no local fallback calculation.
+      if (!pythonResult) {
+        setError('Cannot save — the DRC engine has not returned a value yet. Resolve the required inputs first.')
+        setSaving(false)
+        return
+      }
+      const d: any = pythonResult.details || {}
 
       await valuationsApi.update(valuationId, {
         method_results: {
           ...(valuation?.method_results || {}),
           drc_method: {
-            value: finalValue,
-            confidence: finalConfidence,
-            confidence_level: pythonResult?.confidence_level || 'medium',
-            value_range: pythonResult?.value_range,
-            grossReplacementCost: pythonResult?.details?.gross_replacement_cost || grossReplacementCost,
-            meaAdjustedCost,
-            physicalDepreciation: pythonResult?.details?.physical_depreciation_pct || appliedPhysicalDep,
-            functionalObsolescence: pythonResult?.details?.functional_obsolescence_pct || functionalObsolescence,
-            economicObsolescence: pythonResult?.details?.external_obsolescence_pct || economicObsolescence,
-            totalDepreciation: pythonResult?.details?.total_depreciation_pct || totalDepreciation,
-            depreciatedReplacementCost: pythonResult?.details?.depreciated_replacement_cost || depreciatedReplacementCost,
-            landValue: pythonResult?.details?.land_value || landValue,
-            buildingAge: pythonResult?.details?.building_age_years || effectiveAge,
+            value: pythonResult.estimated_value,
+            confidence: pythonResult.confidence_score,
+            confidence_level: pythonResult.confidence_level,
+            value_range: pythonResult.value_range,
+            grossReplacementCost: d.gross_replacement_cost,
+            meaAdjustedCost: d.mea_adjusted_grc,
+            physicalDepreciation: d.depreciation?.physical?.rate,
+            functionalObsolescence: d.depreciation?.functional?.rate,
+            economicObsolescence: d.depreciation?.external?.rate,
+            totalDepreciation: d.depreciation?.total?.rate,
+            depreciatedReplacementCost: d.depreciated_building_value,
+            landValue: d.land_value,
+            buildingAge: d.building_age_years,
             assetType,
-            assumptions: pythonResult?.assumptions || [],
-            limitations: pythonResult?.limitations || [],
-            calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_calculation',
+            assumptions: pythonResult.assumptions || [],
+            limitations: pythonResult.limitations || [],
+            calculated_by: 'python_rics_engine',
           },
         },
         current_step: 7,
@@ -463,14 +401,8 @@ export default function DRCMethodPage() {
     }
   }
 
-  const calculateConfidence = () => {
-    let score = 0.5
-    if (gfa > 0) score += 0.15
-    if (landValue > 0) score += 0.15
-    if (totalDepreciation < 60) score += 0.1
-    if (meaFactor > 0.8) score += 0.1
-    return Math.min(score, 1)
-  }
+  // Confidence comes from the engine (no local heuristic / hardcoded thresholds).
+  const calculateConfidence = () => pythonResult?.confidence_score ?? 0
 
   // Determine back navigation
   const getBackPath = () => {
@@ -533,16 +465,11 @@ export default function DRCMethodPage() {
                   onChange={(e) => { setAssetType(e.target.value); setUseCustomCost(false) }}
                   className="w-full bg-background border border-border p-2.5 font-mono text-sm text-foreground appearance-none cursor-pointer hover:border-zinc-500 focus:border-amber-500 focus:outline-none"
                 >
-                  {(() => {
-                    const functionIds = Object.keys(costsByFunction).length > 0
-                      ? Object.keys(costsByFunction)
-                      : FALLBACK_SPECIALIZED_TYPES.map(t => t.id)
-                    return functionIds.map(id => (
-                      <option key={id} value={id}>
-                        {assetTypeLabels[id] || FALLBACK_SPECIALIZED_TYPES.find(t => t.id === id)?.label || id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </option>
-                    ))
-                  })()}
+                  {Object.keys(costsByFunction).map(id => (
+                    <option key={id} value={id}>
+                      {assetTypeLabels[id] || humanizeFunction(id)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -650,25 +577,64 @@ export default function DRCMethodPage() {
               <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30">
                 <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="font-mono text-xs text-blue-600 dark:text-blue-300">
-                  MEA considers whether a modern equivalent would be built to the same specification. 
-                  A library may need less space due to digital resources (factor &lt; 1.0).
+                  MEA is the cost of a modern equivalent. The Data Hub sets the per-class baseline; the
+                  property’s own features (design era, specification, services, configuration) modulate it.
+                  Functional/design obsolescence is captured here — not deducted again (no double count).
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <label className="font-mono text-xs text-muted-foreground">MEA Factor:</label>
+              {/* Feature-driven MEA breakdown (auditable). Sourced entirely from the engine result. */}
+              {(() => {
+                const mb: any = det.mea_breakdown
+                if (!mb) return null
+                return (
+                  <div className="p-3 bg-card border border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {mb.source === 'valuer_override' ? 'MEA FACTOR (VALUER OVERRIDE)' : 'MEA FACTOR (BASELINE → FEATURES)'}
+                      </span>
+                      <span className="font-mono text-lg text-amber-600 dark:text-amber-400 font-bold">
+                        {(meaFactor * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    {mb.source !== 'valuer_override' && (
+                      <>
+                        <div className="font-mono text-[10px] text-muted-foreground">
+                          Baseline {(mb.baseline * 100).toFixed(0)}% · adequacy {mb.adequacy_score}/5 · range ±{(mb.feature_range * 100).toFixed(0)}%
+                        </div>
+                        <div className="space-y-1">
+                          {(mb.dimensions || []).map((dim: any) => (
+                            <div key={dim.key} className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-[10px] text-muted-foreground capitalize">{dim.note}</span>
+                              <span className="font-mono text-[10px] text-foreground">{dim.score}/5</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Optional valuer override of the final MEA factor (RICS judgment). */}
+              <div className="flex items-center gap-3">
+                <label className="font-mono text-[10px] text-muted-foreground">OVERRIDE MEA (%)</label>
                 <input
-                  type="range"
-                  min="0.5"
-                  max="1.0"
-                  step="0.05"
-                  value={meaFactor}
-                  onChange={(e) => setMeaFactor(Number(e.target.value))}
-                  className="flex-1"
+                  type="number"
+                  min={50}
+                  max={100}
+                  step={1}
+                  value={meaOverride != null ? Math.round(meaOverride * 100) : ''}
+                  placeholder="auto"
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setMeaOverride(v === '' ? null : Math.max(0.5, Math.min(1, Number(v) / 100)))
+                  }}
+                  className="w-24 bg-background border border-border p-2 font-mono text-sm text-foreground"
                 />
-                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-16 text-right">
-                  {(meaFactor * 100).toFixed(0)}%
-                </span>
+                {meaOverride != null && (
+                  <button type="button" onClick={() => setMeaOverride(null)} className="font-mono text-[10px] text-amber-500 hover:underline">use feature model</button>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-3 bg-card border border-border">
@@ -740,7 +706,7 @@ export default function DRCMethodPage() {
                     type="range"
                     min="0"
                     max="90"
-                    value={physicalDepreciation || calculatedPhysicalDep}
+                    value={physicalDepreciation || appliedPhysicalDep}
                     onChange={(e) => {
                       setPhysicalDepreciation(Number(e.target.value))
                       setPhysicalDepMode('user')
@@ -762,61 +728,16 @@ export default function DRCMethodPage() {
                   </div>
                 </div>
 
-                {/* Functional Obsolescence */}
-                <div className="p-3 bg-card/50 border border-border">
-                  <div className="flex justify-between items-center mb-2">
+                {/* Functional Obsolescence — folded into the feature-driven MEA factor (Model A). */}
+                <div className="p-3 bg-muted/40 border border-dashed border-border">
+                  <div className="flex justify-between items-center">
                     <label className="font-mono text-xs text-muted-foreground">Functional Obsolescence</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setFunctionalObsMode('system')
-                          setFunctionalObsolescence(systemFunctionalObs)
-                        }}
-                        className={`px-2 py-1 font-mono text-[9px] transition-all ${
-                          functionalObsMode === 'system'
-                            ? 'bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/50'
-                            : 'bg-muted text-muted-foreground border border-border'
-                        }`}
-                      >
-                        SYS
-                      </button>
-                      <button
-                        onClick={() => setFunctionalObsMode('user')}
-                        className={`px-2 py-1 font-mono text-[9px] transition-all ${
-                          functionalObsMode === 'user'
-                            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50'
-                            : 'bg-muted text-muted-foreground border border-border'
-                        }`}
-                      >
-                        USER
-                      </button>
-                      <span className="font-mono text-sm text-amber-600 dark:text-amber-400">{functionalObsolescence.toFixed(1)}%</span>
-                    </div>
+                    <span className="font-mono text-[10px] text-muted-foreground">captured in MEA →</span>
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="50"
-                    value={functionalObsolescence}
-                    onChange={(e) => {
-                      setFunctionalObsolescence(Number(e.target.value))
-                      setFunctionalObsMode('user')
-                    }}
-                    className="w-full"
-                    disabled={functionalObsMode === 'system'}
-                  />
-                  <div className="flex justify-between mt-1">
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {functionalObsMode === 'system' 
-                        ? 'System: Auto-detection from property specs'
-                        : 'User override'}
-                    </span>
-                    {systemFunctionalObs > 0 && functionalObsMode === 'user' && (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        System: {systemFunctionalObs.toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
+                  <p className="font-mono text-[10px] text-muted-foreground mt-1">
+                    Functional / design adequacy is assessed in the MEA factor above (from the property’s
+                    features). It is not deducted again here, to avoid double counting (RICS).
+                  </p>
                 </div>
 
                 {/* External/Economic Obsolescence */}

@@ -298,6 +298,13 @@ const FALLBACK_valuationTabAccess: Record<string, UserRole[]> = {
     'probationer', 'inspector', 'analyst',
   ],
 
+  // Document vault — same audience as the valuations list (access is org-scoped server-side)
+  documents: [
+    'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
+    'valuer', 'finance_manager', 'compliance_officer',
+    'probationer', 'inspector', 'analyst',
+  ],
+
   // Team tab — visible to all (read), but manage restricted server-side
   team: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',

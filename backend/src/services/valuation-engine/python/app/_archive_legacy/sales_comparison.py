@@ -121,10 +121,12 @@ class SalesComparisonApproach:
             comparable_analyses
         )
         
-        # Apply regional factors
-        regional_multiplier = GhanaMarketValidator.get_regional_multiplier(target_property.location.region)
-        estimated_value *= regional_multiplier
-        
+        # NOTE: No regional multiplier is applied. The comparables are drawn from the
+        # subject's own market, so their prices already embed the regional price level.
+        # Multiplying by a blanket regional factor would double-count the region (RICS:
+        # value is evidenced by the comparables, not re-scaled by an arbitrary factor).
+        regional_multiplier = 1.0
+
         # Compile assumptions and limitations
         assumptions = self._compile_assumptions(target_property, comparable_analyses, valuation_date)
         limitations = self._compile_limitations(comparable_analyses)

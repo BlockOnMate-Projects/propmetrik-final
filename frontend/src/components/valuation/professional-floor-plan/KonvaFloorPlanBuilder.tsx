@@ -66,6 +66,8 @@ interface ProfessionalFloorPlanBuilderProps {
   initialFloorPlan?: string | object;
   floorNumber?: number;
   floorLabel?: string;
+  /** Scopes the localStorage auto-save key so drafts don't bleed across valuations. */
+  valuationId?: string;
   readonly?: boolean;
   width?: number;
   height?: number;
@@ -81,6 +83,7 @@ export default function ProfessionalFloorPlanBuilder({
   initialFloorPlan,
   floorNumber = 0,
   floorLabel = 'Ground Floor',
+  valuationId,
   readonly = false,
   width = 1200,
   height = 800,
@@ -1208,7 +1211,7 @@ export default function ProfessionalFloorPlanBuilder({
   // AUTO-SAVE to localStorage
   // =====================================================
 
-  const autoSaveKey = `propmetrik_floorplan_${floorNumber}`;
+  const autoSaveKey = `propmetrik_floorplan_${valuationId || 'default'}_${floorNumber}`;
 
   // Save to localStorage whenever floor plan data changes (debounced)
   useEffect(() => {

@@ -17,6 +17,7 @@ import {
   KeyboardShortcut,
 } from '@/components/ui/terminal'
 import { valuationsApi, type ValuationFilters } from '@/lib/valuation-api'
+import { reportsApi } from '@/lib/reports-api'
 import { authedFetch } from '@/lib/authed-fetch'
 import type { Valuation, ValuationStatsResponse, ValuationStatus } from '@/types/valuation'
 import { Plus, Search, Filter, RefreshCw, Download, Loader2, Edit2, Trash2 } from 'lucide-react'
@@ -241,15 +242,37 @@ export default function ValuationsPage() {
   }
 
   // Handle valuation report download
+  // A report is downloadable only once it's finalized (valuer-sealed or client-signed).
+  const isFinalized = (status?: string) => ['approved', 'completed'].includes(String(status || ''))
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
   const handleDownload = async (e: React.MouseEvent, valuation: Valuation) => {
     e.stopPropagation()
-
+    if (!isFinalized(valuation.status) || downloadingId) return
+    setDownloadingId(valuation.id)
     try {
-      // Generate download URL or trigger download
-      const downloadUrl = `/dashboard/valuations/${valuation.id}/report?download=true`
-      window.open(downloadUrl, '_blank')
+      // Resolve the finalized sealed/signed PDF and download it directly (not the live viewer).
+      const res = await reportsApi.downloadFinalForValuation(valuation.id)
+      if (!res?.available || !res.download_url) {
+        alert(
+          res?.reason === 'not_finalized'
+            ? 'This report is not finalized yet — approve and seal it first.'
+            : 'No finalized report PDF is available for this valuation yet.'
+        )
+        return
+      }
+      const a = document.createElement('a')
+      a.href = res.download_url
+      a.download = res.filename || 'Valuation_Report.pdf'
+      a.target = '_blank'
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
     } catch (err) {
       alert('Failed to download report. Please try again.')
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -446,7 +469,7 @@ export default function ValuationsPage() {
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-3">
                       <PropertyTypeBadge type={item.property?.property_type || 'residential'} />
-                      <span className="text-muted-foreground">Step {item.current_step || 1}/8</span>
+                      <span className="text-muted-foreground">Step {Math.min(item.current_step || 1, 8)}/8</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {item.final_value_ghs ? (
@@ -467,10 +490,11 @@ export default function ValuationsPage() {
                     </button>
                     <button
                       onClick={(e) => handleDownload(e, item)}
-                      className="p-1.5 text-muted-foreground hover:text-green-400 transition-colors"
-                      title="Download"
+                      disabled={!isFinalized(item.status) || downloadingId === item.id}
+                      className={`p-1.5 transition-colors ${isFinalized(item.status) ? 'text-muted-foreground hover:text-green-400' : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                      title={isFinalized(item.status) ? 'Download signed report' : 'Available once the report is finalized'}
                     >
-                      <Download className="w-3.5 h-3.5" />
+                      {downloadingId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     </button>
                     <button
                       onClick={(e) => handleDelete(e, item.id)}
@@ -564,7 +588,7 @@ export default function ValuationsPage() {
                       <StatusBadge status={item.status} />
                     </td>
                     <td className="py-2 text-muted-foreground">
-                      {item.current_step || 1}/8
+                      {Math.min(item.current_step || 1, 8)}/8
                     </td>
                     <td className="py-2 text-right text-muted-foreground">
                       {formatRelativeTime(item.updated_at || '', mounted)}
@@ -583,10 +607,11 @@ export default function ValuationsPage() {
                         </button>
                         <button
                           onClick={(e) => handleDownload(e, item)}
-                          className="p-1 text-muted-foreground hover:text-green-400 transition-colors"
-                          title="Download Report"
+                          disabled={!isFinalized(item.status) || downloadingId === item.id}
+                          className={`p-1 transition-colors ${isFinalized(item.status) ? 'text-muted-foreground hover:text-green-400' : 'text-muted-foreground/30 cursor-not-allowed'}`}
+                          title={isFinalized(item.status) ? 'Download signed report' : 'Available once the report is finalized'}
                         >
-                          <Download className="w-3 h-3" />
+                          {downloadingId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                         </button>
                         <button
                           onClick={(e) => handleDelete(e, item.id)}

@@ -74,6 +74,11 @@ export default function ReportEnvelopePage() {
   const [isApproving, setIsApproving] = useState(false)
   const [isApproved, setIsApproved] = useState(false)
   const [approvalResult, setApprovalResult] = useState<any>(null)
+  // Lock-on-seal: a report already sealed is immutable — show read-only + "Create revision".
+  const [sealed, setSealed] = useState(false)
+  const [reportVersion, setReportVersion] = useState<number>(1)
+  const [revising, setRevising] = useState(false)
+  const [revisionReason, setRevisionReason] = useState('')
 
   // Signing mode selection
   const [signingMode, setSigningMode] = useState<SigningMode>('select')
@@ -108,6 +113,23 @@ export default function ReportEnvelopePage() {
 
         const data: ReportEsignData = JSON.parse(storedData)
         setEsignData(data)
+
+        // Lock-on-seal: if this report is already sealed, it cannot be re-signed in place.
+        // Show the read-only / Create-revision screen instead of the signing flow.
+        try {
+          const statusRes = await authedFetch(`${API_BASE}/reports/${data.reportId}`)
+          if (statusRes.ok) {
+            const repJson = await statusRes.json()
+            const rep = repJson?.data || repJson
+            if (rep?.status === 'approved') {
+              setSealed(true)
+              setReportVersion(Number(rep.version) || 1)
+              dataLoaded.current = true
+              setIsLoading(false)
+              return
+            }
+          }
+        } catch { /* non-fatal — fall through to the normal signing flow */ }
 
         // Fetch the PDF with auth so HiddenPdfLoader can render it
         const pdfResponse = await authedFetch(data.documentUrl)
@@ -263,6 +285,25 @@ export default function ReportEnvelopePage() {
     }
   }, [esignData, isApproving, getSignatureData, fields, signedFields, signatureDataMap])
 
+  // Create a new draft revision of a sealed report, then take the valuer to the report editor to amend it.
+  const handleCreateRevision = useCallback(async () => {
+    if (!esignData || revising) return
+    setRevising(true)
+    setError(null)
+    try {
+      const res = await authedFetch(`${API_BASE}/reports/${esignData.reportId}/revise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: revisionReason.trim() }),
+      })
+      if (!res.ok) throw new Error(`Failed to create revision (${res.status})`)
+      router.push(`/dashboard/valuations/${esignData.valuationId}/report?revised=1`)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create revision')
+      setRevising(false)
+    }
+  }, [esignData, revising, revisionReason, router])
+
   // Retry approval
   const handleRetry = useCallback(() => {
     setError(null)
@@ -360,6 +401,74 @@ export default function ReportEnvelopePage() {
               Back to Valuations
             </Button>
           </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER — SEALED (read-only + create revision)
+  // =====================================================
+
+  if (sealed) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-lg w-full border border-border rounded-lg bg-card p-6">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono uppercase bg-green-500/10 border border-green-500/40 text-green-600 dark:text-green-300 mb-3">
+            Sealed · v{reportVersion}
+          </span>
+          <h1 className="text-lg font-semibold text-foreground mb-1">This report is sealed</h1>
+          <p className="text-sm text-muted-foreground mb-5">
+            {esignData.propertyAddress ? (
+              <>The valuation report for <strong className="text-foreground">{esignData.propertyAddress}</strong> </>
+            ) : ('This valuation report ')}
+            has been approved and digitally sealed (version {reportVersion}). A sealed report is immutable and cannot be
+            re-signed. To make changes, create a new revision — the sealed copy is retained for the record.
+          </p>
+
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button
+              onClick={async () => {
+                try {
+                  const r = await authedFetch(`${API_BASE}/reports/${esignData.reportId}/download/pdf`)
+                  const j = await r.json().catch(() => ({}))
+                  if (j.download_url) window.open(j.download_url, '_blank')
+                } catch { /* ignore */ }
+              }}
+              className="inline-flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase rounded border border-border hover:bg-muted"
+            >
+              Download sealed PDF
+            </button>
+            <Link href={`/dashboard/valuations/${esignData.valuationId}/report`}>
+              <span className="inline-flex items-center gap-2 px-3 py-2 text-xs font-mono uppercase rounded border border-border hover:bg-muted">
+                View report
+              </span>
+            </Link>
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <label className="block text-xs font-mono uppercase text-muted-foreground mb-1">Reason for revision</label>
+            <textarea
+              value={revisionReason}
+              onChange={(e) => setRevisionReason(e.target.value)}
+              rows={2}
+              placeholder="e.g. Corrected client address; re-valued as at a new effective date…"
+              className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-sm placeholder-muted-foreground focus:outline-none focus:border-amber-500/50 resize-none mb-3"
+            />
+            {error && <p className="text-xs text-red-500 font-mono mb-2">{error}</p>}
+            <div className="flex items-center justify-between">
+              <Link href="/dashboard/valuations" className="text-xs font-mono text-muted-foreground hover:text-foreground">
+                ← Back to valuations
+              </Link>
+              <button
+                onClick={handleCreateRevision}
+                disabled={revising || revisionReason.trim().length < 4}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50"
+              >
+                {revising ? 'Creating…' : 'Create revision →'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )

@@ -441,6 +441,57 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         return;
     }
 
+    // ── Valuation report dispatch (client countersignature) ──
+    // Route completion to approvalService so it stamps client_esign_status='completed',
+    // signed_report_url + esign_certificate_url on the report — so the client-signed copy
+    // flows to the report download / Document Vault.
+    if (
+        envelopeRow.context_type === 'valuation' &&
+        envelopeRow.context_entity_name === 'valuation_report' &&
+        envelopeRow.context_entity_id
+    ) {
+        try {
+            const valSigners = await dbQuery(
+                `SELECT id, email, name, signed_at FROM esign_signers
+                 WHERE envelope_id = $1 AND status = 'signed' ORDER BY signing_order ASC`,
+                [envelopeId]
+            );
+            const valCompletedAt = envelopeRow.completed_at || new Date();
+            // Normalize the signed PDF (a bare MinIO key) to an s3:// object ref.
+            let valSignedRef = signedDocumentUrl;
+            if (signedDocumentUrl && !/^(data:|https?:|s3:\/\/)/.test(signedDocumentUrl)) {
+                let bucket = buckets.documents;
+                let key = signedDocumentUrl;
+                const parts = signedDocumentUrl.split('/');
+                if (parts.length > 1 && (parts[0] === buckets.documents || parts[0] === buckets.uploads)) {
+                    bucket = parts[0];
+                    key = parts.slice(1).join('/');
+                }
+                valSignedRef = `s3://${bucket}/${key}`;
+            }
+            const valEvent = {
+                event: 'envelope.completed' as const,
+                timestamp: new Date(),
+                envelope: { id: envelopeId, subject: envelopeRow.name || 'Valuation Report', completedAt: new Date(valCompletedAt) },
+                sourceContext: { module: 'valuation' as const, entityType: 'valuation_report', entityId: envelopeRow.context_entity_id },
+                documents: [{ id: envelopeId, name: envelopeRow.name || 'Valuation Report', signedUrl: valSignedRef, certificateUrl: undefined }],
+                signers: valSigners.rows.map((row: any) => ({
+                    email: row.email,
+                    name: row.name,
+                    pmtId: row.id,
+                    signedAt: row.signed_at ? new Date(row.signed_at) : new Date(valCompletedAt),
+                })),
+                security: { hash: '', algorithm: 'SHA-256' as const, verifyUrl: `/api/v1/esign/envelopes/${envelopeId}/certificate` },
+            };
+            const { approvalService } = await import('../services/valuation-engine/approvalService');
+            await approvalService.handleEsignCompletion(valEvent as any);
+            logger.info('Valuation report e-sign completion dispatched', { envelopeId, reportId: envelopeRow.context_entity_id });
+        } catch (e: any) {
+            logger.error('Valuation report e-sign completion dispatch failed', { envelopeId, error: e?.message });
+        }
+        return;
+    }
+
     let tenancyId: string | null = null;
 
     if (

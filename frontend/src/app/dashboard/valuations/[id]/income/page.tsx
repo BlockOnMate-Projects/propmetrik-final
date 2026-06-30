@@ -244,37 +244,27 @@ export default function IncomeApproachPage() {
     ? (totalOperatingExpenses / effectiveGrossIncome) * 100 
     : 0
 
-  // Value calculations
-  const directCapValue = capRate > 0 ? netOperatingIncome / (capRate / 100) : 0
+  // Value calculations come from the Python income ENGINE (single source of truth).
+  // The engine computes the pro forma, direct cap AND the inflation-coherent DCF — the
+  // browser performs no valuation math. (Pre-load fallbacks keep the UI from flashing zeros.)
+  const incd = pythonResult?.details || {}
+  const directCapValue = incd.direct_cap_value ?? (capRate > 0 ? netOperatingIncome / (capRate / 100) : 0)
+  const dcfValue = incd.dcf_value ?? 0
+  const dcfVariancePct = incd.dcf_variance_pct ?? null
 
-  // Simple DCF calculation
-  const calculateDCF = () => {
-    let pv = 0
-    const dr = discountRate / 100
-    const rg = rentGrowth / 100
-    let currentNOI = netOperatingIncome
-
-    // PV of cash flows during holding period
-    for (let year = 1; year <= holdingPeriod; year++) {
-      currentNOI *= (1 + rg)
-      pv += currentNOI / Math.pow(1 + dr, year)
-    }
-
-    // Terminal value
-    const terminalValue = (currentNOI * (1 + rg)) / (terminalCapRate / 100)
-    const pvTerminal = terminalValue / Math.pow(1 + dr, holdingPeriod)
-
-    return pv + pvTerminal
-  }
-
-  const dcfValue = calculateDCF()
-  
-  // Use Python result for direct cap, local calculation for DCF
-  // Python income approach returns direct cap value, not DCF
-  const indicatedValue = incomeMethod === 'direct_cap' 
+  const indicatedValue = incomeMethod === 'direct_cap'
     ? (pythonResult?.estimated_value ?? directCapValue)
     : dcfValue
   const confidenceScore = pythonResult?.confidence_score ?? 0.5
+
+  // The technique NOT selected as primary is shown as a documented reasonableness cross-check,
+  // with its variance measured against the chosen indicated value (RICS Red Book / IVS 105).
+  const crossCheck = (() => {
+    const isDC = incomeMethod === 'direct_cap'
+    const value = isDC ? dcfValue : directCapValue
+    const variance = indicatedValue > 0 ? ((value - indicatedValue) / indicatedValue) * 100 : null
+    return { label: isDC ? 'DCF CROSS-CHECK' : 'DIRECT CAP CROSS-CHECK', value, variance }
+  })()
 
   // Get property type for risk premium calculation
   const propertyType = valuation?.property?.property_type || 'residential'
@@ -354,11 +344,20 @@ export default function IncomeApproachPage() {
             const economicJson = await economicRes.json()
             if (economicJson.success && economicJson.data) {
               const econ = economicJson.data
+              // The snapshot returns SCALAR values (e.g. inflation_rate: 23.2), not { value }.
+              // Read both shapes so live rates actually reach the engine (the `.value`-only read
+              // silently yielded null -> inflation 0 -> the DCF collapsed to the old broken figure).
+              const num = (v: any) => {
+                const raw = v && typeof v === 'object' ? v.value : v
+                if (raw == null || raw === '') return null
+                const n = Number(raw)            // snapshot returns numeric DB values as strings
+                return Number.isFinite(n) ? n : null
+              }
               setEconomicData({
-                policyRate: econ.policy_rate?.value ?? econ.interest_rate_policy?.value ?? null,
-                inflationRate: econ.inflation_rate?.value ?? null,
-                mortgageRate: econ.mortgage_rate_avg?.value ?? null,
-                gdpGrowth: econ.gdp_growth?.value ?? null,
+                policyRate: num(econ.policy_rate) ?? num(econ.interest_rate_policy) ?? null,
+                inflationRate: num(econ.inflation_rate) ?? null,
+                mortgageRate: num(econ.mortgage_rate_avg) ?? null,
+                gdpGrowth: num(econ.gdp_growth) ?? null,
                 lastUpdated: econ.policy_rate?.effective_date ?? economicJson.timestamp ?? null,
               })
               
@@ -499,19 +498,35 @@ export default function IncomeApproachPage() {
             bathrooms: prop.bathrooms,
           },
           {
+            // Full pro forma inputs — the engine computes PGI/EGI/OpEx/NOI, direct cap AND the DCF.
             monthly_rent: primaryRent,
+            parking_income: parkingIncome,
+            other_income: otherIncome,
             vacancy_rate: vacancyRate,
-            operating_expenses: operatingExpenseRatio,
+            collection_loss: collectionLoss,
+            management_fee_percent: managementFee,
+            reserves_percent: reserves,
+            maintenance,
+            insurance,
+            property_tax: propertyTax,
+            utilities,
+            security,
+            other_expenses: otherExpenses,
             cap_rate: capRate,
+            // DCF inputs (inflation-coherent — rent growth is REAL, inflation from live economic data)
+            discount_rate: discountRate,
+            real_rent_growth: rentGrowth,
+            terminal_cap_rate: terminalCapRate,
+            holding_period: holdingPeriod,
+            inflation_rate: economicData.inflationRate ?? 0,
           }
         )
-        
+
         if (result.success && result.data) {
           setPythonResult(result.data)
         }
       } catch (err) {
         console.error('Python Income calculation error:', err)
-        // Keep using local calculation on error
       } finally {
         setCalculating(false)
       }
@@ -520,7 +535,7 @@ export default function IncomeApproachPage() {
     // Debounce calculation
     const timer = setTimeout(calculateIncome, 500)
     return () => clearTimeout(timer)
-  }, [valuation, incomeSources, vacancyRate, capRate, operatingExpenseRatio])
+  }, [valuation, incomeSources, parkingIncome, otherIncome, vacancyRate, collectionLoss, managementFee, reserves, maintenance, insurance, propertyTax, utilities, security, otherExpenses, capRate, discountRate, rentGrowth, terminalCapRate, holdingPeriod, economicData])
 
   // Fetch market cap rate from API when property data is available
   useEffect(() => {
@@ -758,14 +773,14 @@ export default function IncomeApproachPage() {
         return conf
       })()
 
-      // Calculate weighted average income value based on confidences
-      const totalConfidence = directCapConfidence + dcfConfidence
-      const directCapWeight = totalConfidence > 0 ? directCapConfidence / totalConfidence : 0.5
-      const dcfWeight = totalConfidence > 0 ? dcfConfidence / totalConfidence : 0.5
-      const consolidatedIncomeValue = (directCapValue * directCapWeight) + (dcfValue * dcfWeight)
-
-      // Use Python result as primary, local as fallback
-      const finalValue = pythonResult?.estimated_value ?? consolidatedIncomeValue
+      // The valuer SELECTS the primary income technique (Direct Cap or DCF). That selected
+      // indication IS the income approach's value; the other technique is a documented
+      // cross-check (RICS Red Book / IVS 105: select the appropriate method — do not blend
+      // the two techniques of one approach). Direct Cap is the default for stabilized income.
+      const isDirectCapPrimary = incomeMethod === 'direct_cap'
+      const directCapWeight = isDirectCapPrimary ? 1 : 0
+      const dcfWeight = isDirectCapPrimary ? 0 : 1
+      const finalValue = indicatedValue   // already follows the selected technique
       const finalConfidence = pythonResult?.confidence_score ?? ((directCapConfidence + dcfConfidence) / 2)
 
       // Update valuation method result
@@ -778,7 +793,10 @@ export default function IncomeApproachPage() {
             value: finalValue,
             confidence: finalConfidence,
             confidence_level: pythonResult?.confidence_level ?? 'medium',
-            value_range: pythonResult?.value_range ?? { low: finalValue * 0.9, high: finalValue * 1.1 },
+            // Range tracks the SELECTED indication (so a DCF selection doesn't carry the direct-cap range)
+            value_range: isDirectCapPrimary && pythonResult?.value_range
+              ? pythonResult.value_range
+              : { low: finalValue * 0.92, high: finalValue * 1.08 },
             details: pythonResult?.details ?? {
               gross_annual_income: potentialGrossIncome,
               expense_ratio: operatingExpenseRatio / 100,
@@ -1970,7 +1988,7 @@ export default function IncomeApproachPage() {
                   </div>
                   <div>
                     <label className="font-mono text-[10px] text-muted-foreground block mb-1">
-                      RENT GROWTH (%)
+                      REAL RENT GROWTH (% above inflation)
                     </label>
                     <input
                       type="number"
@@ -2071,11 +2089,11 @@ export default function IncomeApproachPage() {
               <div className="space-y-3">
                 <div className="flex justify-between font-mono text-xs">
                   <span className="text-muted-foreground">PV of Cash Flows</span>
-                  <span className="text-foreground">₵{Math.round(dcfValue * 0.6).toLocaleString()}</span>
+                  <span className="text-foreground">₵{Math.round(incd.pv_cash_flows ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-mono text-xs">
                   <span className="text-muted-foreground">PV of Terminal</span>
-                  <span className="text-foreground">₵{Math.round(dcfValue * 0.4).toLocaleString()}</span>
+                  <span className="text-foreground">₵{Math.round(incd.pv_terminal ?? 0).toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -2105,10 +2123,10 @@ export default function IncomeApproachPage() {
               </div>
             </div>
 
-            {incomeMethod === 'direct_cap' && dcfValue > 0 && (
+            {crossCheck.value > 0 && (
               <div className="mt-3 p-3 bg-muted/30 text-center">
                 <div className="font-mono text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-                  DCF CROSS-CHECK
+                  {crossCheck.label}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -2120,14 +2138,14 @@ export default function IncomeApproachPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <div className="font-mono text-lg text-muted-foreground">₵{Math.round(dcfValue).toLocaleString()}</div>
+                <div className="font-mono text-lg text-muted-foreground">₵{Math.round(crossCheck.value).toLocaleString()}</div>
                 <div className="flex items-center justify-center gap-1">
                   <span className={`font-mono text-[10px] ${
-                    Math.abs(dcfValue - directCapValue) / directCapValue < 0.1 
-                      ? 'text-green-600 dark:text-green-400' 
+                    crossCheck.variance != null && Math.abs(crossCheck.variance) < 10
+                      ? 'text-green-600 dark:text-green-400'
                       : 'text-amber-600 dark:text-amber-400'
                   }`}>
-                    {((dcfValue - directCapValue) / directCapValue * 100).toFixed(1)}% variance
+                    {crossCheck.variance != null ? `${crossCheck.variance > 0 ? '+' : ''}${crossCheck.variance.toFixed(1)}` : '—'}% variance
                   </span>
                   <TooltipProvider>
                     <Tooltip>

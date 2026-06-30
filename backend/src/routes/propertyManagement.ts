@@ -21,6 +21,7 @@ import { advancedFinancialService } from '../services/property-management/financ
 import { PortfolioService } from '../services/property-management/portfolios/portfolioService';
 import { propertyService } from '../services/property-management/properties/propertyService';
 import { aiService } from '../services/ai/aiService';
+import { generatePropertyDescription } from '../services/ai/propertyDescriptionService';
 import { cryptoPayoutService } from '../services/payments/cryptoPayoutService';
 import { getGhsRateMap, fxMeta } from '../services/property-management/utils/currencyFx';
 import {
@@ -929,52 +930,11 @@ router.post('/ai/property-description', asyncHandler(async (req: Request, res: R
     if (!aiService.isAvailable()) {
         return res.status(503).json({ error: 'AI text generation is not configured' });
     }
-
-    const b = req.body || {};
-    const humanize = (v: unknown): string =>
-        typeof v === 'string' ? v.replace(/_/g, ' ').trim() : '';
-
-    // Build a fact list from only the fields that are present — never invent.
-    const facts: string[] = [];
-    if (b.title) facts.push(`Name: ${String(b.title).trim()}`);
-    if (b.propertyType) facts.push(`Property type: ${humanize(b.propertyType)}`);
-    if (b.transactionType) facts.push(`Listing: for ${humanize(b.transactionType)}`);
-    if (b.bedrooms) facts.push(`Bedrooms: ${b.bedrooms}`);
-    if (b.bathrooms) facts.push(`Bathrooms: ${b.bathrooms}`);
-    if (b.totalAreaSqm) facts.push(`Floor area: ${b.totalAreaSqm} sqm`);
-    const location = [b.addressStreet, b.addressDistrict, b.addressCity, humanize(b.region)]
-        .filter(Boolean).join(', ');
-    if (location) facts.push(`Location: ${location}`);
-    if (b.price) {
-        const cur = b.priceCurrency || 'GHS';
-        const period = String(b.transactionType) === 'rental' ? ' per month' : '';
-        facts.push(`Price: ${cur} ${b.price}${period}`);
-    }
-    if (b.isMultiUnit) facts.push(`This is a multi-unit building${b.floors ? ` with ${b.floors} floor(s)` : ''}.`);
-
-    if (facts.length === 0) {
-        return res.status(400).json({ error: 'Provide some property details first (type, location, beds, etc.)' });
-    }
-
-    const system =
-        'You are a professional real estate copywriter for the Ghanaian market. ' +
-        'Write a concise, appealing property listing description using ONLY the facts provided. ' +
-        'Do NOT invent amenities, finishes, neighbourhood claims, or features that are not given. ' +
-        'Tone: warm but professional. Length: 2–3 sentences (about 50–90 words). ' +
-        'Return plain text only — no markdown, headings, bullet points, or quotes.';
-
-    const prompt = `Property facts:\n${facts.map((f) => `- ${f}`).join('\n')}\n\nWrite the listing description.`;
-
     try {
-        const result = await aiService.generateText({
-            system,
-            prompt,
-            temperature: 0.8,
-            maxOutputTokens: 220,
-            feature: 'pm.property-description',
-        });
+        const result = await generatePropertyDescription(req.body, 'marketing');
         return res.json({ description: result.text, provider: result.provider });
     } catch (err: any) {
+        if (err?.statusCode === 400) return res.status(400).json({ error: err.message });
         return res.status(502).json({ error: err?.message || 'AI generation failed' });
     }
 }));

@@ -139,6 +139,9 @@ async function refreshConfig(now: number): Promise<RbacConfigPayload> {
     clients: { resource: 'valuation_client', action: 'list' },
     calendar: { resource: 'valuation', action: 'manage_inspection' },
     analytics: { resource: 'analytics', action: 'read_dashboard' },
+    // Document vault — reports + photos + title docs. Gated like the valuations list
+    // (anyone who can see valuations can see their documents); access is org-scoped server-side.
+    documents: { resource: 'valuation', action: 'list' },
     settings: { resource: 'valuation_org', action: 'manage_members' },
   };
 

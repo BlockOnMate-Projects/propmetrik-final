@@ -137,6 +137,8 @@ export interface CoverPageOptions {
   subtitle: string;
   /** Additional lines in the centre (e.g. "GHS 375K Budget | 3 Projects"). */
   meta?: string[];
+  /** Optional certifying valuer, rendered as a prominent line under the stat cards. */
+  certifiedBy?: string;
   /** Override the brand-strip colour (default: COLORS.brand). */
   accentColor?: string;
   /** Optional: "Report Type" badge text shown on the right of the strip. */
@@ -245,6 +247,15 @@ export function pdfCover(doc: any, opts: CoverPageOptions) {
     doc.fontSize(18).fillColor(white).font('Helvetica-Bold')
       .text(stat.value, x + 16, cardY + 32, { width: cardW - 32 });
   });
+
+  // Certifying valuer, under the stat cards.
+  if (opts.certifiedBy) {
+    const certY = cardY + 92;
+    doc.fontSize(8).fillColor(faint).font('Helvetica')
+      .text('CERTIFIED BY', titleX, certY, { characterSpacing: 1.2 });
+    doc.fontSize(16).fillColor(white).font('Helvetica-Bold')
+      .text(opts.certifiedBy, titleX, certY + 12, { width: CW });
+  }
 
   doc.fontSize(8).fillColor('#52525b').font('Helvetica')
     .text('Generated via PROPMETRIK', titleX, PH - 108, { width: 220 });

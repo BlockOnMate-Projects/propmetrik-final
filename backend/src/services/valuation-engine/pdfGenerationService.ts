@@ -135,6 +135,9 @@ export class PdfGenerationService {
       // Replace cover page with edge-to-edge PDFKit cover
       pdfBuffer = await this.replaceCoverPage(pdfBuffer, report, reportId);
 
+      // Overlay real page numbers onto the (manual) Table of Contents.
+      pdfBuffer = await this.addTocPageNumbers(pdfBuffer);
+
       // Generate document hash
       const documentHash = this.generateHash(pdfBuffer);
 
@@ -210,6 +213,101 @@ export class PdfGenerationService {
         reportId,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Overlay real page numbers onto the manual Table of Contents.
+   *
+   * The TOC is built programmatically with clean titles but no page numbers (LibreOffice
+   * headless won't populate a field-based TOC). So after the PDF is assembled we use poppler's
+   * `pdftotext -bbox` to (a) find the page each section starts on and (b) find the y-position of
+   * each TOC entry, then draw the page number right-aligned on that line with pdf-lib. The
+   * displayed page number equals the PDF page index (cover = page 0, TOC = page 1, per the
+   * section pageNumbers). Best-effort: any failure leaves the TOC unchanged.
+   */
+  private async addTocPageNumbers(pdfBuffer: Buffer): Promise<Buffer> {
+    const id = uuidv4();
+    const pdfPath = path.join(this.tempDir, `${id}-toc.pdf`);
+    const bboxPath = path.join(this.tempDir, `${id}-toc.xml`);
+    try {
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+      const execFileP = promisify(execFile);
+
+      await fs.writeFile(pdfPath, pdfBuffer);
+      await execFileP('pdftotext', ['-bbox', pdfPath, bboxPath], { timeout: 30_000 });
+      const xml = await fs.readFile(bboxPath, 'utf8');
+
+      const decode = (s: string) =>
+        s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+      const blocks = xml.split(/<page\b/).slice(1);
+      const pages = blocks.map((b) => {
+        const words: Array<{ x: number; y1: number; text: string }> = [];
+        const re = /<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)"[^>]*>([^<]*)<\/word>/g;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(b))) words.push({ x: parseFloat(m[1]), y1: parseFloat(m[4]), text: decode(m[5]) });
+        return { words, text: words.map((w) => w.text).join(' ') };
+      });
+
+      const tocIdx = pages.findIndex((p) => /Table\s+of\s+Contents/i.test(p.text));
+      if (tocIdx < 0) return pdfBuffer;
+
+      // (TOC-entry anchor word, case-SENSITIVE start-of-section phrase). Headings are uppercase,
+      // so case-sensitivity avoids false hits like the body text "...at the appendices".
+      const ENTRIES: Array<{ word: string; start: RegExp }> = [
+        { word: 'Transmittal', start: /Dear Sir/ },
+        { word: 'Summary', start: /SUMMARY OF KEY DATA/ },
+        { word: 'Risk', start: /RISK ASSESSMENT/ },
+        { word: 'Introduction', start: /CHAPTER ONE/ },
+        { word: 'Legal', start: /CHAPTER TWO/ },
+        { word: 'Influencing', start: /CHAPTER THREE/ },
+        { word: 'Description', start: /CHAPTER FOUR/ },
+        { word: 'Process', start: /PART FOUR/ },
+        { word: 'Certification', start: /CERTIFICATION/ },
+        { word: 'Limiting', start: /LIMITING CONDITIONS/ },
+        { word: 'Appendices', start: /APPENDICES/ },
+      ];
+      const startOf = (re: RegExp): number | null => {
+        for (let i = tocIdx + 1; i < pages.length; i++) if (re.test(pages[i].text)) return i;
+        return null;
+      };
+
+      const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+      const doc = await PDFDocument.load(pdfBuffer);
+      const font = await doc.embedFont(StandardFonts.Helvetica);
+      const tocPage = doc.getPages()[tocIdx];
+      const ph = tocPage.getHeight();
+      const pw = tocPage.getWidth();
+      const tocWords = pages[tocIdx].words;
+      let placed = 0;
+
+      for (const e of ENTRIES) {
+        const startPage = startOf(e.start);
+        if (startPage == null) continue;
+        const anchor = tocWords.find((w) => w.text.replace(/[^A-Za-z]/g, '') === e.word);
+        if (!anchor) continue;
+        const num = String(startPage);
+        const size = 11;
+        const tw = font.widthOfTextAtSize(num, size);
+        tocPage.drawText(num, {
+          x: pw - 86 - tw, // ~1.2in right margin, right-aligned
+          y: ph - anchor.y1 + 1.5,
+          size,
+          font,
+          color: rgb(0.32, 0.32, 0.32),
+        });
+        placed++;
+      }
+      if (placed === 0) return pdfBuffer;
+      logger.info('TOC page numbers added', { placed });
+      return Buffer.from(await doc.save());
+    } catch (err: any) {
+      logger.warn('addTocPageNumbers failed; leaving TOC without page numbers', { error: err?.message });
+      return pdfBuffer;
+    } finally {
+      await fs.unlink(pdfPath).catch(() => {});
+      await fs.unlink(bboxPath).catch(() => {});
     }
   }
 
@@ -493,7 +591,7 @@ export class PdfGenerationService {
     error?: string;
   }> {
     const result = await query(
-      `SELECT pdf_url, valuation_id FROM valuation_reports WHERE id = $1`,
+      `SELECT pdf_storage_key AS pdf_url, valuation_id FROM valuation_reports WHERE id = $1`,
       [reportId]
     );
 
@@ -584,11 +682,15 @@ export class PdfGenerationService {
       const clientName = clientResult.rows[0]?.client_name || clientResult.rows[0]?.client_company || 'Client';
 
       // Get valuer info
+      // valuations.valuer_id may hold either the valuers.id OR the valuers.user_id (the latter is
+      // what the workflow actually stores) — match on either so the certifying valuer resolves.
       const valuerResult = await pool.query(
         `SELECT vl.name, vl.qualifications, vl.license_number, vl.title as job_title
-         FROM valuers vl
-         JOIN valuations v ON v.valuer_id = vl.id
-         WHERE v.id = $1`,
+         FROM valuations v
+         JOIN valuers vl ON (vl.id = v.valuer_id OR vl.user_id = v.valuer_id)
+         WHERE v.id = $1
+         ORDER BY (vl.id = v.valuer_id) DESC
+         LIMIT 1`,
         [report.valuation_id]
       );
       const valuer = valuerResult.rows[0] || {};
@@ -631,9 +733,10 @@ export class PdfGenerationService {
         buildingArea ? `Building Area: ${buildingArea}` : '',
         landArea ? `Land Area: ${landArea}` : '',
         clientName ? `Prepared For: ${clientName}` : '',
-        valuerName ? `Certified By: ${valuerName}` : '',
         reportDate ? `Effective Date: ${reportDate}` : '',
       ].filter(Boolean);
+      // NOTE: "Certified By" is intentionally NOT in `meta` — it renders once via the dedicated
+      // certifiedBy slot on the cover (passed below), avoiding the earlier duplicate.
 
       // Generate replacement cover page using the centralized shared cover utility.
       const coverBuffer = await new Promise<Buffer>((resolve, reject) => {
@@ -649,6 +752,7 @@ export class PdfGenerationService {
           reportType: 'VALUATION',
           brandTagline: 'Real Estate Intelligence',
           meta,
+          certifiedBy: valuerName || undefined,
           qrCodeDataUrl: servicesQrDataUrl,
         });
 

@@ -364,6 +364,8 @@ export interface ComprehensivePropertyData {
   client_address?: string               // Address of the instructing client
   client_email?: string                 // Email of the instructing client
   client_phone?: string                 // Phone of the instructing client
+  client_company?: string               // Company / organisation of the instructing client
+  client_id?: string                    // Linked saved client (valuation_clients) id
   request_type?: 'written' | 'verbal' | 'email' | 'letter'  // How the instruction was received
   
   // Purpose of Valuation

@@ -764,13 +764,13 @@ function ComparablesPageContent() {
             {searchMeta?.aggregates && searchResults.length > 0 && (
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="bg-card/50 border border-border p-4">
-                  <div className="font-mono text-sm text-muted-foreground">AVG PRICE</div>
+                  <div className="font-mono text-sm text-muted-foreground">MEDIAN PRICE</div>
                   <div className="font-mono text-lg text-foreground">
                     {formatCurrency(searchMeta.aggregates.avgPrice)}
                   </div>
                 </div>
                 <div className="bg-card/50 border border-border p-4">
-                  <div className="font-mono text-sm text-muted-foreground">AVG PRICE/SQM</div>
+                  <div className="font-mono text-sm text-muted-foreground">MEDIAN ₵/SQM</div>
                   <div className="font-mono text-lg text-foreground">
                     {formatCurrency(searchMeta.aggregates.avgPricePerSqm)}
                   </div>

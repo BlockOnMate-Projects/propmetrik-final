@@ -1507,11 +1507,16 @@ function buildLimitingConditions(data: ReportSectionData): FileChild[] {
     paragraphs.push(emptyLine());
     paragraphs.push(heading2('Standards References'));
     if (Array.isArray(disclaimers.standards_references)) {
-      disclaimers.standards_references.forEach((ref: string) => {
-        paragraphs.push(bodyText(`• ${ref}`));
+      disclaimers.standards_references.forEach((ref: any) => {
+        // standards_references are { code, name, year } objects — render their text,
+        // not the object itself (which printed "[object Object]").
+        const text = typeof ref === 'string'
+          ? ref
+          : [ref?.code, ref?.name].filter(Boolean).join(' — ') + (ref?.year ? ` (${ref.year})` : '');
+        if (text.trim()) paragraphs.push(bodyText(`• ${text}`));
       });
     } else {
-      paragraphs.push(bodyText(disclaimers.standards_references));
+      paragraphs.push(bodyText(String(disclaimers.standards_references)));
     }
   }
 
@@ -1527,10 +1532,55 @@ function buildAppendices(data: ReportSectionData): FileChild[] {
     emptyLine(),
   ];
 
-  // Appendix A: Floor Plans with embedded images
+  // Appendix A: Schedule of Accommodation (per-room — matches the report viewer).
+  // The per-room schedule used to live in property_description, but editor content
+  // overrides that section so it vanished from the signed PDF. Render it here so it
+  // always appears and mirrors what the valuer reviewed in the viewer.
+  const accFloorPlans = data.floorPlans || [];
+  if (accFloorPlans.some((fp: any) => (fp.rooms || []).length > 0)) {
+    paragraphs.push(heading2('Appendix A: Schedule of Accommodation'));
+    const accRows: TableRow[] = [
+      new TableRow({
+        tableHeader: true,
+        children: [
+          headerCell('Floor', { width: 25 }),
+          headerCell('Room', { width: 50 }),
+          headerCell('Area (m²)', { width: 25, alignment: AlignmentType.CENTER }),
+        ],
+      }),
+    ];
+    let accTotal = 0;
+    accFloorPlans.forEach((fp: any) => {
+      (fp.rooms || []).forEach((room: any, idx: number) => {
+        const area = parseFloat(room.area_sqm || room.area || 0) || 0;
+        accTotal += area;
+        accRows.push(new TableRow({
+          children: [
+            tableCell(idx === 0 ? (fp.floor_label || `Floor ${fp.floor_number}`) : '', { width: 25 }),
+            tableCell(room.name || room.room_type || 'Room', { width: 50 }),
+            tableCell(area.toFixed(2), { width: 25, alignment: AlignmentType.CENTER }),
+          ],
+        }));
+      });
+    });
+    accRows.push(new TableRow({
+      children: [
+        tableCell('TOTAL GROSS FLOOR AREA', { bold: true, span: 2, shading: COLORS.tableHeader }),
+        tableCell(`${accTotal.toFixed(2)} sqm`, { bold: true, shading: COLORS.tableHeader, alignment: AlignmentType.CENTER }),
+      ],
+    }));
+    paragraphs.push(new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      layout: TableLayoutType.FIXED,
+      rows: accRows,
+    }));
+    paragraphs.push(emptyLine());
+  }
+
+  // Appendix B: Floor Plans with embedded images
   const floorPlanImages = data.floorPlanImages || [];
   if (floorPlanImages.length > 0 || (data.floorPlans && data.floorPlans.length > 0)) {
-    paragraphs.push(heading2('Appendix A: Floor Plans'));
+    paragraphs.push(heading2('Appendix B: Floor Plans'));
 
     if (floorPlanImages.length > 0) {
       floorPlanImages.forEach((fp) => {
@@ -1593,16 +1643,62 @@ function buildAppendices(data: ReportSectionData): FileChild[] {
     }
   }
 
-  // Appendix B: Photographs
-  if (data.photos && data.photos.length > 0) {
-    paragraphs.push(heading2('Appendix B: Photographs'));
-    paragraphs.push(bodyText(`${data.photos.length} photograph(s) of the subject property are included.`));
+  // ── Appendices C/D/E — embedded valuation documents (location map / pictures / title docs) ──
+  const docImages = (data as any).documentImages as Array<{ docType: string; caption: string | null; mime: string; buffer: Buffer }> | undefined || [];
+  const mapDocs = docImages.filter((d) => d.docType === 'location_map');
+  const photoDocs = docImages.filter((d) => d.docType === 'photo');
+  const titleDocs = docImages.filter((d) => d.docType === 'title_document');
+
+  const embedImg = (img: { buffer: Buffer; mime: string }, maxW = 560, maxH = 680): Paragraph => {
+    let w = maxW;
+    let h = Math.round(maxH * 0.66);
+    const buf = img.buffer;
+    if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50) { // PNG header → real dimensions
+      const pw = buf.readUInt32BE(16);
+      const ph = buf.readUInt32BE(20);
+      if (pw > 0 && ph > 0) { const r = Math.min(maxW / pw, maxH / ph); w = Math.round(pw * r); h = Math.round(ph * r); }
+    }
+    const type = (img.mime || '').includes('png') ? 'png' : 'jpg';
+    return new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 120, after: 160 },
+      children: [new ImageRun({ data: buf, transformation: { width: w, height: h }, type: type as any })],
+    });
+  };
+  const caption = (text: string): Paragraph => new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 140 },
+    children: [new TextRun({ text, italics: true, size: 18, font: 'Calibri', color: COLORS.textLight })],
+  });
+
+  // Appendix C: Satellite / Location Map
+  paragraphs.push(heading2('Appendix C: Satellite / Location Map'));
+  if (mapDocs.length > 0) {
+    mapDocs.forEach((m) => paragraphs.push(embedImg(m)));
+  } else {
+    paragraphs.push(bodyText('A location map showing the subject property and surrounding area is available upon request.'));
+  }
+  paragraphs.push(emptyLine());
+
+  // Appendix D: Pictures
+  if (photoDocs.length > 0) {
+    paragraphs.push(heading2('Appendix D: Pictures'));
+    let plate = 1;
+    photoDocs.forEach((p) => {
+      paragraphs.push(embedImg(p, 520, 420));
+      paragraphs.push(caption(`Plate ${plate++}${p.caption ? ': ' + p.caption : ''}`));
+    });
     paragraphs.push(emptyLine());
   }
 
-  // Appendix C / B: Location Map
-  paragraphs.push(heading2(`Appendix ${data.photos && data.photos.length > 0 ? 'C' : 'B'}: Location Map`));
-  paragraphs.push(bodyText('A location map showing the subject property and surrounding area is available upon request.'));
+  // Appendix E: Title Documents / Indenture
+  if (titleDocs.length > 0) {
+    paragraphs.push(heading2('Appendix E: Title Documents / Indenture'));
+    titleDocs.forEach((t) => {
+      paragraphs.push(embedImg(t, 560, 700));
+      if (t.caption) paragraphs.push(caption(t.caption));
+    });
+  }
 
   return paragraphs;
 }

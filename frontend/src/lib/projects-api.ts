@@ -4,6 +4,7 @@
  */
 
 import { fetchApi } from './api';
+import { authedFetch } from './authed-fetch';
 import {
   DevelopmentProject,
   ProjectSummary,
@@ -2054,11 +2055,7 @@ export const documentsApi = {
   // Download a document (optionally a specific version)
   downloadDocument: async (projectId: string, documentId: string, version?: number): Promise<Blob> => {
     const params = version ? `?version=${version}` : '';
-    const response = await fetch(`${PROJECTS_BASE}/${projectId}/documents/${documentId}/download${params}`, {
-      headers: {
-        'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
-      },
-    });
+    const response = await authedFetch(`${PROJECTS_BASE}/${projectId}/documents/${documentId}/download${params}`);
     if (!response.ok) {
       throw new Error('Failed to download document');
     }

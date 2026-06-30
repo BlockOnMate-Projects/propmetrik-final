@@ -716,12 +716,25 @@ class PostgreSQLMarketDataAdapter(MarketDataAdapter):
                 except:
                     sources_value = []
             
+            # Normalize quality scores to the schema's 0-1 range. The properties table
+            # stores data_quality_score on a 0-100 scale (e.g. 85.00), which fails
+            # PropertyDataQuality validation (le=1) and was silently dropping EVERY
+            # comparable -> "insufficient market data". Only rescale values that are >1.
+            def _q(v, default=0.8):
+                try:
+                    x = float(v) if v is not None else default
+                except (TypeError, ValueError):
+                    return default
+                if x > 1:            # 0-100 scale -> 0-1
+                    x = x / 100.0
+                return min(max(x, 0.0), 1.0)
+
             data_quality = PropertyDataQuality(
-                data_quality_score=float(row.get('data_quality_score') or 0.8),
-                source_reliability_score=float(row.get('source_reliability_score') or 0.8),
-                completeness_score=float(row.get('completeness_score') or 0.8),
-                accuracy_score=float(row.get('accuracy_score') or 0.8),
-                freshness_score=float(row.get('freshness_score') or 0.8),
+                data_quality_score=_q(row.get('data_quality_score')),
+                source_reliability_score=_q(row.get('source_reliability_score')),
+                completeness_score=_q(row.get('completeness_score')),
+                accuracy_score=_q(row.get('accuracy_score')),
+                freshness_score=_q(row.get('freshness_score')),
                 sources=sources_value if sources_value else [],
                 last_verified=row.get('last_verified'),
                 verification_method=row.get('verification_method')

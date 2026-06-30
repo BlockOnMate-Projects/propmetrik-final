@@ -352,6 +352,13 @@ export class ApprovalService {
           `UPDATE valuations SET status = 'completed', updated_at = $1 WHERE id = $2`,
           [now, report.valuation_id]
         );
+        // Versioning: this newly-sealed report becomes the current version; any prior
+        // approved version of the SAME valuation is retained but marked superseded.
+        await query(
+          `UPDATE valuation_reports SET status = 'superseded', updated_at = $1
+           WHERE valuation_id = $2 AND id <> $3 AND status = 'approved'`,
+          [now, report.valuation_id, reportId]
+        );
       }
 
       // Log approval in audit trail

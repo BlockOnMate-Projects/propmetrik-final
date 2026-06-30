@@ -245,6 +245,20 @@ export const reportsApi = {
   },
 
   /**
+   * Resolve and download the FINALIZED (valuer-sealed or client-signed) PDF for a valuation.
+   * Returns available:false when no finalized report exists yet (so the UI disables Download).
+   */
+  downloadFinalForValuation: (valuationId: string) => {
+    return fetchApi<{
+      available: boolean;
+      finalized: boolean;
+      download_url?: string;
+      filename?: string;
+      reason?: string;
+    }>(`/reports/valuation/${valuationId}/download`);
+  },
+
+  /**
    * Get document status (is generated, etc.)
    */
   getDocumentStatus: (reportId: string) => {

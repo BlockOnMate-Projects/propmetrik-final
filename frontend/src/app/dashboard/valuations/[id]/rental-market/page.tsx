@@ -167,6 +167,10 @@ export default function RentalMarketPage() {
   const [searchResponse, setSearchResponse] = useState<RentalSearchResponse | null>(null)
   const [searchResults, setSearchResults] = useState<RentalComparable[]>([])
   const [selectedComparables, setSelectedComparables] = useState<RentalComparableSelected[]>([])
+  // Market-rent ENGINE result (single source of truth). The frontend computes no rent itself.
+  const [engineResult, setEngineResult] = useState<any>(null)
+  const [engineRunning, setEngineRunning] = useState(false)
+  const [recalcNonce, setRecalcNonce] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -341,54 +345,14 @@ export default function RentalMarketPage() {
     // Calculate rent per sqm if not available
     const rentPerSqm = comp.rent_per_sqm_monthly || (comp.gfa_sqm ? comp.asking_rent_monthly / comp.gfa_sqm : 0)
 
-    // Auto-calculate adjustments based on subject property
-    const subject = valuation?.property as any
-    const autoAdjustments: Record<string, number> = {}
-
-    if (subject) {
-      // Size adjustment (max ±20%)
-      if (subject.gfa_sqm && comp.gfa_sqm) {
-        const sizeDiff = (subject.gfa_sqm - comp.gfa_sqm) / comp.gfa_sqm * 100
-        autoAdjustments.size = Math.max(-20, Math.min(20, sizeDiff * 0.5))
-      }
-
-      // Bedroom adjustment (3% per bedroom)
-      if (subject.bedrooms && comp.bedrooms) {
-        autoAdjustments.bedrooms = (subject.bedrooms - comp.bedrooms) * 3
-      }
-
-      // Bathroom adjustment (2% per bathroom)
-      if (subject.bathrooms && comp.bathrooms) {
-        autoAdjustments.bathrooms = (subject.bathrooms - comp.bathrooms) * 2
-      }
-
-      // Furnishing adjustment
-      const furnishingLevels: Record<string, number> = {
-        'furnished': 3,
-        'semi-furnished': 2,
-        'unfurnished': 1
-      }
-      const compAny = comp as any
-      const subjectFurnishing = furnishingLevels[subject.furnishing || 'unfurnished'] || 1
-      const compFurnishing = furnishingLevels[compAny.furnishing || 'unfurnished'] || 1
-      autoAdjustments.furnishing = (subjectFurnishing - compFurnishing) * 8
-
-      // Age adjustment (0.3% per year)
-      const subjectAge = subject.year_built ? new Date().getFullYear() - subject.year_built : 10
-      const compAge = compAny.year_built ? new Date().getFullYear() - compAny.year_built : 10
-      autoAdjustments.age = (compAge - subjectAge) * 0.3
-    }
-
-    const totalAdjustment = Object.values(autoAdjustments).reduce((sum, v) => sum + (v || 0), 0)
-    const adjustedRent = comp.asking_rent_monthly * (1 + totalAdjustment / 100)
-    const adjustedRentPerSqm = comp.gfa_sqm ? adjustedRent / comp.gfa_sqm : rentPerSqm * (1 + totalAdjustment / 100)
-
+    // No local adjustment math — the market-rent engine computes every adjustment (using the
+    // factors from valuation_adjustment_factors) and merges the result back in. Start neutral.
     const selected: RentalComparableSelected = {
       ...comp,
-      adjustments: autoAdjustments,
-      totalAdjustment,
-      adjustedRent,
-      adjustedRentPerSqm,
+      adjustments: {},
+      totalAdjustment: 0,
+      adjustedRent: comp.asking_rent_monthly,
+      adjustedRentPerSqm: rentPerSqm,
       weight: 1 / (selectedComparables.length + 1),
       isLocked: false,
     }
@@ -456,67 +420,16 @@ export default function RentalMarketPage() {
     if (!valuation?.property) return
 
     setSelectedComparables(prev =>
-      prev.map(comp => {
-        if (comp.id !== compId || comp.isLocked) return comp
-
-        const subject = valuation.property as any
-        const autoAdjustments: Record<string, number> = {}
-
-        // Size adjustment (max ±20%)
-        if (subject.gfa_sqm && comp.gfa_sqm) {
-          const sizeDiff = (subject.gfa_sqm - comp.gfa_sqm) / comp.gfa_sqm * 100
-          autoAdjustments.size = Math.max(-20, Math.min(20, sizeDiff * 0.5))
-        }
-
-        // Bedroom adjustment (3% per bedroom)
-        if (subject.bedrooms && comp.bedrooms) {
-          autoAdjustments.bedrooms = (subject.bedrooms - comp.bedrooms) * 3
-        }
-
-        // Bathroom adjustment (2% per bathroom)
-        if (subject.bathrooms && comp.bathrooms) {
-          autoAdjustments.bathrooms = (subject.bathrooms - comp.bathrooms) * 2
-        }
-
-        // Furnishing adjustment (use any cast for optional fields not in base type)
-        const furnishingLevels: Record<string, number> = {
-          'furnished': 3,
-          'semi-furnished': 2,
-          'unfurnished': 1
-        }
-        const compAny = comp as any
-        const subjectFurnishing = furnishingLevels[subject.furnishing || 'unfurnished'] || 1
-        const compFurnishing = furnishingLevels[compAny.furnishing || 'unfurnished'] || 1
-        autoAdjustments.furnishing = (subjectFurnishing - compFurnishing) * 8
-
-        // Age adjustment (0.3% per year)
-        const subjectAge = subject.year_built ? new Date().getFullYear() - subject.year_built : 10
-        const compAge = compAny.year_built ? new Date().getFullYear() - compAny.year_built : 10
-        autoAdjustments.age = (compAge - subjectAge) * 0.3
-
-        const totalAdjustment = Object.values(autoAdjustments).reduce((sum, v) => sum + (v || 0), 0)
-        const adjustedRent = comp.asking_rent_monthly * (1 + totalAdjustment / 100)
-        const adjustedRentPerSqm = comp.gfa_sqm ? adjustedRent / comp.gfa_sqm : 0
-
-        return {
-          ...comp,
-          adjustments: autoAdjustments,
-          totalAdjustment,
-          adjustedRent,
-          adjustedRentPerSqm,
-        }
-      })
+      // The engine computes every adjustment (factors from valuation_adjustment_factors) and
+      // merges the result back in via the selection effect — there is no per-comp math here.
+      prev.map(comp => comp)
     )
   }, [valuation])
 
-  // Auto-calculate all comparables
+  // "Auto-calculate all" simply nudges the engine to re-run for the current basket.
   const handleAutoCalculateAll = useCallback(() => {
-    selectedComparables.forEach(comp => {
-      if (!comp.isLocked) {
-        handleAutoCalculate(comp.id)
-      }
-    })
-  }, [selectedComparables, handleAutoCalculate])
+    setRecalcNonce((n) => n + 1)
+  }, [])
 
   // =====================================================
   // VALUE CALCULATIONS
@@ -524,6 +437,8 @@ export default function RentalMarketPage() {
 
   // Calculate quality scores for weighting
   const calculateQualityScore = useCallback((comp: RentalComparableSelected): number => {
+    // Prefer the engine's comparability score once it has run (single source of truth).
+    if ((comp as any).qualityScore != null) return Math.round((comp as any).qualityScore)
     let score = 0
     const subject = valuation?.property as any
 
@@ -575,94 +490,57 @@ export default function RentalMarketPage() {
     return Math.max(5, Math.min(100, score)) // Min score of 5 to avoid zero weights
   }, [valuation])
 
-  // Calculate indicated rent based on weighting method
+  // Run the market-rent ENGINE whenever the selection changes. The engine sources its
+  // adjustment factors from valuation_adjustment_factors + the live FX rate and returns the
+  // weighted indicated rent, range, per-comp adjustments and quality. No rent math runs here.
+  const selectedKey = selectedComparables.map(c => `${c.id}:${c.weight ?? ''}`).join(',')
+  useEffect(() => {
+    if (!valuation?.id || selectedComparables.length === 0) { setEngineResult(null); return }
+    let cancelled = false
+    const run = async () => {
+      setEngineRunning(true)
+      try {
+        const res = await fetch(`/api/valuations/${valuation.id}/rental-comparables/value`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            comparables: selectedComparables.map(c => ({ id: c.id, weight: c.weight, furnishing: (c as any).furnishing })),
+            subject_furnishing: (valuation?.property as any)?.furnishing,
+          }),
+        })
+        if (!res.ok) { if (!cancelled) setEngineResult(null); return }
+        const json = await res.json()
+        const data = json.data
+        if (cancelled) return
+        setEngineResult(data)
+        // Merge engine per-comp results into the grid (display only — grid computes nothing).
+        const PY2GRID: Record<string, string> = { bedrooms: 'bedrooms', bathrooms: 'bathrooms', furnishing: 'furnishing', age: 'age_condition', size: 'gfa' }
+        const byId = new Map<string, any>((data?.comparables_analyzed || []).map((a: any) => [String(a.id), a]))
+        setSelectedComparables(prev => prev.map(c => {
+          const a = byId.get(String(c.id))
+          if (!a) return c
+          const adjustments: Record<string, number> = {}
+          Object.entries(a.adjustments_applied || {}).forEach(([k, v]) => { adjustments[PY2GRID[k] || k] = v as number })
+          return { ...c, adjustments, totalAdjustment: a.total_adjustment_percent, adjustedRent: a.adjusted_rent_ghs, adjustedRentPerSqm: a.adjusted_rent_per_sqm, qualityScore: a.quality_score } as any
+        }))
+      } finally { if (!cancelled) setEngineRunning(false) }
+    }
+    run()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valuation?.id, selectedKey, recalcNonce])
+
+  // Indicated rent comes straight from the engine result.
   const calculateIndicatedRent = useMemo(() => {
-    if (selectedComparables.length === 0) return null
-
-    const subjectGFA = (valuation?.property as any)?.gfa_sqm || 150
-
-    // Helper to get rent per sqm, calculating from adjusted rent if not available
-    const getRentPerSqm = (c: RentalComparableSelected) => {
-      if (c.adjustedRentPerSqm && c.adjustedRentPerSqm > 0) return c.adjustedRentPerSqm
-      if (c.gfa_sqm && c.gfa_sqm > 0) return c.adjustedRent / c.gfa_sqm
-      // Fallback: use adjusted rent assuming average unit size
-      return c.adjustedRent / 100 // Assume 100 sqm average
-    }
-
-    switch (weightingMethod) {
-      case 'simple_average': {
-        // Use average of adjusted rents directly, then calculate per sqm
-        const avgAdjustedRent = selectedComparables.reduce((sum, c) =>
-          sum + c.adjustedRent, 0) / selectedComparables.length
-        const avgRentPerSqm = selectedComparables.reduce((sum, c) =>
-          sum + getRentPerSqm(c), 0) / selectedComparables.length
-        return { perSqm: avgRentPerSqm, monthly: avgAdjustedRent }
-      }
-
-      case 'median': {
-        const sortedRents = selectedComparables
-          .map(c => c.adjustedRent)
-          .sort((a, b) => a - b)
-        const mid = Math.floor(sortedRents.length / 2)
-        const medianRent = sortedRents.length % 2 === 0
-          ? (sortedRents[mid - 1] + sortedRents[mid]) / 2
-          : sortedRents[mid]
-        const medianPerSqm = subjectGFA > 0 ? medianRent / subjectGFA : 0
-        return { perSqm: medianPerSqm, monthly: medianRent }
-      }
-
-      case 'quality_weighted': {
-        const qualityScores = selectedComparables.map(c => calculateQualityScore(c))
-        const totalScore = qualityScores.reduce((sum, s) => sum + s, 0)
-
-        let weightedRent = 0
-        let weightedPerSqm = 0
-        selectedComparables.forEach((comp, i) => {
-          const weight = totalScore > 0 ? qualityScores[i] / totalScore : 1 / selectedComparables.length
-          weightedRent += comp.adjustedRent * weight
-          weightedPerSqm += getRentPerSqm(comp) * weight
-        })
-        return { perSqm: weightedPerSqm, monthly: weightedRent }
-      }
-
-      case 'manual': {
-        const totalWeight = selectedComparables.reduce((sum, c) => sum + (c.weight || 0), 0)
-        let weightedRent = 0
-        let weightedPerSqm = 0
-        selectedComparables.forEach(comp => {
-          const weight = totalWeight > 0 ? (comp.weight || 0) / totalWeight : 1 / selectedComparables.length
-          weightedRent += comp.adjustedRent * weight
-          weightedPerSqm += getRentPerSqm(comp) * weight
-        })
-        return { perSqm: weightedPerSqm, monthly: weightedRent }
-      }
-
-      default:
-        return null
-    }
-  }, [selectedComparables, weightingMethod, valuation, calculateQualityScore])
+    if (!engineResult) return null
+    return { perSqm: engineResult.rent_per_sqm || 0, monthly: engineResult.indicated_monthly_rent || 0 }
+  }, [engineResult])
 
   // Calculate confidence
+  // Confidence comes from the engine (0-1) -> percent.
   const calculateConfidence = useCallback(() => {
-    const count = selectedComparables.length
-    const avgAdjustment = selectedComparables.reduce(
-      (sum, c) => sum + Math.abs(c.totalAdjustment || 0), 0
-    ) / (count || 1)
-
-    // Base confidence on count (max at 5+ comps)
-    const countScore = Math.min(count / 5, 1) * 0.4
-
-    // Reduce confidence for high adjustments
-    const adjustmentScore = Math.max(0, 1 - avgAdjustment / 30) * 0.3
-
-    // Bonus for quality scores
-    const avgQuality = selectedComparables.reduce(
-      (sum, c) => sum + calculateQualityScore(c), 0
-    ) / (count || 1)
-    const qualityScore = (avgQuality / 100) * 0.3
-
-    return Math.round((countScore + adjustmentScore + qualityScore) * 100)
-  }, [selectedComparables, calculateQualityScore])
+    return engineResult ? Math.round((engineResult.confidence_score || 0) * 100) : 0
+  }, [engineResult])
 
   // =====================================================
   // SAVE & NAVIGATION
@@ -1112,7 +990,9 @@ export default function RentalMarketPage() {
                   <div className="p-3 border border-border bg-card/50">
                     <div className="font-mono text-[10px] text-muted-foreground uppercase mb-1">Range</div>
                     <div className="font-mono text-sm text-foreground">
-                      {formatCurrency(Math.min(...selectedComparables.map(c => c.adjustedRent)))} - {formatCurrency(Math.max(...selectedComparables.map(c => c.adjustedRent)))}
+                      {engineResult?.value_range
+                        ? `${formatCurrency(engineResult.value_range.low)} - ${formatCurrency(engineResult.value_range.high)}`
+                        : '—'}
                     </div>
                     <div className="font-mono text-[10px] text-muted-foreground mt-1">
                       Avg Adj: {(selectedComparables.reduce((sum, c) => sum + Math.abs(c.totalAdjustment), 0) / comparablesCount).toFixed(1)}%
