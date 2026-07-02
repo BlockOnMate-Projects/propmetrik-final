@@ -17,6 +17,7 @@ import {
   DollarSign,
   Layers,
   Thermometer,
+  AlertTriangle,
 } from 'lucide-react'
 
 // =====================================================

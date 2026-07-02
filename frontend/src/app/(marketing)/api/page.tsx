@@ -23,7 +23,20 @@ import {
   DollarSign,
   Database,
   Activity,
+  Sigma,
 } from 'lucide-react'
+import {
+  ANALYTICS_API_BASE_URL,
+  ANALYTICS_API_GROUPS,
+  ANALYTICS_RESOURCES,
+  ANALYTICS_WS_URL,
+  ANALYTICS_STREAM_CHANNELS,
+  ANALYTICS_STREAM_EXAMPLES,
+  type ResourceComponent,
+} from '@/lib/analytics-resources'
+
+/** api.propmetrik.com/api/v1 — protocol stripped for compact display. */
+const API_HOST_DISPLAY = ANALYTICS_API_BASE_URL.replace(/^https?:\/\//, '')
 
 /* ────────────── Types ────────────── */
 interface Endpoint {
@@ -83,7 +96,7 @@ function CopyBtn({ text }: { text: string }) {
 /* ────────────── Endpoint Row ────────────── */
 function EndpointRow({ ep, prefix }: { ep: Endpoint; prefix: string }) {
   const [open, setOpen] = useState(false)
-  const full = `https://api.propmetrik.com/v1${prefix}${ep.path}`
+  const full = `${ANALYTICS_API_BASE_URL}${prefix}${ep.path}`
   return (
     <div className="border-b border-border/50 last:border-0">
       <button
@@ -141,6 +154,201 @@ function CodeExample({ lang, code }: { lang: string; code: string }) {
         <code>{code}</code>
       </pre>
     </div>
+  )
+}
+
+/* ────────────── Resource (metric) Card ────────────── */
+function ResourceCard({ c }: { c: ResourceComponent }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-border/50 last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">{c.name}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{c.summary}</p>
+        </div>
+        <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0 mt-0.5 transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-4 pb-5 space-y-4">
+          {/* Definition */}
+          <div>
+            <p className="text-[10px] font-mono text-red-500 uppercase tracking-wider mb-1">Definition</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{c.definition}</p>
+          </div>
+          {/* Methodology */}
+          <div>
+            <p className="text-[10px] font-mono text-red-500 uppercase tracking-wider mb-1.5">Methodology</p>
+            <ul className="space-y-1">
+              {c.methodology.map((m, i) => (
+                <li key={i} className="text-xs text-muted-foreground leading-relaxed flex gap-2">
+                  <span className="text-amber-500/70 shrink-0">›</span><span>{m}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* Metrics */}
+          <div>
+            <p className="text-[10px] font-mono text-red-500 uppercase tracking-wider mb-1.5">Metrics</p>
+            <div className="overflow-x-auto rounded border border-border">
+              <table className="w-full text-xs">
+                <tbody>
+                  {c.metrics.map((mt, i) => (
+                    <tr key={i} className="border-b border-border/50 last:border-0">
+                      <td className="py-1.5 px-3 font-mono text-foreground align-top whitespace-nowrap">{mt.name}</td>
+                      <td className="py-1.5 px-3 font-mono text-cyan-600 dark:text-cyan-400 align-top whitespace-nowrap">{mt.unit ?? ''}</td>
+                      <td className="py-1.5 px-3 text-muted-foreground align-top">{mt.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {/* Sources */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-muted-foreground" />
+            {c.sources.map((s) => (
+              <span key={s} className="px-2 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground">{s}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ────────────── Metrics & Methodology Reference ────────────── */
+function MetricsReference() {
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+
+  const filtered = ANALYTICS_RESOURCES
+    .map((cat) => ({
+      ...cat,
+      components: q
+        ? cat.components.filter(
+            (c) =>
+              c.name.toLowerCase().includes(q) ||
+              c.summary.toLowerCase().includes(q) ||
+              c.definition.toLowerCase().includes(q) ||
+              c.metrics.some((m) => m.name.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)) ||
+              c.methodology.some((m) => m.toLowerCase().includes(q))
+          )
+        : cat.components,
+    }))
+    .filter((cat) => cat.components.length > 0)
+
+  return (
+    <section id="reference" className="py-16 border-b border-border">
+      <div className="container mx-auto px-4 max-w-5xl">
+        <div className="flex items-center gap-3 mb-3">
+          <Sigma className="w-5 h-5 text-amber-500" />
+          <h2 className="text-xl font-bold text-foreground font-mono">METRICS &amp; METHODOLOGY</h2>
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mb-6">
+          Canonical definitions for every analytics component — what each metric means, how it is derived, and the
+          underlying data source. All figures are computed from real Ghana Statistical Service (GSS), Bank of Ghana
+          (BoG) and PROPMETRIK transaction data; where a source is unavailable a documented re-normalisation is
+          applied — nothing is seeded or fabricated.
+        </p>
+
+        {/* Route groups under the base URL */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+          {ANALYTICS_API_GROUPS.map((g) => (
+            <div key={g.base} className="bg-card/60 border border-border rounded-lg p-4">
+              <p className="text-xs font-semibold text-foreground">{g.label}</p>
+              <code className="block text-[11px] font-mono text-amber-600 dark:text-amber-400 mt-1 break-all">{API_HOST_DISPLAY}{g.base}</code>
+              <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">{g.note}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search metrics, components, methodologies..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-xs font-mono text-foreground placeholder-zinc-600 focus:border-amber-500 focus:outline-none transition-colors"
+          />
+        </div>
+
+        {/* Catalog */}
+        <div className="space-y-5">
+          {filtered.map((cat) => (
+            <div key={cat.id} className="bg-card/60 border border-border rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <h3 className="text-sm font-bold text-foreground font-mono truncate">{cat.name.toUpperCase()}</h3>
+                  <span className="text-[10px] text-muted-foreground hidden md:block truncate">{cat.blurb}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground font-mono shrink-0">{cat.components.length}</span>
+              </div>
+              <div>
+                {cat.components.map((c) => <ResourceCard key={c.id} c={c} />)}
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-16 bg-card border border-border rounded-lg">
+              <Search className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground font-mono">No components match &quot;{query}&quot;</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ────────────── Real-time (WebSocket) ────────────── */
+function StreamingSection() {
+  const wsHost = ANALYTICS_WS_URL.replace(/^wss?:\/\//, '')
+  return (
+    <section id="streaming" className="py-16 border-b border-border">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <div className="flex items-center gap-3 mb-3">
+          <Activity className="w-5 h-5 text-cyan-500" />
+          <h2 className="text-xl font-bold text-foreground font-mono">REAL-TIME (WEBSOCKET)</h2>
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mb-6">
+          Subscribe to live channels for push updates as data refreshes. Authenticate with the same API key —
+          via the <code className="font-mono">propmetrik-api-key</code> subprotocol (browsers) or an
+          <code className="font-mono"> Authorization: Bearer</code> header (servers). On subscribe you get a
+          <code className="font-mono"> snapshot</code>, then <code className="font-mono">update</code> frames.
+        </p>
+
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-4 py-3 mb-6">
+          <Server className="w-4 h-4 text-cyan-500 shrink-0" />
+          <code className="text-sm font-mono text-cyan-600 dark:text-cyan-400 select-all flex-1 break-all">{wsHost}</code>
+          <CopyBtn text={ANALYTICS_WS_URL} />
+        </div>
+
+        <div className="mb-6">
+          <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">Channels</p>
+          <div className="border border-border rounded-lg overflow-hidden">
+            {ANALYTICS_STREAM_CHANNELS.map((c) => (
+              <div key={c.channel} className="flex items-start gap-3 px-4 py-2.5 border-b border-border/50 last:border-0">
+                <code className="text-xs font-mono text-amber-600 dark:text-amber-400 shrink-0 w-64 truncate">{c.channel}</code>
+                <span className="text-xs text-muted-foreground flex-1">{c.description}</span>
+                <span className="text-[10px] font-mono text-muted-foreground shrink-0">{c.product}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          {ANALYTICS_STREAM_EXAMPLES.map((ex) => (
+            <CodeExample key={ex.lang} lang={ex.lang} code={ex.code} />
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -206,6 +414,12 @@ export default function PublicApiDocsPage() {
                 Get API Key <ArrowRight className="w-4 h-4" />
               </Link>
               <a
+                href="#reference"
+                className="inline-flex items-center gap-2 px-6 py-2.5 border border-border hover:border-zinc-500 text-muted-foreground text-sm rounded transition-colors"
+              >
+                <Sigma className="w-4 h-4" /> Metrics &amp; Methodology
+              </a>
+              <a
                 href="#endpoints"
                 className="inline-flex items-center gap-2 px-6 py-2.5 border border-border hover:border-zinc-500 text-muted-foreground text-sm rounded transition-colors"
               >
@@ -217,7 +431,7 @@ export default function PublicApiDocsPage() {
           {/* ──── Quick-start stats ──── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
             {[
-              { icon: Server, label: 'Base URL', value: 'api.propmetrik.com/v1', color: 'text-green-600 dark:text-green-400' },
+              { icon: Server, label: 'Base URL', value: API_HOST_DISPLAY, color: 'text-green-600 dark:text-green-400' },
               { icon: Shield, label: 'Auth', value: 'Bearer Token', color: 'text-amber-600 dark:text-amber-400' },
               { icon: Zap, label: 'Endpoints', value: String(totalEndpoints || '70+'), color: 'text-cyan-600 dark:text-cyan-400' },
               { icon: Code, label: 'Format', value: 'JSON (UTF-8)', color: 'text-purple-600 dark:text-purple-400' },
@@ -285,7 +499,7 @@ export default function PublicApiDocsPage() {
               lang="cURL"
               code={`curl -s \\
   -H "Authorization: Bearer pmk_your_key" \\
-  https://api.propmetrik.com/v1/analytics/market/price-index \\
+  ${ANALYTICS_API_BASE_URL}/analytics/market/price-index \\
   | jq .`}
             />
             <CodeExample
@@ -293,7 +507,7 @@ export default function PublicApiDocsPage() {
               code={`import requests
 
 r = requests.get(
-    "https://api.propmetrik.com/v1/analytics/market/price-index",
+    "${ANALYTICS_API_BASE_URL}/analytics/market/price-index",
     headers={"Authorization": "Bearer pmk_your_key"}
 )
 data = r.json()["data"]
@@ -302,7 +516,7 @@ print(f"Property Index: {data['overall_index']}")`}
             <CodeExample
               lang="JavaScript / Node.js"
               code={`const res = await fetch(
-  "https://api.propmetrik.com/v1/analytics/market/price-index",
+  "${ANALYTICS_API_BASE_URL}/analytics/market/price-index",
   { headers: { Authorization: "Bearer pmk_your_key" } }
 );
 const { data } = await res.json();
@@ -311,7 +525,7 @@ console.log("Property Index:", data.overall_index);`}
             <CodeExample
               lang="Go"
               code={`req, _ := http.NewRequest("GET",
-  "https://api.propmetrik.com/v1/analytics/market/price-index", nil)
+  "${ANALYTICS_API_BASE_URL}/analytics/market/price-index", nil)
 req.Header.Set("Authorization", "Bearer pmk_your_key")
 resp, _ := http.DefaultClient.Do(req)
 defer resp.Body.Close()
@@ -320,6 +534,12 @@ json.NewDecoder(resp.Body).Decode(&result)`}
           </div>
         </div>
       </section>
+
+      {/* ──────── Metrics & Methodology Reference ──────── */}
+      <MetricsReference />
+
+      {/* ──────── Real-time (WebSocket) ──────── */}
+      <StreamingSection />
 
       {/* ──────── Endpoint Catalog ──────── */}
       <section id="endpoints" className="py-16">

@@ -35,6 +35,7 @@ interface InvestmentOpportunity {
     macro_risk_score?: number | null   // Slice 1
     ccri_risk_score?: number | null    // Slice 2
     mpi_risk_score?: number | null     // Slice 3
+    migration_active?: boolean         // Slice 4: absorption includes GLSS7 migration inflow
   }
   cap_rate: number
   avg_price_growth_yoy: number
@@ -52,6 +53,9 @@ interface InvestmentOpportunity {
   npl_ratio?: number | null
   lending_rate?: number | null
   incomplete_residential_pct?: number | null
+  // GSS GLSS7 migration context (Slice 4)
+  migration_inflow_pct?: number | null
+  migration_active?: boolean
 }
 
 interface RegionalComparison {
@@ -200,11 +204,14 @@ function RecommendationBadge({ rec }: { rec: string }) {
   return <span className={cn('font-mono text-[10px] font-bold', color)}>{rec.toUpperCase()}</span>
 }
 
-function FactorBar({ label, value, max = 20 }: { label: string; value: number; max?: number }) {
+function FactorBar({ label, value, max = 20, title, note }: { label: string; value: number; max?: number; title?: string; note?: string }) {
   const pct = Math.min((value / max) * 100, 100)
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-20 font-mono text-[9px] text-muted-foreground uppercase">{label}</div>
+    <div className="flex items-center gap-2" title={title}>
+      <div className="w-20 font-mono text-[9px] text-muted-foreground uppercase flex items-center gap-0.5">
+        {label}
+        {note && <span className="text-amber-500" title={title}>{note}</span>}
+      </div>
       <div className="flex-1 h-2 bg-muted rounded">
         <div className="h-full bg-amber-500/80 rounded" style={{ width: `${pct}%` }} />
       </div>
@@ -454,6 +461,14 @@ export default function InvestmentOpportunitiesPage() {
                     <FactorBar
                       label="Absorption"
                       value={o.opportunity_factors.absorption_score}
+                      note={o.opportunity_factors.migration_active ? '⇄' : undefined}
+                      title={
+                        o.opportunity_factors.migration_active
+                          ? `Includes GLSS7 inter-regional migration signal${
+                              o.migration_inflow_pct != null ? ` (in-migration ${o.migration_inflow_pct.toFixed(1)}%)` : ''
+                            }`
+                          : undefined
+                      }
                     />
                     <FactorBar
                       label="Risk"

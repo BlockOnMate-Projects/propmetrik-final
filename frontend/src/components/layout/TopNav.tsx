@@ -11,12 +11,13 @@ import { useUpgradeGate } from '@/components/UpgradeGate'
 import { NotificationDropdown } from '@/components/layout/NotificationDropdown'
 import { authedFetch } from '@/lib/authed-fetch'
 
-const navigation: { name: string; href: string; key: string; fKey: string; tabKey: string; badge?: string; adminOnly?: boolean }[] = [
+const navigation: { name: string; href: string; key: string; fKey: string; tabKey: string; badge?: string; adminOnly?: boolean; staffOnly?: boolean }[] = [
   { name: 'OVERVIEW', href: '/dashboard', key: 'F1', fKey: 'F1', tabKey: 'overview' },
   { name: 'VALUATIONS', href: '/dashboard/valuations', key: 'F2', fKey: 'F2', tabKey: 'valuations' },
   { name: 'DEALS', href: '/dashboard/deals', key: 'F3', fKey: 'F3', tabKey: 'deals' },
   { name: 'PROJECTS', href: '/dashboard/projects', key: 'F4', fKey: 'F4', tabKey: 'projects' },
-  { name: 'ANALYTICS', href: '/dashboard/analytics', key: 'F5', fKey: 'F5', tabKey: 'analytics' },
+  // Analytics UI is a platform-staff tool; subscribers consume analytics via the API only.
+  { name: 'ANALYTICS', href: '/dashboard/analytics', key: 'F5', fKey: 'F5', tabKey: 'analytics', staffOnly: true },
   { name: 'MANAGEMENT', href: '/dashboard/property-management', key: 'F6', fKey: 'F6', tabKey: 'property-management' },
   // E-SIGN removed as a standalone shared-service surface — signing is initiated in-context
   // from each domain (lease, valuation, project, deal). The /dashboard/e-sign/* pages remain
@@ -198,6 +199,11 @@ function UserMenu({
               icon={<CreditCardIcon />}
               onClick={() => { setOpen(false); router.push('/dashboard/billing') }}
             />
+            <MenuItem
+              label="DEVELOPER PORTAL"
+              icon={<TerminalIcon />}
+              onClick={() => { setOpen(false); router.push('/developers') }}
+            />
             {admin && (
               <MenuItem
                 label="ADMIN PANEL"
@@ -333,6 +339,11 @@ const CreditCardIcon = () => (
     <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
   </svg>
 )
+const TerminalIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+    <polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" />
+  </svg>
+)
 const LogoutIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
@@ -422,10 +433,10 @@ export function TopNav() {
   const visibleNavigation = mounted
     ? (sessionReady
       ? (userType === 'customer'
-        ? buildCustomerNavigation(navigation, subscribedServices).filter(item => !item.adminOnly)
+        ? buildCustomerNavigation(navigation, subscribedServices).filter(item => !item.adminOnly && !item.staffOnly)
         : navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey) && (!item.adminOnly || userType === 'staff')))
-      : navigation.filter(item => !item.adminOnly))
-    : navigation.filter(item => !item.adminOnly)
+      : navigation.filter(item => !item.adminOnly && !item.staffOnly))
+    : navigation.filter(item => !item.adminOnly && !item.staffOnly)
 
   // Global F-key shortcuts (F1–F8)
   useEffect(() => {

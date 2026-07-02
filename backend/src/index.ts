@@ -18,6 +18,7 @@ import { requireIngestionAuth } from './middleware/ingestionAuth';
 import { authenticate, optionalAuth, requireAdmin } from './middleware/auth';
 import { requirePMAccess } from './middleware/pmAuth';
 import { requireServiceAccess } from './middleware/serviceAccess';
+import { apiAccess } from './middleware/analyticsApiAccess';
 import { initSentry, installSentryErrorHandler, flushSentry } from './config/sentry';
 import valuationClientsRouter from './routes/valuation-clients';
 
@@ -75,6 +76,7 @@ import eSignRoutes from './routes/eSign';
 import valuationOrgRoutes from './routes/valuation-org';
 import valuationInvoiceRoutes from './routes/valuation-invoices';
 import enterpriseRoutes from './routes/enterprise';
+import developerPortalRoutes from './routes/developerPortal';
 import subscriptionRoutes from './routes/subscription';
 import commercializationRoutes from './routes/commercialization';
 import userProfileRoutes from './routes/user-profile';
@@ -104,6 +106,7 @@ import invitationRoutes from './routes/invitations';
 import rbacRoutes from './routes/rbac';
 import serviceTeamRoutes from './routes/serviceTeam';
 import { workspaceWebSocketServer } from '../shared-services/workspace/WorkspaceWebSocketServer';
+import { analyticsStreamServer } from './services/analytics/analyticsStreamServer';
 import { initKobbyMonitor } from './jobs/kobbyAIMonitor';
 import { initWhatsAppDigest } from './jobs/whatsappDigest';
 import { initRentReminderJob } from './jobs/rentReminderJob';
@@ -528,18 +531,20 @@ app.use('/api/v1/realtime', authenticate, requirePMAccess, requireServiceAccess(
 app.use('/api/realtime', authenticate, requirePMAccess, requireServiceAccess('projects'), realtimeRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/calendar', authenticate, requirePMAccess, requireServiceAccess('projects'), calendarRoutes);
 app.use('/api/calendar', authenticate, requirePMAccess, requireServiceAccess('projects'), calendarRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/analytics', authenticate, requireServiceAccess('analytics'), analyticsRoutes);
-app.use('/api/analytics', authenticate, requireServiceAccess('analytics'), analyticsRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/analytics/ml', authenticate, requireServiceAccess('analytics'), mlAnalyticsRoutes);  // ML Analytics (Sections 1-4, 8.1-8.7)
-app.use('/api/analytics/ml', authenticate, requireServiceAccess('analytics'), mlAnalyticsRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/analytics/platform', authenticate, requireServiceAccess('analytics'), analyticsFoundationRoutes);  // Phase 1 Foundation (CCI, GHAI, Alerts)
-app.use('/api/analytics/platform', authenticate, requireServiceAccess('analytics'), analyticsFoundationRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/analytics/valuations', authenticate, requireServiceAccess('analytics'), valuationAnalyticsRoutes);  // Phase 2 Valuation Analytics
-app.use('/api/analytics/valuations', authenticate, requireServiceAccess('analytics'), valuationAnalyticsRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/analytics/market', authenticate, requireServiceAccess('market_intelligence'), marketIntelligenceRoutes);  // Phase 3 Market Intelligence
-app.use('/api/analytics/market', authenticate, requireServiceAccess('market_intelligence'), marketIntelligenceRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/analytics/management', authenticate, requireServiceAccess('analytics'), managementMetricsRoutes);  // Property Management Metrics
-app.use('/api/analytics/management', authenticate, requireServiceAccess('analytics'), managementMetricsRoutes);  // Also mount for frontend compatibility
+// Analytics API — dual auth: subscriber `pmk_` API keys OR internal Keycloak
+// session. `apiAccess(serviceKey)` handles both (see middleware/analyticsApiAccess).
+app.use('/api/v1/analytics', apiAccess('analytics'), analyticsRoutes);
+app.use('/api/analytics', apiAccess('analytics'), analyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/ml', apiAccess('analytics'), mlAnalyticsRoutes);  // ML Analytics (Sections 1-4, 8.1-8.7)
+app.use('/api/analytics/ml', apiAccess('analytics'), mlAnalyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/platform', apiAccess('analytics'), analyticsFoundationRoutes);  // Phase 1 Foundation (CCI, GHAI, Alerts)
+app.use('/api/analytics/platform', apiAccess('analytics'), analyticsFoundationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/valuations', apiAccess('analytics'), valuationAnalyticsRoutes);  // Phase 2 Valuation Analytics
+app.use('/api/analytics/valuations', apiAccess('analytics'), valuationAnalyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/market', apiAccess('market_intelligence'), marketIntelligenceRoutes);  // Phase 3 Market Intelligence
+app.use('/api/analytics/market', apiAccess('market_intelligence'), marketIntelligenceRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/management', apiAccess('analytics'), managementMetricsRoutes);  // Property Management Metrics
+app.use('/api/analytics/management', apiAccess('analytics'), managementMetricsRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/ticker', optionalAuth, tickerRoutes);
 app.use('/api/ticker', optionalAuth, tickerRoutes);
 app.use('/api/v1/budget', authenticate, requirePMAccess, requireServiceAccess('budget'), budgetRoutes);
@@ -580,6 +585,14 @@ app.use('/api/workspace', authenticate, workspaceRoutes);  // Also mount for fro
 app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);  // Also mount for frontend compatibility
 
+// Short-Stay analytics API — MUST be mounted BEFORE the broad `/api/v1` authenticate
+// catch-alls below, so API-key (pmk_) callers hit apiAccess('short_stay') first. When
+// it was mounted after them, the broad authenticate 401'd the key before apiAccess ran
+// (masked in dev by the auth bypass; a real 401 in production). Mirrors the analytics
+// mounts, which are already above the catch-alls.
+app.use('/api/v1/short-stay', apiAccess('short_stay'), shortStayRoutes);
+app.use('/api/short-stay', apiAccess('short_stay'), shortStayRoutes);  // Also mount for frontend compatibility
+
 // ── Catch-all /api/v1 routers (construction, governance, etc.) ───────────────
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), constructionRoutes); // Construction Ops (Site Diaries, Petty Cash, Market Prices)
 app.use('/api/v1/rfis', authenticate, requirePMAccess, requireServiceAccess('construction'), rfiRoutes);
@@ -602,11 +615,9 @@ app.use('/api/v1/site-diaries', authenticate, requirePMAccess, requireServiceAcc
 app.use('/api/site-diaries', authenticate, requirePMAccess, requireServiceAccess('construction'), siteDiaryRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('projects'), governanceRoutes);  // Governance: milestone-frameworks, framework-phases, milestone-templates
 
-// Critical Data Gaps: Litigation Risk & Short-Stay Metrics
+// Critical Data Gap: Litigation Risk
 app.use('/api/v1/litigation', authenticate, requireServiceAccess('litigation'), litigationRoutes);
 app.use('/api/litigation', authenticate, requireServiceAccess('litigation'), litigationRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/short-stay', authenticate, requireServiceAccess('short_stay'), shortStayRoutes);
-app.use('/api/short-stay', authenticate, requireServiceAccess('short_stay'), shortStayRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/rics-compliance', authenticate, requireServiceAccess('valuations'), ricsComplianceRoutes);
 app.use('/api/rics-compliance', authenticate, requireServiceAccess('valuations'), ricsComplianceRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/flood-risk', authenticate, requireServiceAccess('valuations'), floodRiskRoutes);
@@ -759,6 +770,11 @@ app.use('/api/valuation-org', valuationOrgRoutes);  // Also mount for frontend c
 app.use('/api/v1/enterprise', enterpriseRoutes);
 app.use('/api/enterprise', enterpriseRoutes);  // Also mount for frontend compatibility
 
+// Developer Portal (subscriber /developers console: keys, usage, entitlements)
+// Session-authenticated + org-scoped; requires an active analytics API product.
+app.use('/api/v1/developers', authenticate, developerPortalRoutes);
+app.use('/api/developers', authenticate, developerPortalRoutes);  // Also mount for frontend compatibility
+
 
 // Valuation Clients Routes
 app.use('/api/v1/valuation-clients', authenticate, valuationClientsRouter);
@@ -802,6 +818,9 @@ app.use(errorHandler);
 // Graceful shutdown
 async function shutdown(signal: string): Promise<void> {
   logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Close analytics WebSocket clients + Redis subscriber before the HTTP server.
+  await analyticsStreamServer.shutdown().catch(() => {});
 
   // Close the HTTP server first to release the port immediately
   await new Promise<void>((resolve) => {
@@ -1005,6 +1024,8 @@ const server = app.listen(config.port, async () => {
   initAnalyticsRefreshJob();
   // Attach WebSocket server for workspace real-time collaboration
   workspaceWebSocketServer.attach(server);
+  // Attach the subscriber analytics streaming gateway (/ws/analytics, pmk_ keys)
+  analyticsStreamServer.attach(server);
   logger.info(`Propmetrik API server running on port ${config.port}`, {
     env: config.env,
     version: process.env.npm_package_version || '1.0.0',

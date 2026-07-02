@@ -27,6 +27,11 @@ import { analyticsScheduler } from '../services/analytics/analyticsScheduler';
 import { gssPhcPopulationService } from '../services/data-hub/scrapers/gssPhcPopulationService';
 import { gssPhcEmploymentService } from '../services/data-hub/scrapers/gssPhcEmploymentService';
 import { gssPhcPovertyService } from '../services/data-hub/scrapers/gssPhcPovertyService';
+import { gssGlss7Service } from '../services/data-hub/scrapers/gssGlss7Service';
+import { infrastructureQualityService } from '../services/analytics/infrastructureQualityService';
+import { housingDeficitService } from '../services/analytics/housingDeficitService';
+import { rentalAnalyticsService } from '../services/analytics/rentalAnalyticsService';
+import { regionalCompositesService } from '../services/analytics/regionalCompositesService';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -337,6 +342,19 @@ router.get(
 );
 
 /**
+ * GET /alerts/macro-status
+ * On-demand status of the 5 GSS macro alert rules (Slice 5 §E-16) — current
+ * metric value + breach flag. Powers the macro-alert cards on /analytics/construction.
+ */
+router.get(
+  '/alerts/macro-status',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await alertService.getMacroAlertStatus();
+    res.json({ success: true, data });
+  }),
+);
+
+/**
  * GET /alerts
  * List alerts with filtering.
  * Query: ?status=active&severity=critical&category=construction&region=greater_accra&limit=50&offset=0
@@ -555,12 +573,13 @@ router.get(
 router.get(
   '/demand',
   asyncHandler(async (_req: Request, res: Response) => {
-    const [rhds, projections, formalEmp, unemployment, mpi] = await Promise.all([
+    const [rhds, projections, formalEmp, unemployment, mpi, migration] = await Promise.all([
       housingDemandScoreService.getScores(),
       gssPhcPopulationService.getProjectionsByRegion(2021, 2030),
       gssPhcEmploymentService.getFormalEmploymentByRegion(),
       gssPhcEmploymentService.getUnemploymentByRegion(),
       gssPhcPovertyService.getMpiByRegion(),
+      gssGlss7Service.getMigrationMatrix(),
     ]);
 
     // Population cohort chart: current vs 2030 working-age (20–40) per region.
@@ -585,7 +604,113 @@ router.get(
 
     const poverty = Object.entries(mpi).map(([region, m]) => ({ region, ...m }));
 
-    res.json({ success: true, data: { rhds, population, employment, poverty } });
+    res.json({ success: true, data: { rhds, population, employment, poverty, migration } });
+  }),
+);
+
+/**
+ * GET /demand/migration
+ * GLSS7 inter-regional migration flow matrix (Slice 4) — origin × destination
+ * grid for the /analytics/demand migration panel.
+ */
+router.get(
+  '/demand/migration',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await gssGlss7Service.getMigrationMatrix();
+    res.json({ success: true, data });
+  }),
+);
+
+// ============================================================================
+// SECTION: Slice 5 — Infrastructure (NIQS), Housing Deficit (HDEM),
+//          Rental Affordability (RABM), Mortgage Demand (MDPI)
+// ============================================================================
+
+/**
+ * GET /infrastructure/scores
+ * NIQS (Neighbourhood Infrastructure Quality Score) per region + the AVM-premium
+ * scatter context (NIQS vs. median price-per-sqm).
+ */
+router.get(
+  '/infrastructure/scores',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const [scores, avmContext] = await Promise.all([
+      infrastructureQualityService.getDistrictScores(),
+      infrastructureQualityService.getAvmPremiumContext(),
+    ]);
+    res.json({ success: true, data: { scores, avm_context: avmContext } });
+  }),
+);
+
+/** POST /infrastructure/recompute — recompute + persist NIQS. */
+router.post(
+  '/infrastructure/recompute',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await infrastructureQualityService.computeAndStore();
+    res.json({ success: true, data: { recomputed: true, regions: data.length } });
+  }),
+);
+
+/**
+ * GET /demand/deficit
+ * HDEM (Housing Deficit Estimation Model) per region — projected 2030 household
+ * demand vs. effective stock.
+ */
+router.get(
+  '/demand/deficit',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await housingDeficitService.getEstimates();
+    res.json({ success: true, data });
+  }),
+);
+
+/**
+ * GET /demand/mortgage-potential
+ * MDPI (Mortgage Demand Potential Index) per region — pool of mortgage-eligible
+ * households. Optional ?region=.
+ */
+router.get(
+  '/demand/mortgage-potential',
+  asyncHandler(async (req: Request, res: Response) => {
+    const region = (req.query.region as string) || undefined;
+    const data = await ghaiService.getMortgageDemandPotential(region);
+    res.json({ success: true, data });
+  }),
+);
+
+/**
+ * GET /rentals/affordability-bands
+ * RABM (Rental Affordability Band Model) — % of households who can afford each
+ * GHS rent band per region. Optional ?region=.
+ */
+router.get(
+  '/rentals/affordability-bands',
+  asyncHandler(async (req: Request, res: Response) => {
+    const region = (req.query.region as string) || undefined;
+    const data = await rentalAnalyticsService.getRentalAffordabilityBands(region);
+    res.json({ success: true, data });
+  }),
+);
+
+/**
+ * GET /composites
+ * Regional composite indices (§6.4 DPMDI market depth, §6.8 PTMPI proptech,
+ * §6.10 ESSI shock sensitivity, §7.2 RICI investment climate) per region.
+ */
+router.get(
+  '/composites',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await regionalCompositesService.getAll();
+    res.json({ success: true, data });
+  }),
+);
+
+/** POST /composites/recompute — recompute + persist all four regional composites. */
+router.post(
+  '/composites/recompute',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const counts = await regionalCompositesService.computeAndStoreAll();
+    res.json({ success: true, data: { recomputed: true, ...counts } });
   }),
 );
 

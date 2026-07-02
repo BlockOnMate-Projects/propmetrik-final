@@ -82,6 +82,16 @@ interface InvestmentOpportunity {
   avg_adr_usd?: number
 }
 
+interface TourismContext {
+  region: string | null
+  tourism_demand_type: 'business' | 'leisure' | 'mixed' | null
+  domestic_overnight_visitors: number | null
+  visitor_share_pct: number | null
+  mieg_services_yoy: number | null
+  revpar_mieg_correlation: number | null
+  correlation_months: number
+}
+
 // =====================================================
 // API
 // =====================================================
@@ -204,6 +214,20 @@ function OccupancyBar({ rate }: { rate: number }) {
   )
 }
 
+/** Tourism-demand-type pill (Slice 4): business=navy, leisure=green, mixed=amber. */
+function TourismTypeBadge({ type }: { type: 'business' | 'leisure' | 'mixed' }) {
+  const style = {
+    business: 'text-blue-700 dark:text-blue-300 bg-blue-500/10 border-blue-500/30',
+    leisure: 'text-green-700 dark:text-green-400 bg-green-500/10 border-green-500/30',
+    mixed: 'text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
+  }[type]
+  return (
+    <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded uppercase tracking-wider', style)}>
+      {type}-driven
+    </span>
+  )
+}
+
 // =====================================================
 // PAGE COMPONENT
 // =====================================================
@@ -213,6 +237,7 @@ export default function ShortStayAnalyticsPage() {
   const [benchmarks, setBenchmarks] = useState<NeighborhoodBenchmark[]>([])
   const [trends, setTrends] = useState<OccupancyTrend[]>([])
   const [opportunities, setOpportunities] = useState<InvestmentOpportunity[]>([])
+  const [tourism, setTourism] = useState<TourismContext | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedCity, setSelectedCity] = useState('Accra')
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('Osu')
@@ -223,17 +248,63 @@ export default function ShortStayAnalyticsPage() {
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
-    const [metricsData, benchmarkData, trendData, oppoData] = await Promise.all([
-      fetchData<ShortStayMetric[]>(`/metrics?city=${selectedCity}&limit=24`, signal),
-      fetchData<NeighborhoodBenchmark[]>(`/benchmarks?city=${selectedCity}`, signal),
-      fetchData<OccupancyTrend[]>(`/trends/${encodeURIComponent(selectedNeighborhood)}?months=12`, signal),
-      fetchData<InvestmentOpportunity[]>(`/investment-opportunities?city=${selectedCity}`, signal),
+    const [rawMetrics, rawBench, rawTrend, rawOppo, tourismData] = await Promise.all([
+      fetchData<any[]>(`/metrics?city=${selectedCity}&limit=24`, signal),
+      fetchData<any[]>(`/benchmarks?city=${selectedCity}`, signal),
+      fetchData<any[]>(`/trends/${encodeURIComponent(selectedNeighborhood)}?months=12`, signal),
+      fetchData<any[]>(`/investment-opportunities?city=${selectedCity}`, signal),
+      fetchData<TourismContext>(`/tourism-context?city=${selectedCity}`, signal),
     ])
     if (signal?.aborted) return
-    setMetrics(metricsData || [])
-    setBenchmarks(benchmarkData || [])
-    setTrends(trendData || [])
-    setOpportunities(oppoData || [])
+
+    // The API returns avg_daily_rate / avg_revpar / avg_occupancy_rate (0–1 fraction) /
+    // listing_count; normalise to the shape this page renders (adr_usd / revpar_usd /
+    // occupancy_rate as a 0–100 percent / total_listings). Without this the fields read
+    // undefined → 0 everywhere.
+    const pct = (v: any) => num(v) * 100
+    const metricsData: ShortStayMetric[] = (rawMetrics || []).map((m: any) => ({
+      platform: m.platform,
+      neighborhood: m.neighborhood,
+      city: m.city,
+      property_type: m.property_type,
+      metric_month: m.month ?? m.metric_month,
+      total_listings: num(m.listing_count ?? m.total_listings),
+      booked_nights: num(m.booked_nights),
+      total_nights: num(m.total_nights),
+      occupancy_rate: pct(m.avg_occupancy_rate ?? m.occupancy_rate),
+      adr_usd: num(m.avg_daily_rate ?? m.adr_usd),
+      revpar_usd: num(m.avg_revpar ?? m.revpar_usd),
+      min_price_usd: num(m.min_price_usd),
+      max_price_usd: num(m.max_price_usd),
+      median_price_usd: num(m.median_price_usd),
+    }))
+    const benchmarkData: NeighborhoodBenchmark[] = (rawBench || []).map((b: any) => ({
+      neighborhood: b.neighborhood,
+      avg_occupancy_rate: pct(b.avg_occupancy_rate),
+      avg_adr_usd: num(b.avg_daily_rate ?? b.avg_adr_usd),
+      avg_revpar_usd: num(b.avg_revpar ?? b.avg_revpar_usd),
+      total_active_listings: num(b.listing_count ?? b.total_active_listings),
+    }))
+    const trendData: OccupancyTrend[] = (rawTrend || []).map((t: any) => ({
+      month: t.month ?? t.metric_month,
+      occupancy_rate: pct(t.avg_occupancy_rate ?? t.occupancy_rate),
+      adr_usd: num(t.avg_daily_rate ?? t.adr_usd),
+      revpar_usd: num(t.avg_revpar ?? t.revpar_usd),
+    })).reverse() // API returns DESC; chart wants chronological
+    const oppoData: InvestmentOpportunity[] = (rawOppo || []).map((o: any) => ({
+      neighborhood: o.neighborhood,
+      avg_revpar_usd: num(o.avg_revpar ?? o.avg_revpar_usd),
+      active_listings: num(o.listing_count ?? o.active_listings),
+      avg_occupancy_rate: pct(o.avg_occupancy_rate),
+      avg_adr_usd: num(o.avg_daily_rate ?? o.avg_adr_usd),
+      investment_grade: o.investment_grade,
+    }))
+
+    setMetrics(metricsData)
+    setBenchmarks(benchmarkData)
+    setTrends(trendData)
+    setOpportunities(oppoData)
+    setTourism(tourismData || null)
     setLoading(false)
   }, [selectedCity, selectedNeighborhood])
 
@@ -266,21 +337,21 @@ export default function ShortStayAnalyticsPage() {
     )
   }
 
-  // Compute aggregate KPIs
+  // Compute aggregate KPIs. Price metrics (ADR/RevPAR/median) average only over
+  // months that actually have priced nights (adr > 0) — including empty months as
+  // $0 would wrongly crush the headline rate. Occupancy averages all months.
   const latestMetrics = metrics.length > 0 ? metrics : []
-  const avgRevpar = latestMetrics.length > 0
-    ? latestMetrics.reduce((s, m) => s + num(m.revpar_usd), 0) / latestMetrics.length
-    : 0
-  const avgAdr = latestMetrics.length > 0
-    ? latestMetrics.reduce((s, m) => s + num(m.adr_usd), 0) / latestMetrics.length
-    : 0
-  const avgOccupancy = latestMetrics.length > 0
-    ? latestMetrics.reduce((s, m) => s + num(m.occupancy_rate), 0) / latestMetrics.length
-    : 0
-  const totalListings = latestMetrics.reduce((s, m) => s + num(m.total_listings), 0)
-  const avgMedianPrice = latestMetrics.length > 0
-    ? latestMetrics.reduce((s, m) => s + num(m.median_price_usd), 0) / latestMetrics.length
-    : 0
+  const mean = (vals: number[]) => (vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0)
+  const pricedRevpar = latestMetrics.map(m => num(m.revpar_usd)).filter(v => v > 0)
+  const pricedAdr = latestMetrics.map(m => num(m.adr_usd)).filter(v => v > 0)
+  const pricedMedian = latestMetrics.map(m => num(m.median_price_usd)).filter(v => v > 0)
+  const avgRevpar = mean(pricedRevpar)
+  const avgAdr = mean(pricedAdr)
+  const avgOccupancy = mean(latestMetrics.map(m => num(m.occupancy_rate)))
+  // Total active listings = max distinct listings observed in any month (not a sum
+  // across months, which would multiply-count the same listings).
+  const totalListings = latestMetrics.reduce((mx, m) => Math.max(mx, num(m.total_listings)), 0)
+  const avgMedianPrice = mean(pricedMedian)
 
   const occupancyTrendPoints = trends.map(t => num(t.occupancy_rate))
   const adrTrendPoints = trends.map(t => num(t.adr_usd))
@@ -297,6 +368,18 @@ export default function ShortStayAnalyticsPage() {
           <p className="font-mono text-[10px] text-muted-foreground">
             RevPAR · ADR · Occupancy · Investment Arbitrage — AirDNA-style Insights — Section 9.2
           </p>
+          {tourism?.tourism_demand_type && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <TourismTypeBadge type={tourism.tourism_demand_type} />
+              {tourism.visitor_share_pct !== null && (
+                <span className="font-mono text-[9px] text-muted-foreground">
+                  {tourism.visitor_share_pct.toFixed(1)}% of national domestic overnight tourism
+                  {tourism.domestic_overnight_visitors !== null &&
+                    ` (${(tourism.domestic_overnight_visitors / 1e6).toFixed(2)}M visitors, GLSS7)`}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {/* City Selector */}
@@ -381,11 +464,11 @@ export default function ShortStayAnalyticsPage() {
         <Panel title="PRICE RANGE">
           <MetricCard
             label="MIN — MAX"
-            value={
-              latestMetrics.length > 0
-                ? `$${Math.min(...latestMetrics.map(m => num(m.min_price_usd)))}–$${Math.max(...latestMetrics.map(m => num(m.max_price_usd)))}`
-                : '—'
-            }
+            value={(() => {
+              const mins = latestMetrics.map(m => num(m.min_price_usd)).filter(v => v > 0)
+              const maxs = latestMetrics.map(m => num(m.max_price_usd)).filter(v => v > 0)
+              return mins.length && maxs.length ? `$${Math.min(...mins)}–$${Math.max(...maxs)}` : '—'
+            })()}
             subtext="USD / NIGHT"
             icon={Activity}
             color="text-cyan-600 dark:text-cyan-400"
@@ -517,6 +600,18 @@ export default function ShortStayAnalyticsPage() {
                   </div>
                 </div>
               </div>
+              {/* MIEG Services macro context (Slice 4) */}
+              {tourism?.mieg_services_yoy !== null && tourism?.mieg_services_yoy !== undefined && (
+                <div className="mt-2 pt-2 border-t border-border font-mono text-[9px] text-muted-foreground leading-relaxed">
+                  Macro context: MIEG Services sub-index{' '}
+                  <span className={cn(tourism.mieg_services_yoy >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+                    {tourism.mieg_services_yoy >= 0 ? '+' : ''}{tourism.mieg_services_yoy.toFixed(1)}% YoY
+                  </span>
+                  {tourism.revpar_mieg_correlation !== null
+                    ? ` · RevPAR ↔ Services correlation r=${tourism.revpar_mieg_correlation.toFixed(2)} (${tourism.correlation_months} mo)`
+                    : ` · RevPAR↔Services correlation pending (needs ≥6 overlapping months; ${tourism.correlation_months} available)`}
+                </div>
+              )}
             </div>
           ) : (
             <div className="font-mono text-[10px] text-muted-foreground text-center py-8">

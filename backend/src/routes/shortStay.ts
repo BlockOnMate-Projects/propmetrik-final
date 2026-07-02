@@ -75,6 +75,23 @@ router.get('/benchmarks', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/short-stay/tourism-context
+ * Tourism-demand context for a city (Slice 4): GLSS7 demand-type classification
+ * (business/leisure/mixed) + visitor volume + latest MIEG Services YoY + a real
+ * RevPAR↔MIEG correlation (only when ≥6 overlapping months exist).
+ */
+router.get('/tourism-context', async (req, res) => {
+    try {
+        const { city = 'Accra' } = req.query;
+        const context = await shortStayMetricsService.getTourismContext(city as string);
+        res.json({ success: true, data: context });
+    } catch (error) {
+        logger.error('Failed to get tourism context', { error });
+        res.status(500).json({ success: false, error: 'Failed to retrieve tourism context' });
+    }
+});
+
+/**
  * GET /api/v1/short-stay/trends/:neighborhood
  * Get occupancy trends for a specific neighborhood
  */

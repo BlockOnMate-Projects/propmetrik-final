@@ -13,7 +13,6 @@ import {
     Target,
     Building2,
     TrendingUp,
-    Database,
 } from 'lucide-react';
 
 const fade = {
@@ -43,7 +42,6 @@ const story = [
 ];
 
 const pillars = [
-    { icon: <Database className="w-5 h-5" />, title: 'Data Hub', body: 'Verified transactions, cost indices, and hyperlocal market data.', href: '/services/data' },
     { icon: <TrendingUp className="w-5 h-5" />, title: 'Valuation Engine', body: 'AI automated and professional valuations with institutional-grade reporting.', href: '/services/valuation' },
     { icon: <Target className="w-5 h-5" />, title: 'Deal Management', body: 'CRM, digital closings, inventory tracking, and commissions.', href: '/services/deal-management' },
     { icon: <Lightbulb className="w-5 h-5" />, title: 'Market Intelligence', body: 'Research reports, trend analysis, and custom investment analytics.', href: '/services/market-intelligence' },

@@ -482,6 +482,54 @@ class AlertService {
   }
 
   /**
+   * On-demand status of the GSS macro alert rules (Slice 5 §E-16) — each rule's
+   * current metric value + whether it breaches its threshold. Used to render the
+   * macro-alert cards on /analytics/construction without depending on a cron.
+   */
+  async getMacroAlertStatus(): Promise<Array<{
+    name: string;
+    description: string | null;
+    severity: AlertSeverity;
+    metric_name: string;
+    condition: AlertCondition;
+    threshold_value: number;
+    metric_value: number | null;
+    breached: boolean;
+  }>> {
+    try {
+      const r = await pool.query(
+        `SELECT name, description, severity, metric_name, condition, threshold_value
+         FROM analytics_alert_rules WHERE category = 'macro' AND is_active = TRUE
+         ORDER BY (severity = 'critical') DESC, name`,
+      );
+      const out = [];
+      for (const rule of r.rows) {
+        const value = await this.fetchMacroMetricValue(rule.metric_name);
+        const breached = value !== null
+          ? this.evaluateCondition(value, null, {
+              condition: rule.condition,
+              threshold_value: parseFloat(rule.threshold_value),
+            } as AlertRule)
+          : false;
+        out.push({
+          name: rule.name,
+          description: rule.description,
+          severity: rule.severity,
+          metric_name: rule.metric_name,
+          condition: rule.condition,
+          threshold_value: parseFloat(rule.threshold_value),
+          metric_value: value,
+          breached,
+        });
+      }
+      return out;
+    } catch (err: any) {
+      logger.warn('getMacroAlertStatus failed', { error: err.message });
+      return [];
+    }
+  }
+
+  /**
    * Evaluate a single rule by fetching the relevant metric.
    */
   private async evaluateRule(rule: AlertRule): Promise<Alert | null> {
@@ -581,12 +629,86 @@ class AlertService {
           }
           return null;
         }
+        case 'macro': {
+          return this.fetchMacroMetricValue(rule.metric_name);
+        }
         default:
           return null;
       }
     } catch (err: any) {
       if (err.code === '42P01') return null;
       throw err;
+    }
+  }
+
+  /**
+   * Resolve the 5 GSS macro alert metrics (Slice 5 §E-16) against the live GSS
+   * tables. Change metrics (YoY / 3-month delta) are computed here so the rule
+   * evaluates with a plain gt/lt condition. Returns null when the source table is
+   * empty/absent (rule simply doesn't fire).
+   */
+  private async fetchMacroMetricValue(metricName: string): Promise<number | null> {
+    switch (metricName) {
+      case 'ppi_construction_yoy': {
+        const r = await pool.query(
+          `SELECT change_yoy_pct FROM gss_ppi_construction_series
+           WHERE series_code = 'Construction' AND change_yoy_pct IS NOT NULL
+           ORDER BY period_date DESC LIMIT 1`,
+        );
+        return r.rows.length ? parseFloat(r.rows[0].change_yoy_pct) : null;
+      }
+      case 'lending_rate_change_3m': {
+        // Latest average lending rate minus the value ~3 months earlier.
+        const r = await pool.query(
+          `WITH s AS (
+             SELECT period_date, rate_pct FROM gss_interest_rates_monthly
+             WHERE rate_type = 'Average lending rate' AND rate_pct IS NOT NULL
+             ORDER BY period_date DESC LIMIT 4
+           )
+           SELECT (SELECT rate_pct FROM s ORDER BY period_date DESC LIMIT 1)
+                - (SELECT rate_pct FROM s ORDER BY period_date ASC  LIMIT 1) AS delta`,
+        );
+        return r.rows.length && r.rows[0].delta !== null ? parseFloat(r.rows[0].delta) : null;
+      }
+      case 'npl_ratio': {
+        const r = await pool.query(
+          `SELECT value_pct FROM gss_financial_soundness_monthly
+           WHERE indicator = 'Non performing loan ratio' AND value_pct IS NOT NULL
+           ORDER BY period_date DESC LIMIT 1`,
+        );
+        return r.rows.length ? parseFloat(r.rows[0].value_pct) : null;
+      }
+      case 'mieg_total_yoy': {
+        const r = await pool.query(
+          `SELECT growth_yoy_pct FROM gss_mieg_monthly
+           WHERE variable = 'Total_MIEG' AND growth_yoy_pct IS NOT NULL
+           ORDER BY period_date DESC LIMIT 1`,
+        );
+        return r.rows.length ? parseFloat(r.rows[0].growth_yoy_pct) : null;
+      }
+      case 'construction_import_uvi_yoy': {
+        // YoY change in the mean construction-material import unit-value index.
+        const r = await pool.query(
+          `WITH monthly AS (
+             SELECT period_date, AVG(unit_value_index) AS uvi
+             FROM gss_construction_material_imports
+             WHERE unit_value_index IS NOT NULL
+             GROUP BY period_date
+           ),
+           latest AS (SELECT period_date, uvi FROM monthly ORDER BY period_date DESC LIMIT 1),
+           prior AS (
+             SELECT uvi FROM monthly
+             WHERE period_date <= (SELECT period_date FROM latest) - INTERVAL '1 year'
+             ORDER BY period_date DESC LIMIT 1
+           )
+           SELECT CASE WHEN (SELECT uvi FROM prior) > 0
+                       THEN ((SELECT uvi FROM latest) / (SELECT uvi FROM prior) - 1) * 100
+                       ELSE NULL END AS yoy`,
+        );
+        return r.rows.length && r.rows[0].yoy !== null ? parseFloat(r.rows[0].yoy) : null;
+      }
+      default:
+        return null;
     }
   }
 

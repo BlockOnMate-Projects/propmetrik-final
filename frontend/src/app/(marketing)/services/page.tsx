@@ -15,15 +15,6 @@ const services = [
         ]
     },
     {
-        category: "Data Intelligence",
-        href: "/services/data",
-        items: [
-            { title: "Market Comparables", desc: "Verified transaction data vs asking prices." },
-            { title: "Land Title Search", desc: "Integration with Lands Commission records (Phase 2)." },
-            { title: "Construction Cost Index", desc: "Real-time tracking of material and labor costs." }
-        ]
-    },
-    {
         category: "Deal Management",
         href: "/services/deal-management",
         items: [

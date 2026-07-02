@@ -47,6 +47,7 @@ export default function Footer() {
                             <li><Link href="/contact" className="hover:text-amber-500 transition-colors whitespace-nowrap">Contact</Link></li>
                             <li><Link href="/investors" className="hover:text-amber-500 transition-colors whitespace-nowrap">Investors</Link></li>
                             <li><Link href="/resources" className="hover:text-amber-500 transition-colors whitespace-nowrap">Resources</Link></li>
+                            <li><Link href="/api" className="hover:text-amber-500 transition-colors whitespace-nowrap">API Documentation</Link></li>
                         </ul>
                     </div>
 
@@ -76,7 +77,6 @@ export default function Footer() {
                         <h4 className="font-bold text-lg mb-6 whitespace-nowrap">Services</h4>
                         <ul className="space-y-4 text-muted-foreground">
                             <li><Link href="/services/valuation" className="hover:text-amber-500 transition-colors whitespace-nowrap">Valuation Engine</Link></li>
-                            <li><Link href="/services/data" className="hover:text-amber-500 transition-colors whitespace-nowrap">Data Hub</Link></li>
                             <li><Link href="/services/deal-management" className="hover:text-amber-500 transition-colors whitespace-nowrap">Deal Management</Link></li>
                             <li><Link href="/services/market-intelligence" className="hover:text-amber-500 transition-colors whitespace-nowrap">Market Intelligence</Link></li>
                             <li><Link href="/services/project-management" className="hover:text-amber-500 transition-colors whitespace-nowrap">Project Management</Link></li>

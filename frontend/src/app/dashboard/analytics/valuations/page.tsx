@@ -25,6 +25,18 @@ import {
 // TYPES
 // =====================================================
 
+interface MarketRelativeRow {
+  region: string
+  property_type: string | null
+  valuations_median: number
+  market_median: number
+  premium_discount_pct: number
+  valuation_count: number
+  macro_adjusted_value?: number | null
+  pvmaf_multiplier?: number | null
+  pvmaf_components?: Record<string, number> | null
+}
+
 interface VolumeSummary {
   period: string
   total_count: number
@@ -216,17 +228,19 @@ export default function ValuationAnalyticsPage() {
   const [quality, setQuality] = useState<QualityMetrics | null>(null)
   const [topValuers, setTopValuers] = useState<LeaderboardEntry[]>([])
   const [materialQuality, setMaterialQuality] = useState<Record<string, number | null>>({})
+  const [marketRelative, setMarketRelative] = useState<MarketRelativeRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
-    const [volumeData, historyData, methodsData, qualityData, valuersData, materialQualityData] = await Promise.all([
+    const [volumeData, historyData, methodsData, qualityData, valuersData, materialQualityData, marketRelData] = await Promise.all([
       fetchData<VolumeSummary>('/volume/summary?months=12', signal),
       fetchData<VolumeHistory[]>('/volume/history?months=12', signal),
       fetchData<MethodPerformance[]>('/methods/performance?months=12', signal),
       fetchData<QualityMetrics>('/quality?months=12', signal),
       fetchData<LeaderboardEntry[]>('/valuers/leaderboard?limit=5&sortBy=volume', signal),
       fetchData<Record<string, number | null>>('/material-quality', signal),
+      fetchData<MarketRelativeRow[]>('/market-relative', signal),
     ])
     if (signal?.aborted) return
     setVolume(volumeData)
@@ -235,6 +249,7 @@ export default function ValuationAnalyticsPage() {
     setQuality(qualityData)
     setTopValuers(valuersData || [])
     setMaterialQuality(materialQualityData || {})
+    setMarketRelative(marketRelData || [])
     setLoading(false)
   }, [])
 
@@ -682,6 +697,65 @@ export default function ValuationAnalyticsPage() {
           )}
         </Panel>
       </div>
+
+      {/* Market-relative + PVMAF macro-adjusted value (Slice 5 §7.1) */}
+      {marketRelative.length > 0 && (
+        <div className="mt-3">
+          <Panel title="MARKET-RELATIVE & MACRO-ADJUSTED VALUE (PVMAF)">
+            <div className="overflow-x-auto">
+              <table className="w-full font-mono text-[11px]">
+                <thead>
+                  <tr className="text-[9px] text-muted-foreground border-b border-border">
+                    <th className="text-left pb-2">REGION</th>
+                    <th className="text-left pb-2">TYPE</th>
+                    <th className="text-right pb-2">MARKET MEDIAN</th>
+                    <th className="text-right pb-2">VALUATIONS</th>
+                    <th className="text-right pb-2">PREMIUM</th>
+                    <th className="text-right pb-2">PVMAF</th>
+                    <th className="text-right pb-2">MACRO-ADJUSTED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marketRelative.map((r, i) => {
+                    const adjPct = r.pvmaf_multiplier != null ? (r.pvmaf_multiplier - 1) * 100 : null
+                    return (
+                      <tr key={i} className="border-b border-border/50">
+                        <td className="py-1.5 text-foreground">{r.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</td>
+                        <td className="py-1.5 text-muted-foreground">{(r.property_type || '—').replace(/_/g, ' ')}</td>
+                        <td className="py-1.5 text-right text-foreground">₵{r.market_median.toLocaleString()}</td>
+                        <td className="py-1.5 text-right text-muted-foreground">
+                          {r.valuation_count > 0 ? `₵${Math.round(r.valuations_median).toLocaleString()} (${r.valuation_count})` : '—'}
+                        </td>
+                        <td className="py-1.5 text-right">
+                          {r.valuation_count > 0
+                            ? <span className={r.premium_discount_pct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                                {r.premium_discount_pct >= 0 ? '+' : ''}{r.premium_discount_pct.toFixed(1)}%
+                              </span>
+                            : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="py-1.5 text-right">
+                          {adjPct != null
+                            ? <span className={adjPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} title={r.pvmaf_components ? JSON.stringify(r.pvmaf_components) : undefined}>
+                                {adjPct >= 0 ? '+' : ''}{adjPct.toFixed(1)}%
+                              </span>
+                            : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="py-1.5 text-right text-cyan-600 dark:text-cyan-400">
+                          {r.macro_adjusted_value != null ? `₵${r.macro_adjusted_value.toLocaleString()}` : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              <div className="pt-2 mt-1 border-t border-border font-mono text-[9px] text-muted-foreground">
+                MACRO-ADJUSTED = market median × PVMAF (real CPI/PPI/GDP/interest signals + regional NIQS &amp; completion risk, ±15% clamp).
+                PREMIUM compares completed valuations to the property-market median. Market medians from the `properties` sale market.
+              </div>
+            </div>
+          </Panel>
+        </div>
+      )}
     </div>
   )
 }

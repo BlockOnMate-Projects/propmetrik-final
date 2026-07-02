@@ -27,6 +27,8 @@ import { gssTradeService, GSS_TradeService } from './gssTradeService';
 import { gssPhcPopulationService, GSS_PHCPopulationService } from './gssPhcPopulationService';
 import { gssPhcEmploymentService, GSS_PHCEmploymentService } from './gssPhcEmploymentService';
 import { gssPhcPovertyService, GSS_PHCPovertyService } from './gssPhcPovertyService';
+// GSS StatsBank PxWeb scrapers (Slice 4)
+import { gssGlss7Service, GSS_GLSS7Service } from './gssGlss7Service';
 
 // =====================================================
 // TYPES
@@ -47,6 +49,8 @@ export type SyncSource =
   | 'gss_phc_population'
   | 'gss_phc_employment'
   | 'gss_phc_poverty'
+  // GSS StatsBank PxWeb sources (Slice 4)
+  | 'gss_glss7'
   | 'gss_all';
 export type SyncType = 'full' | 'latest' | 'manual';
 
@@ -97,6 +101,7 @@ export class EconomicDataSyncService {
   private readonly gssPhcPopulation: GSS_PHCPopulationService;
   private readonly gssPhcEmployment: GSS_PHCEmploymentService;
   private readonly gssPhcPoverty: GSS_PHCPovertyService;
+  private readonly gssGlss7: GSS_GLSS7Service;
   private runningJobs: Map<string, boolean>;
 
   constructor(
@@ -128,6 +133,7 @@ export class EconomicDataSyncService {
     this.gssPhcPopulation = gssPhcPopulationService;
     this.gssPhcEmployment = gssPhcEmploymentService;
     this.gssPhcPoverty = gssPhcPovertyService;
+    this.gssGlss7 = gssGlss7Service;
     this.runningJobs = new Map();
   }
 
@@ -504,6 +510,15 @@ export class EconomicDataSyncService {
     return this.gssPhcPoverty.sync(triggeredBy);
   }
 
+  // =========================================================================
+  // GSS StatsBank PxWeb syncs (Slice 4)
+  // =========================================================================
+
+  /** Sync GSS GLSS7 migration flows + domestic tourism + housing occupancy snapshot. */
+  async syncGSSGlss7(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssGlss7.sync(triggeredBy);
+  }
+
   /**
    * Run GSS Labor Rates sync
    */
@@ -678,6 +693,9 @@ export class EconomicDataSyncService {
       case 'gss_phc_poverty':
         return this.syncGSSPhcPoverty(triggeredBy);
 
+      case 'gss_glss7':
+        return this.syncGSSGlss7(triggeredBy);
+
       case 'gss_all': {
         // Run all GSS sources sequentially (they share the same host — be polite)
         const ppiResult = await this.syncGSSPpi(triggeredBy);
@@ -691,8 +709,10 @@ export class EconomicDataSyncService {
         const popResult = await this.syncGSSPhcPopulation(triggeredBy);
         const empResult = await this.syncGSSPhcEmployment(triggeredBy);
         const povResult = await this.syncGSSPhcPoverty(triggeredBy);
+        // Slice 4 (GLSS7 — migration/tourism/housing)
+        const glss7Result = await this.syncGSSGlss7(triggeredBy);
         return [ppiResult, miegResult, financialResult, incomeResult, phcResult, tradeResult,
-                popResult, empResult, povResult];
+                popResult, empResult, povResult, glss7Result];
       }
 
       case 'greda':

@@ -1,5 +1,6 @@
 import { pool } from '../../database';
 import crypto from 'crypto';
+import { logger } from '../../utils/logger';
 
 // ═══════════════════════════════════════════════════════════════════
 //  Org Settings Service
@@ -519,6 +520,117 @@ export async function validateApiKey(fullKey: string): Promise<{ valid: boolean;
   );
 
   return { valid: true, keyId: key.id, orgId: key.org_id, scopes: key.scopes };
+}
+
+export interface ResolvedApiKey {
+  keyId: string;
+  orgId: string;
+  createdBy: string;
+  name: string;
+  scopes: string[];
+  rateLimitPerMinute: number;
+  rateLimitPerDay: number;
+  allowedIps: string[] | null;
+}
+
+/**
+ * Resolve an API key WITHOUT mutating usage counters.
+ *
+ * Used by the request-auth middleware, which meters separately on response
+ * `finish` (so it can also capture status/error and the exact endpoint hit).
+ * Returns null for any unknown / inactive / expired key — never throws on a
+ * bad key so the caller can return a clean 401.
+ */
+export async function resolveApiKey(fullKey: string): Promise<ResolvedApiKey | null> {
+  if (!fullKey || !fullKey.startsWith(API_KEY_PREFIX)) return null;
+
+  const hash = crypto.createHash('sha256').update(fullKey).digest('hex');
+  const prefix = fullKey.substring(0, 12);
+
+  const { rows } = await pool.query(
+    `SELECT id, org_id, created_by, name, scopes, rate_limit_per_minute,
+            rate_limit_per_day, allowed_ips, is_active, expires_at
+       FROM org_api_keys WHERE key_prefix = $1 AND key_hash = $2`,
+    [prefix, hash]
+  );
+
+  const key = rows[0];
+  if (!key || key.is_active !== true) return null;
+  if (key.expires_at && new Date(key.expires_at) < new Date()) return null;
+
+  return {
+    keyId: key.id,
+    orgId: key.org_id,
+    createdBy: key.created_by,
+    name: key.name,
+    scopes: key.scopes || [],
+    rateLimitPerMinute: key.rate_limit_per_minute ?? 60,
+    rateLimitPerDay: key.rate_limit_per_day ?? 10000,
+    allowedIps: key.allowed_ips,
+  };
+}
+
+/**
+ * Record one served API request against a key: bumps last-used + usage_count on
+ * the key and upserts the daily rollup (request_count, error_count, and a
+ * per-endpoint tally in endpoints_hit). Best-effort — never throws into the
+ * request path (metering failure must not fail a served request).
+ */
+export async function recordApiKeyRequest(
+  keyId: string,
+  endpoint: string,
+  statusCode: number,
+  ip?: string | null
+): Promise<void> {
+  const isError = statusCode >= 400 ? 1 : 0;
+  try {
+    await pool.query(
+      `UPDATE org_api_keys
+          SET last_used_at = NOW(), last_used_ip = $2, usage_count = usage_count + 1
+        WHERE id = $1`,
+      [keyId, ip || null]
+    );
+    await pool.query(
+      `INSERT INTO api_key_usage_daily (key_id, date, request_count, error_count, endpoints_hit)
+       VALUES ($1, CURRENT_DATE, 1, $2, jsonb_build_object($3::text, 1))
+       ON CONFLICT (key_id, date) DO UPDATE SET
+         request_count = api_key_usage_daily.request_count + 1,
+         error_count   = api_key_usage_daily.error_count + $2,
+         endpoints_hit = jsonb_set(
+           COALESCE(api_key_usage_daily.endpoints_hit, '{}'::jsonb),
+           ARRAY[$3::text],
+           to_jsonb(COALESCE((api_key_usage_daily.endpoints_hit ->> $3)::int, 0) + 1)
+         )`,
+      [keyId, isError, endpoint]
+    );
+  } catch (err: any) {
+    logger.warn('recordApiKeyRequest failed', { keyId, endpoint, error: err.message });
+  }
+}
+
+/**
+ * Record one completed WebSocket session against a key: bumps the daily rollup
+ * with the connection, the frames pushed, and the connection duration. Called
+ * once per connection close. Best-effort — never throws.
+ */
+export async function recordWsSession(
+  keyId: string,
+  messages: number,
+  connectionSeconds: number
+): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO api_key_ws_usage_daily (key_id, date, connections, messages, connection_seconds)
+       VALUES ($1, CURRENT_DATE, 1, $2, $3)
+       ON CONFLICT (key_id, date) DO UPDATE SET
+         connections        = api_key_ws_usage_daily.connections + 1,
+         messages           = api_key_ws_usage_daily.messages + $2,
+         connection_seconds = api_key_ws_usage_daily.connection_seconds + $3`,
+      [keyId, Math.max(0, Math.round(messages)), Math.max(0, Math.round(connectionSeconds))]
+    );
+  } catch (err: any) {
+    logger.warn('recordWsSession failed', { keyId, error: err.message });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
