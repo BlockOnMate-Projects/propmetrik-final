@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import RegionalHeatmap from '@/components/analytics/RegionalHeatmap'
+import Sparkline from '@/components/analytics/Sparkline'
 
 // =====================================================
 // TYPES
@@ -201,22 +202,39 @@ function IndexGauge({
 // PAGE COMPONENT
 // =====================================================
 
+interface TenureRow {
+  renting_pct: number | null
+  owner_occupied_pct: number | null
+  perching_pct: number | null
+}
+interface InterestHistory {
+  history: Array<{ period_date: string; rate_pct: number }>
+  cycle: 'easing' | 'tightening' | 'stable'
+  latest: { period_date: string; rate_pct: number } | null
+}
+
 export default function AffordabilityDashboardPage() {
   const [regions, setRegions] = useState<GHAIData[]>([])
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [history, setHistory] = useState<GHAIHistory[]>([])
   const [alerts, setAlerts] = useState<AlertData[]>([])
+  const [tenure, setTenure] = useState<Record<string, TenureRow>>({})
+  const [interest, setInterest] = useState<InterestHistory | null>(null)
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
-    const [regionsData, alertsData] = await Promise.all([
+    const [regionsData, alertsData, tenureData, interestData] = await Promise.all([
       fetchData<GHAIData[]>('/hai/current', signal),
       fetchData<{ recent: AlertData[] }>('/alerts/summary?limit=5', signal),
+      fetchData<Record<string, TenureRow>>('/hai/tenure', signal),
+      fetchData<InterestHistory>('/hai/interest-history?months=24', signal),
     ])
     if (signal?.aborted) return
     setRegions(regionsData || [])
     setAlerts(alertsData?.recent?.filter((a) => a.category === 'hai') || [])
+    setTenure(tenureData || {})
+    setInterest(interestData)
     setLoading(false)
   }, [])
 
@@ -429,6 +447,7 @@ export default function AffordabilityDashboardPage() {
                     <span className="font-mono text-[9px] text-muted-foreground">MAS (MORTGAGE ACCESS)</span>
                   </div>
                   <div className="font-mono text-lg text-foreground">{selected.mas.toFixed(1)}%</div>
+                  <div className="font-mono text-[8px] text-muted-foreground mt-0.5">Formal employment % from PHC 2021 census</div>
                 </div>
               </div>
 
@@ -548,6 +567,93 @@ export default function AffordabilityDashboardPage() {
             </Panel>
           )}
         </div>
+      </div>
+
+      {/* GSS context row — housing tenure (Slice 2) + lending-rate cycle (Slice 1) */}
+      <div className="grid grid-cols-12 gap-3 mb-4">
+        {/* Housing Tenure Profile (PHC 2021) */}
+        <Panel
+          title="HOUSING TENURE PROFILE (PHC 2021)"
+          className="col-span-12 lg:col-span-7"
+          actions={<span className="font-mono text-[9px] text-muted-foreground">weights derived from this</span>}
+        >
+          {Object.keys(tenure).length > 0 ? (
+            <table className="w-full">
+              <thead>
+                <tr className="text-[9px] font-mono text-muted-foreground border-b border-border">
+                  <th className="text-left pb-1.5">REGION</th>
+                  <th className="text-right pb-1.5">% RENTING</th>
+                  <th className="text-right pb-1.5">% OWNER-OCCUPIED</th>
+                  <th className="text-right pb-1.5">% PERCHING</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono text-[11px]">
+                {Object.entries(tenure)
+                  .sort((a, b) => (b[1].renting_pct ?? 0) - (a[1].renting_pct ?? 0))
+                  .map(([region, t]) => (
+                    <tr
+                      key={region}
+                      className={cn(
+                        'border-b border-border/50 hover:bg-muted/40 cursor-pointer',
+                        selectedRegion === region && 'bg-muted/60',
+                      )}
+                      onClick={() => setSelectedRegion(region === selectedRegion ? null : region)}
+                    >
+                      <td className="py-1 text-foreground">{formatRegion(region)}</td>
+                      <td className="py-1 text-right text-blue-600 dark:text-blue-400">{t.renting_pct !== null ? `${t.renting_pct.toFixed(1)}%` : '—'}</td>
+                      <td className="py-1 text-right text-green-600 dark:text-green-400">{t.owner_occupied_pct !== null ? `${t.owner_occupied_pct.toFixed(1)}%` : '—'}</td>
+                      <td className="py-1 text-right text-muted-foreground">{t.perching_pct !== null ? `${t.perching_pct.toFixed(1)}%` : '—'}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="py-6 text-center font-mono text-xs text-muted-foreground">No PHC 2021 tenure data</div>
+          )}
+          <div className="pt-2 mt-1 border-t border-border font-mono text-[9px] text-muted-foreground">
+            The MHAI / CHAI / RHAI blend weights per region are derived from these PHC 2021 tenure shares (not a fixed national split).
+          </div>
+        </Panel>
+
+        {/* GSS lending-rate cycle sparkline */}
+        <Panel
+          title="GSS LENDING RATE"
+          className="col-span-12 lg:col-span-5"
+          actions={
+            interest?.cycle ? (
+              <span className={cn(
+                'px-1.5 py-0.5 font-mono text-[9px] border rounded uppercase',
+                interest.cycle === 'easing' ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
+                  : interest.cycle === 'tightening' ? 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20'
+                    : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+              )}>
+                {interest.cycle}
+              </span>
+            ) : undefined
+          }
+        >
+          {interest && interest.history.length > 1 ? (
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="font-mono text-3xl text-foreground">
+                {interest.latest ? `${interest.latest.rate_pct.toFixed(1)}%` : '—'}
+              </div>
+              <div className="font-mono text-[9px] text-muted-foreground mb-2">avg lending rate (GSS StatsBank)</div>
+              <Sparkline
+                data={interest.history.map((h) => h.rate_pct)}
+                width={240}
+                height={40}
+                className="w-full"
+                strokeClassName="stroke-cyan-500"
+                fillClassName="fill-cyan-500/10"
+              />
+              <div className="font-mono text-[9px] text-muted-foreground mt-1">
+                {interest.history.length} months · to {interest.latest ? new Date(interest.latest.period_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '—'}
+              </div>
+            </div>
+          ) : (
+            <div className="py-6 text-center font-mono text-xs text-muted-foreground">No lending-rate history</div>
+          )}
+        </Panel>
       </div>
 
       {/* Alerts */}

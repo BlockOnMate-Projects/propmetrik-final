@@ -137,7 +137,8 @@ function Panel({
   )
 }
 
-function formatCurrency(val: number): string {
+function formatCurrency(val: number | null | undefined): string {
+  if (val == null || !isFinite(val)) return '—'
   if (val >= 1_000_000) return `GH₵${(val / 1_000_000).toFixed(1)}M`
   if (val >= 1_000) return `GH₵${(val / 1_000).toFixed(0)}K`
   return `GH₵${val.toFixed(0)}`
@@ -157,16 +158,17 @@ function formatLabel(s: string): string {
     .join(' ')
 }
 
-function ComplianceBadge({ rate }: { rate: number }) {
+function ComplianceBadge({ rate }: { rate: number | null | undefined }) {
+  const r = rate ?? 0
   const color =
-    rate >= 90
+    r >= 90
       ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
-      : rate >= 70
+      : r >= 70
         ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
         : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20'
   return (
     <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded', color)}>
-      {rate.toFixed(0)}%
+      {r.toFixed(0)}%
     </span>
   )
 }
@@ -243,7 +245,7 @@ function SensitivitySection() {
           <div className="text-center">
             <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-orange-600 dark:text-orange-400" />
             <div className="font-mono text-2xl text-foreground">
-              {summary ? `±${summary.overall_avg_range_pct.toFixed(1)}%` : '—'}
+              {summary ? `±${(summary.overall_avg_range_pct ?? 0).toFixed(1)}%` : '—'}
             </div>
           </div>
         </Panel>
@@ -298,7 +300,7 @@ function SensitivitySection() {
                                   : 'text-red-600 dark:text-red-400',
                             )}
                           >
-                            ±{t.avg_range_pct.toFixed(1)}%
+                            ±{(t.avg_range_pct ?? 0).toFixed(1)}%
                           </span>
                         </td>
                         <td className="py-1.5 px-4 w-40">
@@ -485,10 +487,10 @@ function FloorPlanSection() {
           <div className="text-center">
             <Ruler className="w-4 h-4 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
             <div className="font-mono text-2xl text-foreground">
-              {summary ? `${summary.avg_gfa.toFixed(0)}m²` : '—'}
+              {summary ? `${(summary.avg_gfa ?? 0).toFixed(0)}m²` : '—'}
             </div>
             <div className="font-mono text-[9px] text-muted-foreground">
-              Med: {summary ? `${summary.median_gfa.toFixed(0)}m²` : '—'}
+              Med: {summary ? `${(summary.median_gfa ?? 0).toFixed(0)}m²` : '—'}
             </div>
           </div>
         </Panel>
@@ -496,7 +498,7 @@ function FloorPlanSection() {
           <div className="text-center">
             <Layers className="w-4 h-4 mx-auto mb-1 text-purple-600 dark:text-purple-400" />
             <div className="font-mono text-2xl text-foreground">
-              {summary ? `${summary.avg_nia.toFixed(0)}m²` : '—'}
+              {summary ? `${(summary.avg_nia ?? 0).toFixed(0)}m²` : '—'}
             </div>
           </div>
         </Panel>
@@ -504,7 +506,7 @@ function FloorPlanSection() {
           <div className="text-center">
             <BarChart3 className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
             <div className="font-mono text-2xl text-foreground">
-              {summary ? `${(summary.avg_efficiency_ratio * 100).toFixed(1)}%` : '—'}
+              {summary ? `${((summary.avg_efficiency_ratio ?? 0) * 100).toFixed(1)}%` : '—'}
             </div>
           </div>
         </Panel>
@@ -512,7 +514,7 @@ function FloorPlanSection() {
           <div className="text-center">
             <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
             <div className="font-mono text-2xl text-foreground">
-              {summary ? `${summary.compliance_rate.toFixed(0)}%` : '—'}
+              {summary ? `${(summary.compliance_rate ?? 0).toFixed(0)}%` : '—'}
             </div>
             <div className="font-mono text-[9px] text-muted-foreground">Ghana Building Code</div>
           </div>
@@ -572,10 +574,10 @@ function FloorPlanSection() {
                       <tr key={r.region} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                         <td className="py-1.5 pr-4 text-muted-foreground">{formatRegion(r.region)}</td>
                         <td className="text-right py-1.5 px-2 text-muted-foreground">{r.plan_count}</td>
-                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.avg_gfa.toFixed(0)}m²</td>
-                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.avg_nia.toFixed(0)}m²</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{(r.avg_gfa ?? 0).toFixed(0)}m²</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{(r.avg_nia ?? 0).toFixed(0)}m²</td>
                         <td className="text-right py-1.5 px-2 text-muted-foreground">
-                          {(r.avg_efficiency_ratio * 100).toFixed(1)}%
+                          {((r.avg_efficiency_ratio ?? 0) * 100).toFixed(1)}%
                         </td>
                         <td className="text-right py-1.5 px-2">
                           <ComplianceBadge rate={r.compliance_rate} />
@@ -619,10 +621,10 @@ function FloorPlanSection() {
                       <tr key={r.room_type} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                         <td className="py-1.5 pr-4 text-muted-foreground">{formatLabel(r.room_type)}</td>
                         <td className="text-right py-1.5 px-2 text-muted-foreground">{r.count}</td>
-                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.avg_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.min_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.max_area.toFixed(1)}</td>
-                        <td className="text-right py-1.5 px-2 text-muted-foreground">{r.median_area.toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{(r.avg_area ?? 0).toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{(r.min_area ?? 0).toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{(r.max_area ?? 0).toFixed(1)}</td>
+                        <td className="text-right py-1.5 px-2 text-muted-foreground">{(r.median_area ?? 0).toFixed(1)}</td>
                         <td className="text-right py-1.5 px-2 text-muted-foreground">
                           {r.min_standard_area != null ? r.min_standard_area.toFixed(1) : '—'}
                         </td>
@@ -657,7 +659,7 @@ function FloorPlanSection() {
                           v.violation_pct > 20 ? 'text-red-600 dark:text-red-400' : v.violation_pct > 10 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400',
                         )}
                       >
-                        {v.violation_pct.toFixed(1)}%
+                        {(v.violation_pct ?? 0).toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-2 bg-muted rounded-sm overflow-hidden">

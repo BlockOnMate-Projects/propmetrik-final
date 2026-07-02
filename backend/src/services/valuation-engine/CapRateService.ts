@@ -833,7 +833,7 @@ export class CapRateService {
         AND p.transaction_type = 'sale'
         AND p.price > 0
         AND COALESCE(p.total_area_sqm, p.built_area_sqm, p.building_size_sqm) > 0
-        AND p.is_active = true
+        AND p.deleted_at IS NULL
         AND p.created_at >= NOW() - INTERVAL '12 months'
       ORDER BY 
         CASE p.evidence_type 
@@ -988,7 +988,7 @@ export class CapRateService {
         AND p.transaction_type = 'rental'
         AND p.price > 0
         AND COALESCE(p.total_area_sqm, p.built_area_sqm, p.building_size_sqm) > 0
-        AND p.is_active = true
+        AND p.deleted_at IS NULL
         AND p.created_at >= NOW() - INTERVAL '12 months'
       ORDER BY 
         CASE p.evidence_type 

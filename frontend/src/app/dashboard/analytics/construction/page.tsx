@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   Package,
   Truck,
+  Ship,
 } from 'lucide-react'
+import Sparkline from '@/components/analytics/Sparkline'
 
 // =====================================================
 // TYPES
@@ -32,6 +34,18 @@ interface CCISummary {
   }
   regional_indices: Record<string, number>
   historical_trend: Array<{ date: string; value: number }>
+  // GSS PPI Construction (Slice 1) — blended GSS producer-price signal
+  ppi_construction_yoy?: number | null
+  ppi_construction_history?: Array<{ period_date: string; ppi_index: number; change_yoy_pct: number | null }> | null
+  // GSS Trade HS2 import pressure (Slice 2b)
+  import_material_pressure?: Array<{ period_date: string; gcmipi: number | null; hs2_breakdown: Record<string, number | null> }> | null
+}
+
+// HS2 code → human label for the import-pressure panel (GSS trade taxonomy)
+const HS2_LABELS: Record<string, string> = {
+  '25': 'Cement/stone', '27': 'Fuels/bitumen', '39': 'Plastics', '44': 'Timber',
+  '68': 'Stone/plaster', '69': 'Ceramics', '70': 'Glass', '72': 'Iron/steel',
+  '73': 'Steel articles', '76': 'Aluminium', '94': 'Fittings',
 }
 
 interface RegionalCost {
@@ -272,6 +286,27 @@ export default function ConstructionAnalyticsPage() {
         </button>
       </div>
 
+      {/* GSS macro context strip (Slice 1) — real producer-price + index signals */}
+      {cci && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {cci.ppi_construction_yoy !== null && cci.ppi_construction_yoy !== undefined && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-amber-500/30 bg-amber-500/5 font-mono text-[10px] text-amber-600 dark:text-amber-400">
+              GSS PPI CONSTRUCTION YoY
+              <span className="text-foreground">{cci.ppi_construction_yoy >= 0 ? '+' : ''}{cci.ppi_construction_yoy.toFixed(1)}%</span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-border bg-muted/40 font-mono text-[10px] text-muted-foreground">
+            MATERIALS YoY
+            <span className="text-foreground">{cci.components.materials.change_yoy >= 0 ? '+' : ''}{cci.components.materials.change_yoy.toFixed(1)}%</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-border bg-muted/40 font-mono text-[10px] text-muted-foreground">
+            LABOR YoY
+            <span className="text-foreground">{cci.components.labor.change_yoy >= 0 ? '+' : ''}{cci.components.labor.change_yoy.toFixed(1)}%</span>
+          </span>
+          <span className="font-mono text-[9px] text-muted-foreground/70">Source: GSS StatsBank PPI + PropMetrik CCI</span>
+        </div>
+      )}
+
       {/* KPI Row */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         <Panel title="NATIONAL CCI">
@@ -386,6 +421,25 @@ export default function ConstructionAnalyticsPage() {
 
         {/* CCI Trend */}
         <Panel title="CCI HISTORICAL TREND" className="col-span-4">
+          {/* GSS PPI Construction overlay (Slice 1) */}
+          {cci?.ppi_construction_history && cci.ppi_construction_history.length > 1 && (
+            <div className="mb-3 pb-3 border-b border-border">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-mono text-[9px] text-amber-500 tracking-wider">GSS PPI CONSTRUCTION</span>
+                <span className="font-mono text-[9px] text-muted-foreground">
+                  latest {cci.ppi_construction_history[cci.ppi_construction_history.length - 1].ppi_index.toFixed(1)}
+                </span>
+              </div>
+              <Sparkline
+                data={cci.ppi_construction_history.map((p) => p.ppi_index)}
+                width={260}
+                height={32}
+                className="w-full"
+                strokeClassName="stroke-amber-500"
+                fillClassName="fill-amber-500/10"
+              />
+            </div>
+          )}
           <div className="space-y-1">
             {cci?.historical_trend?.slice(-12).map((point, i) => {
               const max = Math.max(...(cci?.historical_trend?.map((p) => p.value) || [1]))
@@ -504,6 +558,63 @@ export default function ConstructionAnalyticsPage() {
           </table>
         </Panel>
       </div>
+
+      {/* Construction Import Pressure (GCMIPI) — Slice 2b */}
+      {cci?.import_material_pressure && cci.import_material_pressure.length > 0 && (() => {
+        const hist = cci.import_material_pressure!
+        const latest = hist[hist.length - 1]
+        const breakdown = Object.entries(latest.hs2_breakdown)
+          .filter(([, v]) => v !== null)
+          .map(([code, v]) => ({ code, label: HS2_LABELS[code] || `HS ${code}`, value: v as number }))
+          .sort((a, b) => b.value - a.value)
+        const maxUvi = Math.max(...breakdown.map((b) => b.value), 1)
+        return (
+          <div className="grid grid-cols-12 gap-3 mb-4">
+            <Panel
+              title="CONSTRUCTION IMPORT PRESSURE (GCMIPI)"
+              className="col-span-12 lg:col-span-7"
+              actions={<Ship className="w-3 h-3 text-amber-500" />}
+            >
+              <div className="space-y-0.5">
+                {breakdown.map((b) => (
+                  <div key={b.code} className="flex items-center gap-2 px-1 py-0.5">
+                    <span className="w-28 shrink-0 font-mono text-[11px] text-muted-foreground truncate">{b.label}</span>
+                    <div className="flex-1 h-3 bg-muted/40 relative overflow-hidden">
+                      <div
+                        className={cn('h-full', b.value >= 100 ? 'bg-red-500/80' : 'bg-blue-500/80')}
+                        style={{ width: `${Math.max(2, (b.value / maxUvi) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="w-12 shrink-0 text-right font-mono text-[11px] text-foreground">{b.value.toFixed(1)}</span>
+                  </div>
+                ))}
+                <div className="pt-1 mt-1 border-t border-border font-mono text-[9px] text-muted-foreground">
+                  HS2 unit-value index (base 2021 = 100) · period {new Date(latest.period_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} · red = above base (import inflation)
+                </div>
+              </div>
+            </Panel>
+            <Panel title="GCMIPI TREND" className="col-span-12 lg:col-span-5" actions={<Truck className="w-3 h-3 text-amber-500" />}>
+              <div className="flex flex-col items-center justify-center h-full py-2">
+                <div className="font-mono text-3xl text-foreground">
+                  {latest.gcmipi !== null ? latest.gcmipi.toFixed(1) : '—'}
+                </div>
+                <div className="font-mono text-[9px] text-muted-foreground mb-2">weighted import pressure index</div>
+                <Sparkline
+                  data={hist.map((h) => h.gcmipi)}
+                  width={240}
+                  height={40}
+                  className="w-full"
+                  strokeClassName="stroke-blue-500"
+                  fillClassName="fill-blue-500/10"
+                />
+                <div className="font-mono text-[9px] text-muted-foreground mt-1">
+                  {hist.length} periods · latest {new Date(latest.period_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                </div>
+              </div>
+            </Panel>
+          </div>
+        )
+      })()}
 
       {/* Alerts */}
       {alerts.length > 0 && (

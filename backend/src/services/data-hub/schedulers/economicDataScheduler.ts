@@ -23,6 +23,7 @@ import { bogDailyFxScraper } from '../scrapers/bogDailyFxScraper';
 import { constructionCostService } from '../constructionCostService';
 import { baseCostCalculationService } from '../baseCostCalculationService';
 import { specializedCostService } from '../specializedCostService';
+import { housingDemandScoreService } from '../../analytics/housingDemandScoreService';
 
 /**
  * Scheduler configuration
@@ -55,7 +56,29 @@ export interface SchedulerConfig {
   gredaSyncCron: string;
   /** Cron expression for specialized cost recalculation (default: 3 PM every Monday, after GREDA sync) */
   specializedCostRecalcCron: string;
-  
+  /** Cron expression for the daily construction-analytics freshness self-heal (default: 6 AM daily) */
+  freshnessCheckCron: string;
+  /** Cron expression for the monthly GSS household-income sync + affordability recompute (default: 4 AM on the 1st) */
+  gssIncomeSyncCron: string;
+
+  // === GSS StatsBank Macro (Slice 1) ===
+  /** PPI + IIP sync — 15th of each month at 5 AM */
+  gssPpiSyncCron: string;
+  /** MIEG monthly sync — 20th at 5 AM */
+  gssMiegSyncCron: string;
+  /** Interest rates + Financial Soundness — monthly on 12th at 5 AM */
+  gssFinancialSyncCron: string;
+
+  // === GSS StatsBank Census (Slice 2) — annual ===
+  /** PHC 2021 housing census backfill — Jan 1st at 2 AM */
+  gssPhcHousingSyncCron: string;
+  /** Trade HS2 construction import data — monthly on 10th at 5 AM */
+  gssTradeImportSyncCron: string;
+
+  // === GSS StatsBank Census (Slice 3) — annual ===
+  /** PHC 2021 population + employment + poverty census — Jan 2nd at 2 AM (day after housing) */
+  gssPhcPopEmpPovSyncCron: string;
+
   // === General ===
   /** Timezone for all scheduled jobs */
   timezone: string;
@@ -84,7 +107,21 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   baseCostRecalcCron: process.env.BASE_COST_RECALC_CRON || '0 13 * * 1', // 1 PM every Monday (after index recalc)
   gredaSyncCron: process.env.GREDA_SYNC_CRON || '0 14 * * 1',            // 2 PM every Monday (after base cost recalc)
   specializedCostRecalcCron: process.env.SPECIALIZED_COST_RECALC_CRON || '0 15 * * 1', // 3 PM every Monday (after GREDA sync)
-  
+  freshnessCheckCron: process.env.CONSTRUCTION_FRESHNESS_CRON || '0 6 * * *', // 6 AM daily — self-heal if computed tables go stale
+  gssIncomeSyncCron: process.env.GSS_INCOME_SYNC_CRON || '0 4 1 * *', // 4 AM on the 1st — GSS income + affordability
+
+  // GSS StatsBank Macro (Slice 1)
+  gssPpiSyncCron: process.env.GSS_PPI_SYNC_CRON || '0 5 15 * *',           // 15th at 5 AM — PPI/IIP monthly
+  gssMiegSyncCron: process.env.GSS_MIEG_SYNC_CRON || '0 5 20 * *',         // 20th at 5 AM — MIEG/GDP monthly
+  gssFinancialSyncCron: process.env.GSS_FINANCIAL_SYNC_CRON || '0 5 12 * *', // 12th at 5 AM — rates/FSI monthly
+
+  // GSS StatsBank Census (Slice 2)
+  gssPhcHousingSyncCron: process.env.GSS_PHC_HOUSING_CRON || '0 2 1 1 *',   // Jan 1st at 2 AM — annual census
+  gssTradeImportSyncCron: process.env.GSS_TRADE_SYNC_CRON || '0 5 10 * *',  // 10th at 5 AM — trade monthly
+
+  // GSS StatsBank Census (Slice 3)
+  gssPhcPopEmpPovSyncCron: process.env.GSS_PHC_POP_CRON || '0 2 2 1 *',     // Jan 2nd at 2 AM — annual census (day after housing)
+
   // General
   timezone: process.env.SCHEDULER_TIMEZONE || 'Africa/Accra',
   enabled: process.env.ECONOMIC_SCHEDULER_ENABLED !== 'false',
@@ -175,6 +212,44 @@ export class EconomicDataScheduler {
       await this.runBOGDailyFX();
     });
 
+    // GSS regional household income (AHIES + PHC 2021, CPI-escalated) + affordability recompute.
+    // Monthly: re-pulls the latest GSS earnings/census, re-escalates by live GSS CPI, then recomputes
+    // the Housing Affordability Index from real sources. This is the income source the GHAI lacked.
+    this.scheduleJob('gss-income-affordability', this.config.gssIncomeSyncCron, async () => {
+      await this.runGSSIncomeAndAffordability();
+    });
+
+    // GSS StatsBank Macro data (Slice 1) — PPI, MIEG, Financial
+    // These run weekly on Mondays (idempotent — only updates if GSS has published a new month).
+    // Monthly definitive crons ensure we catch any Monday misses.
+    this.scheduleJob('gss-ppi-sync', this.config.gssPpiSyncCron, async () => {
+      await this.runGSSPpiSync();
+    });
+
+    this.scheduleJob('gss-mieg-sync', this.config.gssMiegSyncCron, async () => {
+      await this.runGSSMiegSync();
+    });
+
+    this.scheduleJob('gss-financial-sync', this.config.gssFinancialSyncCron, async () => {
+      await this.runGSSFinancialSync();
+    });
+
+    // GSS StatsBank Census (Slice 2) — PHC Housing and Trade HS2
+    // PHC is annual (census is static); trade is monthly.
+    this.scheduleJob('gss-phc-housing-sync', this.config.gssPhcHousingSyncCron, async () => {
+      await this.runGSSPhcHousingSync();
+    });
+
+    this.scheduleJob('gss-trade-hs2-sync', this.config.gssTradeImportSyncCron, async () => {
+      await this.runGSSTradeSync();
+    });
+
+    // GSS StatsBank Census (Slice 3) — PHC Population + Employment + Poverty (annual).
+    // Recomputes the Regional Housing Demand Score (RHDS) after ingest.
+    this.scheduleJob('gss-phc-pop-emp-pov-sync', this.config.gssPhcPopEmpPovSyncCron, async () => {
+      await this.runGSSPhcSlice3Sync();
+    });
+
     // =====================================================
     // CONSTRUCTION DATA JOBS
     // =====================================================
@@ -213,6 +288,13 @@ export class EconomicDataScheduler {
       // Specialized Cost Recalculation - monthly (runs after GREDA sync)
       this.scheduleJob('specialized-cost-recalc', this.config.specializedCostRecalcCron, async () => {
         await this.runSpecializedCostRecalculation();
+      });
+
+      // Daily freshness self-heal — recompute the construction index + base cost/sqm if their
+      // computed tables go stale (a long-running instance that missed a weekly Monday window would
+      // otherwise drift for weeks, as happened Apr–Jun 2026). Cheap when fresh (one COUNT/MAX query).
+      this.scheduleJob('construction-freshness-check', this.config.freshnessCheckCron, async () => {
+        await this.runFreshnessSelfHeal();
       });
 
       logger.info('Construction data scheduling enabled');
@@ -287,6 +369,47 @@ export class EconomicDataScheduler {
           logName: 'GREDA/BRRI',
           lastSync: lastSyncs.get('GREDA/BRRI'),
           run: () => this.runGREDASync(),
+        },
+        {
+          // Repopulates regional_household_income + the affordability index on a fresh deploy
+          // (migration 260 clears the seeded affordability rows) or a missed monthly window.
+          logName: 'GSS Regional Household Income',
+          lastSync: lastSyncs.get('GSS Regional Household Income'),
+          run: () => this.runGSSIncomeAndAffordability(),
+        },
+        // GSS StatsBank Macro (Slice 1) — check weekly cadence
+        {
+          logName: 'GSS StatsBank PPI/IIP',
+          lastSync: lastSyncs.get('GSS StatsBank PPI/IIP'),
+          run: () => this.runGSSPpiSync(),
+        },
+        {
+          logName: 'GSS StatsBank MIEG/GDP',
+          lastSync: lastSyncs.get('GSS StatsBank MIEG/GDP'),
+          run: () => this.runGSSMiegSync(),
+        },
+        {
+          logName: 'GSS StatsBank Financial',
+          lastSync: lastSyncs.get('GSS StatsBank Financial'),
+          run: () => this.runGSSFinancialSync(),
+        },
+        // GSS StatsBank Census (Slice 2) — check annual cadence
+        {
+          logName: 'GSS StatsBank PHC Housing',
+          lastSync: lastSyncs.get('GSS StatsBank PHC Housing'),
+          run: () => this.runGSSPhcHousingSync(),
+        },
+        {
+          logName: 'GSS StatsBank Trade HS2',
+          lastSync: lastSyncs.get('GSS StatsBank Trade HS2'),
+          run: () => this.runGSSTradeSync(),
+        },
+        // GSS StatsBank Census (Slice 3) — check annual cadence.
+        // Keyed on the population source; the runner also does employment + poverty + RHDS.
+        {
+          logName: 'GSS StatsBank PHC Population',
+          lastSync: lastSyncs.get('GSS StatsBank PHC Population'),
+          run: () => this.runGSSPhcSlice3Sync(),
         },
       ];
 
@@ -424,6 +547,29 @@ export class EconomicDataScheduler {
       await this.runMaterialSync();
     } else if (normalizedSource === 'gss_labor') {
       await this.runLaborSync();
+    } else if (normalizedSource === 'gss_ppi') {
+      await this.runGSSPpiSync();
+    } else if (normalizedSource === 'gss_mieg') {
+      await this.runGSSMiegSync();
+    } else if (normalizedSource === 'gss_financial') {
+      await this.runGSSFinancialSync();
+    } else if (normalizedSource === 'gss_income') {
+      await this.runGSSIncomeAndAffordability();
+    } else if (normalizedSource === 'gss_phc_housing') {
+      await this.runGSSPhcHousingSync();
+    } else if (normalizedSource === 'gss_trade_hs2') {
+      await this.runGSSTradeSync();
+    } else if (normalizedSource === 'gss_phc_population' || normalizedSource === 'gss_phc_employment'
+               || normalizedSource === 'gss_phc_poverty' || normalizedSource === 'gss_phc_slice3') {
+      await this.runGSSPhcSlice3Sync();
+    } else if (normalizedSource === 'gss_all') {
+      await this.runGSSPpiSync();
+      await this.runGSSMiegSync();
+      await this.runGSSFinancialSync();
+      await this.runGSSIncomeAndAffordability();
+      await this.runGSSPhcHousingSync();
+      await this.runGSSTradeSync();
+      await this.runGSSPhcSlice3Sync();
     } else if (normalizedSource === 'greda') {
       await this.runGREDASync();
     }
@@ -740,6 +886,161 @@ export class EconomicDataScheduler {
     } catch (error) {
       logger.error('[Scheduler] Base cost recalculation failed', { error });
       throw error;
+    }
+  }
+
+  /**
+   * Daily freshness self-heal for the computed construction analytics.
+   *
+   * The construction index + base cost/sqm normally recompute on the weekly Monday cron (and on the
+   * startup catch-up). But a long-running instance that misses a Monday window would otherwise leave
+   * the computed tables stale for weeks (exactly what happened Apr 22 → Jun 30 2026 — they only
+   * refreshed on the next restart). This daily check recomputes them if the latest computed row is
+   * older than a week, so the dashboard Construction Index and DRC/Cost/Residual valuations never
+   * silently drift on stale cost data again. Cheap when fresh (a single MAX() check, then no-op).
+   */
+  private async runFreshnessSelfHeal(): Promise<void> {
+    try {
+      const { query: dbQuery } = await import('../../../database');
+      const res = await dbQuery<{ stale: boolean }>(
+        `SELECT (
+           COALESCE((SELECT MAX(created_at) FROM construction_cost_index_analytics), 'epoch') < NOW() - INTERVAL '7 days'
+           OR COALESCE((SELECT MAX(updated_at) FROM base_costs_per_sqm), 'epoch') < NOW() - INTERVAL '7 days'
+         ) AS stale`
+      );
+      if (!res.rows[0]?.stale) {
+        return; // fresh — nothing to do (runs daily, silent on the happy path)
+      }
+      logger.warn('[Scheduler] Construction analytics stale (>7d) — running freshness self-heal recompute');
+      await this.runConstructionIndexRecalculation();
+      await this.runBaseCostRecalculation();
+      await this.runSpecializedCostRecalculation();
+      logger.info('[Scheduler] Construction analytics freshness self-heal complete');
+    } catch (error) {
+      logger.error('[Scheduler] Construction analytics freshness self-heal failed', { error });
+    }
+  }
+
+  /**
+   * Sync GSS regional household income (AHIES earnings + PHC 2021 census, CPI-escalated via GSS
+   * cpi.px) and then recompute the Housing Affordability Index from real sources. Both steps are
+   * isolated so an affordability failure never leaves the income unsynced.
+   */
+  private async runGSSIncomeAndAffordability(): Promise<void> {
+    try {
+      const { gssIncomeService } = await import('../gssIncomeService');
+      const result = await gssIncomeService.syncRegionalHouseholdIncome('scheduler');
+      logger.info('[Scheduler] GSS household income synced', {
+        status: result.status, saved: result.records_saved,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GSS household income sync failed', { error });
+    }
+    try {
+      const { ghaiService } = await import('../../analytics/ghaiService');
+      const rows = await ghaiService.computeAndStoreFromSources(new Date());
+      logger.info('[Scheduler] Affordability index recomputed from real sources', { regions: rows.length });
+    } catch (error) {
+      logger.error('[Scheduler] Affordability recompute failed', { error });
+    }
+  }
+
+  /** Sync GSS PPI + IIP. Idempotent — only upserts if GSS has a newer month. */
+  private async runGSSPpiSync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS PPI/IIP sync...');
+    try {
+      const result = await economicDataSyncService.syncGSSPpi('scheduler');
+      logger.info('[Scheduler] GSS PPI sync complete', {
+        status: result.status, saved: result.records_saved,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GSS PPI sync failed', { error });
+    }
+  }
+
+  /** Sync GSS MIEG + Quarterly GDP. */
+  private async runGSSMiegSync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS MIEG/GDP sync...');
+    try {
+      const result = await economicDataSyncService.syncGSSMieg('scheduler');
+      logger.info('[Scheduler] GSS MIEG sync complete', {
+        status: result.status, saved: result.records_saved,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GSS MIEG sync failed', { error });
+    }
+  }
+
+  /** Sync GSS Interest Rates + Financial Soundness Indicators. */
+  private async runGSSFinancialSync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS Financial sync...');
+    try {
+      const result = await economicDataSyncService.syncGSSFinancial('scheduler');
+      logger.info('[Scheduler] GSS Financial sync complete', {
+        status: result.status, saved: result.records_saved,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GSS Financial sync failed', { error });
+    }
+  }
+
+  /** Sync GSS PHC 2021 Housing Census (annual). */
+  private async runGSSPhcHousingSync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS PHC Housing census sync...');
+    try {
+      const result = await economicDataSyncService.syncGSSPhcHousing('scheduler');
+      logger.info('[Scheduler] GSS PHC Housing sync complete', {
+        status: result.status, saved: result.records_saved,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GSS PHC Housing sync failed', { error });
+    }
+  }
+
+  /** Sync GSS Trade HS2 construction import data (monthly). */
+  private async runGSSTradeSync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS Trade HS2 sync...');
+    try {
+      const result = await economicDataSyncService.syncGSSTradeHs2('scheduler');
+      logger.info('[Scheduler] GSS Trade HS2 sync complete', {
+        status: result.status, saved: result.records_saved,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GSS Trade HS2 sync failed', { error });
+    }
+  }
+
+  /**
+   * Sync GSS PHC 2021 Population + Employment + Poverty (Slice 3, annual), then
+   * recompute the Regional Housing Demand Score (RHDS). Steps are isolated so a
+   * single-source failure never blocks the rest of the chain.
+   */
+  private async runGSSPhcSlice3Sync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS PHC Slice 3 (population/employment/poverty) sync...');
+    try {
+      const pop = await economicDataSyncService.syncGSSPhcPopulation('scheduler');
+      logger.info('[Scheduler] GSS PHC Population sync complete', { status: pop.status, saved: pop.records_saved });
+    } catch (error) {
+      logger.error('[Scheduler] GSS PHC Population sync failed', { error });
+    }
+    try {
+      const emp = await economicDataSyncService.syncGSSPhcEmployment('scheduler');
+      logger.info('[Scheduler] GSS PHC Employment sync complete', { status: emp.status, saved: emp.records_saved });
+    } catch (error) {
+      logger.error('[Scheduler] GSS PHC Employment sync failed', { error });
+    }
+    try {
+      const pov = await economicDataSyncService.syncGSSPhcPoverty('scheduler');
+      logger.info('[Scheduler] GSS PHC Poverty sync complete', { status: pov.status, saved: pov.records_saved });
+    } catch (error) {
+      logger.error('[Scheduler] GSS PHC Poverty sync failed', { error });
+    }
+    // Recompute RHDS composite from the freshly ingested population + employment data.
+    try {
+      const rhds = await housingDemandScoreService.computeAndStore();
+      logger.info('[Scheduler] RHDS recompute complete', { regions: rhds.length });
+    } catch (error) {
+      logger.error('[Scheduler] RHDS recompute failed', { error });
     }
   }
 

@@ -20,6 +20,13 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { constructionCostIndexService } from '../services/analytics/constructionCostIndexService';
 import { ghaiService } from '../services/analytics/ghaiService';
 import { alertService } from '../services/analytics/alertService';
+import { housingDemandScoreService } from '../services/analytics/housingDemandScoreService';
+import { gssPhcHousingService } from '../services/data-hub/scrapers/gssPhcHousingService';
+import { gssFinancialService } from '../services/data-hub/scrapers/gssFinancialService';
+import { analyticsScheduler } from '../services/analytics/analyticsScheduler';
+import { gssPhcPopulationService } from '../services/data-hub/scrapers/gssPhcPopulationService';
+import { gssPhcEmploymentService } from '../services/data-hub/scrapers/gssPhcEmploymentService';
+import { gssPhcPovertyService } from '../services/data-hub/scrapers/gssPhcPovertyService';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -239,7 +246,7 @@ router.get(
 router.get(
   '/hai/weights',
   asyncHandler(async (_req: Request, res: Response) => {
-    const data = ghaiService.getRegionalWeights();
+    const data = await ghaiService.getRegionalWeights();
     res.json({ success: true, data });
   }),
 );
@@ -498,6 +505,128 @@ router.post(
   asyncHandler(async (_req: Request, res: Response) => {
     const alerts = await alertService.evaluateAllRules();
     res.json({ success: true, data: { evaluated: true, new_alerts: alerts.length, alerts } });
+  }),
+);
+
+// ============================================================================
+// SECTION: Affordability context (Slice 1/2 frontend — tenure + rate cycle)
+// ============================================================================
+
+/**
+ * GET /hai/tenure
+ * PHC 2021 housing-tenure profile per region (renting / owner-occupied / perching).
+ * Feeds the affordability "Housing Tenure Profile" panel + weight-derivation tooltip.
+ */
+router.get(
+  '/hai/tenure',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await gssPhcHousingService.getTenureByRegion();
+    res.json({ success: true, data });
+  }),
+);
+
+/**
+ * GET /hai/interest-history
+ * GSS average-lending-rate history + rate-cycle tag (easing/tightening/stable).
+ * Feeds the affordability GSS interest-rate sparkline panel.
+ */
+router.get(
+  '/hai/interest-history',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { months = '24' } = req.query as Record<string, string>;
+    const [history, cycle, latest] = await Promise.all([
+      gssFinancialService.getLendingRateHistory(parseInt(months, 10)),
+      gssFinancialService.getInterestRateCycle(),
+      gssFinancialService.getLatestLendingRate(),
+    ]);
+    res.json({ success: true, data: { history, cycle, latest } });
+  }),
+);
+
+// ============================================================================
+// SECTION: Regional Housing Demand (Slice 3 — PHC Population/Employment/Poverty)
+// ============================================================================
+
+/**
+ * GET /demand
+ * Composite payload for the /analytics/demand page: RHDS scores + population
+ * projections (20–40 cohort) + employment rates + MPI poverty metrics per region.
+ */
+router.get(
+  '/demand',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const [rhds, projections, formalEmp, unemployment, mpi] = await Promise.all([
+      housingDemandScoreService.getScores(),
+      gssPhcPopulationService.getProjectionsByRegion(2021, 2030),
+      gssPhcEmploymentService.getFormalEmploymentByRegion(),
+      gssPhcEmploymentService.getUnemploymentByRegion(),
+      gssPhcPovertyService.getMpiByRegion(),
+    ]);
+
+    // Population cohort chart: current vs 2030 working-age (20–40) per region.
+    const population = Object.entries(projections).map(([region, p]) => ({
+      region,
+      base_working_age: p.base_working_age,
+      horizon_working_age: p.horizon_working_age,
+      base_total: p.base_total,
+      horizon_total: p.horizon_total,
+      growth_pct: (p.base_working_age && p.horizon_working_age && p.base_working_age > 0)
+        ? Math.round(((p.horizon_working_age / p.base_working_age) - 1) * 10000) / 100
+        : null,
+    })).sort((a, b) => (b.growth_pct ?? -999) - (a.growth_pct ?? -999));
+
+    // Employment bar chart: formal-employment rate (desc) per region.
+    const regions = new Set<string>([...Object.keys(formalEmp), ...Object.keys(unemployment)]);
+    const employment = Array.from(regions).map((region) => ({
+      region,
+      formal_employment_pct: formalEmp[region] ?? null,
+      unemployment_rate: unemployment[region] ?? null,
+    })).sort((a, b) => (b.formal_employment_pct ?? -1) - (a.formal_employment_pct ?? -1));
+
+    const poverty = Object.entries(mpi).map(([region, m]) => ({ region, ...m }));
+
+    res.json({ success: true, data: { rhds, population, employment, poverty } });
+  }),
+);
+
+/**
+ * GET /demand/scores
+ * RHDS composite scores only (for the heatmap + top-5 ranking).
+ */
+router.get(
+  '/demand/scores',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await housingDemandScoreService.getScores();
+    res.json({ success: true, data });
+  }),
+);
+
+/**
+ * POST /demand/recompute
+ * Recompute + persist the RHDS composite from current source tables.
+ */
+router.post(
+  '/demand/recompute',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await housingDemandScoreService.computeAndStore();
+    res.json({ success: true, data: { recomputed: true, regions: data.length, scores: data } });
+  }),
+);
+
+// ============================================================================
+// SECTION: Analytics scheduler — manual recompute of all derived snapshots
+// ============================================================================
+
+/**
+ * POST /snapshots/recompute
+ * Force-run every analytics compute-and-persist job (GHAI, CCI, market,
+ * investment, valuation, RHDS) now. Normally these run monthly + on startup.
+ */
+router.post(
+  '/snapshots/recompute',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const results = await analyticsScheduler.runAll('manual-api');
+    res.json({ success: true, data: { recomputed: true, jobs: results } });
   }),
 );
 

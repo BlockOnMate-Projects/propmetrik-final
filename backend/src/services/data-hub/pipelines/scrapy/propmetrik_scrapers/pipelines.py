@@ -883,6 +883,8 @@ class PostgresPipeline:
             'tonaton': 'tier5_web',
             'housemaster': 'tier5_web',
             'realtor': 'tier5_web',
+            'realtor_international': 'tier5_web',
+            'ownkey': 'tier5_web',
         }
         return source_tiers.get(source_slug, 'tier5_web')
     

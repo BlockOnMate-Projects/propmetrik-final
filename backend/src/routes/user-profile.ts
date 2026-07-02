@@ -433,16 +433,17 @@ router.get('/overview', async (req: Request, res: Response) => {
       marketIndicators,
       teamMembers,
     ] = await Promise.all([
-      // 1. Total valuations all time
+      // 1. Total valuations all time. NOTE: the valuations table scopes by `valuer_organization_id`
+      // (NOT `organization_id`) — the old column name silently errored into the catch → always 0.
       pool.query(
-        `SELECT COUNT(*) as count FROM valuations WHERE organization_id = $1`,
+        `SELECT COUNT(*) as count FROM valuations WHERE valuer_organization_id = $1`,
         [orgId]
       ).catch(() => ({ rows: [{ count: '0' }] })),
 
       // 2. Valuations this month
       pool.query(
-        `SELECT COUNT(*) as count FROM valuations 
-         WHERE organization_id = $1 AND created_at >= date_trunc('month', CURRENT_DATE)`,
+        `SELECT COUNT(*) as count FROM valuations
+         WHERE valuer_organization_id = $1 AND created_at >= date_trunc('month', CURRENT_DATE)`,
         [orgId]
       ).catch(() => ({ rows: [{ count: '0' }] })),
 
@@ -466,14 +467,16 @@ router.get('/overview', async (req: Request, res: Response) => {
         [orgId]
       ).catch(() => ({ rows: [{ count: '0' }] })),
 
-      // 6. Recent valuation queue (5 most recent)
+      // 6. Recent valuation queue (5 most recent). Property fields live on the joined `properties`
+      // row (valuations has no reference_number/property_type/location/priority columns).
       pool.query(
-        `SELECT id, reference_number, property_type, 
-                COALESCE(location->>'address', location->>'area', 'N/A') as location_text,
-                status, priority, created_at
-         FROM valuations 
-         WHERE organization_id = $1
-         ORDER BY created_at DESC LIMIT 5`,
+        `SELECT v.id, v.status, v.created_at,
+                p.property_type,
+                COALESCE(p.title, p.address_street, 'N/A') AS location_text
+         FROM valuations v
+         LEFT JOIN properties p ON p.id = v.property_id
+         WHERE v.valuer_organization_id = $1
+         ORDER BY v.created_at DESC LIMIT 5`,
         [orgId]
       ).catch(() => ({ rows: [] })),
 

@@ -12,6 +12,7 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { gssPhcHousingService } from '../data-hub/scrapers/gssPhcHousingService';
 
 // ============================================================================
 // TYPES
@@ -27,6 +28,8 @@ export interface FloorPlanSummary {
   avg_bedrooms: number;
   avg_bathrooms: number;
   code_compliant_rate: number;
+  // GSS PHC 2021 census context (Slice 2 — null when source table empty)
+  district_material_quality_score?: number | null;  // cement block/metal roof quality % for region
 }
 
 export interface FloorPlanByRegion {
@@ -154,7 +157,7 @@ class FloorPlanAnalyticsService {
       if (result.rows.length === 0) return null;
       const r = result.rows[0];
 
-      return {
+      const summary: FloorPlanSummary = {
         total_floor_plans: parseInt(r.total_plans, 10),
         total_rooms: parseInt(r.total_rooms, 10),
         avg_gfa_sqm: parseFloat(r.avg_gfa),
@@ -165,6 +168,18 @@ class FloorPlanAnalyticsService {
         avg_bathrooms: parseFloat(r.avg_bathrooms),
         code_compliant_rate: parseFloat(r.code_compliant_rate),
       };
+
+      // GSS PHC material quality context (Slice 2 — non-fatal)
+      if (opts.region) {
+        try {
+          const materialMap = await gssPhcHousingService.getMaterialQualityByRegion();
+          const regionKey = (opts.region as string).toLowerCase().replace(/\s+/g, '_');
+          summary.district_material_quality_score = materialMap[regionKey] ?? null;
+        } catch {
+          summary.district_material_quality_score = null;
+        }
+      }
+      return summary;
     } catch (err: any) {
       if (err.code === '42P01') return null;
       logger.error('FloorPlanAnalytics.getSummary error', err);

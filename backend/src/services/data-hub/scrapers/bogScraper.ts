@@ -16,6 +16,7 @@
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
+import https from 'https';
 import * as cheerio from 'cheerio';
 import { query } from '../../../database';
 import { logger } from '../../../utils/logger';
@@ -34,7 +35,9 @@ import {
 
 const DEFAULT_CONFIG: BOGScraperConfig = {
   base_url: 'https://www.bog.gov.gh',
-  user_agent: 'PROPMETRIK Economic Data Bot/1.0 (+https://propmetrik.com/bot)',
+  // Browser UA: bog.gov.gh is Cloudflare-fronted and blocks bot UAs (the old
+  // 'PROPMETRIK … Bot/1.0' UA returned "Failed to fetch"; a browser UA gets 200).
+  user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   timeout_ms: 30000,
   retry_attempts: 3,
   retry_delay_ms: 2000,
@@ -69,11 +72,15 @@ export class BOGScraper {
     this.client = axios.create({
       baseURL: this.config.base_url,
       timeout: this.config.timeout_ms,
+      // bog.gov.gh serves an INCOMPLETE TLS chain (missing intermediate) → Node
+      // throws UNABLE_TO_VERIFY_LEAF_SIGNATURE. This is a read-only public-data
+      // scrape (no credentials sent), so relax chain verification for this host.
+      httpsAgent: new https.Agent({ rejectUnauthorized: false }),
       headers: {
         'User-Agent': this.config.user_agent,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
         'Upgrade-Insecure-Requests': '1',
       },

@@ -17,6 +17,8 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { gssMiegService } from '../data-hub/scrapers/gssMiegService';
+import { gssFinancialService } from '../data-hub/scrapers/gssFinancialService';
 
 // ====================================================================
 // TYPES
@@ -25,16 +27,20 @@ import { logger } from '../../utils/logger';
 export interface PriceIndexSummary {
   region: string;
   property_type: string;
-  index_value: number;
+  index_value: number | null;
   real_index: number | null;
   base_period: string;
   change_mom: number;
   change_qoq: number;
-  change_yoy: number;
+  change_yoy: number | null;
   median_price: number;
   avg_price: number;
   transaction_count: number;
   sub_indices: Record<string, number>;
+  // GSS Macro context (Slice 1) — present when gss_mieg_monthly is populated
+  mieg_growth_yoy?: number | null;
+  gdp_growth_context?: string | null;
+  interest_rate_cycle?: string | null;
 }
 
 export interface PriceIndexHistory {
@@ -141,6 +147,10 @@ class MarketIntelligenceService {
       params.push(opts.propertyType);
     }
 
+    // Use the real market event date (when the listing first appeared), not created_at — which is
+    // the row-insert/bulk-import timestamp and would tie the "index" to when we loaded data rather
+    // than when the market moved. Falls back to created_at only if first_seen_at is absent.
+    const eventDate = 'COALESCE(p.first_seen_at, p.created_at)';
     const sql = `
       WITH current_period AS (
         SELECT
@@ -153,7 +163,7 @@ class MarketIntelligenceService {
         FROM properties p
         WHERE p.price > 0
           AND p.status IN ('active', 'sold', 'under_offer', 'rented')
-          AND p.created_at >= CURRENT_DATE - ($1 || ' months')::interval
+          AND ${eventDate} >= CURRENT_DATE - ($1 || ' months')::interval
           ${where}
         GROUP BY p.region, p.property_type
       ),
@@ -164,8 +174,8 @@ class MarketIntelligenceService {
           AVG(p.price) AS avg_price
         FROM properties p
         WHERE p.price > 0
-          AND p.created_at >= CURRENT_DATE - ($2 || ' months')::interval
-          AND p.created_at < CURRENT_DATE - ($1 || ' months')::interval
+          AND ${eventDate} >= CURRENT_DATE - ($2 || ' months')::interval
+          AND ${eventDate} < CURRENT_DATE - ($1 || ' months')::interval
           ${where}
         GROUP BY p.region, p.property_type
       )
@@ -175,27 +185,78 @@ class MarketIntelligenceService {
         ROUND(c.avg_price::numeric, 2) AS avg_price,
         ROUND(c.median_price::numeric, 2) AS median_price,
         ROUND(c.total_value::numeric, 2) AS total_value,
-        CASE WHEN pp.avg_price > 0 THEN ROUND(((c.avg_price - pp.avg_price) / pp.avg_price * 100)::numeric, 3) ELSE 0 END AS change_yoy
+        -- NULL (not 0) when there is no prior-year sample to compare against, so the API distinguishes
+        -- "0% change" from "insufficient history". Currently every listing post-dates early 2026, so
+        -- prev_period is empty and YoY is genuinely not computable yet — surface that honestly.
+        CASE WHEN pp.avg_price > 0 THEN ROUND(((c.avg_price - pp.avg_price) / pp.avg_price * 100)::numeric, 3) ELSE NULL END AS change_yoy
       FROM current_period c
       LEFT JOIN prev_period pp ON c.region = pp.region AND c.property_type = pp.property_type
       ORDER BY c.listing_count DESC
     `;
 
     const result = await pool.query(sql, params);
-    return result.rows.map((r: any) => ({
-      region: r.region,
-      property_type: r.property_type,
-      index_value: 100,
-      real_index: null,
-      base_period: '2024-01',
-      change_mom: 0,
-      change_qoq: 0,
-      change_yoy: parseFloat(r.change_yoy || '0'),
-      median_price: parseFloat(r.median_price || '0'),
-      avg_price: parseFloat(r.avg_price || '0'),
-      transaction_count: parseInt(r.transaction_count || '0', 10),
-      sub_indices: {},
-    }));
+
+    // CPI deflator (E-10): latest YoY inflation from economic_indicators — a real GSS/BoG series
+    // (self-healed from GSS cpi.px by gssIncomeService). Used to convert the nominal price index
+    // into a real (inflation-adjusted) one — only when there is a real nominal change to deflate.
+    const inflRow = await pool.query<{ value: string }>(
+      `SELECT value FROM economic_indicators WHERE indicator_type = 'inflation_rate'
+       ORDER BY effective_date DESC LIMIT 1`,
+    );
+    const inflationYoY = inflRow.rows[0] ? Number(inflRow.rows[0].value) : null;
+
+    const results = result.rows.map((r: any) => {
+      // change_yoy is null when there is no prior-year basis — do NOT fabricate 0 or an index/real_index off it.
+      const yoy = r.change_yoy === null || r.change_yoy === undefined ? null : parseFloat(r.change_yoy);
+      const nominalIndex = yoy === null ? null : Math.round(100 * (1 + yoy / 100) * 100) / 100;
+      const realIndex = yoy !== null && inflationYoY != null
+        ? Math.round((100 * (1 + yoy / 100) / (1 + inflationYoY / 100)) * 100) / 100
+        : null;
+      return {
+        region: r.region,
+        property_type: r.property_type,
+        index_value: nominalIndex,
+        real_index: realIndex,
+        base_period: 'YoY (12M prior = 100)',
+        change_mom: 0,
+        change_qoq: 0,
+        change_yoy: yoy,
+        median_price: parseFloat(r.median_price || '0'),
+        avg_price: parseFloat(r.avg_price || '0'),
+        transaction_count: parseInt(r.transaction_count || '0', 10),
+        sub_indices: { inflation_yoy: inflationYoY ?? 0 },
+      } as PriceIndexSummary;
+    });
+
+    // Enrich with GSS MIEG macro context (Slice 1) — non-fatal if tables not yet populated.
+    // Applies the same macro context to every region row (it's national-level data).
+    try {
+      const [miegData, gdpData, rateCycle] = await Promise.all([
+        gssMiegService.getLatestMieg(),
+        gssMiegService.getLatestGdpGrowth(),
+        gssFinancialService.getInterestRateCycle(),
+      ]);
+      const totalMieg = miegData['Total_MIEG'];
+      const miegYoy = totalMieg?.growth_yoy_pct ?? null;
+      const gdpContext = gdpData
+        ? `${gdpData.quarter_label} GDP: GHS ${gdpData.gdp_value?.toLocaleString() ?? 'N/A'}M`
+        : null;
+      const isContacting = await gssMiegService.isServicesMiegContracting(2);
+
+      for (const row of results) {
+        row.mieg_growth_yoy = miegYoy;
+        row.gdp_growth_context = gdpContext;
+        row.interest_rate_cycle = rateCycle;
+        // Flag credit-sensitive markets when Services MIEG contracts 2+ months
+        if (isContacting && (row as any).market_temperature !== 'hot') {
+          (row as any).market_temperature_note = 'credit-sensitive';
+        }
+      }
+    } catch {
+      // GSS tables not yet seeded — silently degrade
+    }
+
+    return results;
   }
 
   /**

@@ -150,7 +150,8 @@ function PercentileBar({ value, label }: { value: number; label: string }) {
   )
 }
 
-function formatCurrency(val: number): string {
+function formatCurrency(val: number | null | undefined): string {
+  if (val == null || !isFinite(val)) return '—'
   if (val >= 1_000_000) return `GH₵${(val / 1_000_000).toFixed(1)}M`
   if (val >= 1_000) return `GH₵${(val / 1_000).toFixed(0)}K`
   return `GH₵${val.toFixed(0)}`
@@ -192,8 +193,21 @@ export default function ValuerLeaderboardPage() {
     })
     if (region) params.set('region', region)
 
-    const data = await fetchData<LeaderboardEntry[]>(`/valuers/leaderboard?${params}`)
-    setLeaderboard(data || [])
+    // Backend returns organization_name / avg_time_to_complete_days / total_value_ghs.
+    // Normalise to the shape this page renders.
+    const raw = await fetchData<any[]>(`/valuers/leaderboard?${params}`)
+    const data: LeaderboardEntry[] = (raw || []).map((r) => ({
+      rank: r.rank,
+      valuer_id: r.valuer_id,
+      valuer_name: r.valuer_name,
+      organization: r.organization_name ?? r.organization ?? null,
+      total_valuations: r.total_valuations ?? 0,
+      avg_confidence: r.avg_confidence ?? 0,
+      avg_turnaround_days: r.avg_time_to_complete_days ?? r.avg_turnaround_days ?? 0,
+      avg_value: r.total_value_ghs ?? r.avg_value ?? 0,
+      override_rate: r.override_rate ?? 0,
+    }))
+    setLeaderboard(data)
     setLoading(false)
   }, [sortBy, months, region])
 
@@ -203,7 +217,33 @@ export default function ValuerLeaderboardPage() {
 
   const loadValuerDetail = useCallback(async (valuerId: string) => {
     setDetailLoading(true)
-    const data = await fetchData<ValuerDetail>(`/valuers/${valuerId}?months=${months}`)
+    const r = await fetchData<any>(`/valuers/${valuerId}?months=${months}`)
+    if (!r) { setSelectedValuer(null); setDetailLoading(false); return }
+    // Backend returns Record<string,number> for by_* and flat percentile_* fields;
+    // normalise to the shape this page renders.
+    const toArr = (rec: Record<string, number> | undefined, key: 'property_type' | 'region') =>
+      Object.entries(rec || {}).map(([k, count]) => ({ [key]: k, count, avg_value: 0, avg_confidence: 0 })) as any[]
+    const total = r.total_valuations ?? 0
+    const data: ValuerDetail = {
+      valuer_id: r.valuer_id,
+      valuer_name: r.valuer_name,
+      organization: r.organization_name ?? r.organization ?? null,
+      total_valuations: total,
+      completed_valuations: r.completed_valuations ?? 0,
+      avg_value: total > 0 ? (r.total_value_ghs ?? 0) / total : (r.total_value_ghs ?? 0),
+      median_value: r.median_value ?? 0,
+      avg_confidence: r.avg_confidence ?? 0,
+      avg_turnaround_days: r.avg_time_to_complete_days ?? r.avg_turnaround_days ?? 0,
+      override_rate: r.override_rate ?? 0,
+      peer_percentiles: {
+        volume_pctile: r.percentile_volume ?? r.peer_percentiles?.volume_pctile ?? 0,
+        confidence_pctile: r.percentile_quality ?? r.peer_percentiles?.confidence_pctile ?? 0,
+        speed_pctile: r.percentile_speed ?? r.peer_percentiles?.speed_pctile ?? 0,
+        value_pctile: r.peer_percentiles?.value_pctile ?? 0,
+      },
+      by_property_type: toArr(r.by_property_type, 'property_type'),
+      by_region: toArr(r.by_region, 'region'),
+    }
     setSelectedValuer(data)
     setDetailLoading(false)
   }, [months])
@@ -307,7 +347,7 @@ export default function ValuerLeaderboardPage() {
                     <th className="text-right py-1 px-2">VALUATIONS</th>
                     <th className="text-right py-1 px-2">AVG CONF</th>
                     <th className="text-right py-1 px-2">AVG DAYS</th>
-                    <th className="text-right py-1 px-2">AVG VALUE</th>
+                    <th className="text-right py-1 px-2">TOTAL VALUE</th>
                     <th className="text-right py-1 px-2">OVERRIDE</th>
                   </tr>
                 </thead>

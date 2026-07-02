@@ -29,6 +29,9 @@ interface RentalSummary {
   gross_yield_pct: number
   vacancy_rate_pct: number
   rent_by_bedrooms: Record<string, number>
+  // GSS enrichments (Slice 1/2) — null when the region has no matching GSS data
+  rent_to_income_ratio?: number | null
+  formal_rental_market_depth_pct?: number | null
 }
 
 interface RentalYieldDetail {
@@ -263,13 +266,26 @@ export default function RentalAnalyticsPage() {
                     <th className="text-right pb-2">₵/SQM</th>
                     <th className="text-right pb-2">TXNS</th>
                     <th className="text-right pb-2">YIELD</th>
+                    <th className="text-right pb-2">RENT/INCOME</th>
                     <th className="text-right pb-2">VACANCY</th>
                   </tr>
                 </thead>
                 <tbody className="font-mono text-xs">
                   {summary.map((r, i) => (
                     <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
-                      <td className="py-1.5 text-foreground">{formatRegion(r.region)}</td>
+                      <td className="py-1.5 text-foreground">
+                        <div>{formatRegion(r.region)}</div>
+                        {r.formal_rental_market_depth_pct !== null && r.formal_rental_market_depth_pct !== undefined && (
+                          <span className={cn(
+                            'inline-block mt-0.5 px-1 py-0 font-mono text-[8px] border rounded',
+                            r.formal_rental_market_depth_pct >= 30
+                              ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20'
+                              : 'text-muted-foreground bg-muted/40 border-border',
+                          )}>
+                            {r.formal_rental_market_depth_pct >= 30 ? 'Deep' : 'Thin'} market ({r.formal_rental_market_depth_pct.toFixed(0)}% renting)
+                          </span>
+                        )}
+                      </td>
                       <td className="py-1.5 text-muted-foreground">{formatPropertyType(r.property_type)}</td>
                       <td className="py-1.5 text-right text-green-600 dark:text-green-400">
                         {r.avg_rent_monthly > 0 ? formatCurrency(r.avg_rent_monthly) : '—'}
@@ -283,6 +299,11 @@ export default function RentalAnalyticsPage() {
                       <td className="py-1.5 text-right text-muted-foreground">{r.rental_transaction_count}</td>
                       <td className="py-1.5 text-right text-amber-600 dark:text-amber-400">
                         {r.gross_yield_pct > 0 ? `${r.gross_yield_pct.toFixed(2)}%` : '—'}
+                      </td>
+                      <td className="py-1.5 text-right text-muted-foreground">
+                        {r.rent_to_income_ratio !== null && r.rent_to_income_ratio !== undefined
+                          ? `${(r.rent_to_income_ratio * 100).toFixed(0)}%`
+                          : '—'}
                       </td>
                       <td className="py-1.5 text-right text-muted-foreground">
                         {r.vacancy_rate_pct > 0 ? `${(r.vacancy_rate_pct * 100).toFixed(1)}%` : '—'}

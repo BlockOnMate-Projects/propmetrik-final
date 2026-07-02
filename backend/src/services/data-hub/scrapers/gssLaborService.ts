@@ -42,7 +42,7 @@ interface LaborCategoryConfig {
   category: string;         // Must match labor_category_enum
   role_name: string;
   skill_level: LaborRate['skill_level'];
-  base_multiplier: number;  // Multiplier over minimum wage
+  base_multiplier: number;  // Skill/trade multiplier over the anchored base (AHIES median × MEDIAN_EARNINGS_ANCHOR)
 }
 
 interface GSSLaborServiceConfig {
@@ -66,8 +66,18 @@ const DEFAULT_CONFIG: GSSLaborServiceConfig = {
 };
 
 // Ghana Daily Minimum Wage (as of January 2025)
-// Updated by Fair Wages and Salaries Commission
+// Updated by Fair Wages and Salaries Commission. Retained only as a LEGAL FLOOR + a fallback when
+// AHIES earnings are unavailable — labour rates are primarily anchored to AHIES median earnings.
 const GHANA_DAILY_MINIMUM_WAGE_GHS = 18.15;
+
+// Labour rates are anchored to AHIES median hourly earnings (real regional wage data from
+// regional_household_income), NOT the statutory minimum wage which understates construction
+// labour ~3×. See fetchRegionalMedianEarnings() + calculateLaborRates().
+const HOURS_PER_DAY = 8;
+// A general labourer (skill multiplier 1.0) is set to ~0.7× the AHIES regional median day-rate; the
+// skill/trade ladder scales above it. Calibrated so (Accra) labourer≈₵49, skilled mason≈₵122,
+// master mason≈₵195, master electrician≈₵244 per day — realistic Ghana construction rates.
+const MEDIAN_EARNINGS_ANCHOR = 0.7;
 
 // Labor categories matching labor_category_enum:
 // mason, carpenter, electrician, plumber, painter, roofer, tiler, welder, laborer, foreman, supervisor, architect, engineer
@@ -255,25 +265,94 @@ export class GSSLaborService {
   }
 
   /**
-   * Calculate labor rates for all regions
+   * AHIES median hourly earnings (GHS/hr) mapped to the 5 labour region codes, plus the national
+   * average as a fallback. Real regional wage data from regional_household_income (gssIncomeService).
+   * The regional variation is already baked into the median, so no separate cost-of-living factor.
+   */
+  private async fetchRegionalMedianEarnings(): Promise<{ byRegion: Record<string, number>; national: number | null }> {
+    // labour region_code_enum → regional_household_income region key
+    const regionMap: Record<string, string> = {
+      greater_accra: 'greater_accra',
+      kumasi_metro: 'ashanti',
+      eastern: 'eastern',
+      western_cluster: 'western',
+      northern_cluster: 'northern',
+    };
+    try {
+      const r = await query<{ region: string; median_hourly_earnings_ghs: string }>(
+        `SELECT DISTINCT ON (region) region, median_hourly_earnings_ghs
+         FROM regional_household_income
+         WHERE median_hourly_earnings_ghs > 0
+         ORDER BY region, period_month DESC`,
+      );
+      const income: Record<string, number> = {};
+      for (const row of r.rows) income[row.region] = parseFloat(row.median_hourly_earnings_ghs);
+
+      const byRegion: Record<string, number> = {};
+      for (const [laborRegion, incomeRegion] of Object.entries(regionMap)) {
+        if (income[incomeRegion] > 0) byRegion[laborRegion] = income[incomeRegion];
+      }
+      const vals = Object.values(income);
+      const national = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+      return { byRegion, national };
+    } catch {
+      // regional_household_income / median_hourly_earnings_ghs not present — fall back to min-wage.
+      return { byRegion: {}, national: null };
+    }
+  }
+
+  /**
+   * Calculate labor rates for all regions.
+   *
+   * Primary anchor: AHIES median hourly earnings × 8h × MEDIAN_EARNINGS_ANCHOR × skill/trade multiplier.
+   * Minimum wage is applied only as a legal floor. If AHIES earnings are unavailable for a region
+   * (and no national average), we fall back to the legacy minimum-wage × cost-of-living method.
    */
   async calculateLaborRates(): Promise<LaborRate[]> {
     const rates: LaborRate[] = [];
 
-    // Fetch latest minimum wage
-    const minimumWage = await this.fetchMinimumWage();
+    const minimumWage = await this.fetchMinimumWage();          // legal floor + fallback base
+    const costOfLivingData = await this.fetchCostOfLivingData(); // fallback regional factor
+    const { byRegion: medianByRegion, national: nationalMedian } = await this.fetchRegionalMedianEarnings();
 
-    // Try to fetch cost of living data
-    const costOfLivingData = await this.fetchCostOfLivingData();
-
-    // Calculate rates for each region and category
+    let ahiesRegions = 0;
     for (const region of VALID_REGIONS) {
-      // Use scraped data if available, otherwise use configured factors
+      const medianHourly = medianByRegion[region.code] ?? nationalMedian;
+      const usingAhies = medianHourly != null && medianHourly > 0;
+      if (usingAhies && medianByRegion[region.code]) ahiesRegions++;
       const costFactor = costOfLivingData?.get(region.code) ?? region.cost_of_living_factor;
 
       for (const category of LABOR_CATEGORIES) {
-        // Base rate = minimum wage × skill multiplier × regional cost of living factor
-        const dailyRate = Math.round(minimumWage * category.base_multiplier * costFactor * 100) / 100;
+        let dailyRate: number;
+        let sourceRef: string;
+        let calcMeta: Record<string, any>;
+
+        if (usingAhies) {
+          // Anchor to real AHIES regional median earnings; min wage is a floor.
+          const medianDaily = (medianHourly as number) * HOURS_PER_DAY;
+          const anchored = medianDaily * category.base_multiplier * MEDIAN_EARNINGS_ANCHOR;
+          dailyRate = Math.round(Math.max(anchored, minimumWage) * 100) / 100;
+          sourceRef = 'AHIES median earnings (GSS) × skill ladder';
+          calcMeta = {
+            anchor: 'ahies_median_earnings',
+            median_hourly_ghs: medianHourly,
+            base_multiplier: category.base_multiplier,
+            median_anchor: MEDIAN_EARNINGS_ANCHOR,
+            minimum_wage_floor: minimumWage,
+            calculation: `${medianHourly} × ${HOURS_PER_DAY} × ${category.base_multiplier} × ${MEDIAN_EARNINGS_ANCHOR}`,
+          };
+        } else {
+          // Fallback: legacy minimum-wage × skill multiplier × regional cost-of-living factor.
+          dailyRate = Math.round(minimumWage * category.base_multiplier * costFactor * 100) / 100;
+          sourceRef = 'Minimum wage × skill ladder (AHIES unavailable)';
+          calcMeta = {
+            anchor: 'minimum_wage_fallback',
+            minimum_wage: minimumWage,
+            base_multiplier: category.base_multiplier,
+            cost_of_living_factor: costFactor,
+            calculation: `${minimumWage} × ${category.base_multiplier} × ${costFactor}`,
+          };
+        }
 
         rates.push({
           category: category.category,
@@ -282,14 +361,9 @@ export class GSSLaborService {
           daily_rate_ghs: dailyRate,
           region: region.code,
           source_type: 'calculated',
-          source_reference: 'GSS Cost of Living × Fair Wages',
+          source_reference: sourceRef,
           effective_date: new Date(),
-          metadata: {
-            minimum_wage: minimumWage,
-            base_multiplier: category.base_multiplier,
-            cost_of_living_factor: costFactor,
-            calculation: `${minimumWage} × ${category.base_multiplier} × ${costFactor}`,
-          },
+          metadata: calcMeta,
         });
       }
     }
@@ -298,7 +372,9 @@ export class GSSLaborService {
       total_rates: rates.length,
       regions: VALID_REGIONS.length,
       categories: LABOR_CATEGORIES.length,
-      minimum_wage_used: minimumWage,
+      anchor: ahiesRegions > 0 ? 'ahies_median_earnings' : 'minimum_wage_fallback',
+      ahies_regions: ahiesRegions,
+      minimum_wage_floor: minimumWage,
     });
 
     return rates;

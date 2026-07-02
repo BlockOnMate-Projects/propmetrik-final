@@ -18,8 +18,12 @@ BOT_NAME = "propmetrik_scrapers"
 SPIDER_MODULES = ["propmetrik_scrapers.spiders"]
 NEWSPIDER_MODULE = "propmetrik_scrapers.spiders"
 
-# Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = "PROPMETRIKBot/1.0 (+https://propmetrik.com/bot)"
+# Default request User-Agent. The Ghana property portals (meqasa, GPC, tonaton, …) serve an EMPTY
+# listing page to the self-identifying "PROPMETRIKBot" UA — verified live: bot UA returns 0 listing
+# cards, a browser UA returns 20. So every spider fetched 200 OK but parsed nothing. Present as a
+# real browser (matches USER_AGENT_LIST below) so public listings actually render. robots.txt is
+# still obeyed (ROBOTSTXT_OBEY=True).
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True

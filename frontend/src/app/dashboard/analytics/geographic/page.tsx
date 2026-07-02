@@ -107,13 +107,15 @@ function formatRegion(r: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatCurrency(n: number) {
+function formatCurrency(n: number | null | undefined) {
+  if (n == null || !isFinite(n)) return '—';
   if (n >= 1_000_000) return `GH₵${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `GH₵${(n / 1_000).toFixed(0)}K`;
   return `GH₵${n.toFixed(0)}`;
 }
 
-function formatNumber(n: number) {
+function formatNumber(n: number | null | undefined) {
+  if (n == null || !isFinite(n)) return '—';
   return n.toLocaleString();
 }
 

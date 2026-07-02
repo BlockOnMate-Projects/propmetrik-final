@@ -157,16 +157,18 @@ function SeverityDot({ severity }: { severity: string }) {
 }
 
 function MiniSparkline({ data, height = 32 }: { data: number[]; height?: number }) {
-  if (!data.length) return null
-  const max = Math.max(...data)
-  const min = Math.min(...data)
+  const clean = data.map((v) => (typeof v === 'number' && isFinite(v) ? v : 0))
+  if (clean.length < 2) return null
+  const max = Math.max(...clean)
+  const min = Math.min(...clean)
   const range = max - min || 1
   const w = 100
-  const points = data
+  const denom = Math.max(1, clean.length - 1)
+  const points = clean
     .map((v, i) => {
-      const x = (i / (data.length - 1)) * w
+      const x = (i / denom) * w
       const y = height - ((v - min) / range) * (height - 4) - 2
-      return `${x},${y}`
+      return `${x.toFixed(2)},${y.toFixed(2)}`
     })
     .join(' ')
   return (
@@ -264,7 +266,7 @@ export default function RiskAnalyticsPage() {
   const totalActiveCases = cases.filter(c => c.status === 'active' || c.status === 'pending').length
   const landguardCases = cases.filter(c => c.involves_landguard).length
   const avgRisk = hotspots.length > 0
-    ? Math.round(hotspots.reduce((s, h) => s + h.avg_risk_score, 0) / hotspots.length)
+    ? Math.round(hotspots.reduce((s, h) => s + (Number(h.avg_risk_score) || 0), 0) / hotspots.length)
     : 0
   const trendPoints = trends.map(t => t.case_count)
 

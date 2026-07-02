@@ -73,6 +73,7 @@ export class ScrapyScheduler {
         'airbnb_ghana',
         'daily_graphic_legal',
         'tonaton',
+        'ownkey',
       ],
       concurrentSpiders: config.scrapy?.concurrentSpiders ?? 2,
       retryFailed: config.scrapy?.retryFailed ?? true,
@@ -94,10 +95,11 @@ export class ScrapyScheduler {
     }
 
     // Check worker health before scheduling anything
-    const workerHealthy = await this.checkWorkerHealth();
-    if (!workerHealthy) {
-      logger.warn('Scrapy worker not reachable — scheduler will start but jobs may fail until worker is available', {
+    const workerHealth = await this.checkWorkerHealth();
+    if (!workerHealth.healthy) {
+      logger.warn('Scrapy worker not reachable — scheduler will start but scrape batches are skipped until it is available', {
         workerUrl: this.config.workerUrl,
+        reason: workerHealth.reason,
       });
     }
 
@@ -148,6 +150,22 @@ export class ScrapyScheduler {
         this.scheduledJobs.set('retry', retryJob);
       }
 
+      // Reap stuck running/queued jobs every 30 minutes (+ once shortly after startup, since a
+      // restart is the most common way jobs get orphaned).
+      const reaperJob = schedule('*/30 * * * *', () => {
+        this.reapStuckJobs().catch(error => logger.error('Reaper error', { error }));
+      });
+      this.scheduledJobs.set('reaper', reaperJob);
+      setTimeout(() => {
+        this.reapStuckJobs().catch(error => logger.error('Startup reaper error', { error }));
+      }, 60_000);
+
+      // Scraper degradation check every 6 hours (failure-rate + listing freshness).
+      const healthJob = schedule('0 */6 * * *', () => {
+        this.checkScraperHealth().catch(error => logger.error('Scraper health check error', { error }));
+      });
+      this.scheduledJobs.set('health', healthJob);
+
       this.isInitialized = true;
       logger.info('Scrapy scheduler started successfully');
     } catch (error) {
@@ -169,14 +187,17 @@ export class ScrapyScheduler {
 
   // ── Worker HTTP calls ─────────────────────────────────────────────
 
-  private async checkWorkerHealth(): Promise<boolean> {
+  private async checkWorkerHealth(): Promise<{ healthy: boolean; reason?: string }> {
     try {
       const res = await fetch(`${this.config.workerUrl}/health`, {
         signal: AbortSignal.timeout(5000),
       });
-      return res.ok;
-    } catch {
-      return false;
+      if (res.ok) return { healthy: true };
+      return { healthy: false, reason: `worker /health returned HTTP ${res.status}` };
+    } catch (e) {
+      // A bare `fetch failed` here means the scrapy-worker container is unreachable (down, OOM-killed,
+      // or not on propmetrik-network). Surface the concrete cause instead of a generic failure.
+      return { healthy: false, reason: e instanceof Error ? e.message : String(e) };
     }
   }
 
@@ -336,6 +357,19 @@ export class ScrapyScheduler {
   // ── Execution ─────────────────────────────────────────────────────
 
   private async executeSpiderJobs(jobs: SpiderJob[]): Promise<void> {
+    // Preflight: if the worker is unreachable, DON'T create a batch of ETL jobs that would each be
+    // dispatched and immediately fail with "fetch failed" (this is what produced 1000+ junk failed
+    // rows). One clear log, no jobs created — the freshness check will still flag the stall.
+    const health = await this.checkWorkerHealth();
+    if (!health.healthy) {
+      logger.error('Scrapy worker unreachable — skipping scrape batch (no jobs dispatched)', {
+        workerUrl: this.config.workerUrl,
+        reason: health.reason,
+        skippedSpiders: jobs.map(j => j.spider),
+      });
+      return;
+    }
+
     // Process in chunks to respect concurrency limit
     const chunks: SpiderJob[][] = [];
     for (let i = 0; i < jobs.length; i += this.config.concurrentSpiders) {
@@ -478,6 +512,15 @@ export class ScrapyScheduler {
 
       if (failedJobs.data.length === 0) return;
 
+      // Don't retry into an unreachable worker — it would just re-fail every job.
+      const health = await this.checkWorkerHealth();
+      if (!health.healthy) {
+        logger.warn('Skipping scrape retry — worker unreachable', {
+          workerUrl: this.config.workerUrl, reason: health.reason, pending: failedJobs.data.length,
+        });
+        return;
+      }
+
       logger.info('Retrying failed scrape jobs', { count: failedJobs.data.length });
 
       for (const job of failedJobs.data) {
@@ -525,6 +568,72 @@ export class ScrapyScheduler {
       }
     } catch (error) {
       logger.error('Failed to retry scrapy jobs', { error });
+    }
+  }
+
+  // ── Resilience: reaper + health ───────────────────────────────────
+
+  /**
+   * Reap scrape jobs left dangling in `running`/`queued`. The in-memory `runningSpiders` guard is
+   * lost on a process restart, and a worker crash mid-poll leaves the DB row `running` forever
+   * (this is what produced the 66 orphaned rows). Anything past the spider hard limit (4h) + 1h
+   * grace is dead — mark it failed so retry/metrics see the truth.
+   */
+  private async reapStuckJobs(): Promise<void> {
+    try {
+      const res = await query<{ id: string }>(
+        `UPDATE etl_jobs
+           SET status = 'failed',
+               completed_at = NOW(),
+               updated_at = NOW(),
+               last_error = LEFT(COALESCE(last_error || ' | ', '')
+                 || 'Reaped: stuck in ' || status::text || ' beyond 5h (process restart or worker crash)', 500)
+         WHERE job_type = 'scrape'
+           AND status IN ('running', 'queued')
+           AND COALESCE(started_at, created_at) < NOW() - INTERVAL '5 hours'
+         RETURNING id`,
+      );
+      if (res.rowCount && res.rowCount > 0) {
+        logger.warn('Reaped stuck scrape jobs', { count: res.rowCount });
+      }
+    } catch (error) {
+      logger.error('Failed to reap stuck scrape jobs', { error });
+    }
+  }
+
+  /**
+   * Surface scraper degradation that would otherwise rot silently: a high job-failure rate, or no
+   * net-new listings in days (the scraper is effectively dead even if the cron keeps firing).
+   */
+  private async checkScraperHealth(): Promise<void> {
+    try {
+      const fr = await query<{ total: string; failed: string }>(
+        `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'failed') AS failed
+           FROM etl_jobs WHERE job_type = 'scrape' AND created_at > NOW() - INTERVAL '24 hours'`,
+      );
+      const total = Number(fr.rows[0]?.total || 0);
+      const failed = Number(fr.rows[0]?.failed || 0);
+      if (total >= 5 && failed / total >= 0.5) {
+        logger.error('Scraper failure rate high in last 24h', {
+          total, failed, failureRate: `${Math.round((failed / total) * 100)}%`,
+          hint: 'Check the scrapy-worker container is running/healthy on propmetrik-network.',
+        });
+      }
+
+      const fresh = await query<{ last: Date | null }>(
+        `SELECT MAX(first_seen_at) AS last FROM properties WHERE first_seen_at IS NOT NULL`,
+      );
+      const last = fresh.rows[0]?.last ? new Date(fresh.rows[0].last) : null;
+      const daysStale = last ? (Date.now() - last.getTime()) / 86_400_000 : Infinity;
+      if (daysStale > 3) {
+        logger.error('Scraper produced no net-new listings recently', {
+          lastNewListing: last ? last.toISOString() : 'never',
+          daysStale: Number.isFinite(daysStale) ? Math.round(daysStale) : null,
+          hint: 'Scheduler may be firing but the worker is not ingesting — verify worker reachability.',
+        });
+      }
+    } catch (error) {
+      logger.error('Scraper health check failed', { error });
     }
   }
 

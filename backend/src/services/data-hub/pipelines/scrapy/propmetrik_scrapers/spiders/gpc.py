@@ -162,7 +162,7 @@ class GhanaPropertyCentreSpider(BasePropertySpider):
     
     def parse_property(self, response: Response) -> Generator[PropertyItem, None, None]:
         """Parse individual property page using actual GPC HTML structure."""
-        
+        import re
         self.items_scraped += 1
         listing_type = response.meta.get('listing_type', 'sale')
         
@@ -181,11 +181,17 @@ class GhanaPropertyCentreSpider(BasePropertySpider):
         if description:
             loader.add_value('description', description.strip())
         
-        # Price - GPC uses span.price within .property-details-price
-        # Structure: <span class="price">$</span><span class="price">350,000</span>
-        price_spans = response.css('.property-details-price span.price::text').getall()
-        if price_spans:
-            price_text = ''.join(price_spans)
+        # Price - GPC was rebuilt with Tailwind utility classes (no semantic .price class). The hero
+        # price is the largest-font currency span (text-3xl); "similar listings" use smaller fonts.
+        # Match the hero, then fall back to the first currency amount on the page. Extract by text/
+        # font-size signal so it survives utility-class churn.
+        price_text = response.xpath(
+            '//span[contains(@class,"text-3xl")][contains(.,"$") or contains(.,"₵") or contains(.,"GH")]'
+        ).xpath('normalize-space(.)').get()
+        if not price_text:
+            m = re.search(r'(?:GH₵|₵|US\$|\$|GHS)\s?[\d,]{3,}', response.text)
+            price_text = m.group(0) if m else None
+        if price_text:
             loader.add_value('price_raw', price_text)
             price_value, currency = self.clean_price_text(price_text)
             loader.add_value('price', price_value)
@@ -263,23 +269,31 @@ class GhanaPropertyCentreSpider(BasePropertySpider):
             
         loader.add_value('country', 'Ghana')
         
-        # Property specs - GPC uses schema.org PropertyValue in li elements
-        # <li><span itemprop="value">4</span> <span itemprop="name">Bedrooms</span></li>
-        bedrooms = response.xpath('//li[.//span[text()="Bedrooms"]]/span[@itemprop="value"]/text()').get()
-        if bedrooms:
-            loader.add_value('bedrooms', int(bedrooms))
-            
-        bathrooms = response.xpath('//li[.//span[text()="Bathrooms"]]/span[@itemprop="value"]/text()').get()
-        if bathrooms:
-            loader.add_value('bathrooms', int(bathrooms))
-            
-        toilets = response.xpath('//li[.//span[text()="Toilets"]]/span[@itemprop="value"]/text()').get()
-        if toilets:
-            loader.add_value('toilets', int(toilets))
-            
-        parking = response.xpath('//li[.//span[contains(text(),"Parking")]]/span[@itemprop="value"]/text()').get()
-        if parking:
-            loader.add_value('parking_spaces', int(parking))
+        # Property specs - GPC now renders spec chips like "<span>4 Bedrooms</span>" (and label/value
+        # pairs like "<span>Bedrooms 4</span>"). Match by visible text, not schema.org itemprop, so
+        # the extraction survives the markup rebuild.
+        def _spec(label: str):
+            for txt in response.xpath(f'//span[contains(text(),"{label}")]/text()').getall():
+                m = re.search(r'(\d+)', txt)
+                if m:
+                    return int(m.group(1))
+            return None
+
+        bedrooms = _spec('Bedroom')
+        if bedrooms is not None:
+            loader.add_value('bedrooms', bedrooms)
+
+        bathrooms = _spec('Bathroom')
+        if bathrooms is not None:
+            loader.add_value('bathrooms', bathrooms)
+
+        toilets = _spec('Toilet')
+        if toilets is not None:
+            loader.add_value('toilets', toilets)
+
+        parking = _spec('Parking')
+        if parking is not None:
+            loader.add_value('parking_spaces', parking)
         
         # Area/Size - GPC uses schema.org structure with separate value and name spans
         # Structure: <span itemprop="value">1,300</span> <span itemprop="unitText">sqm</span> <span itemprop="name">Total Area</span>

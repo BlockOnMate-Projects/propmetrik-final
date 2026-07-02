@@ -161,10 +161,12 @@ class EtlJobTrackerExtension:
                 'realtor_ghana': 'realtor-international',
                 'jiji': 'jiji',
                 'jiji_ghana': 'jiji',
+                'tonaton': 'tonaton',
+                'ownkey': 'ownkey',
                 'facebook': 'facebook-groups',
                 'facebook_groups': 'facebook-groups',
             }
-            self.source_slug = name_to_slug.get(spider.name.lower())
+            self.source_slug = name_to_slug.get(spider.name.lower(), spider.name.lower())
         
         data = {
             'source_slug': self.source_slug,
