@@ -113,6 +113,11 @@ export interface MarketRelativeData {
   low_outlier_count: number;
   outlier_rate: number;
   valuation_count: number;
+  // PVMAF — PropMetrik Valuation Macro-Adjustment Factor (Slice 5 §7.1). Null when
+  // macro inputs are unavailable.
+  macro_adjusted_value?: number | null;
+  pvmaf_multiplier?: number | null;
+  pvmaf_components?: Record<string, number> | null;
 }
 
 export interface QualityMetrics {
@@ -691,6 +696,96 @@ class ValuationAnalyticsService {
   /**
    * Get market-relative analytics from snapshot table.
    */
+  /**
+   * PVMAF — PropMetrik Valuation Macro-Adjustment Factor (Slice 5 §7.1).
+   * Builds a per-region multiplier from real macro + census signals:
+   *   × (1 + CPI_deviation)   inflation vs a neutral 15% anchor (economic_indicators)
+   *   × (1 + PPI_pressure)    construction PPI YoY vs neutral 10% (gss_ppi)
+   *   × (1 + GDP_momentum)    Total MIEG YoY (gss_mieg)
+   *   × (1 - interest_drag)   lending rate vs neutral 20% (gss_interest)
+   *   × (1 + NIQS_premium)    infrastructure vs mid-50 (district_infrastructure_scores)
+   *   × (1 - CCRI_discount)   incomplete-residential prevalence (gss_phc_completion)
+   * Each component is a small, bounded transform (documented anchors, not fabricated
+   * data); the total multiplier is clamped to ±15% so no single signal dominates.
+   * National signals apply to every region; NIQS/CCRI are regional.
+   */
+  private async computePvmafByRegion(): Promise<Record<string, { multiplier: number; components: Record<string, number> }>> {
+    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+    const out: Record<string, { multiplier: number; components: Record<string, number> }> = {};
+    try {
+      // National macro signals (best-effort each).
+      const q1 = await pool.query(`SELECT value FROM economic_indicators WHERE indicator_type = 'inflation_rate' ORDER BY effective_date DESC LIMIT 1`).catch(() => ({ rows: [] as any[] }));
+      const inflation = q1.rows.length ? parseFloat(q1.rows[0].value) : null;
+      const q2 = await pool.query(`SELECT change_yoy_pct FROM gss_ppi_construction_series WHERE series_code='Construction' AND change_yoy_pct IS NOT NULL ORDER BY period_date DESC LIMIT 1`).catch(() => ({ rows: [] as any[] }));
+      const ppiYoy = q2.rows.length ? parseFloat(q2.rows[0].change_yoy_pct) : null;
+      const q3 = await pool.query(`SELECT growth_yoy_pct FROM gss_mieg_monthly WHERE variable='Total_MIEG' AND growth_yoy_pct IS NOT NULL ORDER BY period_date DESC LIMIT 1`).catch(() => ({ rows: [] as any[] }));
+      const miegYoy = q3.rows.length ? parseFloat(q3.rows[0].growth_yoy_pct) : null;
+      const q4 = await pool.query(`SELECT rate_pct FROM gss_interest_rates_monthly WHERE rate_type='Average lending rate' AND rate_pct IS NOT NULL ORDER BY period_date DESC LIMIT 1`).catch(() => ({ rows: [] as any[] }));
+      const lending = q4.rows.length ? parseFloat(q4.rows[0].rate_pct) : null;
+
+      // National components (bounded).
+      const cpiDev = inflation !== null ? clamp((inflation - 15) / 100, -0.05, 0.05) : 0;
+      const ppiPressure = ppiYoy !== null ? clamp((ppiYoy - 10) / 100 * 0.5, -0.04, 0.04) : 0;
+      const gdpMomentum = miegYoy !== null ? clamp(miegYoy / 100 * 0.5, -0.04, 0.04) : 0;
+      const interestDrag = lending !== null ? clamp((lending - 20) / 100 * 0.5, -0.04, 0.04) : 0;
+
+      // Regional signals.
+      const rkey = (s: string) => s.toLowerCase().replace(/\s+/g, '_');
+      const niqs = await pool.query(`SELECT region, niqs_score FROM district_infrastructure_scores`).catch(() => ({ rows: [] as any[] }));
+      const niqsByRegion: Record<string, number> = {};
+      for (const r of niqs.rows) if (r.niqs_score !== null) niqsByRegion[rkey(r.region)] = parseFloat(r.niqs_score);
+      const ccri = await pool.query(`SELECT region, incomplete_residential_pct FROM gss_phc_completion_by_district`).catch(() => ({ rows: [] as any[] }));
+      const ccriByRegion: Record<string, number> = {};
+      for (const r of ccri.rows) if (r.incomplete_residential_pct !== null) ccriByRegion[rkey(r.region)] = parseFloat(r.incomplete_residential_pct);
+
+      const regions = new Set<string>([...Object.keys(niqsByRegion), ...Object.keys(ccriByRegion)]);
+      // Ensure every region we might see gets an entry (national-only when no regional data).
+      regions.add('__national__');
+      for (const region of regions) {
+        const niqsPremium = niqsByRegion[region] !== undefined ? clamp((niqsByRegion[region] - 50) / 50 * 0.05, -0.05, 0.05) : 0;
+        const ccriDiscount = ccriByRegion[region] !== undefined ? clamp(ccriByRegion[region] / 100 * 0.5, 0, 0.05) : 0;
+        const multiplierRaw = (1 + cpiDev) * (1 + ppiPressure) * (1 + gdpMomentum) * (1 - interestDrag) * (1 + niqsPremium) * (1 - ccriDiscount);
+        const multiplier = clamp(multiplierRaw, 0.85, 1.15);
+        out[region] = {
+          multiplier: Math.round(multiplier * 10000) / 10000,
+          components: {
+            cpi_deviation: Math.round(cpiDev * 10000) / 10000,
+            ppi_pressure: Math.round(ppiPressure * 10000) / 10000,
+            gdp_momentum: Math.round(gdpMomentum * 10000) / 10000,
+            interest_drag: Math.round(-interestDrag * 10000) / 10000,
+            niqs_premium: Math.round(niqsPremium * 10000) / 10000,
+            ccri_discount: Math.round(-ccriDiscount * 10000) / 10000,
+          },
+        };
+      }
+    } catch (err: any) {
+      logger.warn('ValuationAnalytics.computePvmaf failed', { error: err.message });
+    }
+    return out;
+  }
+
+  /** Attach macro_adjusted_value / pvmaf to each MarketRelativeData row (national + regional). */
+  private async enrichWithPvmaf(rows: MarketRelativeData[]): Promise<MarketRelativeData[]> {
+    if (rows.length === 0) return rows;
+    const pvmaf = await this.computePvmafByRegion();
+    const national = pvmaf['__national__'];
+    if (!national && Object.keys(pvmaf).length === 0) return rows;
+    for (const row of rows) {
+      const key = (row.region || '').toLowerCase().replace(/\s+/g, '_');
+      const p = pvmaf[key] ?? national ?? null;
+      if (p && row.market_median > 0) {
+        row.pvmaf_multiplier = p.multiplier;
+        row.pvmaf_components = p.components;
+        row.macro_adjusted_value = Math.round(row.market_median * p.multiplier);
+      } else {
+        row.macro_adjusted_value = null;
+        row.pvmaf_multiplier = null;
+        row.pvmaf_components = null;
+      }
+    }
+    return rows;
+  }
+
   async getMarketRelative(opts: {
     region?: string;
     propertyType?: string;
@@ -727,7 +822,7 @@ class ValuationAnalyticsService {
       const result = await pool.query(sql, params);
 
       if (result.rows.length > 0) {
-        return result.rows.map((r: any) => ({
+        const mapped: MarketRelativeData[] = result.rows.map((r: any) => ({
           region: r.region,
           property_type: r.property_type,
           valuations_median: parseFloat(r.valuations_median || '0'),
@@ -741,12 +836,13 @@ class ValuationAnalyticsService {
           outlier_rate: parseFloat(r.outlier_rate || '0'),
           valuation_count: parseInt(r.valuation_count || '0', 10),
         }));
+        return this.enrichWithPvmaf(mapped);
       }
 
       // Fallback: Live computation from valuations + market data
-      return this.computeMarketRelativeLive(opts);
+      return this.enrichWithPvmaf(await this.computeMarketRelativeLive(opts));
     } catch (err: any) {
-      if (err.code === '42P01') return this.computeMarketRelativeLive(opts);
+      if (err.code === '42P01') return this.enrichWithPvmaf(await this.computeMarketRelativeLive(opts));
       logger.error('ValuationAnalytics.getMarketRelative error', err);
       throw err;
     }
@@ -774,36 +870,66 @@ class ValuationAnalyticsService {
         params.push(propertyType);
       }
 
-      const where = conditions.join(' AND ');
+      // Market-driven: `market_median` comes from the real `properties` sale market
+      // (plentiful), and the sparse completed valuations are left-joined for the
+      // premium/discount. This yields rows keyed on the property market even when
+      // few valuations exist, and gives PVMAF a real base (market_median) to adjust.
+      const mktConds: string[] = [`price > 0`, `transaction_type = 'sale'`, `region IS NOT NULL`];
+      if (region) { mktConds.push(`LOWER(region::text) = LOWER($${idx++})`); params.push(region); }
+      if (propertyType) { mktConds.push(`LOWER(property_type::text) = LOWER($${idx++})`); params.push(propertyType); }
 
       const sql = `
-        SELECT
-          LOWER(p.region::text) AS region,
-          LOWER(p.property_type::text) AS property_type,
-          PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY v.estimated_value) AS valuations_median,
-          COUNT(*) AS valuation_count
-        FROM valuations v
-        LEFT JOIN properties p ON v.property_id = p.id
-        WHERE ${where}
-        GROUP BY LOWER(p.region::text), LOWER(p.property_type::text)
-        HAVING COUNT(*) >= 3
+        WITH market AS (
+          SELECT LOWER(region::text) AS region,
+                 LOWER(property_type::text) AS property_type,
+                 PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY price) AS market_median,
+                 COUNT(*) AS prop_count
+          FROM properties
+          WHERE ${mktConds.join(' AND ')}
+          GROUP BY LOWER(region::text), LOWER(property_type::text)
+          HAVING COUNT(*) >= 5
+        ),
+        vals AS (
+          SELECT LOWER(p.region::text) AS region,
+                 LOWER(p.property_type::text) AS property_type,
+                 PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY v.estimated_value) AS valuations_median,
+                 COUNT(*) AS valuation_count
+          FROM valuations v
+          LEFT JOIN properties p ON v.property_id = p.id
+          WHERE v.status = 'completed' AND v.estimated_value > 0
+          GROUP BY LOWER(p.region::text), LOWER(p.property_type::text)
+        )
+        SELECT m.region, m.property_type, m.market_median, m.prop_count::int AS prop_count,
+               COALESCE(vl.valuations_median, 0) AS valuations_median,
+               COALESCE(vl.valuation_count, 0)::int AS valuation_count
+        FROM market m
+        LEFT JOIN vals vl ON m.region = vl.region AND m.property_type = vl.property_type
+        ORDER BY m.prop_count DESC
+        LIMIT 60
       `;
       const result = await pool.query(sql, params);
 
-      return result.rows.map((r: any) => ({
-        region: r.region || 'unknown',
-        property_type: r.property_type || null,
-        valuations_median: parseFloat(r.valuations_median || '0'),
-        market_median: 0, // No market data available live
-        premium_discount_pct: 0,
-        valuation_trend_3m: 0,
-        market_trend_3m: 0,
-        correlation: 0,
-        high_outlier_count: 0,
-        low_outlier_count: 0,
-        outlier_rate: 0,
-        valuation_count: parseInt(r.valuation_count, 10),
-      }));
+      return result.rows.map((r: any) => {
+        const marketMedian = parseFloat(r.market_median || '0');
+        const valuationsMedian = parseFloat(r.valuations_median || '0');
+        const premium = (marketMedian > 0 && valuationsMedian > 0)
+          ? Math.round(((valuationsMedian - marketMedian) / marketMedian) * 10000) / 100
+          : 0;
+        return {
+          region: r.region || 'unknown',
+          property_type: r.property_type || null,
+          valuations_median: valuationsMedian,
+          market_median: Math.round(marketMedian),
+          premium_discount_pct: premium,
+          valuation_trend_3m: 0,
+          market_trend_3m: 0,
+          correlation: 0,
+          high_outlier_count: 0,
+          low_outlier_count: 0,
+          outlier_rate: 0,
+          valuation_count: parseInt(r.valuation_count, 10),
+        };
+      });
     } catch (err: any) {
       if (err.code === '42P01') return [];
       logger.error('ValuationAnalytics.computeMarketRelativeLive error', err);

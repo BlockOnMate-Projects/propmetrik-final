@@ -149,6 +149,9 @@ export class EconomicDataMonitoringService {
       { table: 'gss_phc_population_projections',    source: 'GSS StatsBank PHC Population',   threshold: this.config.gssCensusFreshnessDays },
       { table: 'gss_phc_employment_by_district',    source: 'GSS StatsBank PHC Employment',   threshold: this.config.gssCensusFreshnessDays },
       { table: 'gss_phc_mpi_by_district',           source: 'GSS StatsBank PHC Poverty',      threshold: this.config.gssCensusFreshnessDays },
+      // GSS StatsBank GLSS7 (Slice 4) — annual cadence
+      { table: 'gss_glss7_migration_flows',         source: 'GSS StatsBank GLSS7 (migration)', threshold: this.config.gssCensusFreshnessDays },
+      { table: 'gss_glss7_tourism_by_region',       source: 'GSS StatsBank GLSS7 (tourism)',   threshold: this.config.gssCensusFreshnessDays },
     ];
     for (const tc of gssTableChecks) {
       checks.push(await this.checkTableFreshness(tc.table, tc.source, tc.threshold));

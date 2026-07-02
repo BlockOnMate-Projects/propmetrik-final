@@ -26,6 +26,7 @@ import { marketIntelligenceService } from '../services/analytics/marketIntellige
 import { investmentScoringService } from '../services/analytics/investmentScoringService';
 import { valuationAnalyticsService } from '../services/analytics/valuationAnalyticsService';
 import { capRateService } from '../services/valuation-engine/CapRateService';
+import { publishAllMarketPriceIndex, publishMacroAlerts } from '../services/analytics/analyticsStreamSnapshots';
 
 let running = false;
 
@@ -56,6 +57,9 @@ export async function refreshAllAnalytics(): Promise<void> {
   logger.info('Analytics refresh: starting full sweep');
   try {
     await step('market_intelligence', () => marketIntelligenceService.computeAndStoreSnapshot(now));
+    // Push the freshly-recomputed price index + macro alerts to WS subscribers.
+    await step('stream_market_price_index', () => publishAllMarketPriceIndex(now.getTime()));
+    await step('stream_macro_alerts', () => publishMacroAlerts(now.getTime()));
     await step('investment_scoring', () => investmentScoringService.computeAndStoreSnapshot(now));
     await step('valuation_analytics', () => valuationAnalyticsService.computeAndStoreSnapshot(now, 'monthly'));
 

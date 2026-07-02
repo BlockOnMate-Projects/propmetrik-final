@@ -13,6 +13,7 @@ import {
   Info,
 } from 'lucide-react'
 import RegionalHeatmap from '@/components/analytics/RegionalHeatmap'
+import MigrationFlowMatrix from '@/components/analytics/MigrationFlowMatrix'
 
 // =====================================================
 // TYPES
@@ -54,11 +55,24 @@ interface PovertyRow {
   top_contributor: string | null
 }
 
+interface MigrationMatrix {
+  regions: string[]
+  flows: { origin: string; dest: string; flow_pct: number | null }[]
+}
+
 interface DemandData {
   rhds: RHDSScore[]
   population: PopulationRow[]
   employment: EmploymentRow[]
   poverty: PovertyRow[]
+  migration?: MigrationMatrix
+}
+
+interface CompositesData {
+  dpmdi: { region: string; dpmdi_score: number | null }[]
+  ptmpi: { region: string; ptmpi_score: number | null }[]
+  essi: { region: string; essi_score: number | null }[]
+  rici: { region: string; rici_score: number | null }[]
 }
 
 // =====================================================
@@ -172,16 +186,21 @@ function ComponentBar({ label, value }: { label: string; value: number | null })
 
 export default function HousingDemandPage() {
   const [data, setData] = useState<DemandData | null>(null)
+  const [composites, setComposites] = useState<CompositesData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
 
   const load = useCallback(async (signal?: AbortSignal) => {
-    const d = await fetchData<DemandData>('/demand', signal)
+    const [d, c] = await Promise.all([
+      fetchData<DemandData>('/demand', signal),
+      fetchData<CompositesData>('/composites', signal),
+    ])
     if (d) {
       setData(d)
       if (!selectedRegion && d.rhds.length > 0) setSelectedRegion(d.rhds[0].region)
     }
+    if (c) setComposites(c)
     setLoading(false)
   }, [selectedRegion])
 
@@ -420,9 +439,75 @@ export default function HousingDemandPage() {
         </div>
       </Panel>
 
+      {/* Row 4: GLSS7 inter-regional migration flow matrix (Slice 4) */}
+      {data.migration && data.migration.regions.length > 0 && (
+        <div className="mt-3">
+          <Panel
+            title="INTER-REGIONAL MIGRATION FLOWS (GLSS7)"
+            actions={<Users className="w-3 h-3 text-amber-500" />}
+          >
+            <MigrationFlowMatrix regions={data.migration.regions} flows={data.migration.flows} />
+            <div className="pt-2 mt-2 border-t border-border font-mono text-[9px] text-muted-foreground leading-relaxed">
+              Each column (region of current residence) sums to 100% across origin rows. Off-diagonal cells are the
+              share of a region&apos;s residents who migrated in from elsewhere — the in-migration signal now feeding
+              the RHDS migration component. GLSS7 2016/17 uses the pre-2019 10-region classification.
+            </div>
+          </Panel>
+        </div>
+      )}
+
+      {/* Row 5: Regional composite indices (Slice 5 §6.4/6.8/6.10/7.2) */}
+      {composites && composites.rici.length > 0 && (() => {
+        const map = (arr: { region: string }[], key: string) => Object.fromEntries(arr.map((x: any) => [x.region, x[key]]))
+        const dp = map(composites.dpmdi, 'dpmdi_score'), pt = map(composites.ptmpi, 'ptmpi_score')
+        const es = map(composites.essi, 'essi_score'), ri = map(composites.rici, 'rici_score')
+        const regions = [...composites.rici].sort((a, b) => (b.rici_score ?? -1) - (a.rici_score ?? -1)).map(x => x.region)
+        const cell = (v: number | null, invert = false) => {
+          if (v === null || v === undefined) return <span className="text-muted-foreground">—</span>
+          const good = invert ? v < 45 : v >= 60
+          const bad = invert ? v >= 60 : v < 45
+          return <span className={good ? 'text-green-600 dark:text-green-400' : bad ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}>{v.toFixed(0)}</span>
+        }
+        return (
+          <div className="mt-3">
+            <Panel title="REGIONAL COMPOSITE INDICES" actions={<Trophy className="w-3 h-3 text-amber-500" />}>
+              <div className="overflow-x-auto">
+                <table className="w-full font-mono text-[11px]">
+                  <thead>
+                    <tr className="text-[9px] text-muted-foreground border-b border-border">
+                      <th className="text-left pb-2">REGION</th>
+                      <th className="text-right pb-2" title="Property Market Depth Index">DPMDI</th>
+                      <th className="text-right pb-2" title="PropTech Penetration Index">PTMPI</th>
+                      <th className="text-right pb-2" title="Economic Shock Sensitivity (higher = riskier)">ESSI</th>
+                      <th className="text-right pb-2" title="Regional Investment Climate Index">RICI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {regions.map((r) => (
+                      <tr key={r} className="border-b border-border/50">
+                        <td className="py-1 text-foreground">{regionLabel(r)}</td>
+                        <td className="py-1 text-right">{cell(dp[r] ?? null)}</td>
+                        <td className="py-1 text-right">{cell(pt[r] ?? null)}</td>
+                        <td className="py-1 text-right">{cell(es[r] ?? null, true)}</td>
+                        <td className="py-1 text-right">{cell(ri[r] ?? null)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="pt-2 mt-1 border-t border-border font-mono text-[9px] text-muted-foreground leading-relaxed">
+                  DPMDI = market depth/formalisation · PTMPI = digital/proptech readiness · ESSI = macro-shock sensitivity (higher = more exposed) ·
+                  RICI = investment climate (MIEG/PPI/lending/NPL + RHDS + NIQS). All 0–100 from real GSS PHC 2021 + macro series.
+                </div>
+              </div>
+            </Panel>
+          </div>
+        )
+      })()}
+
       <div className="mt-3 font-mono text-[9px] text-muted-foreground">
         Source: Ghana Statistical Service — 2021 Population &amp; Housing Census (population projections, employment
-        sector, multidimensional poverty) + AHIES/BoG household earnings. Refreshed annually.
+        sector, multidimensional poverty) + AHIES/BoG household earnings + GLSS7 2016/17 (inter-regional migration).
+        Refreshed annually.
       </div>
     </div>
   )

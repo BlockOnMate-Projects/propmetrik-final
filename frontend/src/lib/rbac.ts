@@ -268,6 +268,8 @@ export const featureGates: Record<string, FeatureGate> = {
   'analytics-risk':           { minTier: 'professional',  label: 'Risk Assessment',        description: 'Property and portfolio risk analysis' },
   'analytics-geographic':     { minTier: 'professional',  label: 'Geographic Intelligence', description: 'Spatial market analysis with heatmaps' },
   'analytics-demand':         { minTier: 'professional',  label: 'Housing Demand',          description: 'Regional housing demand scoring from PHC 2021 population, employment and poverty data' },
+  'analytics-infrastructure': { minTier: 'professional',  label: 'Infrastructure Quality',  description: 'Neighbourhood Infrastructure Quality Score (NIQS) from PHC 2021 electricity, water, sanitation and ICT access' },
+  'analytics-api':            { minTier: 'professional',  label: 'Analytics API',           description: 'Programmatic access to PropMetrik analytics — base URL, resources catalog, users and API keys' },
   'api-access':               { minTier: 'enterprise',    label: 'API Access',              description: 'Programmatic access to PROPMETRIK data and services' },
   'bulk-valuations':          { minTier: 'professional',  label: 'Bulk Valuations',         description: 'Batch property valuation processing' },
   'custom-reports':           { minTier: 'enterprise',    label: 'Custom Reports',          description: 'White-label custom valuation report templates' },
@@ -416,9 +418,9 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'analytics-crm':           ['super_admin', 'firm_principal', 'admin', 'manager', 'agent', 'analyst'],
     'analytics-geographic':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'analytics-demand':        ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'analytics-infrastructure':['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'analytics-api':           ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'analytics-management':    ['super_admin', 'firm_principal', 'admin', 'manager'],
-    'analytics-settings':      ['super_admin', 'firm_principal', 'admin'],
-    'analytics-team':          ['super_admin', 'firm_principal', 'admin'],
   },
 };
 
@@ -703,9 +705,9 @@ const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServi
     'analytics-forecasting':   ['service_admin', 'analyst'],
     'analytics-geographic':    ['service_admin', 'analyst', 'viewer'],
     'analytics-demand':        ['service_admin', 'analyst', 'viewer'],
+    'analytics-infrastructure':['service_admin', 'analyst', 'viewer'],
+    'analytics-api':           ['service_admin', 'analyst', 'viewer'],
     'analytics-management':    ['service_admin'],
-    'analytics-settings':      ['service_admin'],
-    'analytics-team':          ['service_admin'],
   },
 };
 

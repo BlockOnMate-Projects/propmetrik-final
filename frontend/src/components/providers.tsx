@@ -5,7 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from 'next-themes'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { PWAProvider, OfflineIndicator, InstallPrompt } from '@/components/pwa'
+import { PWAProvider, OfflineIndicator } from '@/components/pwa'
 import { RealtimeProvider } from '@/lib/realtime-provider'
 import { SessionProvider } from 'next-auth/react'
 import { I18nProvider } from '@/providers/i18n-provider'
@@ -74,7 +74,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     {children}
                   </RealtimeProvider>
                   <OfflineIndicator />
-                  <InstallPrompt />
                 </PWAProvider>
               )}
           </TooltipProvider>

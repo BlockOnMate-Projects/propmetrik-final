@@ -20,6 +20,7 @@ import { logger } from '../../utils/logger';
 import { gssFinancialService } from '../data-hub/scrapers/gssFinancialService';
 import { gssPhcHousingService } from '../data-hub/scrapers/gssPhcHousingService';
 import { gssPhcPovertyService } from '../data-hub/scrapers/gssPhcPovertyService';
+import { gssGlss7Service } from '../data-hub/scrapers/gssGlss7Service';
 
 // ====================================================================
 // TYPES
@@ -38,6 +39,7 @@ export interface InvestmentOpportunity {
     macro_risk_score?: number;   // Slice 1: NPL + policy rate penalty
     ccri_risk_score?: number;    // Slice 2: construction completion risk
     mpi_risk_score?: number;     // Slice 3: multidimensional poverty penalty
+    migration_active?: boolean;  // Slice 4: absorption factor includes GLSS7 migration inflow
   };
   cap_rate: number;
   avg_price_growth_yoy: number;
@@ -57,6 +59,9 @@ export interface InvestmentOpportunity {
   mpi_m0?: number | null;
   mpi_incidence?: number | null;
   mpi_risk_level?: 'low' | 'moderate' | 'high' | null;
+  // GSS GLSS7 migration context (Slice 4) — present when migration flows populated
+  migration_inflow_pct?: number | null;
+  migration_active?: boolean;
 }
 
 export interface RegionalComparison {
@@ -231,6 +236,18 @@ class InvestmentScoringService {
       // MPI table not yet populated — silently skip
     }
 
+    // Fetch GSS GLSS7 inter-regional migration inflow % by region (Slice 4).
+    // Net in-migration intensity is a demand signal blended into the absorption
+    // factor. Empty until gss_glss7_migration_flows is populated (weight then
+    // redistributes back to internal absorption alone — graceful degradation).
+    let migrationByRegion: Record<string, number | null> = {};
+    try {
+      migrationByRegion = await gssGlss7Service.getMigrationInflowByRegion();
+    } catch {
+      // GLSS7 table not yet populated — silently skip
+    }
+    const migrationActive = Object.keys(migrationByRegion).length > 0;
+
     return result.rows.map((r: any) => {
       const capRate = parseFloat(r.cap_rate || '0');
       const priceGrowth = parseFloat(r.price_growth_yoy || '0');
@@ -265,11 +282,23 @@ class InvestmentScoringService {
         mpiRiskLevel = mpiM0 >= 0.15 ? 'high' : mpiM0 >= 0.08 ? 'moderate' : 'low';
       }
 
+      // Migration inflow % (Slice 4): the share of a region's residents who moved
+      // in from another region — a latent-demand signal. Blend into absorption at
+      // 30% weight when present (internal absorption keeps 70%); regions without a
+      // GLSS7 match keep pure internal absorption (no fabricated boost).
+      const migrationInflowPct = migrationByRegion[regionKey] ?? null;
+
       // Score each factor 0–20, total 0–100.
       const capScore = Math.min(20, capRate * 2);
       const priceScore = Math.min(20, Math.max(0, priceGrowth + 10));
       const rentScore = Math.min(20, Math.max(0, rentGrowth * 2 + 10));
-      const absScore = Math.min(20, absorption * 100);
+      const internalAbsScore = Math.min(20, absorption * 100);
+      let absScore = internalAbsScore;
+      if (migrationInflowPct !== null) {
+        // 50%+ in-migration → full 20-point demand sub-score.
+        const migrationScore = Math.min(20, (migrationInflowPct / 50) * 20);
+        absScore = 0.7 * internalAbsScore + 0.3 * migrationScore;
+      }
       const macroScore = macroRiskPenalty > 0 ? Math.max(0, 20 - macroRiskPenalty * 100) : null;
       const baseRiskScore = Math.max(0, 20 - (vacancy * 20) - (riskPremium * 5) - (ccriPenalty * 100) - (mpiPenalty * 100));
       const riskScore = macroScore !== null ? Math.min(baseRiskScore, macroScore) : baseRiskScore;
@@ -300,6 +329,7 @@ class InvestmentScoringService {
           macro_risk_score: macroScore !== null ? Math.round(macroScore * 10) / 10 : undefined,
           ccri_risk_score: ccriScore !== null ? Math.round(ccriScore * 10) / 10 : undefined,
           mpi_risk_score: mpiScore !== null ? Math.round(mpiScore * 10) / 10 : undefined,
+          migration_active: migrationInflowPct !== null ? true : undefined,
         },
         cap_rate: capRate,
         avg_price_growth_yoy: priceGrowth,
@@ -316,6 +346,8 @@ class InvestmentScoringService {
         mpi_m0: mpiM0,
         mpi_incidence: mpi?.mpi_incidence ?? null,
         mpi_risk_level: mpiRiskLevel,
+        migration_inflow_pct: migrationInflowPct,
+        migration_active: migrationActive,
       } as InvestmentOpportunity;
     });
   }

@@ -271,7 +271,28 @@ export async function authenticate(
 ): Promise<void> {
   try {
     const token = extractToken(req);
-    
+
+    // If apiAccess already authenticated this request with an analytics API key,
+    // it is valid for this route (apiAccess enforced the per-product entitlement).
+    // Some analytics/short-stay routers also apply authenticate() internally, so
+    // just pass through — the pmk_ token is still in the header but already vetted.
+    if ((req as any).apiAuth) {
+      return next();
+    }
+
+    // Otherwise a raw analytics API key (`pmk_…`) reaching a SESSION route is not a
+    // valid credential — reject it (in dev too, not just prod). Respond directly
+    // (do NOT throw): the catch below has a dev-mode fallback that would otherwise
+    // swallow the rejection and log the caller in as the dev user (thrown AppError
+    // subclasses don't reliably satisfy `instanceof` under this transpilation).
+    if (token && token.startsWith('pmk_')) {
+      res.status(401).json({
+        error: 'Invalid credentials for this endpoint',
+        message: 'Analytics API keys are only valid on the analytics API (e.g. /analytics/*, /short-stay/*). This endpoint requires a user session.',
+      });
+      return;
+    }
+
     // Development mode bypass - allow unauthenticated access
     if (!token && config.app.env === 'development') {
       try {

@@ -18,6 +18,11 @@ router.get('/', async (_req: Request, res: Response) => {
       valuationsResult,
       propertiesResult,
       capRateResult,
+      ghaiResult,
+      cciResult,
+      miegResult,
+      lendingResult,
+      nplResult,
     ] = await Promise.all([
       // 1. Median sale prices — NATIONAL (the "Ghana Property Index") and Greater Accra, in one pass.
       // Median, not mean: a few ₵100M+ outlier rows drag the Accra mean to ~₵1.48M vs a ₵350K median.
@@ -87,6 +92,46 @@ router.get('/', async (_req: Request, res: Response) => {
         SELECT COALESCE(AVG(cap_rate_mean), 0) AS avg_cap_rate
         FROM market_cap_rate_benchmarks
       `).catch(() => ({ rows: [{ avg_cap_rate: 0 }] })),
+
+      // 7. GHAI — latest composite affordability (prefer Greater Accra headline)
+      pool.query(`
+        SELECT ghai_composite, change_mom
+        FROM housing_affordability_index
+        ORDER BY (region = 'greater_accra') DESC, calculation_date DESC
+        LIMIT 1
+      `).catch(() => ({ rows: [] as any[] })),
+
+      // 8. Construction Cost Index — latest national (region NULL) monthly
+      pool.query(`
+        SELECT index_value, change_yoy
+        FROM construction_cost_index_analytics
+        WHERE period_type = 'monthly'
+        ORDER BY (region IS NULL) DESC, period_date DESC
+        LIMIT 1
+      `).catch(() => ({ rows: [] as any[] })),
+
+      // 9. MIEG — latest Total growth YoY
+      pool.query(`
+        SELECT index_value, growth_yoy_pct
+        FROM gss_mieg_monthly
+        WHERE variable = 'Total_MIEG'
+        ORDER BY period_date DESC
+        LIMIT 1
+      `).catch(() => ({ rows: [] as any[] })),
+
+      // 10. Average lending rate — latest 2 months (for the pp change)
+      pool.query(`
+        SELECT rate_pct, period_date FROM gss_interest_rates_monthly
+        WHERE rate_type = 'Average lending rate'
+        ORDER BY period_date DESC LIMIT 2
+      `).catch(() => ({ rows: [] as any[] })),
+
+      // 11. NPL ratio — latest 2 months (for the pp change)
+      pool.query(`
+        SELECT value_pct, period_date FROM gss_financial_soundness_monthly
+        WHERE indicator = 'Non performing loan ratio'
+        ORDER BY period_date DESC LIMIT 2
+      `).catch(() => ({ rows: [] as any[] })),
     ]);
 
     const nationalMedian = parseFloat(priceIndexResult.rows[0]?.national_median) || 0;
@@ -105,6 +150,56 @@ router.get('/', async (_req: Request, res: Response) => {
     const activeDeals = parseInt(dealsResult.rows[0]?.active_deals) || 0;
     const pendingVals = parseInt(valuationsResult.rows[0]?.pending_vals) || 0;
 
+    // ── Headline market indices for the public marketing ticker ────────────────
+    // Each entry is real, live data; entries with no data are omitted (never faked).
+    type Idx = { key: string; label: string; value: number; unit: string; change: number | null; direction: 'up' | 'down' | null };
+    const dir = (c: number | null): 'up' | 'down' | null => (c == null || c === 0 ? null : c > 0 ? 'up' : 'down');
+    const num = (v: any): number | null => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+    // pp change between two rows, but ONLY if their periods are adjacent months
+    // (≤ 45 days apart). Non-adjacent stored points would produce a bogus swing.
+    const adjChange = (rows: any[], field: string): number | null => {
+      if (!rows[0] || !rows[1]) return null;
+      const cur = num(rows[0][field]); const prev = num(rows[1][field]);
+      if (cur == null || prev == null) return null;
+      const days = Math.abs((new Date(rows[0].period_date).getTime() - new Date(rows[1].period_date).getTime()) / 86_400_000);
+      return days <= 45 ? +(cur - prev).toFixed(2) : null;
+    };
+
+    const marketIndices: Idx[] = [];
+
+    // GH Property Index (national median sale price) — no reliable period series yet, so no change.
+    if (nationalMedian || accraMedian) {
+      marketIndices.push({ key: 'property', label: 'GH PROPERTY IDX', value: Math.round(nationalMedian || accraMedian), unit: 'GHS', change: null, direction: null });
+    }
+    // GHAI (affordability composite, 0–100)
+    const ghai = ghaiResult.rows[0];
+    if (ghai && num(ghai.ghai_composite) != null) {
+      const chg = num(ghai.change_mom);
+      marketIndices.push({ key: 'ghai', label: 'GHAI', value: +Number(ghai.ghai_composite).toFixed(1), unit: '/100', change: chg != null ? +chg.toFixed(2) : null, direction: dir(chg) });
+    }
+    // Construction Cost Index
+    const cci = cciResult.rows[0];
+    if (cci && num(cci.index_value) != null) {
+      const chg = num(cci.change_yoy);
+      marketIndices.push({ key: 'cci', label: 'CONSTRUCTION CCI', value: +Number(cci.index_value).toFixed(1), unit: 'idx', change: chg != null ? +chg.toFixed(1) : null, direction: dir(chg) });
+    }
+    // MIEG — economic growth (YoY %) is itself the headline value
+    const mieg = miegResult.rows[0];
+    if (mieg && num(mieg.growth_yoy_pct) != null) {
+      const g = +Number(mieg.growth_yoy_pct).toFixed(1);
+      marketIndices.push({ key: 'mieg', label: 'MIEG GROWTH', value: g, unit: '% YoY', change: null, direction: g >= 0 ? 'up' : 'down' });
+    }
+    // Average lending rate (%), with adjacent-month pp change
+    if (lendingResult.rows[0] && num(lendingResult.rows[0].rate_pct) != null) {
+      const chg = adjChange(lendingResult.rows, 'rate_pct');
+      marketIndices.push({ key: 'lending', label: 'AVG LENDING RATE', value: +num(lendingResult.rows[0].rate_pct)!.toFixed(2), unit: '%', change: chg, direction: dir(chg) });
+    }
+    // NPL ratio (%), with adjacent-month pp change
+    if (nplResult.rows[0] && num(nplResult.rows[0].value_pct) != null) {
+      const chg = adjChange(nplResult.rows, 'value_pct');
+      marketIndices.push({ key: 'npl', label: 'NPL RATIO', value: +num(nplResult.rows[0].value_pct)!.toFixed(2), unit: '%', change: chg, direction: dir(chg) });
+    }
+
     res.json({
       success: true,
       data: {
@@ -121,6 +216,7 @@ router.get('/', async (_req: Request, res: Response) => {
         active_deals: activeDeals,
         pending_valuations: pendingVals,
         cap_rate: +(avgCapRate * 100).toFixed(2),
+        market_indices: marketIndices,
       },
     });
   } catch (err: any) {

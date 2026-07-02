@@ -44,13 +44,13 @@ export default function HeroSection() {
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4">
-                        <Link href="/services/data">
+                        <Link href="/services">
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 className="bg-foreground text-background px-8 py-4 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-colors"
                             >
-                                Explore Data Hub
+                                Explore Services
                             </motion.button>
                         </Link>
                         <Link href="/pricing">

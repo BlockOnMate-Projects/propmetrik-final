@@ -19,6 +19,22 @@ import {
 // TYPES
 // =====================================================
 
+interface RentalAffordabilityBand {
+  band: string
+  band_min: number
+  band_max: number | null
+  affordable_pct: number
+  effective_demand_pct: number
+}
+interface RentalAffordabilityRegion {
+  region: string
+  median_monthly_income_ghs: number
+  informal_pct: number | null
+  unemployment_rate: number | null
+  risk_adjustment: number
+  bands: RentalAffordabilityBand[]
+}
+
 interface RentalSummary {
   region: string
   property_type: string
@@ -32,6 +48,9 @@ interface RentalSummary {
   // GSS enrichments (Slice 1/2) — null when the region has no matching GSS data
   rent_to_income_ratio?: number | null
   formal_rental_market_depth_pct?: number | null
+  // GSS GLSS7 rent-payee enrichment (Slice 4)
+  private_rental_share_pct?: number | null
+  rent_payee_breakdown?: Record<string, number | null> | null
 }
 
 interface RentalYieldDetail {
@@ -133,20 +152,30 @@ export default function RentalAnalyticsPage() {
   const [yields, setYields] = useState<RentalYieldDetail[]>([])
   const [trends, setTrends] = useState<RentalTrend[]>([])
   const [benchmarks, setBenchmarks] = useState<RentalBenchmark[]>([])
+  const [affordability, setAffordability] = useState<RentalAffordabilityRegion[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [sumData, yieldData, trendData, benchData] = await Promise.all([
+    const [sumData, yieldData, trendData, benchData, affordData] = await Promise.all([
       fetchData<RentalSummary[]>('/rental/summary'),
       fetchData<RentalYieldDetail[]>('/rental/yields'),
       fetchData<RentalTrend[]>('/rental/trends?months=12'),
       fetchData<RentalBenchmark[]>('/rental/benchmarks'),
+      // RABM (Slice 5) lives under the platform analytics base, not /market.
+      (async () => {
+        try {
+          const res = await authedFetch('/api/analytics/platform/rentals/affordability-bands')
+          if (!res.ok) return null
+          return (await res.json()).data as RentalAffordabilityRegion[]
+        } catch { return null }
+      })(),
     ])
     setSummary(sumData || [])
     setYields(yieldData || [])
     setTrends(trendData || [])
     setBenchmarks(benchData || [])
+    setAffordability(affordData || [])
     setLoading(false)
   }, [])
 
@@ -275,16 +304,40 @@ export default function RentalAnalyticsPage() {
                     <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                       <td className="py-1.5 text-foreground">
                         <div>{formatRegion(r.region)}</div>
-                        {r.formal_rental_market_depth_pct !== null && r.formal_rental_market_depth_pct !== undefined && (
-                          <span className={cn(
-                            'inline-block mt-0.5 px-1 py-0 font-mono text-[8px] border rounded',
-                            r.formal_rental_market_depth_pct >= 30
-                              ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20'
-                              : 'text-muted-foreground bg-muted/40 border-border',
-                          )}>
-                            {r.formal_rental_market_depth_pct >= 30 ? 'Deep' : 'Thin'} market ({r.formal_rental_market_depth_pct.toFixed(0)}% renting)
-                          </span>
-                        )}
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {r.formal_rental_market_depth_pct !== null && r.formal_rental_market_depth_pct !== undefined && (
+                            <span className={cn(
+                              'inline-block px-1 py-0 font-mono text-[8px] border rounded',
+                              r.formal_rental_market_depth_pct >= 30
+                                ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20'
+                                : 'text-muted-foreground bg-muted/40 border-border',
+                            )}>
+                              {r.formal_rental_market_depth_pct >= 30 ? 'Deep' : 'Thin'} market ({r.formal_rental_market_depth_pct.toFixed(0)}% renting)
+                            </span>
+                          )}
+                          {r.private_rental_share_pct !== null && r.private_rental_share_pct !== undefined && (
+                            <span
+                              className={cn(
+                                'inline-block px-1 py-0 font-mono text-[8px] border rounded',
+                                r.private_rental_share_pct >= 25
+                                  ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
+                                  : 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+                              )}
+                              title={
+                                r.rent_payee_breakdown
+                                  ? 'Rent paid to (GLSS7): ' +
+                                    Object.entries(r.rent_payee_breakdown)
+                                      .filter(([, v]) => v != null)
+                                      .sort((a, b) => (b[1] as number) - (a[1] as number))
+                                      .map(([k, v]) => `${k} ${(v as number).toFixed(0)}%`)
+                                      .join(', ')
+                                  : undefined
+                              }
+                            >
+                              {r.private_rental_share_pct >= 25 ? 'Private' : 'Informal'} rental {r.private_rental_share_pct.toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-1.5 text-muted-foreground">{formatPropertyType(r.property_type)}</td>
                       <td className="py-1.5 text-right text-green-600 dark:text-green-400">
@@ -429,6 +482,48 @@ export default function RentalAnalyticsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </Panel>
+        )}
+
+        {/* RABM — Rental Affordability Bands (Slice 5 §6.6) */}
+        {affordability.length > 0 && (
+          <Panel title="RENTAL AFFORDABILITY BANDS (RABM)" className="col-span-12">
+            <div className="overflow-x-auto">
+              <table className="w-full font-mono text-[11px]">
+                <thead>
+                  <tr className="text-[10px] text-muted-foreground border-b border-border">
+                    <th className="text-left pb-2">REGION</th>
+                    <th className="text-right pb-2">MED INCOME/MO</th>
+                    {affordability[0].bands.map((b) => (
+                      <th key={b.band} className="text-right pb-2">₵{b.band}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {affordability.map((r) => (
+                    <tr key={r.region} className="border-b border-border/50">
+                      <td className="py-1.5 text-foreground">{r.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</td>
+                      <td className="py-1.5 text-right text-muted-foreground">₵{r.median_monthly_income_ghs.toLocaleString()}</td>
+                      {r.bands.map((b) => (
+                        <td key={b.band} className="py-1.5 text-right">
+                          <span className={cn(
+                            b.effective_demand_pct >= 40 ? 'text-green-600 dark:text-green-400' :
+                            b.effective_demand_pct >= 15 ? 'text-amber-600 dark:text-amber-400' :
+                            'text-red-600 dark:text-red-400'
+                          )}>
+                            {b.effective_demand_pct.toFixed(0)}%
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="pt-2 mt-1 border-t border-border font-mono text-[9px] text-muted-foreground">
+                % of a region&apos;s households that can afford each GHS/month rent band without spending &gt;30% of income,
+                risk-adjusted for informality &amp; unemployment (GSS AHIES income + PHC 2021 employment). Green ≥40% · amber ≥15% · red below.
+              </div>
             </div>
           </Panel>
         )}

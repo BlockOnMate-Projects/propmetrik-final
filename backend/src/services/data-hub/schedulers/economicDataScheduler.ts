@@ -24,6 +24,9 @@ import { constructionCostService } from '../constructionCostService';
 import { baseCostCalculationService } from '../baseCostCalculationService';
 import { specializedCostService } from '../specializedCostService';
 import { housingDemandScoreService } from '../../analytics/housingDemandScoreService';
+import { infrastructureQualityService } from '../../analytics/infrastructureQualityService';
+import { housingDeficitService } from '../../analytics/housingDeficitService';
+import { regionalCompositesService } from '../../analytics/regionalCompositesService';
 
 /**
  * Scheduler configuration
@@ -79,6 +82,14 @@ export interface SchedulerConfig {
   /** PHC 2021 population + employment + poverty census — Jan 2nd at 2 AM (day after housing) */
   gssPhcPopEmpPovSyncCron: string;
 
+  // === GSS StatsBank GLSS7 (Slice 4) — annual ===
+  /** GLSS7 migration + tourism + housing — Jan 3rd at 2 AM (day after PHC census) */
+  gssGlss7SyncCron: string;
+
+  // === GSS derived analytics recompute (Slice 5) — annual ===
+  /** Recompute NIQS + RHDS + HDEM — Jan 5th at 3 AM (after all census slices land) */
+  gssDerivesRecomputeCron: string;
+
   // === General ===
   /** Timezone for all scheduled jobs */
   timezone: string;
@@ -121,6 +132,10 @@ const DEFAULT_CONFIG: SchedulerConfig = {
 
   // GSS StatsBank Census (Slice 3)
   gssPhcPopEmpPovSyncCron: process.env.GSS_PHC_POP_CRON || '0 2 2 1 *',     // Jan 2nd at 2 AM — annual census (day after housing)
+  // GSS StatsBank GLSS7 (Slice 4)
+  gssGlss7SyncCron: process.env.GSS_GLSS7_CRON || '0 2 3 1 *',              // Jan 3rd at 2 AM — annual GLSS7 (day after PHC census)
+  // GSS derived analytics recompute (Slice 5)
+  gssDerivesRecomputeCron: process.env.GSS_DERIVES_CRON || '0 3 5 1 *',     // Jan 5th at 3 AM — recompute NIQS/RHDS/HDEM
 
   // General
   timezone: process.env.SCHEDULER_TIMEZONE || 'Africa/Accra',
@@ -248,6 +263,18 @@ export class EconomicDataScheduler {
     // Recomputes the Regional Housing Demand Score (RHDS) after ingest.
     this.scheduleJob('gss-phc-pop-emp-pov-sync', this.config.gssPhcPopEmpPovSyncCron, async () => {
       await this.runGSSPhcSlice3Sync();
+    });
+
+    // GSS StatsBank GLSS7 (Slice 4) — migration + tourism + housing (annual).
+    // Recomputes RHDS after ingest so the migration component activates.
+    this.scheduleJob('gss-glss7-sync', this.config.gssGlss7SyncCron, async () => {
+      await this.runGSSGlss7Sync();
+    });
+
+    // GSS derived analytics (Slice 5) — recompute NIQS + RHDS + HDEM after the
+    // annual census refresh has fully landed (Jan 5th).
+    this.scheduleJob('gss-derives-recompute', this.config.gssDerivesRecomputeCron, async () => {
+      await this.runGSSDerivesRecompute();
     });
 
     // =====================================================
@@ -411,6 +438,20 @@ export class EconomicDataScheduler {
           lastSync: lastSyncs.get('GSS StatsBank PHC Population'),
           run: () => this.runGSSPhcSlice3Sync(),
         },
+        // GSS StatsBank GLSS7 (Slice 4) — check annual cadence.
+        // The runner also recomputes RHDS so the migration component activates.
+        {
+          logName: 'GSS StatsBank GLSS7',
+          lastSync: lastSyncs.get('GSS StatsBank GLSS7'),
+          run: () => this.runGSSGlss7Sync(),
+        },
+        // GSS derived analytics (Slice 5) — NIQS/RHDS/HDEM. Not sync-logged, so
+        // always attempt on boot (cheap, idempotent upserts).
+        {
+          logName: 'GSS Derived Analytics (NIQS/HDEM)',
+          lastSync: undefined,
+          run: () => this.runGSSDerivesRecompute(),
+        },
       ];
 
       const stale: string[] = [];
@@ -562,6 +603,8 @@ export class EconomicDataScheduler {
     } else if (normalizedSource === 'gss_phc_population' || normalizedSource === 'gss_phc_employment'
                || normalizedSource === 'gss_phc_poverty' || normalizedSource === 'gss_phc_slice3') {
       await this.runGSSPhcSlice3Sync();
+    } else if (normalizedSource === 'gss_glss7') {
+      await this.runGSSGlss7Sync();
     } else if (normalizedSource === 'gss_all') {
       await this.runGSSPpiSync();
       await this.runGSSMiegSync();
@@ -570,6 +613,7 @@ export class EconomicDataScheduler {
       await this.runGSSPhcHousingSync();
       await this.runGSSTradeSync();
       await this.runGSSPhcSlice3Sync();
+      await this.runGSSGlss7Sync();
     } else if (normalizedSource === 'greda') {
       await this.runGREDASync();
     }
@@ -1041,6 +1085,61 @@ export class EconomicDataScheduler {
       logger.info('[Scheduler] RHDS recompute complete', { regions: rhds.length });
     } catch (error) {
       logger.error('[Scheduler] RHDS recompute failed', { error });
+    }
+  }
+
+  /**
+   * Sync GSS GLSS7 (Slice 4, annual): migration flows + domestic tourism + housing
+   * occupancy, then recompute the Regional Housing Demand Score (RHDS) so its
+   * migration component activates now that gss_glss7_migration_flows is populated.
+   */
+  private async runGSSGlss7Sync(): Promise<void> {
+    logger.info('[Scheduler] Running GSS GLSS7 (migration/tourism/housing) sync...');
+    try {
+      const result = await economicDataSyncService.syncGSSGlss7('scheduler');
+      logger.info('[Scheduler] GSS GLSS7 sync complete', { status: result.status, saved: result.records_saved });
+    } catch (error) {
+      logger.error('[Scheduler] GSS GLSS7 sync failed', { error });
+    }
+    // Recompute RHDS so the migration component activates with the fresh GLSS7 flows.
+    try {
+      const rhds = await housingDemandScoreService.computeAndStore();
+      logger.info('[Scheduler] RHDS recompute (post-GLSS7) complete', { regions: rhds.length });
+    } catch (error) {
+      logger.error('[Scheduler] RHDS recompute (post-GLSS7) failed', { error });
+    }
+  }
+
+  /**
+   * Recompute the Slice 5 derived analytics — NIQS (infrastructure quality),
+   * RHDS (housing demand), HDEM (housing deficit) — from the current census
+   * tables. Isolated per step; idempotent upserts.
+   */
+  private async runGSSDerivesRecompute(): Promise<void> {
+    logger.info('[Scheduler] Recomputing GSS derived analytics (NIQS/RHDS/HDEM)...');
+    try {
+      const niqs = await infrastructureQualityService.computeAndStore();
+      logger.info('[Scheduler] NIQS recompute complete', { regions: niqs.length });
+    } catch (error) {
+      logger.error('[Scheduler] NIQS recompute failed', { error });
+    }
+    try {
+      const rhds = await housingDemandScoreService.computeAndStore();
+      logger.info('[Scheduler] RHDS recompute complete', { regions: rhds.length });
+    } catch (error) {
+      logger.error('[Scheduler] RHDS recompute failed', { error });
+    }
+    try {
+      const hdem = await housingDeficitService.computeAndStore();
+      logger.info('[Scheduler] HDEM recompute complete', { regions: hdem.length });
+    } catch (error) {
+      logger.error('[Scheduler] HDEM recompute failed', { error });
+    }
+    try {
+      const comp = await regionalCompositesService.computeAndStoreAll();
+      logger.info('[Scheduler] Regional composites recompute complete', { ...comp });
+    } catch (error) {
+      logger.error('[Scheduler] Regional composites recompute failed', { error });
     }
   }
 

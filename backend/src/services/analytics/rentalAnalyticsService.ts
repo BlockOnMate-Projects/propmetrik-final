@@ -18,6 +18,7 @@
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
 import { gssPhcHousingService } from '../data-hub/scrapers/gssPhcHousingService';
+import { gssGlss7Service } from '../data-hub/scrapers/gssGlss7Service';
 
 // ====================================================================
 // TYPES
@@ -36,6 +37,26 @@ export interface RentalSummary {
   // GSS enrichments (Slice 1+2 — null when source tables empty)
   rent_to_income_ratio?: number | null;         // median_rent / median_monthly_income
   formal_rental_market_depth_pct?: number | null; // % of households renting (PHC 2021)
+  // GSS GLSS7 rent-payee enrichment (Slice 4 — null when snapshot empty)
+  private_rental_share_pct?: number | null;     // % of renters paying a private landlord (individual/employer)
+  rent_payee_breakdown?: Record<string, number | null> | null; // full payee mix (GLSS7 Table_7.3)
+}
+
+export interface RentalAffordabilityBand {
+  band: string;
+  band_min: number;
+  band_max: number | null;
+  affordable_pct: number;          // % of households who can afford (income-only)
+  effective_demand_pct: number;    // affordable_pct × labour-market risk adjustment
+}
+
+export interface RentalAffordabilityRegion {
+  region: string;
+  median_monthly_income_ghs: number;
+  informal_pct: number | null;
+  unemployment_rate: number | null;
+  risk_adjustment: number;
+  bands: RentalAffordabilityBand[];
 }
 
 export interface RentalYieldDetail {
@@ -72,6 +93,80 @@ interface RentalFilterOpts {
   region?: string;
   propertyType?: string;
   months?: number;
+}
+
+// ====================================================================
+// LOCALITY → GSS REGION RESOLVER
+// ====================================================================
+// Rental data is keyed by locality/neighbourhood (East Legon, Osu, Tema, Kumasi
+// Metropolitan…), not by the 16 GSS regions the GSS enrichment tables use. Without
+// this resolver the region-key join never matches, so every GSS enrichment field
+// (rent-to-income, market depth, private-rental share) silently stayed null. This
+// maps a locality to its GSS region by factual geography (not fabricated data).
+
+/** The 16 canonical GSS region keys (snake_case). */
+const GSS_REGION_KEYS = new Set([
+  'western', 'central', 'greater_accra', 'volta', 'eastern', 'ashanti',
+  'western_north', 'ahafo', 'bono', 'bono_east', 'oti', 'northern',
+  'savannah', 'north_east', 'upper_east', 'upper_west',
+]);
+
+/**
+ * Locality/city token → GSS region. Substring-matched against the lowercased
+ * locality, so "East Legon Hills", "Accra Metropolitan", "Teshie-Nungua Estates"
+ * all resolve via their contained token. Greater Accra dominates the property
+ * dataset; other metros are covered for completeness.
+ */
+const LOCALITY_TOKEN_TO_REGION: Array<[string, string]> = [
+  // Greater Accra (city + well-known neighbourhoods/areas)
+  ['accra', 'greater_accra'], ['legon', 'greater_accra'], ['osu', 'greater_accra'],
+  ['cantonment', 'greater_accra'], ['spintex', 'greater_accra'], ['dzorwulu', 'greater_accra'],
+  ['labone', 'greater_accra'], ['ridge', 'greater_accra'], ['achimota', 'greater_accra'],
+  ['adenta', 'greater_accra'], ['adentan', 'greater_accra'], ['tema', 'greater_accra'],
+  ['teshie', 'greater_accra'], ['nungua', 'greater_accra'], ['tse addo', 'greater_accra'],
+  ['adjiringanor', 'greater_accra'], ['airport residential', 'greater_accra'],
+  ['east airport', 'greater_accra'], ['haatso', 'greater_accra'], ['agbogba', 'greater_accra'],
+  ['ashaley botwe', 'greater_accra'], ['abelemkpe', 'greater_accra'], ['batsonaa', 'greater_accra'],
+  ['oyarifa', 'greater_accra'], ['lakeside', 'greater_accra'], ['madina', 'greater_accra'],
+  ['sakumono', 'greater_accra'], ['dansoman', 'greater_accra'], ['kaneshie', 'greater_accra'],
+  ['lapaz', 'greater_accra'], ['la palm', 'greater_accra'], ['ga east', 'greater_accra'],
+  ['ga west', 'greater_accra'], ['ga south', 'greater_accra'], ['west hills', 'greater_accra'],
+  ['kasoa', 'central'], // Kasoa straddles but is administratively Central
+  // Ashanti
+  ['kumasi', 'ashanti'], ['obuasi', 'ashanti'], ['ejisu', 'ashanti'], ['asokore', 'ashanti'],
+  // Western / Western North
+  ['takoradi', 'western'], ['sekondi', 'western'], ['tarkwa', 'western'], ['sefwi', 'western_north'],
+  // Central
+  ['cape coast', 'central'], ['elmina', 'central'], ['winneba', 'central'],
+  // Volta / Oti
+  ['ho ', 'volta'], ['aflao', 'volta'], ['hohoe', 'volta'], ['keta', 'volta'], ['dambai', 'oti'],
+  // Eastern
+  ['koforidua', 'eastern'], ['nsawam', 'eastern'], ['akosombo', 'eastern'], ['akropong', 'eastern'],
+  // Bono / Bono East / Ahafo
+  ['sunyani', 'bono'], ['techiman', 'bono_east'], ['goaso', 'ahafo'],
+  // Northern belt
+  ['tamale', 'northern'], ['yendi', 'northern'], ['damongo', 'savannah'], ['nalerigu', 'north_east'],
+  ['walewale', 'north_east'], ['bolgatanga', 'upper_east'], ['bawku', 'upper_east'], ['wa ', 'upper_west'],
+];
+
+/** Common administrative suffixes stripped before an exact region match. */
+const ADMIN_SUFFIX = /_(metropolitan|metropolis|municipal|municipality|district|area|estate|estates|hills|new town|newtown)$/;
+
+/** Resolve a locality/region label to its GSS region key, or null when unidentifiable. */
+function resolveGssRegion(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const lower = raw.toLowerCase().trim();
+  const key = lower.replace(/\s+/g, '_');
+  if (GSS_REGION_KEYS.has(key)) return key;
+  const base = key.replace(ADMIN_SUFFIX, '');
+  if (GSS_REGION_KEYS.has(base)) return base;
+  // Direct region name contained anywhere (e.g. "greater_accra_something")
+  for (const region of GSS_REGION_KEYS) if (key.includes(region)) return region;
+  // Locality-token substring match (uses the spaced form so "wa " / "ho " don't over-match)
+  for (const [token, region] of LOCALITY_TOKEN_TO_REGION) {
+    if (lower.includes(token)) return region;
+  }
+  return null;
 }
 
 // ====================================================================
@@ -232,8 +327,14 @@ class RentalAnalyticsService {
       // Fetch renting % per region (Slice 2 — PHC tenure)
       const tenureByRegion = await gssPhcHousingService.getTenureByRegion();
 
+      // Fetch GLSS7 rent-payee snapshot per region (Slice 4 — private-market maturity)
+      const glss7HousingByRegion = await gssGlss7Service.getHousingSnapshotByRegion();
+
       for (const s of summaries) {
-        const regionKey = s.region.toLowerCase().replace(/\s+/g, '_');
+        // Rental rows are keyed by locality/neighbourhood — resolve to the GSS region
+        // so the enrichment tables (all keyed by the 16 GSS regions) actually join.
+        const regionKey = resolveGssRegion(s.region);
+        if (!regionKey) continue;
         const income = incomeByRegion[regionKey] ?? null;
         if (income && income > 0 && s.median_rent_monthly > 0) {
           s.rent_to_income_ratio = Math.round((s.median_rent_monthly / income) * 1000) / 1000;
@@ -242,9 +343,118 @@ class RentalAnalyticsService {
         if (tenure?.renting_pct !== null && tenure?.renting_pct !== undefined) {
           s.formal_rental_market_depth_pct = tenure.renting_pct;
         }
+        const glss7 = glss7HousingByRegion[regionKey];
+        if (glss7) {
+          s.private_rental_share_pct = glss7.private_rental_share_pct;
+          s.rent_payee_breakdown = glss7.rent_payee;
+        }
       }
     } catch {
       // Silently degrade — fields stay undefined
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // RENTAL AFFORDABILITY BANDS (RABM — Slice 5 §6.6)
+  // ------------------------------------------------------------------
+
+  /**
+   * Rental Affordability Band Model: for each GHS rent band, the % of a region's
+   * households that can afford it without spending >30% of monthly income, then
+   * discounted for labour-market risk (informality + unemployment).
+   *
+   *   affordable_pct       = P(monthly_income × 0.30 ≥ band_midpoint)
+   *                          [log-normal, mu = ln(median income), sigma = INCOME_SIGMA]
+   *   risk_adj             = 1 - (informal_pct × 0.3 + unemployment_rate × 0.5)
+   *   effective_demand_pct = affordable_pct × risk_adj
+   *
+   * Inputs are all real: median monthly income (regional_household_income), and
+   * informal/unemployment shares (gss_phc_employment_by_district). INCOME_SIGMA is
+   * a documented log-normal dispersion parameter (not a data value), like the 0.30
+   * rent-burden threshold the spec prescribes.
+   */
+  async getRentalAffordabilityBands(region?: string): Promise<RentalAffordabilityRegion[]> {
+    const INCOME_SIGMA = 0.85;   // log-normal dispersion for LMIC household income
+    const RENT_BURDEN = 0.30;    // max share of income spent on rent
+    const BANDS: { label: string; min: number; max: number | null }[] = [
+      { label: '<500', min: 0, max: 500 },
+      { label: '500–1k', min: 500, max: 1000 },
+      { label: '1k–2k', min: 1000, max: 2000 },
+      { label: '2k–5k', min: 2000, max: 5000 },
+      { label: '5k+', min: 5000, max: null },
+    ];
+    // Standard normal CDF (Abramowitz–Stegun approximation).
+    const normCdf = (z: number): number => {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const d = 0.3989423 * Math.exp(-z * z / 2);
+      let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      p = z > 0 ? 1 - p : p;
+      return p;
+    };
+
+    try {
+      const incomeRows = await pool.query<{ region: string; income: string | null }>(
+        `SELECT DISTINCT ON (region) region, median_household_income_monthly_ghs AS income
+         FROM regional_household_income ORDER BY region, period_month DESC`,
+      );
+      const incomeByRegion: Record<string, number> = {};
+      for (const r of incomeRows.rows) {
+        if (r.income !== null) incomeByRegion[r.region.toLowerCase().replace(/\s+/g, '_')] = parseFloat(r.income);
+      }
+
+      const empRows = await pool.query<{ region: string; informal: string | null; unemp: string | null }>(
+        `SELECT region, private_informal_pct AS informal, unemployment_rate AS unemp
+         FROM gss_phc_employment_by_district`,
+      );
+      const empByRegion: Record<string, { informal: number | null; unemp: number | null }> = {};
+      for (const r of empRows.rows) {
+        empByRegion[r.region] = {
+          informal: r.informal !== null ? parseFloat(r.informal) : null,
+          unemp: r.unemp !== null ? parseFloat(r.unemp) : null,
+        };
+      }
+
+      const wantKey = region ? resolveGssRegion(region) : null;
+      const out: RentalAffordabilityRegion[] = [];
+      for (const [regionKey, median] of Object.entries(incomeByRegion)) {
+        if (wantKey && regionKey !== wantKey) continue;
+        if (!(median > 0)) continue;
+        const mu = Math.log(median);
+        const emp = empByRegion[regionKey];
+        const informal = emp?.informal ?? null;
+        const unemp = emp?.unemp ?? null;
+        const riskAdj = Math.max(0, Math.min(1,
+          1 - ((informal ?? 0) / 100 * 0.3 + (unemp ?? 0) / 100 * 0.5)));
+
+        const bands = BANDS.map((b) => {
+          // Affordability threshold = band midpoint (or floor for the open top band) ÷ 0.30.
+          const midpoint = b.max !== null ? (b.min + b.max) / 2 : b.min * 1.2;
+          const requiredIncome = midpoint / RENT_BURDEN;
+          const z = (Math.log(requiredIncome) - mu) / INCOME_SIGMA;
+          const affordablePct = Math.round((1 - normCdf(z)) * 10000) / 100; // P(income ≥ required)
+          const effectiveDemandPct = Math.round(affordablePct * riskAdj * 100) / 100;
+          return {
+            band: b.label,
+            band_min: b.min,
+            band_max: b.max,
+            affordable_pct: affordablePct,
+            effective_demand_pct: effectiveDemandPct,
+          };
+        });
+
+        out.push({
+          region: regionKey,
+          median_monthly_income_ghs: Math.round(median),
+          informal_pct: informal,
+          unemployment_rate: unemp,
+          risk_adjustment: Math.round(riskAdj * 1000) / 1000,
+          bands,
+        });
+      }
+      return out.sort((a, b) => b.median_monthly_income_ghs - a.median_monthly_income_ghs);
+    } catch (err: any) {
+      logger.error('RentalAnalytics.getRentalAffordabilityBands error', err);
+      return [];
     }
   }
 

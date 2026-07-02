@@ -98,6 +98,17 @@ interface AlertData {
   created_at: string
 }
 
+interface MacroAlertStatus {
+  name: string
+  description: string | null
+  severity: 'info' | 'warning' | 'critical'
+  metric_name: string
+  condition: string
+  threshold_value: number
+  metric_value: number | null
+  breached: boolean
+}
+
 // =====================================================
 // API
 // =====================================================
@@ -216,16 +227,18 @@ export default function ConstructionAnalyticsPage() {
   const [materials, setMaterials] = useState<MaterialSummary[]>([])
   const [labor, setLabor] = useState<LaborRate[]>([])
   const [alerts, setAlerts] = useState<AlertData[]>([])
+  const [macroAlerts, setMacroAlerts] = useState<MacroAlertStatus[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
-    const [cciData, regionalData, materialsData, laborData, alertsData] = await Promise.all([
+    const [cciData, regionalData, materialsData, laborData, alertsData, macroData] = await Promise.all([
       fetchData<CCISummary>('/construction/index', signal),
       fetchData<RegionalCost[]>('/construction/regional', signal),
       fetchData<MaterialSummary[]>('/construction/materials/summary', signal),
       fetchData<LaborRate[]>('/construction/labor', signal),
       fetchData<{ recent: AlertData[] }>('/alerts/summary?limit=5', signal),
+      fetchData<MacroAlertStatus[]>('/alerts/macro-status', signal),
     ])
     if (signal?.aborted) return
     setCci(cciData)
@@ -233,6 +246,7 @@ export default function ConstructionAnalyticsPage() {
     setMaterials(materialsData || [])
     setLabor(laborData || [])
     setAlerts(alertsData?.recent?.filter((a) => a.category === 'construction') || [])
+    setMacroAlerts(macroData || [])
     setLoading(false)
   }, [])
 
@@ -647,6 +661,45 @@ export default function ConstructionAnalyticsPage() {
                 </span>
               </div>
             ))}
+          </div>
+        </Panel>
+      )}
+
+      {/* GSS Macro Alert Rules (Slice 5 §E-16) — live status of the 5 pre-built rules */}
+      {macroAlerts.length > 0 && (
+        <Panel title="GSS MACRO ALERT RULES" className="mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {macroAlerts.map((m) => (
+              <div
+                key={m.name}
+                className={cn(
+                  'px-3 py-2 border rounded',
+                  m.breached
+                    ? (m.severity === 'critical' ? 'border-red-500/40 bg-red-500/10' : 'border-amber-500/40 bg-amber-500/10')
+                    : 'border-border bg-muted/20',
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[11px] text-foreground">{m.name}</span>
+                  <span className={cn(
+                    'font-mono text-[8px] px-1 py-0.5 border rounded uppercase',
+                    m.breached
+                      ? (m.severity === 'critical' ? 'text-red-600 dark:text-red-400 border-red-500/30' : 'text-amber-600 dark:text-amber-400 border-amber-500/30')
+                      : 'text-green-600 dark:text-green-400 border-green-500/30',
+                  )}>
+                    {m.breached ? m.severity : 'ok'}
+                  </span>
+                </div>
+                <div className="font-mono text-[9px] text-muted-foreground mt-1">
+                  {m.metric_value !== null
+                    ? <>Now <span className="text-foreground">{m.metric_value.toFixed(1)}</span> · trigger {m.condition} {m.threshold_value}</>
+                    : <>No data</>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="pt-2 mt-2 border-t border-border font-mono text-[9px] text-muted-foreground">
+            Pre-built GSS macro triggers (PPI spike, lending surge, NPL, MIEG contraction, import inflation), evaluated live against Bank of Ghana / GSS series.
           </div>
         </Panel>
       )}

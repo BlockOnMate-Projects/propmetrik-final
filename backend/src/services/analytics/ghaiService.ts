@@ -36,6 +36,19 @@ export interface MHAIParams {
   insuranceRate: number;    // 0.003
 }
 
+export interface MortgageDemandPotential {
+  region: string;
+  median_monthly_income_ghs: number;
+  median_property_price_ghs: number;
+  lending_rate_pct: number;
+  monthly_payment_ghs: number;
+  qualifying_income_ghs: number;
+  formal_employment_pct: number;
+  mortgage_eligible_pct: number;        // % of working-age pop eligible
+  working_age_population: number;
+  mdpi_eligible_households: number;     // MDPI headline
+}
+
 export interface GHAIResult {
   region: string;
   ghai_composite: number;
@@ -1026,6 +1039,118 @@ class GHAIService {
       out[region] = weightsFromCensus(t.renting_pct / 100, t.owner_occupied_pct / 100, feByRegion[region] / 100);
     }
     return out;
+  }
+
+  /**
+   * Mortgage Demand Potential Index (MDPI — Slice 5 §6.7): estimate the pool of
+   * mortgage-eligible households per region.
+   *
+   *   qualifying_income     = monthly_mortgage_payment(0.8 × price, lending_rate, 20yr) / 0.35
+   *   mortgage_eligible_pct = P(monthly_income ≥ qualifying_income) × formal_employment_pct
+   *   MDPI                  = mortgage_eligible_pct × working_age_population
+   *
+   * All inputs real: regional median sale price (properties), latest average
+   * lending rate (gss_interest_rates_monthly / economic_indicators fallback),
+   * formal employment + median income (regional_household_income), working-age
+   * cohort (gss_phc_population_projections). Log-normal income dispersion sigma is
+   * a documented parameter. Regions missing any input are skipped (no fabrication).
+   */
+  async getMortgageDemandPotential(region?: string): Promise<MortgageDemandPotential[]> {
+    const INCOME_SIGMA = 0.85;
+    const LTV = 0.8;
+    const TERM_MONTHS = 240;     // 20-year mortgage
+    const DSTI = 0.35;           // max debt-service-to-income
+    const normCdf = (z: number): number => {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const d = 0.3989423 * Math.exp(-z * z / 2);
+      let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      p = z > 0 ? 1 - p : p;
+      return p;
+    };
+
+    try {
+      // Latest average lending rate (annual %). Prefer GSS/BoG; fall back to economic_indicators.
+      let lendingRate: number | null = null;
+      const lr = await pool.query(
+        `SELECT rate_pct FROM gss_interest_rates_monthly
+         WHERE rate_type = 'Average lending rate' AND rate_pct IS NOT NULL
+         ORDER BY period_date DESC LIMIT 1`,
+      );
+      if (lr.rows.length) lendingRate = parseFloat(lr.rows[0].rate_pct);
+      if (lendingRate === null) {
+        const ei = await pool.query(
+          `SELECT value FROM economic_indicators WHERE indicator_type = 'mortgage_rate_avg'
+           ORDER BY effective_date DESC LIMIT 1`,
+        );
+        if (ei.rows.length) lendingRate = parseFloat(ei.rows[0].value);
+      }
+      if (lendingRate === null || lendingRate <= 0) return [];
+      const monthlyRate = lendingRate / 100 / 12;
+
+      // Income + formal employment per region.
+      const inc = await pool.query<{ region: string; income: string | null; fe: string | null }>(
+        `SELECT DISTINCT ON (region) region,
+                median_household_income_monthly_ghs AS income, formal_employment_pct AS fe
+         FROM regional_household_income ORDER BY region, period_month DESC`,
+      );
+      // Regional median sale price.
+      const price = await pool.query<{ region: string; med: string | null }>(
+        `SELECT LOWER(region::text) AS region,
+                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price) AS med
+         FROM properties WHERE price > 0 AND transaction_type = 'sale' AND region IS NOT NULL
+         GROUP BY LOWER(region::text)`,
+      );
+      const priceByRegion: Record<string, number> = {};
+      for (const r of price.rows) if (r.med !== null) priceByRegion[r.region.replace(/\s+/g, '_')] = parseFloat(r.med);
+      // Working-age population (20–40 cohort, current census year).
+      const pop = await pool.query<{ region: string; wa: string | null }>(
+        `SELECT region, working_age_20_40 AS wa FROM gss_phc_population_projections
+         WHERE year = 2021 AND locality = 'All locality types'`,
+      );
+      const waByRegion: Record<string, number> = {};
+      for (const r of pop.rows) if (r.wa !== null) waByRegion[r.region] = parseFloat(r.wa);
+
+      const wantKey = region ? region.toLowerCase().replace(/\s+/g, '_') : null;
+      const out: MortgageDemandPotential[] = [];
+      for (const r of inc.rows) {
+        const regionKey = r.region.toLowerCase().replace(/\s+/g, '_');
+        if (wantKey && regionKey !== wantKey) continue;
+        const income = r.income !== null ? parseFloat(r.income) : null;
+        const fe = r.fe !== null ? parseFloat(r.fe) : null;
+        const propPrice = priceByRegion[regionKey] ?? null;
+        const workingAge = waByRegion[regionKey] ?? null;
+        if (!income || income <= 0 || fe === null || !propPrice || !workingAge) continue;
+
+        // Standard mortgage amortisation payment on an 80% LTV loan.
+        const loan = LTV * propPrice;
+        const pow = Math.pow(1 + monthlyRate, TERM_MONTHS);
+        const monthlyPayment = loan * (monthlyRate * pow) / (pow - 1);
+        const qualifyingIncome = monthlyPayment / DSTI;
+
+        const mu = Math.log(income);
+        const z = (Math.log(qualifyingIncome) - mu) / INCOME_SIGMA;
+        const canAffordPct = 1 - normCdf(z);                 // P(income ≥ qualifying)
+        const eligiblePct = canAffordPct * (fe / 100);        // gated by formal employment
+        const mdpi = Math.round(eligiblePct * workingAge);
+
+        out.push({
+          region: regionKey,
+          median_monthly_income_ghs: Math.round(income),
+          median_property_price_ghs: Math.round(propPrice),
+          lending_rate_pct: lendingRate,
+          monthly_payment_ghs: Math.round(monthlyPayment),
+          qualifying_income_ghs: Math.round(qualifyingIncome),
+          formal_employment_pct: fe,
+          mortgage_eligible_pct: Math.round(eligiblePct * 10000) / 100,
+          working_age_population: Math.round(workingAge),
+          mdpi_eligible_households: mdpi,
+        });
+      }
+      return out.sort((a, b) => b.mdpi_eligible_households - a.mdpi_eligible_households);
+    } catch (err: any) {
+      logger.error('[GHAI] getMortgageDemandPotential error', { error: err.message });
+      return [];
+    }
   }
 }
 

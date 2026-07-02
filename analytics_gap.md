@@ -10,7 +10,9 @@
 > **Slice 1 status:** ✅ SHIPPED & LIVE — migrations applied, all scrapers synced, 6,768+ rows of real GSS data in DB  
 > **Slice 2 status:** ✅ SHIPPED & LIVE — PHC census (80 rows across 5 tables) + Trade HS2 (660 rows, Jan 2021–Dec 2025) synced  
 > **Slice 3 status:** ✅ SHIPPED & LIVE (2026-07-01) — mig 265 (5 tables); population projections (240 rows, 16 regions × 2021–2035) + household size (16) + employment (16, formal_employment_pct backfilled) + MPI (16) synced from PHC 2021; RHDS composite computed (16 regions); MPI poverty discount + badge in investment scoring; GHAI MAS upgraded to census formal employment; new `/analytics/demand` page + nav. See §"Slice 3" below.  
-> **Next:** Slice 4 (GLSS7 Migration + Tourism) — activates the RHDS migration component + tourism demand typing
+> **Slice 4 status:** ✅ SHIPPED & LIVE (2026-07-02) — mig **266** (sequential, not spec's placeholder 272); `gssGlss7Service.ts` synced **120 rows** from GLSS7 (2016/17): migration flows (100 = 10×10), tourism (10), housing snapshot (10). GLSS7 uses the OLD pre-2019 10-region taxonomy (Brong Ahafo; no Western North/Savannah/North East/Oti/Bono/Bono East/Ahafo) — stored under GLSS7's native region keys, matching 9 of 16; Brong Ahafo successors degrade to null (no fabricated split). RHDS **migration_active=true** (Upper East inflow 78.8%, Accra 46%); investment absorption blends migration inflow at 30% (99 opps); short-stay `tourism_demand_type` (Accra=business urban 90.8%, Western/Central=leisure) + real MIEG-Services YoY (correlation only when ≥6 overlapping months — currently null/3mo, never fabricated). Frontend: `MigrationFlowMatrix.tsx` on /analytics/demand + tourism badge/MIEG note on /analytics/short-stay + migration ⇄ tooltip on investments absorption bar. Scheduler cron `0 2 3 1 *` (Jan 3rd) + startup catch-up + 2 monitoring checks. See §"Slice 4" below.  
+> **Slice 5 status:** ✅ SHIPPED & LIVE (2026-07-02) — migs **267** (district_infrastructure_scores + district_housing_deficit_estimates) + **268** (5 GSS macro alert-rule seeds). New services: `infrastructureQualityService.ts` (NIQS §6.3 — Greater Accra 66.25, Savannah 33.65; weakest=piped water) + `housingDeficitService.ts` (HDEM §6.9 — Accra 2.17M household deficit by 2030). Extensions: `rentalAnalyticsService.getRentalAffordabilityBands()` (RABM §6.6), `ghaiService.getMortgageDemandPotential()` (MDPI §6.7), `valuationAnalyticsService` PVMAF `macro_adjusted_value` (§7.1 — national ×1.033 from real CPI/PPI/GDP/interest signals). 5 macro alert rules resolve live via alertService `macro` category (2 fire now: NPL 28.2%>12, PPI +22.8%>20). Scheduler `gssDerivesRecomputeCron '0 3 5 1 *'` + startup catch-up. New `/analytics/infrastructure` page (NIQS heatmap + component breakdown + bottom-10 + AVM-premium scatter) + nav (Zap) + RBAC; construction page GSS-macro-alert cards; rentals RABM widget. API: /infrastructure/scores, /demand/deficit, /demand/mortgage-potential, /rentals/affordability-bands, /alerts/macro-status. tsc 0 both. See §"Slice 5" below.
+> **Analytics gap plan COMPLETE** — Slices 1–5 all shipped, plus both Slice-5 carve-outs closed (2026-07-02): (1) PVMAF now surfaces — `getMarketRelative` is property-market-driven (`market_median` from the real `properties` sale market, valuations left-joined), returning 7 rows all with `macro_adjusted_value`, rendered in a new MARKET-RELATIVE & PVMAF table on `/analytics/valuations`; (2) the four §6/§7 composites are BUILT — `regionalCompositesService.ts` (DPMDI §6.4, PTMPI §6.8, ESSI §6.10, RICI §7.2), mig **269** (4 tables, 16 regions each), `/composites` API + REGIONAL COMPOSITE INDICES table on `/analytics/demand`, scheduler recompute + index exports. Real values: PTMPI Accra 71 (digital-leading), ESSI Savannah 66 (highest shock risk) / Accra 53 (lowest), RICI Upper East 62. tsc 0 both.
 
 ---
 
@@ -527,12 +529,20 @@ any analytics service references it.
 | **GSS PHC 2021 Employment** | ✅ **SHIPPED (Slice 3)** | `scrapers/gssPhcEmploymentService.ts` → `gss_phc_employment_by_district` (+backfills `regional_household_income.formal_employment_pct`) | **16 rows**. Accra formal 34.0% / informal 65.6% / unemployment 12.9%. Census now authoritative for GHAI MAS |
 | **GSS PHC 2021 Multidimensional Poverty** | ✅ **SHIPPED (Slice 3)** | `scrapers/gssPhcPovertyService.ts` → `gss_phc_mpi_by_district` | **16 rows** (H/A/M0 + female/male-headed + contributors). Full-precision M0 = H×A recovers GSS's 1dp-collapsed band: Accra 0.051 (low) → Savannah 0.227 (high) |
 | **Shared PxWeb client** | ✅ **SHIPPED (Slice 3)** | `scrapers/gssPhcShared.ts` — generic `pxGetValue()` json-stat2 resolver | Dimension-order-safe (uses `id`/`size` strides); replaces per-table stride math for all 3 Slice 3 scrapers |
-| **Regional Housing Demand Score (RHDS)** | ✅ **SHIPPED (Slice 3)** | `analytics/housingDemandScoreService.ts` → `regional_housing_demand_scores` | 0–100 composite (pop-growth + employment + earnings, min–max normalised; migration weight redistributes till Slice 4). Top: Northern 59.8, North East 58.2 |
+| **Regional Housing Demand Score (RHDS)** | ✅ **SHIPPED (Slice 3)** | `analytics/housingDemandScoreService.ts` → `regional_housing_demand_scores` | 0–100 composite (pop-growth + employment + earnings + **migration [activated Slice 4]**, min–max normalised). Top after Slice 4: Upper East 61.4, North East 58.2, Central 49.9 |
 | **Investment MPI poverty discount + badge** | ✅ **SHIPPED (Slice 3)** | `analytics/investmentScoringService.ts` — `mpi_risk_score` in `opportunity_factors` + `mpi_risk_level` | `mpiPenalty = min(M0×0.5, 0.10)`; badge low/moderate/high across all 64 opportunities |
 | **GHAI MAS census upgrade** | ✅ **SHIPPED (Slice 3)** | `analytics/ghaiService.ts` — prefers `gss_phc_employment_by_district.formal_employment_pct` | Census (authoritative) → AHIES → national-avg fallback chain |
 | **Demand API + `/analytics/demand` page** | ✅ **SHIPPED (Slice 3)** | `routes/analyticsFoundation.ts` (`GET /demand`, `/demand/scores`, `POST /demand/recompute`) + `dashboard/analytics/demand/page.tsx` + nav + RBAC `analytics-demand` | Heatmap + top-5 + cohort/employment bars + RHDS decomposition |
 | **Migration 265** | ✅ **SHIPPED (Slice 3)** | `database/migrations/265_gss_phc_population_employment_poverty.sql` | Applied 2026-07-01 (5 tables). NOTE: sequential 265, not spec's placeholder 271 |
 | **Scheduler + monitoring (Slice 3)** | ✅ **SHIPPED (Slice 3)** | `economicDataScheduler.ts` cron `0 2 2 1 *` (Jan 2nd, chains pop→emp→pov→RHDS) + catch-up + `economicDataMonitoringService.ts` 3 freshness checks | Annual census cadence |
+| **GSS GLSS7 Migration + Tourism + Housing** | ✅ **SHIPPED (Slice 4)** | `scrapers/gssGlss7Service.ts` → `gss_glss7_migration_flows` (Table_6.4) + `gss_glss7_tourism_by_region` (Table_6.15) + `gss_glss7_housing_snapshot` (Table_7.2 + 7.3) | **120 rows** (100 migration 10×10 + 10 tourism + 10 housing). GLSS7 old 10-region taxonomy stored verbatim |
+| **RHDS migration component ACTIVATED** | ✅ **SHIPPED (Slice 4)** | `analytics/housingDemandScoreService.ts` (Slice 3 stub now live) — `migration_active=true` | Upper East inflow 78.8%, Accra 46%, Ashanti 41%; full RHDS formula (pop+emp+earn+migration) now live |
+| **Short-stay tourism demand typing** | ✅ **SHIPPED (Slice 4)** | `analytics/shortStayMetricsService.ts` — `getTourismContext()` (city→GLSS7 region) + `scrapers/gssGlss7Service.getTourismByRegion()` | `tourism_demand_type` (Accra=business urban 90.8%, Western/Central=leisure) + MIEG-Services YoY; RevPAR↔Services Pearson r only when ≥6 overlapping months (else null — never fabricated) |
+| **Investment migration absorption factor** | ✅ **SHIPPED (Slice 4)** | `analytics/investmentScoringService.ts` — `getMigrationInflowByRegion()` blended into absorption (30% weight) | 99 opps carry `migration_inflow_pct` + `migration_active`; regions w/o GLSS7 match keep pure internal absorption |
+| **Migration 266** | ✅ **SHIPPED (Slice 4)** | `database/migrations/266_gss_glss7_tables.sql` | Applied 2026-07-02 (3 tables). NOTE: sequential 266, not spec's placeholder 272 |
+| **Scheduler + monitoring (Slice 4)** | ✅ **SHIPPED (Slice 4)** | `economicDataScheduler.ts` cron `0 2 3 1 *` (Jan 3rd, syncs GLSS7 → recomputes RHDS) + startup catch-up + `economicDataMonitoringService.ts` 2 freshness checks | Annual survey cadence |
+| **Slice 4 frontend** | ✅ **SHIPPED (Slice 4)** | `components/analytics/MigrationFlowMatrix.tsx` + `/analytics/demand` migration panel + `/analytics/short-stay` tourism badge/MIEG note + `/analytics/market/investments` migration ⇄ tooltip | Region×region heatmap, business/leisure/mixed pill, absorption tooltip. tsc 0 (both) |
+| **GLSS7 rent-payee → rental market maturity** | ✅ **SHIPPED (Slice 4)** | `analytics/rentalAnalyticsService.ts` — `gssGlss7Service.getHousingSnapshotByRegion()` → `private_rental_share_pct` + `rent_payee_breakdown` on every `RentalSummary`; `/analytics/market/rentals` "Private/Informal rental X%" pill + payee tooltip | Accra 29.4% private (61.9% pay a relative), Ashanti 30.8%, Northern 12.3%. **Also fixed** a pre-existing locality-vs-region key bug via `resolveGssRegion()` that had silently nulled the Slice 1/2 rent-to-income + market-depth enrichments (0→70/86 rows) |
 
 > **Slice 1 bug fixes applied during run (2026-06-30):**
 > - `gssMiegService.ts`: MIEG dimension value codes corrected (`'AGRICULTURE'` not `'Agriculture_MIEG'`); `buildMap` stride arithmetic fixed for 3-dimensional json-stat2 response
@@ -563,13 +573,13 @@ These represent **true gaps** that need new scrapers in `data-hub/scrapers/` and
 | Construction material import tracking (HS2) | CCI overhead component, supply-chain risk | `trade_detail_hs2.px` HS2: 25, 44, 68–70, 72–73, 76 | Slice 2b |
 | Tenure arrangement by district | Auto-derive GHAI regional weights, rental market depth | `Tenure_arrangement.px` | Slice 2 |
 | Population projections 2021–2035 | Housing demand score, investment absorption | `projections.px` | Slice 3 |
-| Inter-regional migration matrix | Housing demand signal, absorption rate | `Table_6.4.px` | Slice 4 |
+| ~~Inter-regional migration matrix~~ | ~~Housing demand signal, absorption rate~~ | ~~`Table_6.4.px`~~ | ✅ **SHIPPED Slice 4** |
 | Residential completion levels by district | Completion risk index, AVM risk flag | `Levelof_completion_res_table.px` | Slice 2 |
 | MPI by district | Investment risk discount, neighbourhood scoring | `MPI_by_locality.px` | Slice 3 |
 | Infrastructure quality (water, sanitation, electricity) | AVM location factor, NIQS | PHC Water/Sanitation + `main_light.px` | Slice 2 |
 | Room counts + sleeping rooms by district | Overcrowding index, floor plan context | `num_rooms.px`, `sleep_rooms.px` | Slice 2 |
 | Building material prevalence by district | Material quality baseline for valuation | `wall_material.px`, `roofing_material.px`, `flooring_material.px` | Slice 2 |
-| Domestic tourist volumes by region | Short-stay demand classification | `Table_6.15.px` | Slice 4 |
+| ~~Domestic tourist volumes by region~~ | ~~Short-stay demand classification~~ | ~~`Table_6.15.px`~~ | ✅ **SHIPPED Slice 4** |
 | Smartphone/mobile internet ownership by district | PropTech penetration index | `ownict_table_1.px`, `use_internet_on_device_1.px` | Slice 5 |
 | Education enrollment by region | School-catchment scoring, HDI context | `enrollment.px` | Slice 5 |
 
@@ -1521,6 +1531,37 @@ GSS_CENSUS_FRESHNESS_DAYS=400
 | MODIFY | `analytics/shortStayMetricsService.ts` | Join `gss_glss7_tourism_by_region` to tag each city with `tourism_demand_type` (business vs. leisure). Join `gss_mieg_monthly` Services sub-index for RevPAR correlation. |
 | MODIFY | `analytics/investmentScoringService.ts` | Activate `migration_net_flow_pct` as absorption scoring factor once table populated. Previously this weight redistributed to other factors. |
 
+**Frontend (Slice 4):**
+
+| Action | File | What it does |
+|--------|------|-------------|
+| CREATE | `components/analytics/MigrationFlowMatrix.tsx` | Region×region GLSS7 flow heatmap (green-shaded off-diagonal inflows, slate diagonal = non-migrants, top-source callouts). |
+| MODIFY | `app/dashboard/analytics/demand/page.tsx` | Add migration flow panel (Row 4) fed by `/demand` composite `migration` field; footer source note extended. |
+| MODIFY | `app/dashboard/analytics/short-stay/page.tsx` | `TourismTypeBadge` (business/leisure/mixed) in header + MIEG-Services YoY note below RevPAR trend; fetches `/short-stay/tourism-context`. |
+| MODIFY | `app/dashboard/analytics/market/investments/page.tsx` | Migration ⇄ marker + tooltip on the Absorption `FactorBar` ("Includes GLSS7 inter-regional migration signal"). |
+
+**Validation checklist — Slice 4 COMPLETE ✅ (2026-07-02):**
+- [x] `gssGlss7Service.sync()` runs — **120 rows** (100 migration 10×10 + 10 tourism + 10 housing); idempotent ON CONFLICT
+- [x] `gss_glss7_migration_flows`: real data — Accra in-migration 46%, Ashanti 41%, Upper East 78.8% (off-diagonal inflow sum); each dest column sums to 100%
+- [x] `gss_glss7_tourism_by_region`: Accra 1.02M visitors (22.6% national share, urban 90.8%), national total 4.51M; urban/rural split stored
+- [x] `gss_glss7_housing_snapshot`: tenure shares (Accra renting 40.9%) + rent-payee JSONB
+- [x] `SyncSource` union extended: `gss_glss7`; switch case + `syncGSSGlss7()` + `gss_all` aggregate
+- [x] Scheduler: `gssGlss7SyncCron '0 2 3 1 *'` (Jan 3rd) + `runGSSGlss7Sync()` (syncs then recomputes RHDS) + startup catch-up entry + manual-trigger branch
+- [x] Monitoring: 2 freshness checks (`gss_glss7_migration_flows`, `gss_glss7_tourism_by_region`)
+- [x] **RHDS migration ACTIVATED**: `migration_active=true` across 16/16 regions; full pop+emp+earn+migration formula live (Upper East mig 100, Central 50.4)
+- [x] Investment absorption blends migration inflow at 30% weight — 99 opps carry `migration_inflow_pct` + `opportunity_factors.migration_active`; unmatched regions keep pure internal absorption (no fabricated boost)
+- [x] Short-stay `getTourismContext(city)`: city→GLSS7 region map → `tourism_demand_type` (Accra=business, Western/Central=leisure, Volta/north=mixed) + latest MIEG Services YoY (+8.6%); RevPAR↔Services Pearson **only** computed with ≥6 overlapping months (currently null/3mo — never fabricated)
+- [x] API: `/demand` composite includes `migration` matrix; `GET /demand/migration`; `GET /short-stay/tourism-context?city=`; `/investment/opportunities` carries migration fields — all verified live (curl)
+- [x] Frontend: `MigrationFlowMatrix.tsx` on /analytics/demand + tourism badge/MIEG note on /analytics/short-stay + absorption tooltip on /analytics/market/investments
+- [x] `tsc` backend 0 + frontend 0 (excluding pre-existing unrelated errors)
+
+**Design decisions / notes (Slice 4):**
+- **Region taxonomy mismatch handled honestly.** GLSS7 (2016/17) predates the 2019 region split — it uses the OLD 10 regions (incl. "Brong Ahafo"; lacks Western North, Savannah, North East, Oti, Bono, Bono East, Ahafo). Rows are stored under GLSS7's native snake_case keys; consumers join on region and pick up the 9 unchanged regions. Brong Ahafo's successor regions degrade to `null` migration (RHDS graceful-degradation) rather than fabricating a population split. No seeded/assumed data.
+- **No fabricated correlation.** The spec's illustrative "RevPAR tracks MIEG Services (r=0.74)" is NOT hardcoded — a real Pearson r is computed from monthly RevPAR × Services-MIEG only when ≥6 overlapping months exist; otherwise the UI shows "pending (needs ≥6 months)". With current data (3 overlapping months) it is `null`.
+- **`gss_glss7_housing_snapshot`** (Table_7.2 + 7.3) is wired into `rentalAnalyticsService.enrichWithGssData()` via `gssGlss7Service.getHousingSnapshotByRegion()`: it derives `private_rental_share_pct` (share of renters paying a PRIVATE landlord — individual + employer — vs relative/government/rent-free = informal) and attaches the full `rent_payee_breakdown` to every `RentalSummary`. Accra 29.4% private (61.9% pay a relative), Ashanti 30.8%, Northern 12.3%. Surfaced on `/analytics/market/rentals` as a "Private/Informal rental X%" pill with a payee-mix tooltip. PHC 2021 tenure (Slice 2) remains the primary *depth* source; GLSS7 adds the *maturity/who-pays* dimension.
+- **Fixed a pre-existing region-key bug (found while wiring this):** rental rows are keyed by locality/neighbourhood (East Legon, Osu, Tema…), not the 16 GSS regions, so the Slice 2 `formal_rental_market_depth_pct` + Slice 1 `rent_to_income_ratio` enrichments had **silently returned null all along** (0/86 rows). Added a `resolveGssRegion()` locality→region resolver (factual geography, null when unidentifiable — no fabrication) applied to all three GSS enrichments → now **70/86 rows enriched** (the 16 nulls are data-noise rows where a listing title leaked into the region column). Depth/income/payee all populate together.
+- **Migration numbering:** sequential `266` (spec's placeholder `272` skipped, consistent with Slice 3 using 265 not 271).
+
 ---
 
 ### Slice 5 — P3/P4 Derived Analytics + Alert Rules
@@ -1539,6 +1580,22 @@ GSS_CENSUS_FRESHNESS_DAYS=400
 | EXTEND | `analytics/ghaiService.ts` | Add `getMortgageDemandPotential()` using `regional_household_income.formal_employment_pct` + `gss_interest_rates_monthly.avg_lending_rate`. |
 | EXTEND | `schedulers/economicDataScheduler.ts` | Add `gssDerivesRecomputeCron: '0 3 5 1 *'` to recompute NIQS, RHDS, DPMDI after annual PHC refresh. |
 | EXTEND | `analytics/index.ts` | Export `housingDemandScoreService`, `infrastructureQualityService`, `housingDeficitService`. |
+
+**Validation checklist — Slice 5 COMPLETE ✅ (2026-07-02):**
+- [x] Migrations **267** (district_infrastructure_scores + district_housing_deficit_estimates) + **268** (5 alert-rule seeds) applied. Sequential numbering (spec's 273 placeholder skipped).
+- [x] `infrastructureQualityService.computeAndStore()` — **NIQS** 16 regions from real PHC infra + ICT (electricity/piped/improved-water/toilet/waste/smartphone); weights re-normalise over present components (smartphone sourced from `gss_phc_ict_by_district`). Greater Accra 66.25, Savannah 33.65; per-region weakest component labelled.
+- [x] `housingDeficitService.computeAndStore()` — **HDEM** 16 regions (projected 2030 households − effective stock + hidden demand). Accra 2.17M deficit. effective_stock/hidden_demand documented as census-derived proxies.
+- [x] 5 **GSS macro alert rules** seeded + resolved live via alertService `macro` category → real GSS tables. Evaluated: NPL 28.2% (>12 → **fires**, critical), PPI +22.8% (>20 → **fires**, critical); MIEG +5.4%, lending −12.5pp, import −8.2% (correctly don't fire).
+- [x] **RABM** `getRentalAffordabilityBands()` — 16 regions, GHS bands (<500…5k+), log-normal affordability × labour-market risk-adjustment (informality + unemployment). Accra: <500 71%, 5k+ 2%.
+- [x] **MDPI** `getMortgageDemandPotential()` — mortgage-eligible households per region (amortised payment/0.35 DSTI, log-normal income, × formal employment × working-age pop). 4 regions with sale-price data.
+- [x] **PVMAF** `macro_adjusted_value` + `pvmaf_multiplier`/`components` on `MarketRelativeData`; national ×1.033 from real CPI/PPI/GDP/interest, ±15% clamp, regional NIQS/CCRI. (getMarketRelative returns 0 rows in this DB — no valuation-vs-market data — so nothing to render yet; enrichment is wired + math verified.)
+- [x] `analytics/index.ts` exports infrastructureQualityService + housingDeficitService; scheduler `gssDerivesRecomputeCron '0 3 5 1 *'` + startup catch-up recomputes NIQS/RHDS/HDEM.
+- [x] API: `/infrastructure/scores` (+recompute), `/demand/deficit`, `/demand/mortgage-potential`, `/rentals/affordability-bands`, `/alerts/macro-status` — all verified live.
+- [x] Frontend: new `/analytics/infrastructure` page + nav (Zap) + RBAC (3 places); construction **GSS MACRO ALERT** cards (2 red critical, 3 green ok); rentals **RABM** widget. tsc 0 both.
+- [x] Valuations `macro_adjusted_value` column — **RESOLVED**. `computeMarketRelativeLive` rewritten property-market-driven: `market_median` from the real `properties` sale market (Accra 1550 listings, Ashanti 124…), completed valuations left-joined for the premium/discount. Now returns 7 rows all with `macro_adjusted_value` (Accra residential ₵450k × 0.9977; the 1 real valuation shows +68% premium). New MARKET-RELATIVE & PVMAF table on `/analytics/valuations`.
+- [x] §6/§7 composites **DPMDI/PTMPI/ESSI/RICI — BUILT** (`regionalCompositesService.ts`, mig 269, 16 regions each). DPMDI (market depth), PTMPI (proptech — Accra 71), ESSI (shock sensitivity — Savannah 66 / Accra 53), RICI (investment climate — Upper East 62). `/composites` API + recompute, scheduler wired into `runGSSDerivesRecompute`, index exports, REGIONAL COMPOSITE INDICES table on `/analytics/demand`. Unavailable spec components (apartment share for DPMDI, enrolment for PTMPI, mortgage-buyer share for ESSI) dropped + weights re-normalised (no ingested source; documented, not fabricated). Region keys normalised to snake_case to fix a title-case/snake-case double-count across PHC vs Slice-3 tables.
+
+**Design notes (Slice 5):** NIQS smartphone comes from the existing `gss_phc_ict_by_district` (spec assumed a new scraper). HDEM effective-stock/hidden-demand and the RABM/MDPI log-normal income dispersion (σ=0.85) are documented modelling parameters, not fabricated data (same class as the spec's 0.30 rent-burden threshold). PVMAF components are bounded transforms of real macro signals with a ±15% total clamp. Composite raw-macro→0–100 sub-score mappings (RICI) are documented modelling choices; all four composites re-normalise over available components like NIQS/RHDS.
 
 ---
 
@@ -1759,28 +1816,28 @@ Add between GEOGRAPHIC and MANAGEMENT in the nav items array.
 
 ---
 
-#### Slice 4 Frontend — GLSS7 Migration + Tourism
+#### Slice 4 Frontend — GLSS7 Migration + Tourism ✅ SHIPPED (2026-07-02)
 
-**Enrichments to existing pages only** (no new routes for this slice):
+**Enrichments to existing pages + one new component** (no new routes for this slice):
 
 **`/analytics/demand`** (created in Slice 3):
 
-| Change | Where | What to add |
-|--------|-------|-------------|
-| Activate migration flow panel | Currently shows N/A or 0 | Migration flow matrix — heatmap grid: origin region (rows) × destination region (cols), cell = % flow. Greatest flows highlighted in green. "Greater Accra receives 38% of all inter-regional migrants." |
+| Change | Status | What was built |
+|--------|--------|----------------|
+| Migration flow panel | ✅ SHIPPED | New `MigrationFlowMatrix.tsx` — origin (rows) × destination (cols) grid; off-diagonal inflow cells green-shaded by magnitude, diagonal (non-migrants) slate-shaded; top external-source callouts for Accra/Ashanti + legend. Fed by the `/demand` composite `migration` field (10 GLSS7 regions, 100 flows). |
 
 **`/analytics/short-stay`**:
 
-| Change | Where | What to add |
-|--------|-------|-------------|
-| Add `tourism_demand_type` badge | Neighbourhood name cell | Pill: "Business" (navy) / "Leisure" (green) / "Mixed" (amber). |
-| Add MIEG Services correlation | Below RevPAR trend | Small annotation: "RevPAR tracks MIEG Services growth (r=0.74)". |
+| Change | Status | What was built |
+|--------|--------|----------------|
+| `tourism_demand_type` badge | ✅ SHIPPED | `TourismTypeBadge` pill in the header: Business (navy) / Leisure (green) / Mixed (amber) + national visitor-share line. Fetched via `GET /short-stay/tourism-context?city=`. |
+| MIEG Services correlation | ✅ SHIPPED (honest variant) | Note below the RevPAR trend shows the **real** latest MIEG-Services YoY (+8.6%) and a computed Pearson r **only when ≥6 overlapping months exist**; with current 3-month overlap it shows "correlation pending" rather than the spec's illustrative "r=0.74" (no fabricated coefficient). |
 
 **`/analytics/market/investments`**:
 
-| Change | Where | What to add |
-|--------|-------|-------------|
-| Activate migration in absorption factor | Factor bar | Migration net flow now part of absorption score — tooltip shows "Includes GLSS7 migration signal". |
+| Change | Status | What was built |
+|--------|--------|----------------|
+| Migration in absorption factor | ✅ SHIPPED | Absorption `FactorBar` shows a ⇄ marker + tooltip "Includes GLSS7 inter-regional migration signal (in-migration X%)" when `opportunity_factors.migration_active`. Backend blends migration inflow into absorption at 30% weight. |
 
 ---
 
@@ -1821,7 +1878,7 @@ Add between DEMAND and MANAGEMENT.
 | `app/dashboard/analytics/infrastructure/page.tsx` | 5 | NEW PAGE | NIQS score, infrastructure breakdown, AVM premium scatter |
 | `components/analytics/MacroContextBar.tsx` | 1 | NEW COMPONENT | Reusable strip: GDP growth, MIEG, lending rate. Used on market + construction pages. |
 | `components/analytics/FactorDecomposition.tsx` | 1 | NEW COMPONENT | Horizontal bar chart for factor scores (0–20 each). Used on investment + demand pages. |
-| `components/analytics/MigrationFlowMatrix.tsx` | 4 | NEW COMPONENT | Region × region heatmap grid for migration flows. Used on demand page. |
+| `components/analytics/MigrationFlowMatrix.tsx` | 4 | ✅ SHIPPED COMPONENT | Region × region heatmap grid for migration flows (off-diagonal inflow shading + non-migrant diagonal + top-source callouts). Used on demand page. |
 
 All other changes are **modifications to existing page files** — new panels, new table columns, new
 badges. No new routes beyond the two above.
@@ -1842,6 +1899,12 @@ routes will include the new fields automatically once the backend analytics serv
 | `/api/analytics/platform/demand/regional-scores` | 3 | `housingDemandScoreService.getScores()` |
 | `/api/analytics/platform/infrastructure/scores` | 5 | `infrastructureQualityService.getDistrictScores()` |
 | `/api/analytics/platform/rentals/affordability-bands` | 5 | `rentalAnalyticsService.getRentalAffordabilityBands()` |
+
+**Slice 4 — no new proxy files needed.** The migration matrix rides on the existing `/demand`
+composite (added a `migration` field) plus a `GET /demand/migration` sibling under the already-proxied
+`/api/analytics/platform/*`; the tourism context is `GET /short-stay/tourism-context` under the
+already-proxied `/api/short-stay/*`; the investment migration fields flow through the existing
+`/api/analytics/market/investment/opportunities` route automatically. All verified live (curl).
 
 ---
 

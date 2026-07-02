@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import ValuationScanner from './motion/ValuationScanner';
-import DataStreamVisual from './motion/DataStreamVisual';
 import DealWorkflow from './motion/DealWorkflow';
 import AnalyticsVisual from './motion/AnalyticsVisual';
 import ProjectDashboardVisual from './motion/ProjectDashboardVisual';
@@ -16,12 +15,6 @@ const services = [
         description: 'AI-driven automated valuations, portfolio revaluations, and development appraisals powered by proprietary ML models.',
         href: '/services/valuation',
         Visual: ValuationScanner,
-    },
-    {
-        title: 'Data Hub',
-        description: 'Real-time dashboards, market comparables, construction cost indices, and land title verification (coming soon).',
-        href: '/services/data',
-        Visual: DataStreamVisual,
     },
     {
         title: 'Deal Management',

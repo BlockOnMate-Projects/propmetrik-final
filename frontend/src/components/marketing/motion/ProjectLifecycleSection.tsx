@@ -111,8 +111,8 @@ const STAGES: StageData[] = [
             value: '6 bids',
             descriptor: 'received for structural works — 2 shortlisted by AI',
         },
-        ctaLabel: 'Explore Data Intelligence',
-        ctaHref: '/services/data',
+        ctaLabel: 'Explore Market Intelligence',
+        ctaHref: '/services/market-intelligence',
         dataTiles: [
             {
                 value: 'GHS 1.8M',

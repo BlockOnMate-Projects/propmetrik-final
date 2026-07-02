@@ -9,7 +9,6 @@ import {
     BarChart3,
     Map,
     Users,
-    Settings,
     Hammer,
     Home,
     FileSearch,
@@ -20,6 +19,9 @@ import {
     Landmark,
     Briefcase,
     LayoutGrid,
+    Zap,
+    Lock,
+    Terminal,
 } from 'lucide-react'
 
 // Main analytics categories (left-to-right). SERVICES is a submenu whose page
@@ -34,9 +36,10 @@ const analyticsNavItems = [
     { href: '/dashboard/analytics/forecasting', label: 'FORECASTING', icon: LineChart, subTabKey: 'analytics-forecasting' },
     { href: '/dashboard/analytics/geographic', label: 'GEOGRAPHIC', icon: Map, subTabKey: 'analytics-geographic' },
     { href: '/dashboard/analytics/demand', label: 'DEMAND', icon: Users, subTabKey: 'analytics-demand' },
+    { href: '/dashboard/analytics/infrastructure', label: 'INFRASTRUCTURE', icon: Zap, subTabKey: 'analytics-infrastructure' },
     { href: '/dashboard/analytics/services', label: 'SERVICES', icon: Briefcase, services: true },
-    { href: '/dashboard/analytics/settings', label: 'SETTINGS', icon: Settings, subTabKey: 'analytics-settings' },
-    { href: '/dashboard/analytics/team', label: 'TEAM', icon: Users, subTabKey: 'analytics-team' },
+    { href: '/dashboard/analytics/api', label: 'API', icon: Terminal, subTabKey: 'analytics-api' },
+    // SETTINGS and TEAM removed from the analytics submenu — those remain API-only.
 ]
 
 // The combined-summary landing + the per-service drill-downs (top-right toggle
@@ -82,12 +85,38 @@ export default function AnalyticsLayout({
         !roleLoaded ? true : item.services ? hasAnyService : canSee(item.subTabKey),
     )
 
+    // The analytics frontend is a PropMetrik-platform tool. Subscribers (customer
+    // orgs, userType='customer') consume analytics via the API only — they do not
+    // get the frontend visuals. Only platform owners/staff (userType='staff') see
+    // the analytics UI. Default to 'staff' while the session is still resolving so
+    // staff never flash the gate.
+    const isPlatformStaff = userType === 'staff'
+
     const onServiceRoute = SERVICE_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))
 
     const isActive = (href: string, exact?: boolean, services?: boolean) => {
         if (services) return onServiceRoute
         if (exact) return pathname === href
         return pathname === href || pathname.startsWith(href + '/')
+    }
+
+    // Subscribers: analytics is API-only — do not render the frontend visuals.
+    if (!isPlatformStaff) {
+        return (
+            <div className="flex flex-col h-full items-center justify-center p-8">
+                <div className="max-w-md text-center border border-border bg-card/50 rounded p-6">
+                    <Lock className="w-8 h-8 text-amber-500 mx-auto mb-3" />
+                    <h2 className="font-mono text-sm text-foreground tracking-wider mb-2">ANALYTICS — API ACCESS</h2>
+                    <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+                        Market, valuation and macro analytics are delivered to your subscription through the PropMetrik
+                        API. The in-app analytics dashboards are reserved for PropMetrik platform staff.
+                    </p>
+                    <p className="font-mono text-[10px] text-muted-foreground mt-3">
+                        See your API documentation for the available <span className="text-amber-500">/api/analytics</span> endpoints.
+                    </p>
+                </div>
+            </div>
+        )
     }
 
     return (
