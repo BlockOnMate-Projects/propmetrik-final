@@ -235,9 +235,12 @@ export default function ForecastingPage() {
   const [horizon, setHorizon] = useState(6)
   const [showRegionDropdown, setShowRegionDropdown] = useState(false)
 
+  // Canonical 16 GSS regions (the old 10-region list was pre-2019 and used the
+  // retired 'brong_ahafo', now split into Ahafo / Bono / Bono East).
   const regions = [
-    'greater_accra', 'ashanti', 'western', 'central', 'eastern',
-    'northern', 'volta', 'brong_ahafo', 'upper_east', 'upper_west',
+    'greater_accra', 'ashanti', 'western', 'central', 'eastern', 'volta',
+    'northern', 'upper_east', 'upper_west', 'western_north', 'ahafo', 'bono',
+    'bono_east', 'oti', 'savannah', 'north_east',
   ]
 
   const formatRegion = (r: string) => r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())

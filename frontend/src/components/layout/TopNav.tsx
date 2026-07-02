@@ -369,7 +369,7 @@ export function TopNav() {
   const [mounted, setMounted] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [ticker, setTicker] = useState<{
-    gh_property_index: { avg_price: number; total_properties: number; change_pct: number };
+    gh_property_index: { avg_price: number; total_properties: number; change_pct: number | null };
     accra_avg: number;
     neighborhoods: { name: string; avg_price: number; direction: 'up' | 'down'; count: number }[];
     active_deals: number;
@@ -655,9 +655,16 @@ export function TopNav() {
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
                   <div>
                     <span className="text-muted-foreground">GH PROPERTY IDX</span>{' '}
-                    <span className={ticker.cap_rate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                      {ticker.cap_rate >= 0 ? '+' : ''}{ticker.cap_rate.toFixed(2)}%
+                    <span className="text-foreground">
+                      &#x20B5;{ticker.gh_property_index.avg_price >= 1_000_000
+                        ? `${(ticker.gh_property_index.avg_price / 1_000_000).toFixed(1)}M`
+                        : `${Math.round(ticker.gh_property_index.avg_price / 1000)}K`}
                     </span>
+                    {ticker.gh_property_index.change_pct !== null && (
+                      <span className={ticker.gh_property_index.change_pct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {' '}{ticker.gh_property_index.change_pct >= 0 ? '+' : ''}{ticker.gh_property_index.change_pct.toFixed(2)}%
+                      </span>
+                    )}
                   </div>
                   <div>
                     <span className="text-muted-foreground">ACCRA AVG</span>{' '}
@@ -685,9 +692,16 @@ export function TopNav() {
             <>
               <span>
                 <span className="text-muted-foreground">GH PROPERTY IDX</span>{' '}
-                <span className={ticker.cap_rate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                  {ticker.cap_rate >= 0 ? '+' : ''}{ticker.cap_rate.toFixed(2)}%
+                <span className="text-foreground">
+                  ₵{ticker.gh_property_index.avg_price >= 1_000_000
+                    ? `${(ticker.gh_property_index.avg_price / 1_000_000).toFixed(1)}M`
+                    : `${Math.round(ticker.gh_property_index.avg_price / 1000)}K`}
                 </span>
+                {ticker.gh_property_index.change_pct !== null && (
+                  <span className={ticker.gh_property_index.change_pct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                    {' '}{ticker.gh_property_index.change_pct >= 0 ? '+' : ''}{ticker.gh_property_index.change_pct.toFixed(2)}%
+                  </span>
+                )}
               </span>
               <span>
                 <span className="text-muted-foreground">ACCRA AVG</span>{' '}

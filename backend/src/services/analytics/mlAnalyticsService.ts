@@ -155,12 +155,17 @@ class MLAnalyticsService {
     let modelVersion: string | undefined;
 
     try {
+      // Columns are `confidence` and `created_at` (not confidence_score / predicted_at).
+      // Count is windowed to 30 days; avg confidence is all-time so the KPI stays
+      // meaningful even when no predictions were logged in the last month.
       const predStats = await pool.query(
-        `SELECT COUNT(*) AS cnt, AVG(confidence_score) AS avg_conf
+        `SELECT
+           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') AS cnt_30d,
+           AVG(confidence) AS avg_conf
          FROM ml_predictions
-         WHERE predicted_at >= NOW() - INTERVAL '30 days'`,
+         WHERE confidence IS NOT NULL`,
       );
-      totalPredictions30d = parseInt(predStats.rows[0]?.cnt || '0', 10);
+      totalPredictions30d = parseInt(predStats.rows[0]?.cnt_30d || '0', 10);
       avgConfidence = parseFloat(predStats.rows[0]?.avg_conf || '0');
     } catch (err: any) {
       if (err.code !== '42P01') logger.warn('ml_predictions query failed', { error: err.message });
@@ -600,6 +605,66 @@ class MLAnalyticsService {
 
   /** 8.1 — AVM Performance Metrics */
   async getAVMPerformance(modelVersion?: string, periodDays?: number) {
+    // Compute real AVM accuracy from ml_predictions (predicted vs actual) — this is
+    // the source of truth. The Python ML microservice is only a fallback.
+    try {
+      // Data hygiene: a property outcome below GH₵1,000 or a non-positive prediction
+      // is invalid and would corrupt MAPE/R²; exclude it from the accuracy metrics.
+      const where: string[] = ['actual_value >= 1000', 'predicted_value > 0'];
+      const params: any[] = [];
+      if (modelVersion) { params.push(modelVersion); where.push(`model_version = $${params.length}`); }
+      if (periodDays) { params.push(periodDays); where.push(`created_at >= NOW() - ($${params.length} || ' days')::interval`); }
+
+      const r = await pool.query<any>(
+        `WITH e AS (
+           SELECT predicted_value::float8 p, actual_value::float8 a,
+                  ABS(predicted_value - actual_value)::float8 abs_err,
+                  ABS(predicted_value - actual_value) / actual_value AS pct_err
+           FROM ml_predictions
+           WHERE ${where.join(' AND ')}
+         )
+         SELECT COUNT(*)::int AS n,
+                AVG(abs_err) AS mae,
+                SQRT(AVG(POWER(p - a, 2))) AS rmse,
+                AVG(pct_err) * 100 AS mape,
+                percentile_cont(0.5) WITHIN GROUP (ORDER BY pct_err) * 100 AS median_error,
+                percentile_cont(0.9) WITHIN GROUP (ORDER BY pct_err) * 100 AS p90_error,
+                AVG(CASE WHEN pct_err <= 0.10 THEN 1 ELSE 0 END) * 100 AS within_10,
+                AVG(CASE WHEN pct_err <= 0.20 THEN 1 ELSE 0 END) * 100 AS within_20,
+                (1 - SUM(POWER(p - a, 2)) / NULLIF(VAR_POP(a) * COUNT(*), 0)) AS r2
+         FROM e`,
+        params,
+      );
+      const row = r.rows[0];
+      const n = Number(row?.n ?? 0);
+      if (n > 0) {
+        const num = (v: any) => (v === null || v === undefined ? 0 : Number(v));
+        return {
+          model_version: modelVersion || 'all',
+          mae: Math.round(num(row.mae)),
+          rmse: Math.round(num(row.rmse)),
+          mape: Math.round(num(row.mape) * 100) / 100,
+          median_error: Math.round(num(row.median_error) * 100) / 100,
+          r2: Math.round(num(row.r2) * 10000) / 10000,
+          p90_error: Math.round(num(row.p90_error) * 10) / 10,
+          within_10_pct: Math.round(num(row.within_10) * 10) / 10,
+          within_20_pct: Math.round(num(row.within_20) * 10) / 10,
+          sample_size: n,
+          total_predictions: n,
+          data_quality: {
+            sample_size: n,
+            sufficient_for_inference: n >= 30,
+            note: n < 30
+              ? `Only ${n} predictions with recorded outcomes — metrics not yet statistically meaningful (need ≥30)`
+              : `${n} predictions with recorded outcomes — metrics reflect actual AVM performance`,
+          },
+        };
+      }
+    } catch (err: any) {
+      if (err.code !== '42P01') logger.warn('ml_predictions AVM computation failed', { error: err.message });
+    }
+
+    // Fallback: Python ML microservice (only if the DB has no outcome-labelled predictions).
     try {
       const data = await this.client.getModelPerformance({ model_version: modelVersion, period_days: periodDays });
       if (data) {
@@ -608,10 +673,8 @@ class MLAnalyticsService {
           sample_size: sampleSize,
           sufficient_for_inference: sampleSize >= 30,
           note: sampleSize === 0
-            ? 'No prediction history recorded yet — all metrics are zero-initialized defaults'
-            : sampleSize < 30
-            ? `Only ${sampleSize} predictions recorded — metrics are not yet statistically meaningful (need ≥30)`
-            : `${sampleSize} predictions — metrics reflect actual AVM performance`,
+            ? 'No prediction outcomes recorded yet — metrics are zero-initialized defaults'
+            : `${sampleSize} predictions`,
         };
       }
       return data;
@@ -663,6 +726,62 @@ class MLAnalyticsService {
 
   /** 8.3 — Confidence Distribution */
   async getConfidenceDistribution(modelVersion?: string, periodDays?: number) {
+    // Compute the real confidence distribution from ml_predictions.confidence.
+    try {
+      const where: string[] = ['confidence IS NOT NULL'];
+      const params: any[] = [];
+      if (modelVersion) { params.push(modelVersion); where.push(`model_version = $${params.length}`); }
+      if (periodDays) { params.push(periodDays); where.push(`created_at >= NOW() - ($${params.length} || ' days')::interval`); }
+
+      const [stats, hist] = await Promise.all([
+        pool.query<any>(
+          `SELECT COUNT(*)::int AS n,
+                  AVG(confidence)::float8 AS mean_conf,
+                  percentile_cont(0.5) WITHIN GROUP (ORDER BY confidence)::float8 AS median_conf,
+                  SUM(CASE WHEN confidence >= 0.8 THEN 1 ELSE 0 END)::int AS high,
+                  SUM(CASE WHEN confidence >= 0.5 AND confidence < 0.8 THEN 1 ELSE 0 END)::int AS medium,
+                  SUM(CASE WHEN confidence < 0.5 THEN 1 ELSE 0 END)::int AS low
+           FROM ml_predictions WHERE ${where.join(' AND ')}`,
+          params,
+        ),
+        pool.query<any>(
+          `SELECT width_bucket(confidence, 0, 1, 10) AS bucket, COUNT(*)::int AS c
+           FROM ml_predictions WHERE ${where.join(' AND ')}
+           GROUP BY bucket ORDER BY bucket`,
+          params,
+        ),
+      ]);
+      const s = stats.rows[0];
+      const n = Number(s?.n ?? 0);
+      if (n > 0) {
+        const buckets = new Map<number, number>();
+        for (const row of hist.rows) buckets.set(Number(row.bucket), Number(row.c));
+        const histogram = Array.from({ length: 10 }, (_, i) => {
+          const lo = i / 10;
+          return { bin: `${(lo * 100).toFixed(0)}-${((lo + 0.1) * 100).toFixed(0)}%`, count: buckets.get(i + 1) ?? 0 };
+        });
+        return {
+          total_predictions: n,
+          mean_confidence: Math.round(Number(s.mean_conf) * 10000) / 10000,
+          median_confidence: Math.round(Number(s.median_conf) * 10000) / 10000,
+          high_confidence: Number(s.high),
+          medium_confidence: Number(s.medium),
+          low_confidence: Number(s.low),
+          histogram,
+          data_quality: {
+            sample_size: n,
+            sufficient_for_inference: n >= 50,
+            note: n < 50
+              ? `Only ${n} predictions — distribution indicative (need ≥50 for statistical validity)`
+              : `Based on ${n} predictions`,
+          },
+        };
+      }
+    } catch (err: any) {
+      if (err.code !== '42P01') logger.warn('ml_predictions confidence computation failed', { error: err.message });
+    }
+
+    // Fallback: Python ML microservice.
     try {
       const data = await this.client.getConfidenceDistribution({ model_version: modelVersion, period_days: periodDays });
       if (data) {

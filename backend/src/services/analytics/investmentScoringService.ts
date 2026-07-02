@@ -17,6 +17,9 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { gssFinancialService } from '../data-hub/scrapers/gssFinancialService';
+import { gssPhcHousingService } from '../data-hub/scrapers/gssPhcHousingService';
+import { gssPhcPovertyService } from '../data-hub/scrapers/gssPhcPovertyService';
 
 // ====================================================================
 // TYPES
@@ -32,6 +35,9 @@ export interface InvestmentOpportunity {
     rental_yield_score: number;
     absorption_score: number;
     risk_score: number;
+    macro_risk_score?: number;   // Slice 1: NPL + policy rate penalty
+    ccri_risk_score?: number;    // Slice 2: construction completion risk
+    mpi_risk_score?: number;     // Slice 3: multidimensional poverty penalty
   };
   cap_rate: number;
   avg_price_growth_yoy: number;
@@ -42,6 +48,15 @@ export interface InvestmentOpportunity {
   risk_level: string;
   market_condition: string;
   recommendation: string;
+  // GSS macro context (Slice 1) — present when source tables populated
+  npl_ratio?: number | null;
+  lending_rate?: number | null;
+  // GSS PHC completion context (Slice 2) — present when source tables populated
+  incomplete_residential_pct?: number | null;
+  // GSS PHC poverty context (Slice 3) — present when MPI table populated
+  mpi_m0?: number | null;
+  mpi_incidence?: number | null;
+  mpi_risk_level?: 'low' | 'moderate' | 'high' | null;
 }
 
 export interface RegionalComparison {
@@ -53,6 +68,12 @@ export interface RegionalComparison {
   vacancy_rate: number;
   risk_level: string;
   transaction_count: number;
+  // Real per-region property stats (for the geographic overview panel)
+  total_listings: number;
+  avg_price: number | null;
+  median_price: number | null;
+  avg_price_per_sqm: number | null;
+  property_types: Record<string, number>;
 }
 
 export interface InvestmentRegionDetail {
@@ -169,6 +190,47 @@ class InvestmentScoringService {
     `;
 
     const result = await pool.query(sql, params);
+
+    // Fetch GSS macro risk factors (Slice 1) — NPL ratio + policy rate.
+    // These are national-level signals applied uniformly to all regions.
+    // Non-fatal: if tables not yet populated, macro_risk_penalty defaults to 0.
+    let nplRatio: number | null = null;
+    let lendingRate: number | null = null;
+    let policyRate: number | null = null;
+    let macroRiskPenalty = 0;
+    try {
+      const [fsi, rate] = await Promise.all([
+        gssFinancialService.getLatestFsi(),
+        gssFinancialService.getLatestPolicyRate(),
+      ]);
+      nplRatio = fsi.npl_ratio;
+      lendingRate = (await gssFinancialService.getLatestLendingRate())?.rate_pct ?? null;
+      policyRate = rate;
+      if (nplRatio !== null) macroRiskPenalty += 0.02 * Math.max(0, nplRatio - 5);
+      if (policyRate !== null) macroRiskPenalty += 0.01 * Math.max(0, policyRate - 25);
+      macroRiskPenalty = Math.min(macroRiskPenalty, 0.15); // cap at 15 points
+    } catch {
+      // GSS tables not yet seeded — silently degrade
+    }
+
+    // Fetch GSS PHC completion risk by region (Slice 2).
+    // incomplete_residential_pct feeds the CCRI risk sub-factor.
+    let completionByRegion: Record<string, number | null> = {};
+    try {
+      completionByRegion = await gssPhcHousingService.getCompletionByRegion();
+    } catch {
+      // Census table not yet populated — silently skip
+    }
+
+    // Fetch GSS PHC multidimensional poverty by region (Slice 3).
+    // mpi_m0 feeds a small poverty discount + a risk badge.
+    let mpiByRegion: Record<string, { mpi_incidence: number | null; mpi_intensity: number | null; mpi_m0: number | null; top_contributor: string | null }> = {};
+    try {
+      mpiByRegion = await gssPhcPovertyService.getMpiByRegion();
+    } catch {
+      // MPI table not yet populated — silently skip
+    }
+
     return result.rows.map((r: any) => {
       const capRate = parseFloat(r.cap_rate || '0');
       const priceGrowth = parseFloat(r.price_growth_yoy || '0');
@@ -176,20 +238,48 @@ class InvestmentScoringService {
       const absorption = parseFloat(r.absorption || '0');
       const vacancy = parseFloat(r.vacancy || '0');
       const riskPremium = parseFloat(r.risk_premium || '0');
+      const regionKey = (r.region || '').toLowerCase().replace(/\s+/g, '_');
 
-      // Score each factor 0-20, total 0-100
+      // CCRI: incomplete residential % × macro stress amplifier (Slice 2)
+      const incompletePct = completionByRegion[regionKey] ?? null;
+      let ccriPenalty = 0;
+      let ccriScore: number | null = null;
+      if (incompletePct !== null) {
+        const macroStress = 1 + 0.02 * Math.max(0, (nplRatio ?? 5) - 5)
+                              + 0.01 * Math.max(0, (policyRate ?? 25) - 10);
+        const ccri = (incompletePct / 100) * macroStress;
+        ccriPenalty = Math.min(ccri * 0.5, 0.10); // max 10% reduction in risk score
+        ccriScore = Math.max(0, 20 - ccri * 20); // higher incompleteness → lower score
+      }
+
+      // MPI: multidimensional poverty index (M0) → small risk discount + badge (Slice 3).
+      // M0 ranges ~0.01 (Accra) to ~0.25 (rural north). Discount scaled like CCRI (max 10 pts).
+      const mpi = mpiByRegion[regionKey] ?? null;
+      const mpiM0 = mpi?.mpi_m0 ?? null;
+      let mpiPenalty = 0;
+      let mpiScore: number | null = null;
+      let mpiRiskLevel: 'low' | 'moderate' | 'high' | null = null;
+      if (mpiM0 !== null) {
+        mpiPenalty = Math.min(mpiM0 * 0.5, 0.10);       // max 10% reduction in risk score
+        mpiScore = Math.max(0, 20 - mpiM0 * 80);        // higher poverty → lower score
+        mpiRiskLevel = mpiM0 >= 0.15 ? 'high' : mpiM0 >= 0.08 ? 'moderate' : 'low';
+      }
+
+      // Score each factor 0–20, total 0–100.
       const capScore = Math.min(20, capRate * 2);
-      const priceScore = Math.min(20, Math.max(0, priceGrowth + 10)); // center at 10 = 0% growth
+      const priceScore = Math.min(20, Math.max(0, priceGrowth + 10));
       const rentScore = Math.min(20, Math.max(0, rentGrowth * 2 + 10));
       const absScore = Math.min(20, absorption * 100);
-      const riskScore = Math.max(0, 20 - (vacancy * 20) - (riskPremium * 5));
+      const macroScore = macroRiskPenalty > 0 ? Math.max(0, 20 - macroRiskPenalty * 100) : null;
+      const baseRiskScore = Math.max(0, 20 - (vacancy * 20) - (riskPremium * 5) - (ccriPenalty * 100) - (mpiPenalty * 100));
+      const riskScore = macroScore !== null ? Math.min(baseRiskScore, macroScore) : baseRiskScore;
 
       const totalScore = Math.round(capScore + priceScore + rentScore + absScore + riskScore);
       const clampedScore = Math.min(100, Math.max(0, totalScore));
 
       let riskLevel = 'moderate';
-      if (vacancy > 0.15 || riskPremium > 0.03) riskLevel = 'high';
-      else if (vacancy < 0.05 && riskPremium < 0.01) riskLevel = 'low';
+      if (vacancy > 0.15 || riskPremium > 0.03 || (nplRatio !== null && nplRatio > 12)) riskLevel = 'high';
+      else if (vacancy < 0.05 && riskPremium < 0.01 && (nplRatio === null || nplRatio < 8)) riskLevel = 'low';
 
       let recommendation = 'Hold / Monitor';
       if (clampedScore >= 70) recommendation = 'Strong Buy';
@@ -207,6 +297,9 @@ class InvestmentScoringService {
           rental_yield_score: Math.round(rentScore * 10) / 10,
           absorption_score: Math.round(absScore * 10) / 10,
           risk_score: Math.round(riskScore * 10) / 10,
+          macro_risk_score: macroScore !== null ? Math.round(macroScore * 10) / 10 : undefined,
+          ccri_risk_score: ccriScore !== null ? Math.round(ccriScore * 10) / 10 : undefined,
+          mpi_risk_score: mpiScore !== null ? Math.round(mpiScore * 10) / 10 : undefined,
         },
         cap_rate: capRate,
         avg_price_growth_yoy: priceGrowth,
@@ -217,7 +310,13 @@ class InvestmentScoringService {
         risk_level: riskLevel,
         market_condition: r.market_condition || 'stable',
         recommendation,
-      };
+        npl_ratio: nplRatio,
+        lending_rate: lendingRate,
+        incomplete_residential_pct: incompletePct,
+        mpi_m0: mpiM0,
+        mpi_incidence: mpi?.mpi_incidence ?? null,
+        mpi_risk_level: mpiRiskLevel,
+      } as InvestmentOpportunity;
     });
   }
 
@@ -261,16 +360,65 @@ class InvestmentScoringService {
         return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || 'moderate';
       };
 
-      return Array.from(regionMap.entries()).map(([region, m]) => ({
-        region,
-        opportunity_score: Math.round(avg(m.scores)),
-        cap_rate: Math.round(avg(m.capRates) * 100) / 100,
-        price_growth: Math.round(avg(m.priceGrowths) * 100) / 100,
-        rental_yield: Math.round(avg(m.yields) * 100) / 100,
-        vacancy_rate: Math.round(avg(m.vacancies) * 1000) / 1000,
-        risk_level: mode(m.risks),
-        transaction_count: 0,
-      })).sort((a, b) => b.opportunity_score - a.opportunity_score);
+      // Real per-region property stats from the properties table (the geographic
+      // overview panel needs total_listings / avg_price / property_types, which the
+      // scoring aggregation above doesn't carry).
+      const stats = new Map<string, { total: number; avg: number | null; median: number | null; perSqm: number | null; types: Record<string, number> }>();
+      try {
+        const [aggRes, typeRes] = await Promise.all([
+          pool.query<{ region: string; total_listings: string; avg_price: string | null; median_price: string | null; avg_price_per_sqm: string | null }>(
+            `SELECT region::text AS region,
+                    COUNT(*)::text AS total_listings,
+                    ROUND(AVG(NULLIF(price,0)))::text AS avg_price,
+                    ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY NULLIF(price,0)))::text AS median_price,
+                    ROUND(AVG(NULLIF(price_per_sqm,0)))::text AS avg_price_per_sqm
+             FROM properties
+             WHERE region IS NOT NULL
+             GROUP BY region`,
+          ),
+          pool.query<{ region: string; property_type: string; n: string }>(
+            `SELECT region::text AS region, COALESCE(property_type::text,'other') AS property_type, COUNT(*)::text AS n
+             FROM properties WHERE region IS NOT NULL GROUP BY region, property_type`,
+          ),
+        ]);
+        for (const r of aggRes.rows) {
+          const key = (r.region || '').toLowerCase().replace(/\s+/g, '_');
+          stats.set(key, {
+            total: parseInt(r.total_listings, 10) || 0,
+            avg: r.avg_price !== null ? parseFloat(r.avg_price) : null,
+            median: r.median_price !== null ? parseFloat(r.median_price) : null,
+            perSqm: r.avg_price_per_sqm !== null ? parseFloat(r.avg_price_per_sqm) : null,
+            types: {},
+          });
+        }
+        for (const r of typeRes.rows) {
+          const key = (r.region || '').toLowerCase().replace(/\s+/g, '_');
+          const s = stats.get(key);
+          if (s) s.types[r.property_type] = parseInt(r.n, 10) || 0;
+        }
+      } catch (err: any) {
+        logger.warn('Regional property stats unavailable', { error: err.message });
+      }
+
+      return Array.from(regionMap.entries()).map(([region, m]) => {
+        const key = (region || '').toLowerCase().replace(/\s+/g, '_');
+        const s = stats.get(key);
+        return {
+          region,
+          opportunity_score: Math.round(avg(m.scores)),
+          cap_rate: Math.round(avg(m.capRates) * 100) / 100,
+          price_growth: Math.round(avg(m.priceGrowths) * 100) / 100,
+          rental_yield: Math.round(avg(m.yields) * 100) / 100,
+          vacancy_rate: Math.round(avg(m.vacancies) * 1000) / 1000,
+          risk_level: mode(m.risks),
+          transaction_count: s?.total ?? 0,
+          total_listings: s?.total ?? 0,
+          avg_price: s?.avg ?? null,
+          median_price: s?.median ?? null,
+          avg_price_per_sqm: s?.perSqm ?? null,
+          property_types: s?.types ?? {},
+        };
+      }).sort((a, b) => b.opportunity_score - a.opportunity_score);
     } catch (err: any) {
       throw err;
     }

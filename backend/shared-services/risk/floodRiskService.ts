@@ -77,24 +77,31 @@ export class FloodRiskService {
             // For now, we rely on the nearest incident's neighborhood or a spatial query if neighborhood boundaries existed
             let neighborhoodRiskScore = 0;
 
-            // Attempt to find neighborhood risk from materialized view based on proximity
+            // Attempt to find neighborhood risk from the materialized view based on
+            // proximity. The `flood_risk_scores` view is optional — if it hasn't been
+            // built yet, fall back to incident-based scoring instead of failing.
             const neighborhoodSql = `
-        SELECT avg_risk_score 
-        FROM flood_risk_scores 
+        SELECT avg_risk_score
+        FROM flood_risk_scores
         WHERE neighborhood = (
-          SELECT neighborhood 
-          FROM flood_risk_incidents 
+          SELECT neighborhood
+          FROM flood_risk_incidents
           WHERE ST_DWithin(
-            location, 
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 
+            location,
+            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
             1000
-          ) 
+          )
           LIMIT 1
         )
       `;
-            const neighborhoodResult = await query(neighborhoodSql, [longitude, latitude]);
-            if (neighborhoodResult.rows.length > 0) {
-                neighborhoodRiskScore = parseFloat(neighborhoodResult.rows[0].avg_risk_score);
+            try {
+                const neighborhoodResult = await query(neighborhoodSql, [longitude, latitude]);
+                if (neighborhoodResult.rows.length > 0) {
+                    neighborhoodRiskScore = parseFloat(neighborhoodResult.rows[0].avg_risk_score) || 0;
+                }
+            } catch (err: any) {
+                // 42P01 = undefined_table (materialized view not built), 42703 = undefined_column
+                if (err?.code !== '42P01' && err?.code !== '42703') throw err;
             }
 
             // 3. Calculate Property Specific Score

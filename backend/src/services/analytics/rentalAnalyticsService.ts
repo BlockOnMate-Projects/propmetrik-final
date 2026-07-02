@@ -17,6 +17,7 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { gssPhcHousingService } from '../data-hub/scrapers/gssPhcHousingService';
 
 // ====================================================================
 // TYPES
@@ -32,6 +33,9 @@ export interface RentalSummary {
   gross_yield_pct: number;
   vacancy_rate_pct: number;
   rent_by_bedrooms: Record<string, number>;
+  // GSS enrichments (Slice 1+2 — null when source tables empty)
+  rent_to_income_ratio?: number | null;         // median_rent / median_monthly_income
+  formal_rental_market_depth_pct?: number | null; // % of households renting (PHC 2021)
 }
 
 export interface RentalYieldDetail {
@@ -141,7 +145,7 @@ class RentalAnalyticsService {
 
       const result = await pool.query(sql, params);
       if (result.rows.length > 0) {
-        return result.rows.map((r: any) => ({
+        const summaries: RentalSummary[] = result.rows.map((r: any) => ({
           region: r.region,
           property_type: r.property_type,
           avg_rent_monthly: parseFloat(r.avg_rent_monthly || '0'),
@@ -152,6 +156,10 @@ class RentalAnalyticsService {
           vacancy_rate_pct: parseFloat(r.vacancy_rate_pct || '0'),
           rent_by_bedrooms: {},
         }));
+
+        // GSS enrichments — non-fatal if source tables empty
+        await this.enrichWithGssData(summaries);
+        return summaries;
       }
     } catch (_e) {
       logger.warn('Transaction-based rental summary unavailable, falling back to benchmarks');
@@ -186,7 +194,7 @@ class RentalAnalyticsService {
     `;
 
     const fbResult = await pool.query(fbSql, fbParams);
-    return fbResult.rows.map((r: any) => ({
+    const fbSummaries: RentalSummary[] = fbResult.rows.map((r: any) => ({
       region: r.region,
       property_type: r.property_type,
       avg_rent_monthly: parseFloat(r.avg_rent_monthly || '0'),
@@ -198,6 +206,46 @@ class RentalAnalyticsService {
       rent_by_bedrooms: typeof r.rent_by_bedrooms === 'string'
         ? JSON.parse(r.rent_by_bedrooms) : (r.rent_by_bedrooms || {}),
     }));
+
+    await this.enrichWithGssData(fbSummaries);
+    return fbSummaries;
+  }
+
+  /**
+   * Enrich RentalSummary rows with GSS data (Slice 1+2).
+   * Adds rent_to_income_ratio (from regional_household_income) and
+   * formal_rental_market_depth_pct (from gss_phc_tenure_by_district).
+   * Non-fatal: sets fields to null if source tables are empty.
+   */
+  private async enrichWithGssData(summaries: RentalSummary[]): Promise<void> {
+    try {
+      // Fetch income per region (Slice 1 — already populated)
+      const incomeRows = await pool.query<{ region: string; median_household_income_monthly_ghs: string }>(
+        `SELECT DISTINCT ON (region) region, median_household_income_monthly_ghs
+         FROM regional_household_income ORDER BY region, period_month DESC`,
+      );
+      const incomeByRegion: Record<string, number> = {};
+      for (const row of incomeRows.rows) {
+        incomeByRegion[row.region.toLowerCase().replace(/\s+/g, '_')] = parseFloat(row.median_household_income_monthly_ghs);
+      }
+
+      // Fetch renting % per region (Slice 2 — PHC tenure)
+      const tenureByRegion = await gssPhcHousingService.getTenureByRegion();
+
+      for (const s of summaries) {
+        const regionKey = s.region.toLowerCase().replace(/\s+/g, '_');
+        const income = incomeByRegion[regionKey] ?? null;
+        if (income && income > 0 && s.median_rent_monthly > 0) {
+          s.rent_to_income_ratio = Math.round((s.median_rent_monthly / income) * 1000) / 1000;
+        }
+        const tenure = tenureByRegion[regionKey];
+        if (tenure?.renting_pct !== null && tenure?.renting_pct !== undefined) {
+          s.formal_rental_market_depth_pct = tenure.renting_pct;
+        }
+      }
+    } catch {
+      // Silently degrade — fields stay undefined
+    }
   }
 
   // ------------------------------------------------------------------

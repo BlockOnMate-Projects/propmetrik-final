@@ -215,16 +215,18 @@ export default function ValuationAnalyticsPage() {
   const [methods, setMethods] = useState<MethodPerformance[]>([])
   const [quality, setQuality] = useState<QualityMetrics | null>(null)
   const [topValuers, setTopValuers] = useState<LeaderboardEntry[]>([])
+  const [materialQuality, setMaterialQuality] = useState<Record<string, number | null>>({})
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
-    const [volumeData, historyData, methodsData, qualityData, valuersData] = await Promise.all([
+    const [volumeData, historyData, methodsData, qualityData, valuersData, materialQualityData] = await Promise.all([
       fetchData<VolumeSummary>('/volume/summary?months=12', signal),
       fetchData<VolumeHistory[]>('/volume/history?months=12', signal),
       fetchData<MethodPerformance[]>('/methods/performance?months=12', signal),
       fetchData<QualityMetrics>('/quality?months=12', signal),
       fetchData<LeaderboardEntry[]>('/valuers/leaderboard?limit=5&sortBy=volume', signal),
+      fetchData<Record<string, number | null>>('/material-quality', signal),
     ])
     if (signal?.aborted) return
     setVolume(volumeData)
@@ -232,6 +234,7 @@ export default function ValuationAnalyticsPage() {
     setMethods(methodsData || [])
     setQuality(qualityData)
     setTopValuers(valuersData || [])
+    setMaterialQuality(materialQualityData || {})
     setLoading(false)
   }, [])
 
@@ -379,11 +382,13 @@ export default function ValuationAnalyticsPage() {
         {/* Regional Breakdown */}
         <Panel title="BY REGION" className="col-span-4">
           {volume?.by_region && Object.keys(volume.by_region).length > 0 ? (
-            <div className="space-y-1.5 max-h-[170px] overflow-y-auto">
+            <>
+            <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
               {Object.entries(volume.by_region)
                 .sort(([, a], [, b]) => b.count - a.count)
                 .map(([region, r]) => {
                   const maxCount = Math.max(...Object.values(volume.by_region).map((x) => x.count), 1)
+                  const mq = materialQuality[region.toLowerCase().replace(/\s+/g, '_')]
                   return (
                     <div key={region} className="flex items-center gap-2">
                       <span className="font-mono text-[9px] text-muted-foreground w-24 truncate">
@@ -396,10 +401,20 @@ export default function ValuationAnalyticsPage() {
                         />
                       </div>
                       <span className="font-mono text-[9px] text-muted-foreground w-8 text-right">{r.count}</span>
+                      <span
+                        className="font-mono text-[9px] text-cyan-600 dark:text-cyan-400 w-9 text-right"
+                        title="PHC 2021 district material-quality score (cement-block wall + metal roof + cement/tile floor)"
+                      >
+                        {mq != null ? `Q${mq.toFixed(0)}` : '—'}
+                      </span>
                     </div>
                   )
                 })}
             </div>
+            <div className="pt-2 mt-1 border-t border-border font-mono text-[8px] text-muted-foreground">
+              Q = PHC 2021 district material-quality baseline (0–100). Higher = more cement-block / metal-roof / tiled stock.
+            </div>
+            </>
           ) : (
             <div className="h-[170px] flex items-center justify-center font-mono text-[10px] text-muted-foreground">
               No regional data

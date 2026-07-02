@@ -26,11 +26,16 @@ import {
 interface PriceIndexEntry {
   region: string
   property_type: string
-  index_value: number
-  change_yoy: number
+  index_value: number | null
+  real_index: number | null
+  change_yoy: number | null
   median_price: number
   avg_price: number
   transaction_count: number
+  // GSS macro overlay (Slice 1) — national context, repeated per row
+  mieg_growth_yoy?: number | null
+  gdp_growth_context?: string | null
+  interest_rate_cycle?: string | null
 }
 
 interface PriceIndexHistory {
@@ -227,9 +232,11 @@ export default function MarketAnalyticsPage() {
   const avgPrice = totalTxns > 0 ? totalValue / totalTxns : 0
   const totalActive = activity.reduce((s, a) => s + a.active_listings, 0)
   const totalNew = activity.reduce((s, a) => s + a.new_listings, 0)
-  const avgYoY = priceIndex.length > 0
-    ? priceIndex.reduce((s, p) => s + p.change_yoy, 0) / priceIndex.length
-    : 0
+  // Average only over regions that have a real YoY (null = insufficient price history, excluded).
+  const yoyValues = priceIndex.map((p) => p.change_yoy).filter((v): v is number => v != null)
+  const avgYoY = yoyValues.length > 0
+    ? yoyValues.reduce((s, v) => s + v, 0) / yoyValues.length
+    : null
 
   // Determine market status from supply/demand
   const topTemp = supplyDemand.length > 0 ? supplyDemand[0].market_temperature : 'balanced'
@@ -294,15 +301,19 @@ export default function MarketAnalyticsPage() {
         </Panel>
         <Panel title="YoY GROWTH">
           <div className="text-center">
-            {avgYoY >= 0 ? (
+            {avgYoY == null ? (
+              <Activity className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+            ) : avgYoY >= 0 ? (
               <ArrowUpRight className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
             ) : (
               <ArrowDownRight className="w-4 h-4 mx-auto mb-1 text-red-600 dark:text-red-400" />
             )}
-            <div className={cn('font-mono text-2xl', avgYoY >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
-              {avgYoY !== 0 ? `${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%` : '—'}
+            <div className={cn('font-mono text-2xl', avgYoY == null ? 'text-muted-foreground' : avgYoY >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+              {avgYoY == null ? '—' : `${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%`}
             </div>
-            <div className="font-mono text-[10px] text-muted-foreground mt-1">YEAR OVER YEAR</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">
+              {avgYoY == null ? 'INSUFFICIENT HISTORY' : 'YEAR OVER YEAR'}
+            </div>
           </div>
         </Panel>
         <Panel title="MONTHLY VOLUME">
@@ -347,6 +358,31 @@ export default function MarketAnalyticsPage() {
         </Panel>
       </div>
 
+      {/* GSS macro context bar (Slice 1) */}
+      {(() => {
+        const macro = priceIndex.find((p) => p.mieg_growth_yoy != null || p.gdp_growth_context || p.interest_rate_cycle)
+        if (!macro) return null
+        const creditSensitive = (macro.interest_rate_cycle || '').toLowerCase().includes('tighten')
+        return (
+          <div className={cn(
+            'flex flex-wrap items-center gap-3 mb-4 px-3 py-2 border font-mono text-[10px]',
+            creditSensitive ? 'border-amber-500/40 bg-amber-500/5' : 'border-border bg-muted/30',
+          )}>
+            {creditSensitive && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+            {macro.mieg_growth_yoy != null && (
+              <span className="text-muted-foreground">MIEG (economic activity) YoY <span className="text-foreground">{macro.mieg_growth_yoy >= 0 ? '+' : ''}{macro.mieg_growth_yoy.toFixed(1)}%</span></span>
+            )}
+            {macro.gdp_growth_context && (
+              <span className="text-muted-foreground">GDP <span className="text-foreground">{macro.gdp_growth_context}</span></span>
+            )}
+            {macro.interest_rate_cycle && (
+              <span className="text-muted-foreground">Rate cycle <span className={cn(creditSensitive ? 'text-amber-600 dark:text-amber-400' : 'text-foreground', 'uppercase')}>{macro.interest_rate_cycle}</span></span>
+            )}
+            <span className="text-muted-foreground/60">Source: GSS StatsBank MIEG/GDP + interest rates</span>
+          </div>
+        )
+      })()}
+
       {/* Main Content */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
         {/* Price Index Table */}
@@ -361,6 +397,7 @@ export default function MarketAnalyticsPage() {
                   <th className="text-right pb-2">AVG PRICE</th>
                   <th className="text-right pb-2">MEDIAN</th>
                   <th className="text-right pb-2">YoY</th>
+                  <th className="text-right pb-2" title="CPI-deflated real price index">REAL IDX</th>
                   <th className="text-right pb-2">VOLUME</th>
                 </tr>
               </thead>
@@ -371,8 +408,11 @@ export default function MarketAnalyticsPage() {
                     <td className="py-2 text-muted-foreground">{formatPropertyType(item.property_type)}</td>
                     <td className="py-2 text-right text-green-600 dark:text-green-400">{formatCurrency(item.avg_price)}</td>
                     <td className="py-2 text-right text-muted-foreground">{formatCurrency(item.median_price)}</td>
-                    <td className={cn('py-2 text-right', item.change_yoy >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
-                      {item.change_yoy !== 0 ? `${item.change_yoy >= 0 ? '+' : ''}${item.change_yoy.toFixed(1)}%` : '—'}
+                    <td className={cn('py-2 text-right', item.change_yoy == null ? 'text-muted-foreground' : item.change_yoy >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
+                      {item.change_yoy == null ? '—' : `${item.change_yoy >= 0 ? '+' : ''}${item.change_yoy.toFixed(1)}%`}
+                    </td>
+                    <td className="py-2 text-right text-muted-foreground">
+                      {item.real_index == null ? '—' : item.real_index.toFixed(1)}
                     </td>
                     <td className="py-2 text-right text-muted-foreground">{item.transaction_count}</td>
                   </tr>

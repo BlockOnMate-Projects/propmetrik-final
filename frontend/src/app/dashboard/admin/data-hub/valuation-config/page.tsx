@@ -614,7 +614,6 @@ function HistoryTab() {
     { value: '', label: 'All Tables' },
     { value: 'material_category_weights', label: 'Material Weights' },
     { value: 'regional_location_factors', label: 'Regional Factors' },
-    { value: 'base_construction_costs', label: 'Base Costs' },
   ]
 
   if (loading) {

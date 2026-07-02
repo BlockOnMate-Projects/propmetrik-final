@@ -19,6 +19,7 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { valuationAnalyticsService } from '../services/analytics/valuationAnalyticsService';
 import { floorPlanAnalyticsService } from '../services/analytics/floorPlanAnalyticsService';
+import { gssPhcHousingService } from '../services/data-hub/scrapers/gssPhcHousingService';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -310,6 +311,23 @@ router.get(
       region: region || undefined,
       months: months ? parseInt(months, 10) : undefined,
     });
+    res.json({ success: true, data });
+  }),
+);
+
+// ============================================================================
+// PHC 2021 MATERIAL QUALITY CONTEXT (Slice 2 frontend)
+// ============================================================================
+
+/**
+ * GET /material-quality
+ * PHC 2021 district material-quality score per region (cement-block wall + metal
+ * roof + cement/tile floor composite). Contextualises the market-relative panel.
+ */
+router.get(
+  '/material-quality',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await gssPhcHousingService.getMaterialQualityByRegion();
     res.json({ success: true, data });
   }),
 );

@@ -257,7 +257,7 @@ export const config = {
     weeklySchedule: process.env.SCRAPY_WEEKLY_SCHEDULE || '0 2 * * 0',
     dailyUpdates: process.env.SCRAPY_DAILY_UPDATES !== 'false',
     dailySchedule: process.env.SCRAPY_DAILY_SCHEDULE || '0 3 * * *',
-    enabledSpiders: (process.env.SCRAPY_ENABLED_SPIDERS || 'meqasa,housemaster,gpc,realtor,jiji,daily_graphic_legal,airbnb_ghana')
+    enabledSpiders: (process.env.SCRAPY_ENABLED_SPIDERS || 'meqasa,housemaster,gpc,realtor,tonaton,daily_graphic_legal,airbnb_ghana,ownkey')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),

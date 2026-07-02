@@ -21,6 +21,8 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { gssPhcHousingService } from '../data-hub/scrapers/gssPhcHousingService';
+import { gssPhcEmploymentService } from '../data-hub/scrapers/gssPhcEmploymentService';
 
 // ============================================================================
 // TYPES
@@ -77,8 +79,12 @@ export interface RegionalInputData {
 }
 
 // ============================================================================
-// REGIONAL WEIGHT MATRIX (from Analytics.md Section 2.2)
+// GHAI COMPOSITE WEIGHTS — census-derived (Analytics.md §2.2 / E-8)
 // ============================================================================
+//
+// The mortgage/cash/rental weight split per region is DERIVED FROM REAL DATA
+// (PHC 2021 census tenure % + regional formal-employment %), not a hardcoded
+// per-region matrix. See weightsFromCensus() + computeWeightsFromCensus().
 
 interface RegionWeights {
   mortgage: number;
@@ -86,27 +92,31 @@ interface RegionWeights {
   rental: number;
 }
 
-const REGIONAL_WEIGHTS: Record<string, RegionWeights> = {
-  greater_accra:  { mortgage: 0.25, cash: 0.45, rental: 0.30 },
-  ashanti:        { mortgage: 0.15, cash: 0.55, rental: 0.30 },
-  kumasi_metro:   { mortgage: 0.15, cash: 0.55, rental: 0.30 },
-  eastern:        { mortgage: 0.10, cash: 0.60, rental: 0.30 },
-  western:        { mortgage: 0.12, cash: 0.58, rental: 0.30 },
-  western_cluster:{ mortgage: 0.12, cash: 0.58, rental: 0.30 },
-  northern:       { mortgage: 0.05, cash: 0.65, rental: 0.30 },
-  northern_cluster:{ mortgage: 0.05, cash: 0.65, rental: 0.30 },
-  central:        { mortgage: 0.08, cash: 0.62, rental: 0.30 },
-  volta:          { mortgage: 0.07, cash: 0.63, rental: 0.30 },
-  upper_east:     { mortgage: 0.05, cash: 0.65, rental: 0.30 },
-  upper_west:     { mortgage: 0.05, cash: 0.65, rental: 0.30 },
-  bono:           { mortgage: 0.08, cash: 0.62, rental: 0.30 },
-  ahafo:          { mortgage: 0.07, cash: 0.63, rental: 0.30 },
-  bono_east:      { mortgage: 0.07, cash: 0.63, rental: 0.30 },
-  north_east:     { mortgage: 0.05, cash: 0.65, rental: 0.30 },
-  savannah:       { mortgage: 0.05, cash: 0.65, rental: 0.30 },
-  oti:            { mortgage: 0.06, cash: 0.64, rental: 0.30 },
-  western_north:  { mortgage: 0.08, cash: 0.62, rental: 0.30 },
-};
+// Neutral national prior — used ONLY when no census-derived weights are supplied to
+// computeForRegion() (e.g. the manual /hai/compute endpoint). The scheduled affordability
+// pipeline always overrides this with census-derived weights, so it never affects live GHAI.
+const NEUTRAL_WEIGHTS: RegionWeights = { mortgage: 0.10, cash: 0.60, rental: 0.30 };
+
+/**
+ * Derive GHAI composite weights from PHC 2021 census tenure + formal employment (E-8).
+ * All inputs are FRACTIONS (0..1):
+ *   rental_weight   = min(0.50, renting × 1.5)
+ *   cash_weight     = owner_occupied × 0.8
+ *   mortgage_weight = formal_employment × 0.4
+ * then normalised to sum to 1. Returns NEUTRAL_WEIGHTS if the inputs are degenerate.
+ */
+function weightsFromCensus(renting: number, ownerOccupied: number, formalEmployment: number): RegionWeights {
+  const rental = Math.min(0.50, renting * 1.5);
+  const cash = ownerOccupied * 0.8;
+  const mortgage = formalEmployment * 0.4;
+  const total = rental + cash + mortgage;
+  if (!(total > 0.05)) return NEUTRAL_WEIGHTS;
+  return {
+    mortgage: Math.round((mortgage / total) * 1000) / 1000,
+    cash: Math.round((cash / total) * 1000) / 1000,
+    rental: Math.round((rental / total) * 1000) / 1000,
+  };
+}
 
 // Default MHAI parameters (Ghana standard)
 const DEFAULT_MHAI_PARAMS: MHAIParams = {
@@ -245,6 +255,11 @@ function calculateLAI(
  * MAS: Mortgage Accessibility Score
  * % of households that can qualify for a mortgage.
  * Based on formal employment rate + income threshold.
+ *
+ * `formalEmploymentPct` is the REAL regional (or national-average) figure from PHC 2021 —
+ * the scheduled affordability pipeline always supplies it. The 15% default is a neutral
+ * national prior (≈ Ghana's formal-sector share) used ONLY for manual /hai/compute calls that
+ * omit the value; it never affects live regional GHAI.
  */
 function calculateMAS(formalEmploymentPct: number = 15): number {
   // Ghana-specific: only formal sector can access mortgages
@@ -629,7 +644,7 @@ class GHAIService {
    * Does NOT persist — just returns the calculated result.
    */
   computeForRegion(input: RegionalInputData): GHAIResult {
-    const weights = REGIONAL_WEIGHTS[input.region] || { mortgage: 0.10, cash: 0.60, rental: 0.30 };
+    const weights = (input as any)._censusWeights || NEUTRAL_WEIGHTS;
 
     // Core indices
     const mhai = calculateMHAI(
@@ -658,7 +673,7 @@ class GHAIService {
       ? calculateLAI(input.median_household_income, input.land_price_per_sqm)
       : 0;
 
-    const mas = calculateMAS(input.formal_employment_pct || 15);
+    const mas = calculateMAS(input.formal_employment_pct);
 
     return {
       region: input.region,
@@ -760,6 +775,10 @@ class GHAIService {
              cai = EXCLUDED.cai,
              lai = EXCLUDED.lai,
              mas = EXCLUDED.mas,
+             median_property_price = EXCLUDED.median_property_price,
+             median_household_income = EXCLUDED.median_household_income,
+             mortgage_rate = EXCLUDED.mortgage_rate,
+             median_monthly_rent = EXCLUDED.median_monthly_rent,
              trend_direction = EXCLUDED.trend_direction,
              change_mom = EXCLUDED.change_mom,
              change_yoy = EXCLUDED.change_yoy`,
@@ -805,6 +824,150 @@ class GHAIService {
     }
   }
 
+  /**
+   * Assemble GHAI inputs entirely from real sources and compute + store for every region that has
+   * sufficient real data. Nothing is seeded or hardcoded:
+   *   median_household_income ← regional_household_income (GSS AHIES + PHC 2021, CPI-escalated)
+   *   mortgage_rate           ← economic_indicators.mortgage_rate_avg (live)
+   *   median_property_price   ← properties (regional median sale price, min sample)
+   *   median_monthly_rent     ← properties (regional median rental price, min sample)
+   * Regions lacking a real price/rent sample are skipped (logged) — never seeded.
+   */
+  async computeAndStoreFromSources(calculationDate: Date = new Date()): Promise<GHAIResult[]> {
+    const { gssIncomeService } = await import('../data-hub/gssIncomeService');
+    const MIN_SAMPLE = Number(process.env.GHAI_MIN_MARKET_SAMPLE || 30);
+
+    const incomeByRegion = await gssIncomeService.getLatestIncomeByRegion();
+
+    // Live mortgage rate (percent → decimal)
+    const mortRow = await pool.query<{ value: string }>(
+      `SELECT value FROM economic_indicators WHERE indicator_type = 'mortgage_rate_avg'
+       ORDER BY effective_date DESC LIMIT 1`,
+    );
+    const mortgageRate = mortRow.rows[0] ? Number(mortRow.rows[0].value) / 100 : null;
+    if (mortgageRate == null) {
+      logger.warn('[GHAI] No live mortgage_rate_avg — skipping affordability recompute');
+      return [];
+    }
+
+    // Regional median sale price + monthly rent from live listings
+    const mktRows = await pool.query<{
+      region: string; sale_n: string; sale_med: string | null; rent_n: string; rent_med: string | null;
+    }>(
+      `SELECT region,
+              COUNT(*) FILTER (WHERE transaction_type = 'sale') AS sale_n,
+              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price)
+                FILTER (WHERE transaction_type = 'sale') AS sale_med,
+              COUNT(*) FILTER (WHERE transaction_type IN ('rental','lease')) AS rent_n,
+              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price)
+                FILTER (WHERE transaction_type IN ('rental','lease')) AS rent_med
+       FROM properties
+       WHERE deleted_at IS NULL AND price > 0 AND region IS NOT NULL
+       GROUP BY region`,
+    );
+    const market: Record<string, { saleN: number; saleMed: number | null; rentN: number; rentMed: number | null }> = {};
+    for (const r of mktRows.rows) {
+      market[r.region] = {
+        saleN: Number(r.sale_n),
+        saleMed: r.sale_med != null ? Number(r.sale_med) : null,
+        rentN: Number(r.rent_n),
+        rentMed: r.rent_med != null ? Number(r.rent_med) : null,
+      };
+    }
+
+    const inputs: RegionalInputData[] = [];
+    const skipped: string[] = [];
+
+    // Fetch formal_employment_pct per region. Slice 3 upgrades the MAS calibration:
+    // prefer the PHC 2021 census figure (gss_phc_employment_by_district, district-level
+    // authoritative) and fall back to the AHIES-derived regional_household_income value
+    // (Slice 1), then to the national average, then to calculateMAS's neutral prior.
+    let formalEmpByRegion: Record<string, number | null> = {};
+    try {
+      const censusFormalEmp = await gssPhcEmploymentService.getFormalEmploymentByRegion();
+      for (const [region, val] of Object.entries(censusFormalEmp)) {
+        if (val !== null) formalEmpByRegion[region] = val;
+      }
+    } catch {
+      // Employment census table not populated yet (Slice 3 not run) — fall through.
+    }
+    try {
+      const fmpRows = await pool.query<{ region: string; formal_employment_pct: string | null }>(
+        `SELECT DISTINCT ON (region) region, formal_employment_pct
+         FROM regional_household_income
+         ORDER BY region, period_month DESC`,
+      );
+      for (const r of fmpRows.rows) {
+        // Only fill regions the census didn't already supply (census is authoritative).
+        if (formalEmpByRegion[r.region] == null && r.formal_employment_pct !== null) {
+          formalEmpByRegion[r.region] = parseFloat(r.formal_employment_pct);
+        }
+      }
+    } catch {
+      // Column doesn't exist yet (migration 262 not run) — silently skip
+    }
+
+    // Census-derived regional weights from PHC 2021 tenure + formal employment (E-8, real data).
+    let censusTenure: Record<string, { renting_pct: number | null; owner_occupied_pct: number | null; perching_pct: number | null }> = {};
+    try {
+      censusTenure = await gssPhcHousingService.getTenureByRegion();
+    } catch {
+      // Census table not populated yet — regions fall back to the national census average below.
+    }
+
+    // National averages from the REAL census + formal-employment data — used as the fallback for any
+    // region whose row is missing, instead of a hardcoded per-region matrix. Null when no data exists.
+    const tenureVals = Object.values(censusTenure).filter(t => t.renting_pct !== null && t.owner_occupied_pct !== null);
+    const natRenting = tenureVals.length ? tenureVals.reduce((s, t) => s + (t.renting_pct as number), 0) / tenureVals.length / 100 : null;
+    const natOwner = tenureVals.length ? tenureVals.reduce((s, t) => s + (t.owner_occupied_pct as number), 0) / tenureVals.length / 100 : null;
+    const feVals = Object.values(formalEmpByRegion).filter((v): v is number => v !== null);
+    const natFormalEmp = feVals.length ? feVals.reduce((s, v) => s + v, 0) / feVals.length / 100 : null;
+    if (tenureVals.length) {
+      logger.info('[GHAI] Census-derived weights active', { regions: tenureVals.length });
+    }
+
+    for (const region of Object.keys(incomeByRegion)) {
+      const mkt = market[region];
+      if (!mkt || mkt.saleMed == null || mkt.saleN < MIN_SAMPLE || mkt.rentMed == null || mkt.rentN < MIN_SAMPLE) {
+        skipped.push(region);
+        continue;
+      }
+      const inputData: RegionalInputData & { _censusWeights?: RegionWeights } = {
+        region,
+        median_property_price: mkt.saleMed,
+        median_household_income: incomeByRegion[region].annual,
+        mortgage_rate: mortgageRate,
+        median_monthly_rent: mkt.rentMed,
+        // Real per-region formal employment %, else the national average of the real data (never a
+        // hardcoded 15%). undefined only if there is genuinely no formal-employment data at all.
+        formal_employment_pct: formalEmpByRegion[region] ?? (natFormalEmp != null ? natFormalEmp * 100 : undefined),
+      };
+
+      // Weights: per-region census tenure/formal-employment, else the national average of the real
+      // data (never a hardcoded per-region table). Left unset only if there is genuinely no census.
+      const t = censusTenure[region];
+      const renting = t?.renting_pct != null ? t.renting_pct / 100 : natRenting;
+      const owner = t?.owner_occupied_pct != null ? t.owner_occupied_pct / 100 : natOwner;
+      const fe = formalEmpByRegion[region] != null ? (formalEmpByRegion[region] as number) / 100 : natFormalEmp;
+      if (renting != null && owner != null && fe != null) {
+        inputData._censusWeights = weightsFromCensus(renting, owner, fe);
+      }
+
+      inputs.push(inputData as RegionalInputData);
+    }
+
+    if (skipped.length) {
+      logger.info('[GHAI] Skipped regions without sufficient real price+rent data (no seed)', {
+        skipped, minSample: MIN_SAMPLE,
+      });
+    }
+    if (inputs.length === 0) {
+      logger.warn('[GHAI] No region had sufficient real market data — affordability not computed');
+      return [];
+    }
+    return this.computeAndStore(inputs, calculationDate);
+  }
+
   // ==========================================================================
   // HELPERS
   // ==========================================================================
@@ -834,10 +997,35 @@ class GHAIService {
   }
 
   /**
-   * Get available region weights for the weight matrix.
+   * Census-derived region weight matrix (PHC 2021 tenure + regional formal employment) — the same
+   * real-data weights the affordability computation uses. Returns {} if no census data exists yet
+   * (no hardcoded fallback).
    */
-  getRegionalWeights(): Record<string, RegionWeights> {
-    return { ...REGIONAL_WEIGHTS };
+  async getRegionalWeights(): Promise<Record<string, RegionWeights>> {
+    let tenure: Record<string, { renting_pct: number | null; owner_occupied_pct: number | null; perching_pct: number | null }> = {};
+    try {
+      tenure = await gssPhcHousingService.getTenureByRegion();
+    } catch { /* tenure table not populated */ }
+
+    const feByRegion: Record<string, number> = {};
+    try {
+      const rows = await pool.query<{ region: string; formal_employment_pct: string | null }>(
+        `SELECT DISTINCT ON (region) region, formal_employment_pct
+         FROM regional_household_income WHERE formal_employment_pct IS NOT NULL
+         ORDER BY region, period_month DESC`,
+      );
+      for (const r of rows.rows) {
+        if (r.formal_employment_pct != null) feByRegion[r.region] = parseFloat(r.formal_employment_pct);
+      }
+    } catch { /* formal_employment_pct column not present */ }
+
+    const out: Record<string, RegionWeights> = {};
+    for (const region of Object.keys(tenure)) {
+      const t = tenure[region];
+      if (t?.renting_pct == null || t?.owner_occupied_pct == null || feByRegion[region] == null) continue;
+      out[region] = weightsFromCensus(t.renting_pct / 100, t.owner_occupied_pct / 100, feByRegion[region] / 100);
+    }
+    return out;
   }
 }
 

@@ -143,7 +143,7 @@ services:
       - scrapy-logs:/var/log/cron
     environment:
       - SCRAPY_AUTO_START=${SCRAPY_AUTO_START:-true}
-      - SCRAPY_ENABLED_SPIDERS=${SCRAPY_ENABLED_SPIDERS:-meqasa,housemaster,gpc,realtor}
+      - SCRAPY_ENABLED_SPIDERS=${SCRAPY_ENABLED_SPIDERS:-meqasa,housemaster,gpc,realtor,tonaton,daily_graphic_legal,airbnb_ghana,ownkey}
       - SCRAPY_INITIAL_SCRAPE=${SCRAPY_INITIAL_SCRAPE:-false}
       - SCRAPY_MODE=api
       - SCRAPY_API_PORT=5000

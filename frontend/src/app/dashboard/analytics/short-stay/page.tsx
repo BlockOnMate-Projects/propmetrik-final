@@ -167,7 +167,7 @@ function GradeBadge({ grade }: { grade: string }) {
 }
 
 function MiniSparkline({ data, height = 32, color = '#f59e0b' }: { data: number[]; height?: number; color?: string }) {
-  if (!data.length) return null
+  if (data.length < 2) return null
   const max = Math.max(...data)
   const min = Math.min(...data)
   const range = max - min || 1

@@ -22,6 +22,9 @@ interface MonitoringConfig {
   bogFreshnessDays: number;
   wdiFreshnessDays: number;
   fxFreshnessMinutes: number;
+  // GSS StatsBank (Slice 1)
+  gssMacroFreshnessDays: number;    // monthly data — allow 40 days for GSS publication lag
+  gssCensusFreshnessDays: number;   // census/survey data — annual refresh
   alertEmailEnabled: boolean;
   alertEmailTo: string;
   alertSlackEnabled: boolean;
@@ -32,6 +35,9 @@ const DEFAULT_CONFIG: MonitoringConfig = {
   bogFreshnessDays: parseInt(process.env.BOG_DATA_FRESHNESS_DAYS || '35', 10),
   wdiFreshnessDays: parseInt(process.env.WDI_DATA_FRESHNESS_DAYS || '400', 10),
   fxFreshnessMinutes: parseInt(process.env.FX_DATA_FRESHNESS_MINUTES || '10', 10),
+  // GSS StatsBank
+  gssMacroFreshnessDays: parseInt(process.env.GSS_MACRO_FRESHNESS_DAYS || '40', 10),
+  gssCensusFreshnessDays: parseInt(process.env.GSS_CENSUS_FRESHNESS_DAYS || '400', 10),
   alertEmailEnabled: process.env.ALERT_EMAIL_ENABLED === 'true',
   alertEmailTo: process.env.ALERT_EMAIL_TO || '',
   alertSlackEnabled: process.env.ALERT_SLACK_ENABLED === 'true',
@@ -126,6 +132,28 @@ export class EconomicDataMonitoringService {
     const fxFreshness = await this.checkFxFreshness();
     checks.push(fxFreshness);
 
+    // GSS StatsBank Macro (Slice 1) — check dedicated sync log entries
+    const gssTableChecks: Array<{ table: string; source: string; threshold: number }> = [
+      { table: 'gss_ppi_construction_series', source: 'GSS StatsBank PPI/IIP',      threshold: this.config.gssMacroFreshnessDays },
+      { table: 'gss_mieg_monthly',            source: 'GSS StatsBank MIEG/GDP',     threshold: this.config.gssMacroFreshnessDays },
+      { table: 'gss_interest_rates_monthly',  source: 'GSS StatsBank Financial',    threshold: this.config.gssMacroFreshnessDays + 5 },
+      { table: 'gss_financial_soundness_monthly', source: 'GSS StatsBank Financial (FSI)', threshold: this.config.gssMacroFreshnessDays + 5 },
+      { table: 'regional_household_income',   source: 'GSS Regional Household Income', threshold: this.config.gssMacroFreshnessDays },
+      // GSS StatsBank Census (Slice 2) — annual cadence
+      { table: 'gss_phc_tenure_by_district',     source: 'GSS StatsBank PHC Housing (tenure)',     threshold: this.config.gssCensusFreshnessDays },
+      { table: 'gss_phc_completion_by_district', source: 'GSS StatsBank PHC Housing (completion)', threshold: this.config.gssCensusFreshnessDays },
+      { table: 'gss_phc_infrastructure_by_district', source: 'GSS StatsBank PHC Housing (infra)', threshold: this.config.gssCensusFreshnessDays },
+      // GSS Trade (Slice 2b) — monthly
+      { table: 'gss_construction_material_imports', source: 'GSS StatsBank Trade HS2', threshold: 70 },
+      // GSS StatsBank Census (Slice 3) — annual cadence
+      { table: 'gss_phc_population_projections',    source: 'GSS StatsBank PHC Population',   threshold: this.config.gssCensusFreshnessDays },
+      { table: 'gss_phc_employment_by_district',    source: 'GSS StatsBank PHC Employment',   threshold: this.config.gssCensusFreshnessDays },
+      { table: 'gss_phc_mpi_by_district',           source: 'GSS StatsBank PHC Poverty',      threshold: this.config.gssCensusFreshnessDays },
+    ];
+    for (const tc of gssTableChecks) {
+      checks.push(await this.checkTableFreshness(tc.table, tc.source, tc.threshold));
+    }
+
     return checks;
   }
 
@@ -179,6 +207,46 @@ export class EconomicDataMonitoringService {
         isStale: true,
         status: 'unknown',
       };
+    }
+  }
+
+  /**
+   * Check freshness of a GSS-specific table by querying its MAX(synced_at).
+   * Used for tables that don't write to economic_indicators (gss_ppi_*, gss_mieg_*, etc.).
+   */
+  private async checkTableFreshness(
+    tableName: string,
+    source: string,
+    thresholdDays: number,
+  ): Promise<DataFreshnessCheck> {
+    try {
+      const result = await query(
+        `SELECT MAX(synced_at) AS last_update FROM ${tableName}`,
+      );
+      const lastUpdate = result.rows[0]?.last_update;
+      let ageInDays: number | null = null;
+      let isStale = false;
+      let status: HealthStatus = 'healthy';
+
+      if (lastUpdate) {
+        ageInDays = Math.floor(
+          (Date.now() - new Date(lastUpdate).getTime()) / (1000 * 60 * 60 * 24),
+        );
+        isStale = ageInDays > thresholdDays;
+        if (isStale) status = ageInDays > thresholdDays * 2 ? 'critical' : 'degraded';
+      } else {
+        // Table exists but no rows yet — not an error, just not seeded
+        status = 'unknown';
+      }
+
+      return { source, lastUpdate: lastUpdate ? new Date(lastUpdate) : null, thresholdDays, ageInDays, isStale, status };
+    } catch (error: any) {
+      // Table not yet created (migration pending) — report as unknown, not critical
+      if (error.code === '42P01') {
+        return { source, lastUpdate: null, thresholdDays, ageInDays: null, isStale: false, status: 'unknown' };
+      }
+      logger.error('Failed to check GSS table freshness', { tableName, source, error });
+      return { source, lastUpdate: null, thresholdDays, ageInDays: null, isStale: true, status: 'unknown' };
     }
   }
 

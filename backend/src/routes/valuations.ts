@@ -3172,7 +3172,7 @@ router.post('/:id/profits/value', validateUUID('id'), async (req: Request, res: 
 /**
  * POST /api/valuations/:id/residual/value
  * Single source of truth for the Residual (development land) method. Sources the sale price/sqm
- * (market comparables), construction cost/sqm (base_construction_costs), development finance rate
+ * (market comparables), construction cost/sqm (base_costs_per_sqm — live, scrape-computed), development finance rate
  * (economic_indicators — live), and the development assumptions (residual_development_assumptions)
  * from the Data Hub, applies any valuer overrides, and runs the full Python residual engine.
  * NO hardcoded fallbacks — anything unresolved strict-fails with a clear list. Frontend renders only.

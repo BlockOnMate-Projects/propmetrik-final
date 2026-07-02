@@ -83,80 +83,120 @@ class RealtorInternationalSpider(BasePropertySpider):
         self.region = kwargs.get('region', None)
     
     def start_requests(self) -> Generator[Request, None, None]:
-        """Generate initial requests based on filters."""
-        
-        # If specific region requested
+        """Sweep the per-region index pages (these are server-rendered with ~50 listings each; the
+        generic /for-sale/ and /gh/ pages return 0 cards)."""
         if self.region and self.region in self.REGION_URLS:
-            base_url = self.REGION_URLS[self.region]
-            urls = [base_url]
-            if self.listing_type_filter:
-                urls = [f"{base_url}{self.listing_type_filter}/"]
-        elif self.listing_type_filter == 'sale':
-            urls = [self.SALE_URL]
-        elif self.listing_type_filter == 'rent':
-            urls = [self.RENT_URL]
+            regions = {self.region: self.REGION_URLS[self.region]}
         else:
-            # Default: scrape main Ghana page
-            urls = [self.GHANA_URL]
-        
-        for url in urls:
-            listing_type = 'rent' if 'for-rent' in url else 'sale'
+            regions = self.REGION_URLS
+        for region_key, url in regions.items():
             yield Request(
                 url=url,
                 callback=self.parse_listing,
-                meta={
-                    'listing_type': listing_type,
-                    'page': 1
-                },
-                errback=self.handle_error
+                meta={'region': region_key, 'listing_type': 'sale', 'page': 1},
+                errback=self.handle_error,
             )
-    
+
     def parse_listing(self, response: Response) -> Generator:
-        """Parse listing page and extract property URLs."""
+        """Extract listing cards directly from the region index page (Next.js SSR). Each card carries
+        price/type/location, so we don't follow to the (JS-rendered) detail pages."""
+        import re
         self.pages_scraped += 1
-        listing_type = response.meta.get('listing_type', 'sale')
-        current_page = response.meta.get('page', 1)
-        
-        logger.info(f"Parsing Realtor.com International {listing_type} listings - Page {current_page}")
-        
-        # Try to extract data from JSON-LD
-        json_ld_data = self._extract_json_ld(response)
-        if json_ld_data:
-            properties = self._parse_json_ld_listings(json_ld_data, listing_type)
-            for prop in properties:
-                yield prop
-        
-        # Extract property links from HTML
-        property_links = self._extract_property_links(response)
-        
-        logger.info(f"Found {len(property_links)} property links on page {current_page}")
-        
-        for link in property_links:
-            full_url = urljoin(self.BASE_URL, link)
-            yield Request(
-                url=full_url,
-                callback=self.parse_property,
-                meta={'listing_type': listing_type},
-                errback=self.handle_error
-            )
-        
-        # Check max pages limit
-        if self.max_pages and current_page >= int(self.max_pages):
-            logger.info(f"Reached max pages limit ({self.max_pages})")
+        region_key = response.meta.get('region', '')
+        page = response.meta.get('page', 1)
+
+        seen = set()
+        count = 0
+        for a in response.css('a[href*="/international/gh/"]'):
+            href = a.attrib.get('href', '') or ''
+            if 'boost.rea.global' in href:
+                continue
+            mid = re.search(r'(\d{6,})/?$', href)
+            if not mid:
+                continue
+            pid = mid.group(1)
+            if pid in seen:
+                continue
+            seen.add(pid)
+            # Climb to the card wrapper that holds the price/type.
+            card = a
+            for _ in range(5):
+                parent = card.xpath('..')
+                if not parent:
+                    break
+                card = parent[0]
+                if card.css('[class*="price"], .property-type'):
+                    break
+            item = self._item_from_card(card, href, pid, response, region_key)
+            if item is not None:
+                count += 1
+                self.items_scraped += 1
+                yield item
+
+        logger.info(f"Realtor.com: {count} listings on {response.url} (region={region_key})")
+
+        # Pagination
+        if self.max_pages and page >= int(self.max_pages):
             return
-        
-        # Find next page
-        next_page = self._find_next_page(response, current_page)
+        next_page = self._find_next_page(response, page)
         if next_page:
             yield Request(
-                url=next_page,
+                url=urljoin(self.BASE_URL, next_page),
                 callback=self.parse_listing,
-                meta={
-                    'listing_type': listing_type,
-                    'page': current_page + 1
-                },
-                errback=self.handle_error
+                meta={'region': region_key, 'listing_type': 'sale', 'page': page + 1},
+                errback=self.handle_error,
             )
+
+    def _item_from_card(self, card, href: str, pid: str, response: Response, region_key: str):
+        """Build a PropertyItem from one realtor.com index card."""
+        import re
+        url = urljoin(self.BASE_URL, href)
+        loader = self.create_item_loader(response)
+        loader.replace_value('source_url', url)
+        loader.add_value('source_id', pid)
+
+        # Price (required) — cards show e.g. "USD $550,000". Rent shows a /mo suffix.
+        price_txt = ' '.join(card.css('[class*="price"] ::text').getall())
+        if not price_txt:
+            price_txt = ' '.join(t for t in card.css('*::text').getall() if '$' in t or 'GH' in t)
+        pm = re.search(r'(?:GH₵|GHS|US\$|\$)\s?[\d,]+', price_txt)
+        if not pm:
+            return None  # no price → not a real listing card; skip (don't insert NULL price)
+        price_value, currency = self.clean_price_text(pm.group(0))
+        loader.add_value('price', price_value)
+        loader.add_value('price_raw', pm.group(0))
+        loader.add_value('currency', currency)
+        listing_type = 'rent' if re.search(r'/mo|per month|monthly', price_txt, re.I) else 'sale'
+        loader.add_value('listing_type', listing_type)
+
+        ptype = (card.css('.property-type::text').get() or 'house').strip()
+        loader.add_value('property_type', self.normalize_property_type(ptype))
+
+        # Location from the URL slug: "e-legon-accra-greater-accra-region-310109013875"
+        slug = href.rstrip('/').split('/')[-1]
+        slug = re.sub(r'-?\d{6,}$', '', slug)
+        slug = re.sub(r'-region$', '', slug)
+        location = slug.replace('-', ' ').strip()
+        loader.add_value('title', f"{location.title()} {ptype}".strip())
+        loader.add_value('region', region_key.replace('-', ' '))
+        loader.add_value('city', region_key.replace('-', ' '))
+        loader.add_value('address', location or region_key.replace('-', ' '))
+        loader.add_value('neighborhood', location.split(' ')[0] if location else region_key)
+        loader.add_value('country', 'Ghana')
+
+        # Beds/baths — cards render an icon then the count: alt="bedroom" ... <!-- -->3
+        card_html = card.get()
+        card_text = ' '.join(card.css('*::text').getall())
+        mb = (re.search(r'alt="bed(?:room)?s?".{0,80}?(\d+)', card_html, re.S)
+              or re.search(r'(\d+)\s*bed', card_text, re.I))
+        if mb:
+            loader.add_value('bedrooms', int(mb.group(1)))
+        mba = (re.search(r'alt="bath(?:room)?s?".{0,80}?(\d+)', card_html, re.S)
+               or re.search(r'(\d+)\s*bath', card_text, re.I))
+        if mba:
+            loader.add_value('bathrooms', int(mba.group(1)))
+
+        return loader.load_item()
     
     def parse_property(self, response: Response) -> Generator[PropertyItem, None, None]:
         """Parse individual property page and yield PropertyItem."""

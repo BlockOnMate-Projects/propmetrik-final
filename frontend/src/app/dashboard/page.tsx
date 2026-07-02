@@ -13,7 +13,7 @@ import { canAccessPlatformTab } from '@/lib/rbac'
 // ---------------------------------------------------------------------------
 
 interface TickerData {
-  gh_property_index: { avg_price: number; total_properties: number; change_pct: number }
+  gh_property_index: { avg_price: number; total_properties: number; change_pct: number | null }
   accra_avg: number
   neighborhoods: { name: string; avg_price: number; direction: 'up' | 'down'; count: number }[]
   active_deals: number
@@ -67,9 +67,9 @@ interface ManagementKPIs {
 interface CCIData {
   national_index: number
   components: {
-    materials: { value: number; weight: number; change_mom: number; change_yoy: number }
-    labor: { value: number; weight: number; change_mom: number; change_yoy: number }
-    overhead: { value: number; weight: number; change_mom: number; change_yoy: number }
+    materials: { value: number; weight: number; change_mom: number; change_yoy: number | null }
+    labor: { value: number; weight: number; change_mom: number; change_yoy: number | null }
+    overhead: { value: number; weight: number; change_mom: number; change_yoy: number | null }
   }
 }
 
@@ -112,7 +112,8 @@ function fmtCompact(val: number): string {
   return val.toLocaleString()
 }
 
-function PctBadge({ val, suffix = '%' }: { val: number; suffix?: string }) {
+function PctBadge({ val, suffix = '%' }: { val: number | null; suffix?: string }) {
+  if (val == null) return <span className="text-muted-foreground">—</span>
   if (val === 0) return <span className="text-muted-foreground">0{suffix}</span>
   return (
     <span className={val > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
@@ -181,7 +182,7 @@ function Section({ title, children, className, action, accent = 'amber' }: {
 
 /** A market pulse metric card with gradient accent */
 function PulseCard({ label, value, change, unit, gradient, onClick }: {
-  label: string; value: string; change?: number; unit?: string
+  label: string; value: string; change?: number | null; unit?: string
   gradient: string; onClick?: () => void
 }) {
   return (
@@ -197,7 +198,7 @@ function PulseCard({ label, value, change, unit, gradient, onClick }: {
       <div className={cn('absolute top-0 left-0 right-0 h-0.5', gradient)} />
       <div className={cn('absolute top-0 right-0 w-16 h-16 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity', gradient, 'rounded-bl-full')} />
 
-      {change !== undefined && (
+      {change != null && (
         <div className="flex justify-end mb-2">
           <span className={cn(
             'font-mono text-[10px] px-1.5 py-0.5 rounded-full',
@@ -249,7 +250,7 @@ function OrgMetric({ label, value, subValue, onClick, featureKey }: {
 
 /** Horizontal bar for construction cost breakdown */
 function CostBar({ label, value, maxValue, pctChange, color }: {
-  label: string; value: number; maxValue: number; pctChange: number; color: string
+  label: string; value: number; maxValue: number; pctChange: number | null; color: string
 }) {
   const pct = maxValue > 0 ? (value / maxValue) * 100 : 0
   return (
@@ -258,9 +259,11 @@ function CostBar({ label, value, maxValue, pctChange, color }: {
         <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-foreground">{value.toFixed(0)}</span>
-          <span className={cn('font-mono text-[10px]', pctChange > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
-            {pctChange > 0 ? '↑' : '↓'}{Math.abs(pctChange).toFixed(1)}%
-          </span>
+          {pctChange != null && (
+            <span className={cn('font-mono text-[10px]', pctChange > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
+              {pctChange > 0 ? '↑' : '↓'}{Math.abs(pctChange).toFixed(1)}%
+            </span>
+          )}
         </div>
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden">

@@ -383,102 +383,46 @@ class ValuationAnalyticsService {
 
       const where = conditions.join(' AND ');
 
-      // Unpack each method's value and confidence from the valuations table
-      const methods = [
-        { name: 'sales_comparison', val_col: 'sales_comparison_value', conf_col: 'sales_comparison_confidence' },
-        { name: 'cost_approach', val_col: 'cost_approach_value', conf_col: 'cost_approach_confidence' },
-        { name: 'income_approach', val_col: 'income_approach_value', conf_col: 'income_approach_confidence' },
-        { name: 'residual_method', val_col: 'residual_value', conf_col: 'residual_confidence' },
-        { name: 'profits_method', val_col: 'profits_value', conf_col: 'profits_confidence' },
-        { name: 'drc_method', val_col: 'drc_value', conf_col: 'drc_confidence' },
-      ];
+      // Method values + confidences live in the `method_results` JSONB
+      // (keys like 'drc_method', 'profits_method', 'residual_method', each with
+      // { value, confidence }). The flat per-method columns are not populated by
+      // the engine, so aggregate directly from the JSONB. avg_weight comes from
+      // the `method_weights` JSONB on the same row.
+      const sql = `
+        SELECT
+          m.key AS method_name,
+          COUNT(*) AS usage_count,
+          COUNT(*) FILTER (WHERE v.primary_method::text = m.key) AS as_primary_count,
+          AVG(NULLIF(m.value->>'confidence','')::float8)  AS avg_confidence,
+          MIN(NULLIF(m.value->>'confidence','')::float8)  AS min_confidence,
+          MAX(NULLIF(m.value->>'confidence','')::float8)  AS max_confidence,
+          AVG(NULLIF(m.value->>'value','')::float8)       AS avg_value,
+          AVG(NULLIF(v.method_weights->>m.key,'')::float8) AS avg_weight
+        FROM valuations v
+        LEFT JOIN properties p ON v.property_id = p.id
+        CROSS JOIN LATERAL jsonb_each(v.method_results) AS m(key, value)
+        WHERE ${where}
+          AND v.method_results IS NOT NULL
+          AND jsonb_typeof(v.method_results) = 'object'
+        GROUP BY m.key
+        ORDER BY usage_count DESC
+      `;
+      const res = await pool.query(sql, params);
+      const results: MethodPerformance[] = res.rows.map((r: any) => ({
+        method_name: r.method_name,
+        usage_count: parseInt(r.usage_count || '0', 10),
+        as_primary_count: parseInt(r.as_primary_count || '0', 10),
+        avg_weight: r.avg_weight ? parseFloat(r.avg_weight) : 0,
+        avg_confidence: r.avg_confidence ? parseFloat(r.avg_confidence) : 0,
+        min_confidence: r.min_confidence ? parseFloat(r.min_confidence) : 0,
+        max_confidence: r.max_confidence ? parseFloat(r.max_confidence) : 0,
+        avg_value: r.avg_value ? parseFloat(r.avg_value) : 0,
+        avg_comparables_used: null,
+        avg_similarity_score: null,
+        avg_adjustment_pct: null,
+      }));
 
-      const results: MethodPerformance[] = [];
-
-      for (const method of methods) {
-        const sql = `
-          SELECT
-            COUNT(*) FILTER (WHERE v.${method.val_col} IS NOT NULL) AS usage_count,
-            COUNT(*) FILTER (WHERE v.primary_method::text = '${method.name}') AS as_primary_count,
-            AVG(v.${method.conf_col}) FILTER (WHERE v.${method.val_col} IS NOT NULL) AS avg_confidence,
-            MIN(v.${method.conf_col}) FILTER (WHERE v.${method.val_col} IS NOT NULL) AS min_confidence,
-            MAX(v.${method.conf_col}) FILTER (WHERE v.${method.val_col} IS NOT NULL) AS max_confidence,
-            AVG(v.${method.val_col}) FILTER (WHERE v.${method.val_col} IS NOT NULL) AS avg_value
-          FROM valuations v
-          LEFT JOIN properties p ON v.property_id = p.id
-          WHERE ${where}
-        `;
-        const res = await pool.query(sql, params);
-        const r = res.rows[0];
-        const usageCount = parseInt(r.usage_count || '0', 10);
-        if (usageCount === 0) continue;
-
-        // For sales_comparison, also get comparable metrics
-        let avgComps: number | null = null;
-        let avgSimilarity: number | null = null;
-        let avgAdjPct: number | null = null;
-
-        if (method.name === 'sales_comparison') {
-          const compSql = `
-            SELECT
-              AVG(v.comparables_count) AS avg_comparables,
-              AVG(vc.similarity_score) AS avg_similarity,
-              AVG(ABS(vc.total_adjustment_percent)) AS avg_adj_pct
-            FROM valuations v
-            LEFT JOIN properties p ON v.property_id = p.id
-            LEFT JOIN valuation_comparables vc ON vc.valuation_id = v.id AND NOT vc.is_excluded
-            WHERE ${where} AND v.sales_comparison_value IS NOT NULL
-          `;
-          const compRes = await pool.query(compSql, params);
-          if (compRes.rows.length > 0) {
-            avgComps = compRes.rows[0].avg_comparables ? parseFloat(compRes.rows[0].avg_comparables) : null;
-            avgSimilarity = compRes.rows[0].avg_similarity ? parseFloat(compRes.rows[0].avg_similarity) : null;
-            avgAdjPct = compRes.rows[0].avg_adj_pct ? parseFloat(compRes.rows[0].avg_adj_pct) : null;
-          }
-        }
-
-        results.push({
-          method_name: method.name,
-          usage_count: usageCount,
-          as_primary_count: parseInt(r.as_primary_count || '0', 10),
-          avg_weight: 0, // will be computed from reconciliation data if available
-          avg_confidence: r.avg_confidence ? parseFloat(r.avg_confidence) : 0,
-          min_confidence: r.min_confidence ? parseFloat(r.min_confidence) : 0,
-          max_confidence: r.max_confidence ? parseFloat(r.max_confidence) : 0,
-          avg_value: r.avg_value ? parseFloat(r.avg_value) : 0,
-          avg_comparables_used: avgComps,
-          avg_similarity_score: avgSimilarity,
-          avg_adjustment_pct: avgAdjPct,
-        });
-      }
-
-      // Enrich avg_weight from reconciliations
-      try {
-        const weightSql = `
-          SELECT
-            key AS method,
-            AVG((value->>'weight')::numeric) AS avg_weight
-          FROM valuation_reconciliations vr,
-               jsonb_each(vr.method_weights) AS kv(key, value)
-          JOIN valuations v ON v.id = vr.valuation_id
-          LEFT JOIN properties p ON v.property_id = p.id
-          WHERE ${where}
-          GROUP BY key
-        `;
-        const weightRes = await pool.query(weightSql, params);
-        const weightMap = new Map<string, number>();
-        for (const wr of weightRes.rows) {
-          weightMap.set(wr.method, parseFloat(wr.avg_weight));
-        }
-        for (const mp of results) {
-          const w = weightMap.get(mp.method_name);
-          if (w !== undefined) mp.avg_weight = w;
-        }
-      } catch {
-        // Reconciliation data may not exist yet
-      }
-
-      return results.sort((a, b) => b.usage_count - a.usage_count);
+      return results;
     } catch (err: any) {
       if (err.code === '42P01') return [];
       logger.error('ValuationAnalytics.getMethodPerformance error', err);

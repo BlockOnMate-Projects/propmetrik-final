@@ -111,6 +111,7 @@ import { initCrmTaskReminderJob } from './jobs/crmTaskReminderJob';
 import { initSubscriptionRenewalJob } from './jobs/subscriptionRenewalJob';
 import { initDataHubSyncJob } from './jobs/dataHubSyncJob';
 import { initContributionProcessorJob } from './jobs/contributionProcessorJob';
+import { initAnalyticsRefreshJob } from './jobs/analyticsRefreshJob';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -123,6 +124,7 @@ import { autopilotScheduler } from '../shared-services/publications/autopilot';
 import { dataHubQueueManager } from './services/data-hub';
 import { scrapyScheduler } from './services/data-hub/scrapyScheduler';
 import { economicDataScheduler } from './services/data-hub/schedulers';
+import { analyticsScheduler } from './services/analytics/analyticsScheduler';
 
 // Create Express application
 const app: Application = express();
@@ -929,6 +931,12 @@ async function bootstrap(): Promise<void> {
       return { status: 'ok' };
     });
 
+    // ── 12. Analytics scheduler (derived snapshots + history) ──
+    await recordStep('Analytics scheduler', async () => {
+      await analyticsScheduler.start();
+      return { status: 'ok', detail: 'GHAI/CCI/market/investment/valuation/RHDS monthly + startup catch-up' };
+    });
+
   } catch (error) {
     const err = error as Error;
     logger.error('Unexpected error in bootstrap — server stays alive for diagnostics', {
@@ -990,6 +998,11 @@ const server = app.listen(config.port, async () => {
   // Start data-hub contribution processor (DH-C) so pending contributions are
   // validated/applied instead of piling up.
   initContributionProcessorJob();
+  // Recompute ALL platform analytics indices (construction cost index, market
+  // intelligence, investment scoring, valuation analytics, cap-rate benchmarks)
+  // from the freshly-scraped raw tables on a daily schedule — previously each was
+  // a manual endpoint, so the indices were frozen at the last manual trigger.
+  initAnalyticsRefreshJob();
   // Attach WebSocket server for workspace real-time collaboration
   workspaceWebSocketServer.attach(server);
   logger.info(`Propmetrik API server running on port ${config.port}`, {

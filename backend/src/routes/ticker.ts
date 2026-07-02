@@ -19,17 +19,18 @@ router.get('/', async (_req: Request, res: Response) => {
       propertiesResult,
       capRateResult,
     ] = await Promise.all([
-      // 1. Accra median sale price (more representative than mean)
+      // 1. Median sale prices — NATIONAL (the "Ghana Property Index") and Greater Accra, in one pass.
+      // Median, not mean: a few ₵100M+ outlier rows drag the Accra mean to ~₵1.48M vs a ₵350K median.
       pool.query(`
         SELECT
-          COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price), 0) AS median_price,
-          COALESCE(AVG(price), 0) AS avg_price,
-          COUNT(*) AS total_properties
+          COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price), 0) AS national_median,
+          COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price)
+                   FILTER (WHERE region = 'greater_accra'), 0) AS accra_median,
+          COUNT(*) FILTER (WHERE region = 'greater_accra') AS total_properties
         FROM properties
-        WHERE region = 'greater_accra'
-          AND price > 0
+        WHERE price > 0
           AND transaction_type = 'sale'
-      `).catch(() => ({ rows: [{ median_price: 0, avg_price: 0, total_properties: 0 }] })),
+      `).catch(() => ({ rows: [{ national_median: 0, accra_median: 0, total_properties: 0 }] })),
 
       // 2. Market segments — sale prices only for meaningful comparison
       pool.query(`
@@ -88,8 +89,8 @@ router.get('/', async (_req: Request, res: Response) => {
       `).catch(() => ({ rows: [{ avg_cap_rate: 0 }] })),
     ]);
 
-    const medianPrice = parseFloat(priceIndexResult.rows[0]?.median_price) || 0;
-    const avgPrice = parseFloat(priceIndexResult.rows[0]?.avg_price) || 0;
+    const nationalMedian = parseFloat(priceIndexResult.rows[0]?.national_median) || 0;
+    const accraMedian = parseFloat(priceIndexResult.rows[0]?.accra_median) || 0;
     const totalProps = parseInt(propertiesResult.rows[0]?.total) || 0;
     const avgCapRate = parseFloat(capRateResult.rows[0]?.avg_cap_rate) || 0;
 
@@ -108,12 +109,14 @@ router.get('/', async (_req: Request, res: Response) => {
       success: true,
       data: {
         gh_property_index: {
-          avg_price: Math.round(avgPrice),
+          // National median sale price — robust to the ₵100M+ outlier rows that skewed the old mean.
+          avg_price: Math.round(nationalMedian || accraMedian),
           total_properties: totalProps,
-          // Use cap rate as proxy for market performance indicator
-          change_pct: avgCapRate > 0 ? +(avgCapRate * 100).toFixed(2) : 0,
+          // No reliable period-over-period price series yet, so no change is shown (the old value
+          // here was the cap rate reused as a fake "+9.4%" — removed).
+          change_pct: null,
         },
-        accra_avg: Math.round(medianPrice || avgPrice),
+        accra_avg: Math.round(accraMedian || nationalMedian),
         neighborhoods,
         active_deals: activeDeals,
         pending_valuations: pendingVals,

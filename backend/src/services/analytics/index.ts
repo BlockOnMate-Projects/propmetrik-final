@@ -5,6 +5,10 @@
 // Short-Stay Metrics (existing)
 export { shortStayMetricsService } from './shortStayMetricsService';
 
+// Housing Demand Score (Slice 3 — RHDS composite)
+export { housingDemandScoreService, HousingDemandScoreService } from './housingDemandScoreService';
+export type { RHDSComponent } from './housingDemandScoreService';
+
 // ML Serving Client (HTTP bridge to Python ML microservice)
 export { MLServingClient, mlServingClient } from './mlServingClient';
 export type {

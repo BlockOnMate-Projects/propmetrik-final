@@ -32,6 +32,9 @@ interface InvestmentOpportunity {
     rental_yield_score: number
     absorption_score: number
     risk_score: number
+    macro_risk_score?: number | null   // Slice 1
+    ccri_risk_score?: number | null    // Slice 2
+    mpi_risk_score?: number | null     // Slice 3
   }
   cap_rate: number
   avg_price_growth_yoy: number
@@ -42,6 +45,13 @@ interface InvestmentOpportunity {
   risk_level: string
   market_condition: string
   recommendation: string
+  // GSS PHC poverty context (Slice 3)
+  mpi_m0?: number | null
+  mpi_risk_level?: 'low' | 'moderate' | 'high' | null
+  // GSS macro context (Slice 1) + PHC completion (Slice 2)
+  npl_ratio?: number | null
+  lending_rate?: number | null
+  incomplete_residential_pct?: number | null
 }
 
 interface RegionalComparison {
@@ -161,6 +171,23 @@ function RiskBadge({ level }: { level: string }) {
   )
 }
 
+/** Multidimensional poverty risk badge (Slice 3). Lower poverty = greener. */
+function MpiBadge({ level, m0 }: { level?: 'low' | 'moderate' | 'high' | null; m0?: number | null }) {
+  if (!level) return <span className="text-muted-foreground">—</span>
+  const color =
+    level === 'low'
+      ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
+      : level === 'moderate'
+        ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
+        : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20'
+  const text = level === 'low' ? 'Low Poverty' : level === 'moderate' ? 'Moderate' : `High (MPI ${m0 !== null && m0 !== undefined ? m0.toFixed(2) : '—'})`
+  return (
+    <span className={cn('inline-flex items-center px-1.5 py-0.5 font-mono text-[9px] border rounded', color)}>
+      {text}
+    </span>
+  )
+}
+
 function RecommendationBadge({ rec }: { rec: string }) {
   const color =
     rec === 'Strong Buy'
@@ -217,6 +244,14 @@ export default function InvestmentOpportunitiesPage() {
   const filteredOpps = selectedRegion
     ? opportunities.filter((o) => o.region === selectedRegion)
     : opportunities
+
+  // Region → MPI poverty risk (Slice 3), derived from the opportunities payload.
+  const mpiByRegion = new Map<string, { level?: 'low' | 'moderate' | 'high' | null; m0?: number | null }>()
+  for (const o of opportunities) {
+    if (o.mpi_risk_level && !mpiByRegion.has(o.region)) {
+      mpiByRegion.set(o.region, { level: o.mpi_risk_level, m0: o.mpi_m0 })
+    }
+  }
 
   const topScore =
     opportunities.length > 0
@@ -314,6 +349,7 @@ export default function InvestmentOpportunitiesPage() {
                   <th className="text-right pb-2">PRICE GROWTH</th>
                   <th className="text-right pb-2">RENTAL YIELD</th>
                   <th className="text-right pb-2">VACANCY</th>
+                  <th className="text-right pb-2">POVERTY</th>
                   <th className="text-right pb-2">RISK</th>
                   <th className="text-right pb-2"></th>
                 </tr>
@@ -352,6 +388,9 @@ export default function InvestmentOpportunitiesPage() {
                     </td>
                     <td className="py-2 text-right text-muted-foreground">
                       {r.vacancy_rate > 0 ? `${(r.vacancy_rate * 100).toFixed(1)}%` : '—'}
+                    </td>
+                    <td className="py-2 text-right">
+                      <MpiBadge level={mpiByRegion.get(r.region)?.level} m0={mpiByRegion.get(r.region)?.m0} />
                     </td>
                     <td className="py-2 text-right">
                       <RiskBadge level={r.risk_level} />
@@ -420,7 +459,25 @@ export default function InvestmentOpportunitiesPage() {
                       label="Risk"
                       value={o.opportunity_factors.risk_score}
                     />
+                    {o.opportunity_factors.macro_risk_score !== null && o.opportunity_factors.macro_risk_score !== undefined && (
+                      <FactorBar label="Macro Risk" value={o.opportunity_factors.macro_risk_score} />
+                    )}
                   </div>
+
+                  {/* CCRI completion risk (Slice 2) */}
+                  {o.incomplete_residential_pct !== null && o.incomplete_residential_pct !== undefined && (
+                    <div className="flex items-center justify-between mb-2 px-2 py-1 border border-border bg-muted/30">
+                      <span className="font-mono text-[9px] text-muted-foreground">COMPLETION RISK</span>
+                      <span className={cn(
+                        'font-mono text-[9px] px-1.5 py-0.5 border rounded',
+                        o.incomplete_residential_pct >= 30 ? 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20'
+                          : o.incomplete_residential_pct >= 15 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20'
+                            : 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+                      )}>
+                        {o.incomplete_residential_pct >= 30 ? 'HIGH' : o.incomplete_residential_pct >= 15 ? 'MODERATE' : 'LOW'} — {o.incomplete_residential_pct.toFixed(0)}% incomplete (PHC 2021)
+                      </span>
+                    </div>
+                  )}
 
                   {/* Key Metrics */}
                   <div className="grid grid-cols-2 gap-2 text-center border-t border-border pt-2">
@@ -459,7 +516,15 @@ export default function InvestmentOpportunitiesPage() {
 
                   {/* Risk + Condition */}
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                    <RiskBadge level={o.risk_level} />
+                    <span
+                      title={
+                        (o.npl_ratio !== null && o.npl_ratio !== undefined) || (o.lending_rate !== null && o.lending_rate !== undefined)
+                          ? `NPL: ${o.npl_ratio !== null && o.npl_ratio !== undefined ? o.npl_ratio.toFixed(1) + '%' : 'n/a'} | Lending Rate: ${o.lending_rate !== null && o.lending_rate !== undefined ? o.lending_rate.toFixed(1) + '%' : 'n/a'}`
+                          : undefined
+                      }
+                    >
+                      <RiskBadge level={o.risk_level} />
+                    </span>
                     <span className="font-mono text-[9px] text-muted-foreground uppercase">
                       {o.market_condition}
                     </span>

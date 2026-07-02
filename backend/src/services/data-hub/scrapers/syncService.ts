@@ -16,12 +16,38 @@ import { gssLaborService, GSSLaborService } from './gssLaborService';
 import { gredaScraper, GREDAScraper } from './gredaScraper';
 import { syncLogRepository, SyncLogRepository } from './syncLogRepository';
 import { SyncResult, SyncError } from './types';
+// GSS StatsBank PxWeb scrapers (Slice 1)
+import { gssPpiService, GSS_PPIService } from './gssPpiService';
+import { gssMiegService, GSS_MIEGService } from './gssMiegService';
+import { gssFinancialService, GSS_FinancialService } from './gssFinancialService';
+import { gssIncomeService } from '../gssIncomeService';
+// GSS StatsBank PxWeb scrapers (Slice 2)
+import { gssPhcHousingService, GSS_PHCHousingService } from './gssPhcHousingService';
+import { gssTradeService, GSS_TradeService } from './gssTradeService';
+import { gssPhcPopulationService, GSS_PHCPopulationService } from './gssPhcPopulationService';
+import { gssPhcEmploymentService, GSS_PHCEmploymentService } from './gssPhcEmploymentService';
+import { gssPhcPovertyService, GSS_PHCPovertyService } from './gssPhcPovertyService';
 
 // =====================================================
 // TYPES
 // =====================================================
 
-export type SyncSource = 'bog' | 'wdi' | 'fx' | 'npa' | 'local_materials' | 'gss_labor' | 'greda' | 'construction_all' | 'all';
+export type SyncSource =
+  | 'bog' | 'wdi' | 'fx' | 'npa' | 'local_materials' | 'gss_labor' | 'greda'
+  | 'construction_all' | 'all'
+  // GSS StatsBank PxWeb sources (Slice 1)
+  | 'gss_ppi'
+  | 'gss_mieg'
+  | 'gss_financial'
+  | 'gss_income'
+  // GSS StatsBank PxWeb sources (Slice 2)
+  | 'gss_phc_housing'
+  | 'gss_trade_hs2'
+  // GSS StatsBank PxWeb sources (Slice 3)
+  | 'gss_phc_population'
+  | 'gss_phc_employment'
+  | 'gss_phc_poverty'
+  | 'gss_all';
 export type SyncType = 'full' | 'latest' | 'manual';
 
 export interface SyncOptions {
@@ -60,6 +86,17 @@ export class EconomicDataSyncService {
   private readonly laborService: GSSLaborService;
   private readonly gredaScraper: GREDAScraper;
   private readonly syncLog: SyncLogRepository;
+  // GSS StatsBank clients (Slice 1)
+  private readonly gssPpi: GSS_PPIService;
+  private readonly gssMieg: GSS_MIEGService;
+  private readonly gssFinancial: GSS_FinancialService;
+  // GSS StatsBank clients (Slice 2)
+  private readonly gssPhcHousing: GSS_PHCHousingService;
+  private readonly gssTrade: GSS_TradeService;
+  // GSS StatsBank clients (Slice 3)
+  private readonly gssPhcPopulation: GSS_PHCPopulationService;
+  private readonly gssPhcEmployment: GSS_PHCEmploymentService;
+  private readonly gssPhcPoverty: GSS_PHCPovertyService;
   private runningJobs: Map<string, boolean>;
 
   constructor(
@@ -80,6 +117,17 @@ export class EconomicDataSyncService {
     this.laborService = laborServiceInstance || gssLaborService;
     this.gredaScraper = gredaScraperInstance || gredaScraper;
     this.syncLog = syncLogInstance || syncLogRepository;
+    // GSS StatsBank (Slice 1)
+    this.gssPpi = gssPpiService;
+    this.gssMieg = gssMiegService;
+    this.gssFinancial = gssFinancialService;
+    // GSS StatsBank (Slice 2)
+    this.gssPhcHousing = gssPhcHousingService;
+    this.gssTrade = gssTradeService;
+    // GSS StatsBank (Slice 3)
+    this.gssPhcPopulation = gssPhcPopulationService;
+    this.gssPhcEmployment = gssPhcEmploymentService;
+    this.gssPhcPoverty = gssPhcPovertyService;
     this.runningJobs = new Map();
   }
 
@@ -399,12 +447,69 @@ export class EconomicDataSyncService {
     }
   }
 
+  // =========================================================================
+  // GSS StatsBank PxWeb syncs (Slice 1)
+  // =========================================================================
+
+  /** Sync GSS PPI (Producer Price Index) and IIP (Industrial Production). */
+  async syncGSSPpi(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssPpi.sync(triggeredBy);
+  }
+
+  /** Sync GSS MIEG (Monthly Economic Growth Indicator) and Quarterly GDP. */
+  async syncGSSMieg(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssMieg.sync(triggeredBy);
+  }
+
+  /** Sync GSS Interest Rates and Financial Soundness Indicators. */
+  async syncGSSFinancial(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssFinancial.sync(triggeredBy);
+  }
+
+  /** Sync GSS Regional Household Income (AHIES + PHC, CPI-escalated, + formal employment %). */
+  async syncGSSIncome(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return gssIncomeService.syncRegionalHouseholdIncome(triggeredBy);
+  }
+
+  // =========================================================================
+  // GSS StatsBank PxWeb syncs (Slice 2)
+  // =========================================================================
+
+  /** Sync GSS PHC 2021 Housing Census (tenure, materials, completion, infrastructure, ICT). */
+  async syncGSSPhcHousing(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssPhcHousing.sync(triggeredBy);
+  }
+
+  /** Sync GSS Trade HS2 construction material imports. */
+  async syncGSSTradeHs2(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssTrade.sync(triggeredBy);
+  }
+
+  // =========================================================================
+  // GSS StatsBank PxWeb syncs (Slice 3)
+  // =========================================================================
+
+  /** Sync GSS PHC 2021 Population projections + household size. */
+  async syncGSSPhcPopulation(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssPhcPopulation.sync(triggeredBy);
+  }
+
+  /** Sync GSS PHC 2021 Employment (sector/econact/unemployment) + formal-employment backfill. */
+  async syncGSSPhcEmployment(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssPhcEmployment.sync(triggeredBy);
+  }
+
+  /** Sync GSS PHC 2021 Multidimensional Poverty (MPI). */
+  async syncGSSPhcPoverty(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    return this.gssPhcPoverty.sync(triggeredBy);
+  }
+
   /**
    * Run GSS Labor Rates sync
    */
   async syncGSSLabor(triggeredBy: string = 'manual'): Promise<SyncResult> {
     const source = 'GSS Labor Rates';
-    
+
     if (this.isSourceSyncing(source)) {
       return {
         source,
@@ -546,10 +651,54 @@ export class EconomicDataSyncService {
       case 'gss_labor':
         return this.syncGSSLabor(triggeredBy);
       
+      case 'gss_ppi':
+        return this.syncGSSPpi(triggeredBy);
+
+      case 'gss_mieg':
+        return this.syncGSSMieg(triggeredBy);
+
+      case 'gss_financial':
+        return this.syncGSSFinancial(triggeredBy);
+
+      case 'gss_income':
+        return this.syncGSSIncome(triggeredBy);
+
+      case 'gss_phc_housing':
+        return this.syncGSSPhcHousing(triggeredBy);
+
+      case 'gss_trade_hs2':
+        return this.syncGSSTradeHs2(triggeredBy);
+
+      case 'gss_phc_population':
+        return this.syncGSSPhcPopulation(triggeredBy);
+
+      case 'gss_phc_employment':
+        return this.syncGSSPhcEmployment(triggeredBy);
+
+      case 'gss_phc_poverty':
+        return this.syncGSSPhcPoverty(triggeredBy);
+
+      case 'gss_all': {
+        // Run all GSS sources sequentially (they share the same host — be polite)
+        const ppiResult = await this.syncGSSPpi(triggeredBy);
+        const miegResult = await this.syncGSSMieg(triggeredBy);
+        const financialResult = await this.syncGSSFinancial(triggeredBy);
+        const incomeResult = await this.syncGSSIncome(triggeredBy);
+        // Slice 2 (annual — run if explicitly requested as part of gss_all)
+        const phcResult = await this.syncGSSPhcHousing(triggeredBy);
+        const tradeResult = await this.syncGSSTradeHs2(triggeredBy);
+        // Slice 3 (annual census — population/employment/poverty)
+        const popResult = await this.syncGSSPhcPopulation(triggeredBy);
+        const empResult = await this.syncGSSPhcEmployment(triggeredBy);
+        const povResult = await this.syncGSSPhcPoverty(triggeredBy);
+        return [ppiResult, miegResult, financialResult, incomeResult, phcResult, tradeResult,
+                popResult, empResult, povResult];
+      }
+
       case 'greda':
         return this.syncGREDA(triggeredBy);
-      
-      case 'construction_all':
+
+      case 'construction_all': {
         // Run all construction-related syncs in parallel
         const [npaResult, materialsResult, laborResult, gredaResult] = await Promise.all([
           this.syncNPA(triggeredBy),
@@ -558,8 +707,9 @@ export class EconomicDataSyncService {
           this.syncGREDA(triggeredBy),
         ]);
         return [npaResult, materialsResult, laborResult, gredaResult];
-      
-      case 'all':
+      }
+
+      case 'all': {
         // Run all syncs in parallel
         const [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll, gredaResultAll] = await Promise.all([
           this.syncBOG(type, triggeredBy),
@@ -571,7 +721,8 @@ export class EconomicDataSyncService {
           this.syncGREDA(triggeredBy),
         ]);
         return [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll, gredaResultAll];
-      
+      }
+
       default:
         throw new Error(`Unknown source: ${source}`);
     }
@@ -588,7 +739,15 @@ export class EconomicDataSyncService {
       'NPA Fuel Prices',
       'Local Material Prices',
       'GSS Labor Rates',
-      'GREDA/BRRI Construction Costs'
+      'GREDA/BRRI Construction Costs',
+      // GSS StatsBank (Slice 1)
+      'GSS StatsBank PPI/IIP',
+      'GSS StatsBank MIEG/GDP',
+      'GSS StatsBank Financial',
+      'GSS Regional Household Income',
+      // GSS StatsBank (Slice 2)
+      'GSS StatsBank PHC Housing',
+      'GSS StatsBank Trade HS2',
     ];
     const statuses: SyncStatus[] = [];
 

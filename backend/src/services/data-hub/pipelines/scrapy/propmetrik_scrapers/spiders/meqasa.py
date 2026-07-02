@@ -62,43 +62,113 @@ class MeqasaSpider(BasePropertySpider):
         self.pages_scraped = 0
         self.items_scraped = 0
     
-    def start_requests(self) -> Generator[Request, None, None]:
-        """Generate initial requests for listing pages."""
-        
-        # Determine which listing types to scrape
-        listing_types = ['sale', 'rent']
-        if self.listing_type_filter:
-            listing_types = [self.listing_type_filter]
-        
-        for listing_type in listing_types:
-            base_url = self.BASE_URLS.get(listing_type)
-            if not base_url:
-                continue
-            
-            # Build URL with optional filters
-            url = base_url
-            if self.region_filter:
-                url = f"{base_url}-in-{self.region_filter}"
-            
-            # Add page parameter
-            start_page = int(self.start_page) if self.start_page else 1
-            if start_page > 1:
-                url = f"{url}?page={start_page}"
+    # meqasa's public listing pages are now Angular shells that load listings via an XHR to
+    # /filter2/selected (JSON: {propertycount, markup:<cards HTML>, items:<pagination>}). We POST that
+    # endpoint directly — no headless browser needed. Detail pages are also Angular-rendered, so we
+    # extract everything (price/title/beds/type/location) from the listing-card markup itself.
+    FILTER_ENDPOINT = 'https://meqasa.com/filter2/selected'
+    # Major Ghana localities to sweep (covers the bulk of national inventory).
+    LOCALITIES = [
+        'accra', 'kumasi', 'tema', 'takoradi', 'tamale', 'cape-coast', 'ho', 'koforidua',
+        'sunyani', 'east-legon', 'spintex', 'airport-residential-area', 'cantonments', 'ridge',
+        'oyarifa', 'kasoa', 'dansoman', 'adenta', 'madina', 'ashongman',
+    ]
 
-            # Use Selenium middleware for JavaScript rendering
-            yield Request(
-                url=url,
-                callback=self.parse_listing,
-                meta={
-                    'listing_type': listing_type,
-                    'page': start_page,
-                    'selenium': True,  # Enable Selenium middleware
-                },
-                errback=self.errback_handler
-            )
-    
+    def start_requests(self) -> Generator[Request, None, None]:
+        """POST the /filter2/selected JSON feed per contract + locality."""
+        contracts = ['sale', 'rent']
+        if self.listing_type_filter:
+            contracts = [self.listing_type_filter]
+        localities = [self.region_filter] if self.region_filter else self.LOCALITIES
+
+        for contract in contracts:
+            for loc in localities:
+                yield scrapy.FormRequest(
+                    url=self.FILTER_ENDPOINT,
+                    formdata={
+                        'type': '- Any -', 'contract': contract, 'beds': '- Any -', 'baths': '- Any -',
+                        'loask': '', 'hiask': '', 'isfurnished': '', 'region': '- Any -', 'fsbo': '',
+                        'rentperiod': '- Any -', 'localities': loc, 'sort': 'date', 'handle': '___', 'kw': '',
+                    },
+                    headers={
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Referer': f'https://meqasa.com/properties-for-{contract}-in-{loc}',
+                    },
+                    callback=self.parse_filter,
+                    meta={'listing_type': contract, 'locality': loc},
+                    errback=self.errback_handler,
+                )
+
+    def parse_filter(self, response: Response) -> Generator:
+        """Parse the /filter2/selected JSON feed → listing cards → PropertyItems."""
+        listing_type = response.meta.get('listing_type', 'sale')
+        locality = response.meta.get('locality', '')
+        try:
+            data = json.loads(response.text)
+        except (ValueError, TypeError):
+            logger.warning(f"meqasa filter2 returned non-JSON for {locality}/{listing_type}")
+            return
+        markup = data.get('markup') or ''
+        if not markup:
+            return
+        sel = scrapy.Selector(text=markup)
+        cards = sel.css('div.mqs-featured-prop-inner-wrap')
+        logger.info(f"Found {len(cards)} meqasa {listing_type} listings for {locality}")
+        for card in cards:
+            item = self._item_from_card(card, response, listing_type, locality)
+            if item is not None:
+                self.items_scraped += 1
+                yield item
+
+    def _item_from_card(self, card, response: Response, listing_type: str, locality: str):
+        """Build a PropertyItem from one meqasa listing card (all data is in the card markup)."""
+        href = (card.css('.mqs-prop-dt-wrapper h2 a::attr(href)').get()
+                or card.css('.mqs-prop-image-wrapper a::attr(href)').get())
+        if not href:
+            return None
+        url = response.urljoin(href.split('?')[0])
+        title = (card.css('.mqs-prop-dt-wrapper h2 a::text').get() or '').strip()
+
+        loader = self.create_item_loader(response)
+        loader.replace_value('source_url', url)  # override the filter endpoint URL with the listing URL
+        loader.add_value('listing_type', listing_type)
+        loader.add_value('title', title)
+
+        m_id = re.search(r'-(\d{3,})$', url)
+        loader.add_value('source_id', m_id.group(1) if m_id else url.rstrip('/').split('/')[-1])
+
+        # Price: card renders "<span class='h3'>Price</span>GH₵1,637,262"
+        price_text = ' '.join(t.strip() for t in card.css('p.h3 ::text').getall())
+        pm = re.search(r'(?:GH₵|₵|US\$|\$|GHS)\s?[\d,]+', price_text)
+        if not pm:
+            pm = re.search(r'(?:GH₵|₵|US\$|\$|GHS)\s?[\d,]+', ' '.join(card.css('*::text').getall()))
+        if pm:
+            price_value, currency = self.clean_price_text(pm.group(0))
+            loader.add_value('price', price_value)
+            loader.add_value('price_raw', pm.group(0))
+            loader.add_value('currency', currency)
+
+        # Beds + property type + location parsed from the title, e.g.
+        # "3 bedroom house for sale in East Legon Hills"
+        mb = re.search(r'(\d+)\s*bed', title, re.I)
+        if mb:
+            loader.add_value('bedrooms', int(mb.group(1)))
+        loader.add_value('property_type', self.normalize_property_type(title) if title else 'house')
+
+        mloc = re.search(r'\bin\s+(.+)$', title, re.I)
+        specific_loc = mloc.group(1).strip() if mloc else locality.replace('-', ' ')
+        # region = broad locality (routes the DB partition, gets normalized downstream); keep the
+        # precise area as address/neighborhood.
+        loader.add_value('region', locality.replace('-', ' '))
+        loader.add_value('city', locality.replace('-', ' '))
+        loader.add_value('address', specific_loc)
+        loader.add_value('neighborhood', specific_loc)
+        loader.add_value('country', 'Ghana')
+
+        return loader.load_item()
+
     def parse_listing(self, response: Response) -> Generator:
-        """Parse listing page and yield property page requests."""
+        """Legacy HTML listing parser (unused — meqasa is now API-driven via parse_filter)."""
         
         self.pages_scraped += 1
         listing_type = response.meta.get('listing_type', 'sale')

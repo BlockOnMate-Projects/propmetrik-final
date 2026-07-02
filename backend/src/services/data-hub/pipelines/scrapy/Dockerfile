@@ -45,6 +45,12 @@ RUN cat > /etc/cron.d/scrapy-jobs << 'EOF'
 # Scrapy cron jobs
 # Format: minute hour day month weekday user command
 
+# cron runs with a stripped PATH (/usr/bin:/bin) that does NOT include /usr/local/bin, where
+# python3/python/scrapy live in the python:3.11-slim image. Without this line every job dies with
+# "python3: not found" and the autonomous scraper silently ingests nothing. Keep this first.
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+
 # Weekly full scrape - Sunday 2 AM (all spiders)
 0 2 * * 0 scrapy cd /app && python3 run_spider.py all --scrape-type full >> /var/log/cron/weekly.log 2>&1
 

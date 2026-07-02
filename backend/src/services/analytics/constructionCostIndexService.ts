@@ -18,6 +18,9 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { gssPpiService } from '../data-hub/scrapers/gssPpiService';
+import { gssMiegService } from '../data-hub/scrapers/gssMiegService';
+import { gssTradeService } from '../data-hub/scrapers/gssTradeService';
 
 // ============================================================================
 // TYPES
@@ -45,12 +48,17 @@ export interface CCINationalSummary {
   national_index: number;
   baseline_date: string;
   components: {
-    materials: { value: number; weight: number; change_mom: number; change_yoy: number };
-    labor: { value: number; weight: number; change_mom: number; change_yoy: number };
-    overhead: { value: number; weight: number; change_mom: number; change_yoy: number };
+    materials: { value: number; weight: number; change_mom: number; change_yoy: number | null };
+    labor: { value: number; weight: number; change_mom: number; change_yoy: number | null };
+    overhead: { value: number; weight: number; change_mom: number; change_yoy: number | null };
   };
   regional_indices: Record<string, number>;
   historical_trend: Array<{ date: string; value: number }>;
+  // GSS PPI enrichment (Slice 1) — present when gss_ppi_construction_series is populated
+  ppi_construction_yoy?: number | null;
+  ppi_construction_history?: Array<{ period_date: string; ppi_index: number | null; change_yoy_pct: number | null }>;
+  // GSS Trade HS2 import pressure (Slice 2b) — present when gss_construction_material_imports is populated
+  import_material_pressure?: Array<{ period_date: string; gcmipi: number | null; hs2_breakdown: Record<string, number | null> }> | null;
 }
 
 export interface RegionalCostComparison {
@@ -124,6 +132,27 @@ class ConstructionCostIndexService {
 
       const row = latest.rows[0];
 
+      // Fetch latest GSS PPI Construction data to blend into materials sub-index.
+      // α = 0.6 weight to authoritative GSS PPI, 0.4 to internal material prices.
+      // When gss_ppi_construction_series is empty (before first sync), falls back to internal-only.
+      let gssYoy: number | null = null;
+      let blendedMaterialsIndex = parseFloat(row.materials_index || '0');
+      try {
+        const ppiLatest = await gssPpiService.getLatestConstructionPpi();
+        if (ppiLatest && ppiLatest.ppi_index !== null) {
+          // Blend: 60% GSS PPI, 40% internal materials index
+          blendedMaterialsIndex = 0.6 * ppiLatest.ppi_index + 0.4 * parseFloat(row.materials_index || '0');
+          gssYoy = ppiLatest.change_yoy_pct;
+        }
+      } catch (ppiErr: any) {
+        logger.warn('CCI: GSS PPI fetch failed, using internal materials only', { error: ppiErr.message });
+      }
+
+      // Use GSS PPI yoy if available; otherwise use CCI stored yoy without the ±40% suppression.
+      // The suppression guard is REMOVED now that we have an authoritative anchor.
+      const rawYoY = gssYoy ?? parseFloat(row.change_yoy || '0');
+      const yoy = Number.isFinite(rawYoY) ? rawYoY : null;
+
       // Regional indices for the same period
       const regional = await pool.query(
         `SELECT region, index_value
@@ -152,22 +181,22 @@ class ConstructionCostIndexService {
         baseline_date: row.base_date || BASE_DATE,
         components: {
           materials: {
-            value: parseFloat(row.materials_index || '0'),
+            value: blendedMaterialsIndex,
             weight: parseFloat(row.materials_weight || String(MATERIALS_WEIGHT)),
             change_mom: parseFloat(row.change_mom || '0'),
-            change_yoy: parseFloat(row.change_yoy || '0'),
+            change_yoy: yoy,
           },
           labor: {
             value: parseFloat(row.labor_index || '0'),
             weight: parseFloat(row.labor_weight || String(LABOR_WEIGHT)),
             change_mom: parseFloat(row.change_mom || '0'),
-            change_yoy: parseFloat(row.change_yoy || '0'),
+            change_yoy: yoy,
           },
           overhead: {
             value: parseFloat(row.overhead_index || '0'),
             weight: parseFloat(row.overhead_weight || String(OVERHEAD_WEIGHT)),
             change_mom: parseFloat(row.change_mom || '0'),
-            change_yoy: parseFloat(row.change_yoy || '0'),
+            change_yoy: yoy,
           },
         },
         regional_indices: regionalIndices,
@@ -175,6 +204,13 @@ class ConstructionCostIndexService {
           date: r.date,
           value: parseFloat(r.value),
         })),
+        // GSS PPI enrichment — fetch history for frontend overlay chart
+        ppi_construction_yoy: gssYoy,
+        ppi_construction_history: await gssPpiService.getConstructionPpiHistory(24).catch(() => []),
+        // GSS Trade HS2 import pressure (Slice 2b) — non-fatal if table not yet populated.
+        // 36-month window: unit_value_index depends on FX + trade lag, so the latest
+        // fully-computed period trails the current month by ~a year.
+        import_material_pressure: await gssTradeService.getGcmipiHistory(36).catch(() => null),
       };
     } catch (err: any) {
       if (err.code === '42P01') {
@@ -692,61 +728,81 @@ class ConstructionCostIndexService {
     try {
       await client.query('BEGIN');
 
-      // Get latest material prices
+      // Material index — base-100 index of per-category PRICE RELATIVES (latest price level vs the
+      // base period). NOTE: the scraper writes raw prices but leaves `price_change_percent` = 0 on
+      // every row, so the old `AVG(price_change_percent)` formula always produced 100. We instead
+      // derive the movement from the actual scraped price history. Averaging per-category relatives
+      // (not raw prices) keeps the index robust to basket-composition changes between scrapes.
       const materials = await client.query(
-        `SELECT category, AVG(price_ghs) AS avg_price, AVG(price_change_percent) AS avg_yoy
-         FROM material_prices
-         WHERE effective_date = (SELECT MAX(effective_date) FROM material_prices)
-           AND (region IS NULL OR region = 'greater_accra')
-         GROUP BY category`,
+        `WITH base AS (
+           SELECT category, AVG(price_ghs) AS p
+           FROM material_prices
+           WHERE effective_date = (SELECT MIN(effective_date) FROM material_prices)
+             AND (region IS NULL OR region = 'greater_accra')
+           GROUP BY category
+         ),
+         curr AS (
+           SELECT category, AVG(price_ghs) AS p
+           FROM material_prices
+           WHERE effective_date = (SELECT MAX(effective_date) FROM material_prices)
+             AND (region IS NULL OR region = 'greater_accra')
+           GROUP BY category
+         )
+         SELECT AVG(100.0 * c.p / NULLIF(b.p, 0)) AS index_value,
+                (SELECT MIN(effective_date) FROM material_prices) AS base_date
+         FROM curr c JOIN base b USING (category)
+         WHERE b.p > 0`,
       );
 
-      // Get latest labor rates
+      // Labor index — same per-category base-100 relative approach on daily rates.
       const labor = await client.query(
-        `SELECT category, AVG(daily_rate_ghs) AS avg_rate, AVG(rate_change_percent) AS avg_yoy
-         FROM labor_rates
-         WHERE effective_date = (SELECT MAX(effective_date) FROM labor_rates)
-           AND (region IS NULL OR region = 'greater_accra')
-         GROUP BY category`,
+        `WITH base AS (
+           SELECT category, AVG(daily_rate_ghs) AS p
+           FROM labor_rates
+           WHERE effective_date = (SELECT MIN(effective_date) FROM labor_rates)
+             AND (region IS NULL OR region = 'greater_accra')
+           GROUP BY category
+         ),
+         curr AS (
+           SELECT category, AVG(daily_rate_ghs) AS p
+           FROM labor_rates
+           WHERE effective_date = (SELECT MAX(effective_date) FROM labor_rates)
+             AND (region IS NULL OR region = 'greater_accra')
+           GROUP BY category
+         )
+         SELECT AVG(100.0 * c.p / NULLIF(b.p, 0)) AS index_value
+         FROM curr c JOIN base b USING (category)
+         WHERE b.p > 0`,
       );
 
-      if (materials.rows.length === 0 && labor.rows.length === 0) {
+      const matIdxRaw = parseFloat(materials.rows[0]?.index_value);
+      const laborIdxRaw = parseFloat(labor.rows[0]?.index_value);
+      if (!Number.isFinite(matIdxRaw) && !Number.isFinite(laborIdxRaw)) {
         await client.query('ROLLBACK');
-        logger.warn('No material/labor data available for CCI computation');
+        logger.warn('No material/labor price data available for CCI computation');
         return null;
       }
-
-      // Compute material index relative to base prices
-      const materialChanges = materials.rows.map((r: any) => parseFloat(r.avg_yoy || '0'));
-      const avgMaterialChange =
-        materialChanges.length > 0
-          ? materialChanges.reduce((a: number, b: number) => a + b, 0) / materialChanges.length
-          : 0;
-      const materialsIndex = BASE_INDEX * (1 + avgMaterialChange / 100);
-
-      // Compute labor index
-      const laborChanges = labor.rows.map((r: any) => parseFloat(r.avg_yoy || '0'));
-      const avgLaborChange =
-        laborChanges.length > 0
-          ? laborChanges.reduce((a: number, b: number) => a + b, 0) / laborChanges.length
-          : 0;
-      const laborIndex = BASE_INDEX * (1 + avgLaborChange / 100);
+      // A missing component defaults to the base (100, neutral) so it doesn't distort the composite.
+      const materialsIndex = Number.isFinite(matIdxRaw) ? matIdxRaw : BASE_INDEX;
+      const laborIndex = Number.isFinite(laborIdxRaw) ? laborIdxRaw : BASE_INDEX;
+      const baseDate = materials.rows[0]?.base_date || BASE_DATE;
 
       // Overhead index = blended from material + labor (derived)
-      const overheadIndex = BASE_INDEX * (1 + (avgMaterialChange * 0.4 + avgLaborChange * 0.6) / 100);
+      const overheadIndex = materialsIndex * 0.4 + laborIndex * 0.6;
 
       // Composite CCI
       const compositeIndex =
         materialsIndex * MATERIALS_WEIGHT + laborIndex * LABOR_WEIGHT + overheadIndex * OVERHEAD_WEIGHT;
 
-      // Get previous month for MoM change
+      // Get the previous PERIOD's index for MoM change — strictly earlier than the one being
+      // computed, so a same-day recompute compares against the prior period, not itself.
       const prev = await client.query(
         `SELECT index_value
          FROM construction_cost_index_analytics
-         WHERE region IS NULL AND period_type = $1
+         WHERE region IS NULL AND period_type = $1 AND period_date < $2::DATE
          ORDER BY period_date DESC
          LIMIT 1`,
-        [periodType],
+        [periodType, periodDate.toISOString().slice(0, 10)],
       );
       const prevValue = prev.rows.length > 0 ? parseFloat(prev.rows[0].index_value) : null;
       const changeMom = prevValue ? ((compositeIndex - prevValue) / prevValue) * 100 : null;
@@ -766,6 +822,15 @@ class ConstructionCostIndexService {
       const changeYoy = yoyValue ? ((compositeIndex - yoyValue) / yoyValue) * 100 : null;
 
       const dateStr = periodDate.toISOString().slice(0, 10);
+
+      // Remove any existing national row(s) for this period FIRST. National rows use region=NULL,
+      // and a UNIQUE(period_date, period_type, region) constraint does NOT dedupe NULLs in Postgres,
+      // so plain re-runs accumulated duplicate national rows. Deleting first guarantees exactly one.
+      await client.query(
+        `DELETE FROM construction_cost_index_analytics
+         WHERE region IS NULL AND period_date = $1 AND period_type = $2`,
+        [dateStr, periodType],
+      );
 
       // Insert national record
       const result = await client.query(
@@ -791,7 +856,7 @@ class ConstructionCostIndexService {
           periodType,
           Math.round(compositeIndex * 100) / 100,
           BASE_INDEX,
-          BASE_DATE,
+          baseDate,
           Math.round(materialsIndex * 100) / 100,
           MATERIALS_WEIGHT,
           Math.round(laborIndex * 100) / 100,
