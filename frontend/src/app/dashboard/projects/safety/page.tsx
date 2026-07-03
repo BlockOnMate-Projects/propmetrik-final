@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const SEVERITY_COLORS: Record<string, string> = { low: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', medium: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', high: 'bg-orange-500/20 text-orange-600 dark:text-orange-400', critical: 'bg-red-500/20 text-red-600 dark:text-red-400' };
 const STATUS_COLORS: Record<string, string> = { reported: 'bg-zinc-500/20 text-muted-foreground', under_investigation: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', corrective_action: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', resolved: 'bg-green-500/20 text-green-600 dark:text-green-400', closed: 'bg-zinc-700/20 text-muted-foreground', open: 'bg-red-500/20 text-red-600 dark:text-red-400', in_progress: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', scheduled: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', completed: 'bg-green-500/20 text-green-600 dark:text-green-400', failed: 'bg-red-500/20 text-red-600 dark:text-red-400' };

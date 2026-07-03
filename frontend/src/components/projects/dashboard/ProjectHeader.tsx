@@ -74,7 +74,8 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
 
     try {
       setIsArchiving(true)
-      const response = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/v1/projects/${project.id}`, {
+      // Relative /api path via the Next proxy (was baking localhost:4000 + manual /api/v1).
+      const response = await authedFetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       })

@@ -37,7 +37,7 @@ export function FileUploadModal({
     const [validationReport, setValidationReport] = useState<{ is_valid?: boolean; errors?: string[]; warnings?: string[] } | null>(null)
     const [importing, setImporting] = useState(false)
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
     const pollUpload = async (id: string) => {
         const deadline = Date.now() + 15000

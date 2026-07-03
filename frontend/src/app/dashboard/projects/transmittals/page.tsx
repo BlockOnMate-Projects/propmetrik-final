@@ -22,7 +22,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 interface Project { id: string; name: string; }
 

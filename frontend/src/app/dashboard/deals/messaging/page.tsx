@@ -58,7 +58,7 @@ interface ApiStatus {
     message: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 function formatRelativeTime(dateStr: string): string {
     const date = new Date(dateStr);

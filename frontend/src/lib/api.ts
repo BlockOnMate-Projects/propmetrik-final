@@ -30,7 +30,9 @@ export { mapPropertyRegionToConstructionCluster, getPropertyRegionDisplayName, m
 
 import { getSession } from 'next-auth/react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+// Relative `/api` base — goes through the Next proxy (/api/* → backend /api/v1/*).
+// Never fall back to an absolute localhost URL (breaks in prod + bypasses the proxy).
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // Cache the session token to avoid hitting NextAuth on every request
 let _cachedToken: string | null = null;

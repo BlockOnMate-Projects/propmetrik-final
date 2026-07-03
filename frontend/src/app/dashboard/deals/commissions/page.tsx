@@ -126,7 +126,7 @@ interface CommissionSummary {
     avg_deal_commission: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Helper functions
 function formatCurrency(amount: number): string {

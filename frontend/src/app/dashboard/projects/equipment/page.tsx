@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2, ArrowUpRight, RotateCcw } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const STATUS_COLORS: Record<string, string> = { available: 'bg-green-500/20 text-green-600 dark:text-green-400', in_use: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', maintenance: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', repair: 'bg-orange-500/20 text-orange-600 dark:text-orange-400', retired: 'bg-zinc-500/20 text-muted-foreground', disposed: 'bg-red-500/20 text-red-600 dark:text-red-400' };
 const CONDITION_COLORS: Record<string, string> = { excellent: 'bg-green-500/20 text-green-600 dark:text-green-400', good: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', fair: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', poor: 'bg-orange-500/20 text-orange-600 dark:text-orange-400', critical: 'bg-red-500/20 text-red-600 dark:text-red-400' };

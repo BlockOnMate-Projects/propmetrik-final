@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Download, Loader2, MessageSquare, Users, CheckCircle, Clock, Eye, Trash2 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface Meeting {
   id: string; meeting_number: string; title: string; meeting_type: string;

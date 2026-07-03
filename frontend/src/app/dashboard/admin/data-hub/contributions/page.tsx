@@ -39,7 +39,7 @@ const CONTEXT_OPTIONS = [
   { id: 'crm_deal_management', label: 'CRM / DEALS' },
 ]
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 interface CRMSyncStats {
   total_properties: number

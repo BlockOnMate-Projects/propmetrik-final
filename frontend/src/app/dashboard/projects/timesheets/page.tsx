@@ -17,7 +17,7 @@ import { Clock, Trash2, CheckCircle, Send, Pencil } from 'lucide-react';
 
 interface Project { id: string; name: string; }
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 const STATUS_COLORS: Record<string, string> = { draft: 'bg-zinc-500/20 text-muted-foreground', submitted: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', approved: 'bg-green-500/20 text-green-600 dark:text-green-400', rejected: 'bg-red-500/20 text-red-600 dark:text-red-400' };
 

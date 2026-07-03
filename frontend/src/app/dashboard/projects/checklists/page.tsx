@@ -63,7 +63,7 @@ import { checklistSchema, validateForm } from '@/lib/schemas/pm.schemas';
 import { FieldError, FormErrorSummary } from '@/components/ui/form-errors';
 import { Pagination } from '@/components/ui/pagination-controls';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const fetch = authedFetch;
 
 // Types

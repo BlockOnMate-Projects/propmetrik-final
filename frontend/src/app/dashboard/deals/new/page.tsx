@@ -38,7 +38,7 @@ import { dealsApi, pipelinesApi, contactsApi, agentsApi } from '@/lib/crm-api'
 import type { DealPipeline, DealStage, Contact, Agent } from '@/types/crm'
 import { DealType, DealStatus, AgentStatus } from '@/types/crm'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // ── Zod schema ──────────────────────────────────────
 const dealFormSchema = z.object({

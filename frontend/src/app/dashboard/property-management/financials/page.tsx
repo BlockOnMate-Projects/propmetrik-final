@@ -224,7 +224,7 @@ export default function FinancialsPage() {
     const handleExport = async () => {
         setIsExporting(true)
         try {
-            const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+            const base = process.env.NEXT_PUBLIC_API_URL || '/api'
             const res = await authedFetch(`${base}/pm/reports/portfolio-financial?period=${encodeURIComponent(period)}`)
             if (!res.ok) throw new Error(`Export failed (${res.status})`)
             const blob = await res.blob()
