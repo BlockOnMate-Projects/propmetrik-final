@@ -10,7 +10,7 @@
 CREATE TABLE IF NOT EXISTS property_inspections (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id   UUID NOT NULL REFERENCES organizations(id),
-    property_id       UUID REFERENCES properties(id),
+    property_id       UUID,   -- no FK: properties is LIST-partitioned by region, so id alone isn't a unique key
     unit_id           UUID,
     tenancy_id        UUID,
     inspection_type   VARCHAR(30) NOT NULL DEFAULT 'routine',    -- move_in | move_out | routine | periodic | maintenance

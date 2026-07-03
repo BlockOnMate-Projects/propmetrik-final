@@ -16,6 +16,7 @@ const navigation = [
     { name: 'APPLICATIONS', href: '/dashboard/property-management/applications', key: '5', subTabKey: 'propmgmt-applications' },
     { name: 'TENANTS', href: '/dashboard/property-management/tenants', key: '6', subTabKey: 'propmgmt-tenants' },
     { name: 'MAINTENANCE', href: '/dashboard/property-management/maintenance', key: '7', subTabKey: 'propmgmt-maintenance' },
+    { name: 'INSPECTIONS', href: '/dashboard/property-management/inspections', key: 'I', subTabKey: 'propmgmt-inspections' },
     { name: 'DOCUMENTS', href: '/dashboard/property-management/documents', key: '8', subTabKey: 'propmgmt-documents' },
     { name: 'VENDORS', href: '/dashboard/property-management/vendors', key: '9', subTabKey: 'propmgmt-vendors' },
     { name: 'FINANCIALS', href: '/dashboard/property-management/financials', key: '10', subTabKey: 'propmgmt-financials' },

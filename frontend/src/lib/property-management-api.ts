@@ -69,6 +69,69 @@ export interface GeneratedLeaseDocument {
     signers: Array<{ name: string; email: string; role: string; order?: number }>;
 }
 
+// ── Property condition inspections ────────────────────
+export interface InspectionItem {
+    id: string;
+    inspection_id: string;
+    area: string;
+    item: string;
+    condition: string;   // excellent | good | fair | poor | damaged | na
+    notes: string | null;
+    photos: string[];
+    sort_order: number;
+    created_at: string;
+}
+
+export interface PropertyInspection {
+    id: string;
+    organization_id: string;
+    property_id: string | null;
+    property_name?: string | null;
+    unit_id: string | null;
+    tenancy_id: string | null;
+    inspection_type: string;   // move_in | move_out | routine | periodic | maintenance
+    status: string;            // scheduled | in_progress | completed | cancelled
+    scheduled_for: string | null;
+    completed_at: string | null;
+    inspector_id: string | null;
+    overall_condition: string | null;
+    summary: string | null;
+    created_at: string;
+    updated_at: string;
+    item_count?: number;
+    items?: InspectionItem[];
+}
+
+export const inspectionsApi = {
+    getAll: (params?: { property_id?: string; status?: string; type?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.property_id) q.set('property_id', params.property_id);
+        if (params?.status) q.set('status', params.status);
+        if (params?.type) q.set('type', params.type);
+        const qs = q.toString();
+        return fetchApi<PropertyInspection[]>(`${PM_BASE}/inspections${qs ? '?' + qs : ''}`);
+    },
+    getById: (id: string) => fetchApi<PropertyInspection>(`${PM_BASE}/inspections/${id}`),
+    create: (data: { propertyId?: string; inspectionType?: string; scheduledFor?: string; summary?: string }) =>
+        fetchApi<PropertyInspection>(`${PM_BASE}/inspections`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    complete: (id: string, data: { overallCondition?: string; summary?: string }) =>
+        fetchApi<PropertyInspection>(`${PM_BASE}/inspections/${id}/complete`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    remove: (id: string) => fetchApi<void>(`${PM_BASE}/inspections/${id}`, { method: 'DELETE' }),
+    addItem: (id: string, data: { area: string; item: string; condition?: string; notes?: string }) =>
+        fetchApi<InspectionItem>(`${PM_BASE}/inspections/${id}/items`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    updateItem: (itemId: string, data: Partial<{ area: string; item: string; condition: string; notes: string }>) =>
+        fetchApi<InspectionItem>(`${PM_BASE}/inspections/items/${itemId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    deleteItem: (itemId: string) => fetchApi<void>(`${PM_BASE}/inspections/items/${itemId}`, { method: 'DELETE' }),
+};
+
 export const propertyManagementApi = {
     // =====================================================
     // PROPERTIES

@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import TopNav from '@/components/marketing/TopNav';
 import Footer from '@/components/marketing/Footer';
 import { usePathname } from 'next/navigation';
@@ -18,7 +19,10 @@ export default function MarketingLayout({
       {/* Marketplace + property-detail render their OWN (forced-light) TopNav in their
           child layout, so skip the parent nav there to avoid a duplicate stacked nav. */}
       {!isMarketplace && !isPropertyDetail && <TopNav />}
-      {children}
+      {/* Suspense boundary so child pages using useSearchParams() prerender in Next 15. */}
+      <Suspense fallback={null}>
+        {children}
+      </Suspense>
       {/* Footer hidden on marketplace / property-detail pages.
           The services showcase lives on the home page only — not globally. */}
       {!isMarketplace && !isPropertyDetail && <Footer />}

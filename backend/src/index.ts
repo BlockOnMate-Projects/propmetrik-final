@@ -33,6 +33,7 @@ import pullIntegrationRoutes from './routes/pullIntegrations';
 import reportRoutes from './routes/reports';
 import valuersRoutes from './routes/valuers';
 import propertyManagementRoutes, { propertyManagementPublicRouter } from './routes/propertyManagement';
+import pmInspectionRoutes from './routes/pm-inspections';
 import crmRoutes from './routes/crm';
 import marketplaceRoutes from './routes/marketplace';
 import webhooksRoutes from './routes/webhooks';
@@ -221,6 +222,8 @@ app.use('/api/valuers', authenticate, requireServiceAccess('valuations'), valuer
 // docs, and check status without auth. Otherwise they 401 in prod (dev masks it via bypass).
 app.use('/api/v1/pm', propertyManagementPublicRouter);
 app.use('/api/v1/pm', authenticate, requireServiceAccess('property_management'), propertyManagementRoutes);
+app.use('/api/v1/pm', authenticate, requireServiceAccess('property_management'), pmInspectionRoutes);
+app.use('/api/pm', authenticate, requireServiceAccess('property_management'), pmInspectionRoutes);  // frontend compat
 app.use('/api/v1/crm', authenticate, requireServiceAccess('crm'), crmRoutes);
 app.use('/api/crm', authenticate, requireServiceAccess('crm'), crmRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/marketplace', marketplaceRoutes);  // Public marketplace - no auth required

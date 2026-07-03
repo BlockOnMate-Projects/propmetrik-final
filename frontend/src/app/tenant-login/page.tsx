@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import {
@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-export default function TenantLoginPage() {
+function TenantLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -193,5 +193,16 @@ export default function TenantLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() must sit inside a <Suspense> boundary or Next.js 15 fails the production
+// build ("should be wrapped in a suspense boundary") when prerendering this route. Wrapping the
+// form keeps the page prerenderable while the search-param read stays client-side.
+export default function TenantLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <TenantLoginForm />
+    </Suspense>
   );
 }

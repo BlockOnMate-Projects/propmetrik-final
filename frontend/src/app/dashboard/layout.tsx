@@ -5,7 +5,7 @@ import { UpgradeGateProvider } from '@/components/UpgradeGate'
 import { FloatingWindowManager } from '@/components/workspace/window-manager/FloatingWindowManager'
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
 import { GlobalSearch } from '@/components/layout/GlobalSearch'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { prefetchRbacConfig, canAccessPlatformTab } from '@/lib/rbac'
@@ -102,7 +102,11 @@ export default function DashboardLayout({
           </header>
         )}
         <main className="flex-1">
-          {children}
+          {/* Boundary so any child page using useSearchParams() is prerenderable in Next 15
+              (avoids "should be wrapped in a suspense boundary" build failures per-page). */}
+          <Suspense fallback={null}>
+            {children}
+          </Suspense>
         </main>
         {!isTenantRoute && (
           <>
