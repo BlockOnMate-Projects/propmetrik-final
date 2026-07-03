@@ -11,8 +11,8 @@ import { createHash } from 'crypto';
 import { resolvePermanentSignerId } from '../../shared-services/e-sign/permanentSignerId';
 import { scanUploadedFile } from '../middleware/virusScan';
 import { authenticate } from '../middleware/auth';
+import { config } from '../config';
 import {
-    signingService,
     auditLogService,
     consentService,
     magicLinkService,
@@ -22,9 +22,6 @@ import {
     EnvelopeStatus
 } from '../../shared-services/e-sign';
 import {
-    CreateSigningRequestDto,
-    CaptureSignatureDto,
-    ExternalSignatureDto,
     CreateEnvelopeDto
 } from '../../shared-services/e-sign/types';
 import { logger } from '../utils/logger';
@@ -484,6 +481,63 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         return;
     }
 
+    // ── CRM dispatch (deal contracts + document signature envelopes) ──
+    // Sync the signed result back to the CRM entity so the deal's Signatures tab and any
+    // linked document flip from 'sent' → 'signed'. This branch previously did not exist,
+    // so internally-signed CRM envelopes never synced (stuck at 'sent' forever).
+    if (
+        envelopeRow.context_type === 'crm' &&
+        envelopeRow.context_entity_id &&
+        ['signature_envelope', 'deal'].includes(envelopeRow.context_entity_name)
+    ) {
+        try {
+            const crmSigners = await dbQuery(
+                `SELECT id, email, name, signed_at FROM esign_signers
+                 WHERE envelope_id = $1 AND status = 'signed' ORDER BY signing_order ASC`,
+                [envelopeId]
+            );
+            const crmCompletedAt = envelopeRow.completed_at || new Date();
+            // Normalize the signed PDF (a bare MinIO key) to an s3:// object ref.
+            let crmSignedRef = signedDocumentUrl;
+            if (signedDocumentUrl && !/^(data:|https?:|s3:\/\/)/.test(signedDocumentUrl)) {
+                let bucket = buckets.documents;
+                let key = signedDocumentUrl;
+                const parts = signedDocumentUrl.split('/');
+                if (parts.length > 1 && (parts[0] === buckets.documents || parts[0] === buckets.uploads)) {
+                    bucket = parts[0];
+                    key = parts.slice(1).join('/');
+                }
+                crmSignedRef = `s3://${bucket}/${key}`;
+            }
+            const crmEntityType = envelopeRow.context_entity_name as 'signature_envelope' | 'deal';
+            const crmEvent = {
+                event: 'envelope.completed' as const,
+                timestamp: new Date(),
+                envelope: { id: envelopeId, subject: envelopeRow.name || 'Signed Document', completedAt: new Date(crmCompletedAt) },
+                sourceContext: { module: 'crm' as const, entityType: crmEntityType, entityId: envelopeRow.context_entity_id },
+                documents: [{ id: envelopeId, name: envelopeRow.name || 'Signed Document', signedUrl: crmSignedRef, certificateUrl: undefined }],
+                signers: crmSigners.rows.map((row: any) => ({
+                    email: row.email,
+                    name: row.name,
+                    pmtId: row.id,
+                    signedAt: row.signed_at ? new Date(row.signed_at) : new Date(crmCompletedAt),
+                })),
+                security: { hash: '', algorithm: 'SHA-256' as const, verifyUrl: `/api/v1/esign/envelopes/${envelopeId}/certificate` },
+            };
+            if (crmEntityType === 'signature_envelope') {
+                const { signatureService } = await import('../services/crm-deal-management/signatureService');
+                await signatureService.handleEsignCompletion(crmEvent as any);
+            } else {
+                const { dealService } = await import('../services/crm-deal-management/dealService');
+                await dealService.handleEsignCompletion(crmEvent as any);
+            }
+            logger.info('CRM e-sign completion dispatched', { envelopeId, entityType: crmEntityType, entityId: envelopeRow.context_entity_id });
+        } catch (e: any) {
+            logger.error('CRM e-sign completion dispatch failed', { envelopeId, error: e?.message });
+        }
+        return;
+    }
+
     let tenancyId: string | null = null;
 
     if (
@@ -597,103 +651,6 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
 };
 
 // =====================================================
-// SIGNING REQUESTS
-// =====================================================
-
-/**
- * Create a new signing request
- * POST /api/v1/esign/requests
- */
-router.post('/requests', asyncHandler(async (req: Request, res: Response) => {
-    const dto: CreateSigningRequestDto = req.body;
-    const userId = getUserId(req);
-    const organizationId = getOrganizationId(req);
-
-    const signingRequest = await signingService.createSigningRequest(dto, userId, organizationId);
-
-    res.status(201).json({
-        success: true,
-        data: signingRequest
-    });
-}));
-
-/**
- * Get all signing requests for the current user
- * GET /api/v1/esign/requests
- */
-router.get('/requests', asyncHandler(async (req: Request, res: Response) => {
-    const userId = getUserId(req);
-    const requests = await signingService.getSigningRequestsForUser(userId);
-
-    res.json({
-        success: true,
-        data: requests
-    });
-}));
-
-/**
- * Get a specific signing request
- * GET /api/v1/esign/requests/:id
- */
-router.get('/requests/:id', asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const request = await signingService.getSigningRequest(id);
-
-    if (!request) {
-        return res.status(404).json({
-            success: false,
-            error: 'Signing request not found'
-        });
-    }
-
-    res.json({
-        success: true,
-        data: request
-    });
-}));
-
-/**
- * Void a signing request
- * POST /api/v1/esign/requests/:id/void
- */
-router.post('/requests/:id/void', asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const { reason } = req.body;
-    const userId = getUserId(req);
-
-    await signingService.voidSigningRequest(id, reason || 'Voided by user', userId);
-
-    res.json({
-        success: true,
-        message: 'Signing request voided'
-    });
-}));
-
-// =====================================================
-// INTERNAL SIGNING
-// =====================================================
-
-/**
- * Capture signature from internal (logged-in) user
- * POST /api/v1/esign/sign
- */
-router.post('/sign', asyncHandler(async (req: Request, res: Response) => {
-    const userId = getUserId(req);
-    const dto: CaptureSignatureDto = {
-        ...req.body,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent']
-    };
-
-    const evidence = await signingService.captureInternalSignature(dto, userId);
-
-    res.status(201).json({
-        success: true,
-        data: evidence
-    });
-}));
-
-// =====================================================
 // EXTERNAL SIGNING (Magic Link)
 // =====================================================
 
@@ -729,30 +686,6 @@ router.get('/external/:token', asyncHandler(async (req: Request, res: Response) 
             documentUrl: details.documentUrl,
             consentStatement: consent
         }
-    });
-}));
-
-/**
- * Capture signature from external signee via magic link
- * POST /api/v1/esign/external/:token/sign
- */
-router.post('/external/:token/sign', asyncHandler(async (req: Request, res: Response) => {
-    const { token } = req.params;
-    const dto: ExternalSignatureDto = {
-        magicToken: token,
-        signatureMethod: req.body.signatureMethod,
-        signatureImageBase64: req.body.signatureImageBase64,
-        otpCode: req.body.otpCode,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent']
-    };
-
-    const evidence = await signingService.captureExternalSignature(dto);
-
-    res.status(201).json({
-        success: true,
-        data: evidence.id,
-        message: 'Document signed successfully'
     });
 }));
 
@@ -888,79 +821,6 @@ router.post('/resend-otp', asyncHandler(async (req: Request, res: Response) => {
     res.json({
         success: true,
         message: 'Verification code resent'
-    });
-}));
-
-/**
- * Submit all signatures for a signing request
- * POST /api/v1/esign/submit
- */
-router.post('/submit', asyncHandler(async (req: Request, res: Response) => {
-    const { token, signatures } = req.body;
-
-    if (!token || !signatures) {
-        return res.status(400).json({
-            success: false,
-            error: 'Token and signatures are required'
-        });
-    }
-
-    const details = await magicLinkService.getSigningDetailsFromToken(token);
-
-    if (!details) {
-        return res.status(404).json({
-            success: false,
-            error: 'Invalid or expired signing link'
-        });
-    }
-
-    // Capture each signature
-    const evidenceIds: string[] = [];
-    for (const [fieldId, signatureData] of Object.entries(signatures)) {
-        const sigData = signatureData as { type: string; data: string };
-
-        // Map signature type to valid SignatureMethod
-        let signatureMethod: 'click_to_sign' | 'typed_name' | 'drawn_signature' = 'drawn_signature';
-        if (sigData.type === 'typed' || sigData.type === 'type') {
-            signatureMethod = 'typed_name';
-        } else if (sigData.type === 'click') {
-            signatureMethod = 'click_to_sign';
-        }
-
-        const dto: ExternalSignatureDto = {
-            magicToken: token,
-            signatureMethod,
-            signatureImageBase64: sigData.data,
-            ipAddress: req.ip,
-            userAgent: req.headers['user-agent'],
-            fieldId
-        };
-
-        try {
-            const evidence = await signingService.captureExternalSignature(dto);
-            evidenceIds.push(evidence.id!);
-        } catch (err) {
-            logger.error('Failed to capture signature', { fieldId, error: err });
-        }
-    }
-
-    // Mark signee as completed
-    await signingService.markSigneeComplete(details.signee.id);
-
-    // Log audit event - use createAuditEvent method
-    const signingRequestForAudit = (details as any).signingRequest;
-    await auditLogService.createAuditEvent({
-        signingRequestId: signingRequestForAudit?.id || null,
-        eventType: 'signature_captured',
-        actorId: details.signee.id,
-        actorType: 'external_signee',
-        ipAddress: req.ip
-    });
-
-    res.json({
-        success: true,
-        evidenceIds,
-        message: 'Signatures submitted successfully'
     });
 }));
 
@@ -1894,10 +1754,9 @@ router.get('/envelopes/:id', asyncHandler(async (req: Request, res: Response) =>
         return res.status(404).json({ error: 'Envelope not found' });
     }
 
-    // Build signing URLs for each signer from their access tokens (env-resolved public URL)
-    const frontendUrl = process.env.FRONTEND_URL
-        || (process.env.NODE_ENV === 'production' ? process.env.PROD_FRONTEND_URL : process.env.DEV_FRONTEND_URL)
-        || 'http://localhost:3000';
+    // Build signing URLs for each signer from their access tokens. FRONTEND_URL is an explicit
+    // override; otherwise use env-aware central config (prod → https://propmetrik.com), never localhost.
+    const frontendUrl = process.env.FRONTEND_URL || config.app.frontendUrl;
     if ((envelope as any).signers) {
         (envelope as any).signers = (envelope as any).signers.map((s: any) => ({
             ...s,
@@ -2806,159 +2665,6 @@ router.delete('/documents/:id', asyncHandler(async (req: Request, res: Response)
         return res.status(404).json({ error: 'Document not found' });
     }
     res.json({ message: 'Document deleted' });
-}));
-
-/**
- * Signature requests alias (maps to /requests)
- * POST /api/v1/esign/signature-requests/
- */
-router.post('/signature-requests/', asyncHandler(async (req: Request, res: Response) => {
-    const userId = getUserId(req);
-    const { document_id, title, message, signers, expires_in_days } = req.body;
-
-    const signingRequest = await signingService.createSigningRequest({
-        documentId: document_id?.toString(),
-        documentType: 'standalone',
-        documentTitle: title || 'Signature Request',
-        signees: signers?.map((s: any, idx: number) => ({
-            signeeType: 'external',
-            externalName: s.full_name || s.name,
-            externalEmail: s.email,
-            signingOrder: s.order || idx + 1,
-            signeeRole: 'signer'
-        })) || [],
-        message,
-        expiresInDays: expires_in_days || 30
-    }, userId);
-
-    res.status(201).json({
-        id: signingRequest.id,
-        status: signingRequest.status,
-        created_at: signingRequest.createdAt
-    });
-}));
-
-/**
- * List signature requests
- * GET /api/v1/esign/signature-requests/
- */
-router.get('/signature-requests/', asyncHandler(async (req: Request, res: Response) => {
-    const userId = getUserId(req);
-    const requests = await signingService.getSigningRequestsForUser(userId);
-    res.json(requests);
-}));
-
-/**
- * Get inbox (requests where user is a signer)
- * GET /api/v1/esign/signature-requests/inbox
- */
-router.get('/signature-requests/inbox', asyncHandler(async (req: Request, res: Response) => {
-    const userId = getUserId(req);
-    const result = await dbQuery(`
-        SELECT sr.* FROM signing_requests sr
-        INNER JOIN signing_request_signees srs ON sr.id = srs.signing_request_id
-        WHERE srs.user_id = $1 AND srs.status = 'pending'
-        ORDER BY sr.created_at DESC
-    `, [userId]);
-    res.json(result.rows);
-}));
-
-/**
- * Public signing access (for external signers)
- * GET /api/v1/esign/signing/access/:token
- */
-router.get('/signing/access/:token', asyncHandler(async (req: Request, res: Response) => {
-    const signee = await magicLinkService.validateMagicLink(req.params.token);
-    if (!signee) {
-        return res.status(404).json({ error: 'Invalid or expired signing link' });
-    }
-
-    const signingRequest = await signingService.getSigningRequest(signee.signingRequestId);
-    if (!signingRequest) {
-        return res.status(404).json({ error: 'Signing request not found' });
-    }
-
-    res.json({
-        signer: {
-            id: signee.id,
-            name: signee.externalName,
-            email: signee.externalEmail,
-            role: signee.signeeRole,
-            status: signee.status
-        },
-        document: {
-            id: signingRequest.id,
-            title: signingRequest.documentTitle,
-            status: signingRequest.status
-        }
-    });
-}));
-
-/**
- * Public sign document
- * POST /api/v1/esign/signing/sign/:token
- */
-router.post('/signing/sign/:token', asyncHandler(async (req: Request, res: Response) => {
-    const { signature_data, signature_type, page, x, y, width, height } = req.body;
-
-    const evidence = await signingService.captureExternalSignature({
-        magicToken: req.params.token,
-        signatureMethod: signature_type || 'drawn',
-        signatureImageBase64: signature_data,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent']
-    });
-
-    res.json({
-        success: true,
-        message: 'Document signed successfully',
-        evidenceId: evidence.id
-    });
-}));
-
-/**
- * Decline signature
- * POST /api/v1/esign/signing/decline/:token
- */
-router.post('/signing/decline/:token', asyncHandler(async (req: Request, res: Response) => {
-    const signee = await magicLinkService.validateMagicLink(req.params.token);
-    if (!signee) {
-        return res.status(404).json({ error: 'Invalid or expired signing link' });
-    }
-
-    await dbQuery(`
-        UPDATE signing_request_signees 
-        SET status = 'declined', declined_at = NOW(), decline_reason = $1
-        WHERE id = $2
-    `, [req.body.decline_reason || 'Declined by signer', signee.id]);
-
-    await magicLinkService.invalidateMagicLink(signee.id);
-
-    res.json({ success: true, message: 'Signature declined' });
-}));
-
-/**
- * Get document for signing (PDF)
- * GET /api/v1/esign/signing/signature-request/:token/document
- */
-router.get('/signing/signature-request/:token/document', asyncHandler(async (req: Request, res: Response) => {
-    const signee = await magicLinkService.validateMagicLink(req.params.token);
-    if (!signee) {
-        return res.status(404).json({ error: 'Invalid or expired signing link' });
-    }
-
-    const signingRequest = await signingService.getSigningRequest(signee.signingRequestId);
-    if (!signingRequest || !signingRequest.originalPdfUrl) {
-        return res.status(404).json({ error: 'Document not found' });
-    }
-
-    // Get document from MinIO
-    const objectName = signingRequest.originalPdfUrl.replace('minio://', '');
-    const fileBuffer = await getFile(buckets.documents, objectName);
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="document.pdf"`);
-    res.send(fileBuffer);
 }));
 
 /**

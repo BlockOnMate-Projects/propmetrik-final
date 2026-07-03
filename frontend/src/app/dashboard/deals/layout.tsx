@@ -6,7 +6,6 @@ import { CrmSidebar } from '@/components/crm/CrmSidebar'
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '@/components/crm/KeyboardShortcuts'
 
 const OnboardingWizard = lazy(() => import('@/components/crm/OnboardingWizard'))
-const CrmAIAssistant = lazy(() => import('@/components/crm/CrmAIAssistant'))
 
 const ONBOARDING_DISMISSED_KEY = 'crm-onboarding-dismissed'
 
@@ -64,10 +63,8 @@ export default function DealsLayout({
             {/* Keyboard Shortcuts Help */}
             <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
 
-            {/* Floating AI Assistant */}
-            <Suspense fallback={null}>
-                <CrmAIAssistant />
-            </Suspense>
+            {/* Kobby AI is provided by the global Workspace panel's "KOBBY AI" tab —
+                no separate CRM AI popup here to avoid a redundant bottom-right widget. */}
         </div>
     )
 }

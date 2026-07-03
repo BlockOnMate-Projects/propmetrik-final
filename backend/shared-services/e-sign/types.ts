@@ -2,7 +2,7 @@
  * E-Sign Shared Services Types
  * 
  * Type definitions for the low-level E-Signature services.
- * Used by signingService, pdfSigningService, etc.
+ * Used by pdfSigningService and other e-sign services.
  * 
  * @module shared-services/e-sign/types
  */

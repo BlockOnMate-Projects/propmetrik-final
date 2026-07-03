@@ -50,9 +50,11 @@ router.get(
             return res.status(400).json({ error: 'Invalid entity type' });
         }
 
-        // Ensure workspace exists so we have a workspaceId
+        // Ensure workspace exists so we have a workspaceId. 'crm' is a context-only
+        // scope with no dedicated workspace, so it's excluded from validTypes above
+        // and can never reach here — cast to ensureWorkspace's narrower entity type.
         const workspace = await workspaceService.ensureWorkspace(
-            entityType as EntityType,
+            entityType as Parameters<typeof workspaceService.ensureWorkspace>[0],
             entityId,
             organizationId
         );
@@ -98,7 +100,9 @@ router.post(
             return res.status(400).json({ error: 'workspaceId, entityType, entityId are required' });
         }
 
-        const validTypes: EntityType[] = ['project', 'valuation', 'deal', 'property', 'platform'];
+        // 'crm' allowed here too: this fallback takes workspaceId from the body (no
+        // ensureWorkspace), so the CRM scope only drives context — see KobbyAIService.
+        const validTypes: EntityType[] = ['project', 'valuation', 'deal', 'property', 'platform', 'crm'];
         if (!validTypes.includes(entityType as EntityType)) {
             return res.status(400).json({ error: 'Invalid entity type' });
         }
@@ -194,6 +198,14 @@ router.get(
                 'Summarize recent activity across all workspaces',
                 'What are the top performing properties?',
                 'Show me a summary of our portfolio performance',
+            ],
+            crm: [
+                'What is my total pipeline value?',
+                'Which deals are closing this week?',
+                'Who are the top performing agents?',
+                'Which deals are at risk of stalling?',
+                'How many qualified leads do we have?',
+                'What is our average days to close?',
             ],
         };
 

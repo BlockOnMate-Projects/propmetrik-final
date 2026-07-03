@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   TerminalPanel,
   PropertyTypeBadge,
@@ -140,6 +140,36 @@ export default function NewValuationPage() {
     return () => { cancelled = true }
   }, [initialClientId])
 
+  // ── Draft persistence ──────────────────────────────────────────────────────
+  // /new holds the ENTIRE subject form (property details + report writeups) in local
+  // React state with no server-side draft. So navigating away from /new — or an aborted
+  // create — used to wipe everything the valuer typed. Persist the draft to sessionStorage
+  // and restore it on return, so work is never lost. Cleared on a successful create.
+  const DRAFT_KEY = 'pm:valuation-new-draft'
+  const draftSkipFirstSave = useRef(true)
+
+  // Restore any in-progress draft once, on mount (client-only, after hydration).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const d = JSON.parse(raw)
+      if (d.newProperty && Object.keys(d.newProperty).length) setNewProperty(d.newProperty)
+      if (d.valuationPurpose) setValuationPurpose(d.valuationPurpose)
+      if (typeof d.createNewProperty === 'boolean') setCreateNewProperty(d.createNewProperty)
+      if (typeof d.step === 'number') setStep(d.step)
+    } catch { /* corrupt draft — ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist on every change (skips the initial mount fire so a restore can't be clobbered).
+  useEffect(() => {
+    if (draftSkipFirstSave.current) { draftSkipFirstSave.current = false; return }
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ newProperty, valuationPurpose, createNewProperty, step }))
+    } catch { /* quota / serialisation — non-fatal */ }
+  }, [newProperty, valuationPurpose, createNewProperty, step])
+
   // Search for existing properties
   useEffect(() => {
     async function searchProperties() {
@@ -256,6 +286,9 @@ export default function NewValuationPage() {
       if (!valuationResponse.data) {
         throw new Error('Failed to create valuation')
       }
+
+      // Draft is now persisted server-side under the created valuation — drop the local draft.
+      try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* non-fatal */ }
 
       // Navigate to the valuation workflow — Subject is filled; next is Documents & Photos, then Floor Plan
       router.push(`/dashboard/valuations/${valuationResponse.data.id}/documents`)

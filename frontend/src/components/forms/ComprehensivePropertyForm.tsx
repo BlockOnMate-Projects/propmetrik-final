@@ -270,18 +270,26 @@ export default function ComprehensivePropertyForm({
       setWriteupBusy(null)
     }
   }
-  const renderAiBtn = (section: WriteupSection) => (
-    <button
-      type="button"
-      onClick={() => generateWriteup(section)}
-      disabled={!valuationId || writeupBusy !== null}
-      title={valuationId ? 'Draft from the property data + comparables' : 'Available on the Subject step, after the valuation is created'}
-      className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-40 disabled:cursor-not-allowed"
-    >
-      {writeupBusy === section ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-      {writeupBusy === section ? 'Generating…' : 'Generate with AI'}
-    </button>
-  )
+  const renderAiBtn = (section: WriteupSection) => {
+    // The writeup AI drafts from a CREATED valuation's data + comparables
+    // (POST /valuations/{id}/ai/writeup). Before the valuation exists — e.g. the /new
+    // property-setup step, which has no valuationId — there is nothing to draft from, so
+    // don't render a permanently-disabled ("grayed out") button; just omit it. It appears
+    // on the Subject step where valuationId is set.
+    if (!valuationId) return null
+    return (
+      <button
+        type="button"
+        onClick={() => generateWriteup(section)}
+        disabled={writeupBusy !== null}
+        title="Draft from the property data + comparables"
+        className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {writeupBusy === section ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+        {writeupBusy === section ? 'Generating…' : 'Generate with AI'}
+      </button>
+    )
+  }
 
   const isRequired = (field: string) => VALIDATION_RULES.required.includes(field)
   const hasError = (field: string) => !!errors[field]

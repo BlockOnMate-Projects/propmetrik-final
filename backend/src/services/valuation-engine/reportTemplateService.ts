@@ -13,6 +13,7 @@ import { economicDataService } from '../data-hub/economicDataService';
 import { GHANA_GPS_DISTRICTS } from '../data-hub/ghanaPostGeocodingService';
 import { floorPlanService } from './floorPlanService';
 import { valuationDocumentService } from './valuationDocumentService';
+import { resolveReportBranding } from './brandingService';
 
 /**
  * Fetch the last known USD/GHS rate from the DB.
@@ -1175,10 +1176,22 @@ class ReportTemplateService {
     const stripCites = (s: any): string =>
       String(s || '').replace(/\s*\[\s*\d+(?:\s*,\s*\d+)*\s*\]/g, '').replace(/\s{2,}/g, ' ').trim();
 
+    // Firm branding for the cover letterhead (logo/name/colors) — falls back to PROPMETRIK.
+    const branding = await resolveReportBranding((data.valuation as any)?.valuer_organization_id, { context: 'valuation', withLogo: false });
+
     return {
       brand: {
         services_url: servicesUrl,
         services_qr: servicesQr,
+        name: branding.name,
+        tagline: branding.tagline,
+        initial: (branding.name || 'P').trim().charAt(0).toUpperCase(),
+        logo_url: branding.logoUrl || '',
+        primary_color: branding.primaryColor,
+        accent_color: branding.accentColor,
+        on_primary: branding.onPrimary,
+        on_accent: branding.onAccent,
+        credential: branding.credentialLine || '',
       },
 
       // Client data (from valuation_engagements - who instructed the valuation)

@@ -72,7 +72,7 @@ export class PropertyMatchService {
         const contactResult = await db.query(
             `SELECT budget_min, budget_max, preferred_locations, preferred_property_types,
                     property_interests
-             FROM crm_contacts
+             FROM contacts
              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
             [contactId, organizationId]
         );
@@ -83,8 +83,8 @@ export class PropertyMatchService {
 
         const prefs: ContactPreferences = contactResult.rows[0] as any;
 
-        // 2. Fetch candidate properties
-        let propertyWhere = 'p.organization_id = $1 AND p.deleted_at IS NULL';
+        // 2. Fetch candidate properties (crm_properties has no soft-delete column)
+        let propertyWhere = 'p.organization_id = $1';
         const params: any[] = [organizationId];
 
         if (excludeSold) {
@@ -214,7 +214,7 @@ export class PropertyMatchService {
                     budget_min, budget_max,
                     preferred_locations, preferred_property_types,
                     property_interests
-             FROM crm_contacts
+             FROM contacts
              WHERE organization_id = $1 AND deleted_at IS NULL
                AND (budget_max IS NULL OR budget_max >= $2 * 0.7)
                AND (budget_min IS NULL OR budget_min <= $2 * 1.3)

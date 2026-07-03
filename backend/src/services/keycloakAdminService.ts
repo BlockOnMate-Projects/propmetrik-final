@@ -23,7 +23,11 @@ import { logger } from '../utils/logger';
 // Configuration
 // ---------------------------------------------------------------------------
 
-const keycloakUrl = (config.keycloak.url || '').replace(/\/$/, '');
+// This service is ALL server-to-server admin traffic, so it targets the admin URL
+// (KEYCLOAK_ADMIN_URL if set, else KEYCLOAK_URL). Point KEYCLOAK_ADMIN_URL at the
+// Keycloak origin to bypass a Cloudflare bot-challenge on the public sso host —
+// the browser-facing issuer (KEYCLOAK_URL) is unaffected.
+const keycloakUrl = (config.keycloak.adminUrl || config.keycloak.url || '').replace(/\/$/, '');
 const keycloakRealm = config.keycloak.realm || '';
 const keycloakEnabled = !!(keycloakUrl && keycloakRealm);
 

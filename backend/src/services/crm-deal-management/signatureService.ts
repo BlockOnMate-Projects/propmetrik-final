@@ -15,7 +15,7 @@ import { logger } from '../../utils/logger';
 import { activityService } from './activityService';
 import { crmDocumentService } from './crmDocumentService';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
-import { ESignField } from '../../../shared-services/e-sign/integration/types';
+import { ESignField, CompletionEvent } from '../../../shared-services/e-sign/integration/types';
 
 // =============================================
 // Types
@@ -102,7 +102,9 @@ export class SignatureService {
     constructor() {}
 
     /**
-     * Create a signature envelope (stub - e-sign removed)
+     * Create a signature envelope (draft). Actual sending/signing is delegated to the
+     * shared e-sign engine in sendSignatureRequest(); completion syncs back via
+     * handleEsignCompletion().
      */
     async createSignatureEnvelope(
         organizationId: string,
@@ -493,6 +495,24 @@ export class SignatureService {
                 throw new Error(`Cannot cancel envelope with status: ${envelope.status}`);
             }
 
+            // Void the underlying e-sign envelope so outstanding magic links stop working.
+            // Previously only the CRM row flipped to 'cancelled' while the real envelope
+            // stayed live — signers could still open their link and sign a "cancelled" doc.
+            if (envelope.esign_envelope_id_external) {
+                try {
+                    await eSignIntegrationService.voidEnvelope(
+                        envelope.esign_envelope_id_external,
+                        reason || 'Cancelled by sender'
+                    );
+                } catch (voidError: any) {
+                    logger.error('Failed to void underlying e-sign envelope', {
+                        envelopeId,
+                        esignEnvelopeId: envelope.esign_envelope_id_external,
+                        error: voidError?.message,
+                    });
+                }
+            }
+
             // Update CRM envelope
             const result = await db.query<SignatureEnvelope>(
                 `UPDATE signature_envelopes
@@ -534,20 +554,156 @@ export class SignatureService {
                 throw new Error(`Cannot resend envelope with status: ${envelope.status}`);
             }
 
-            // Use e-sign integration service to resend
-            // Note: This would require a resend endpoint in the e-sign service
-            // For now, we'll void and recreate
-            logger.info('Resend request received', {
-                envelopeId,
-                signerEmail,
-                note: 'Resend functionality requires sending a new envelope',
-            });
+            // Re-notify the outstanding signer(s) via the shared e-sign engine — the same
+            // path used for the initial send. (The engine re-sends to the next pending
+            // signer; per-signer targeting is not yet exposed, so signerEmail is advisory.)
+            await eSignIntegrationService.resendEnvelope(
+                envelope.esign_envelope_id_external,
+                signerEmail ? `Reminder requested for ${signerEmail}` : 'Signature reminder'
+            );
 
-            // If specific signer, just log for now
-            // Full implementation would use e-sign service resend capability
-            throw new Error('Resend functionality is pending e-sign service implementation. Please void and create a new envelope.');
+            logger.info('Signature reminder resent via e-sign service', {
+                envelopeId,
+                esignEnvelopeId: envelope.esign_envelope_id_external,
+                signerEmail,
+            });
         } catch (error) {
             logger.error('Error resending signature request', { error, envelopeId, organizationId });
+            throw error;
+        }
+    }
+
+    /**
+     * Handle e-sign completion for a CRM signature envelope.
+     *
+     * Dispatched from the internal completion handler (routes/eSign.ts) and the
+     * external webhook (routes/webhooks.ts) when the underlying e-sign envelope is
+     * completed/voided/expired. Mirrors the verified valuation/lease pattern: it syncs
+     * the terminal status back to the CRM `signature_envelopes` row, stamps per-signer
+     * signed times, flips the linked CRM document to signed, and logs deal activity.
+     *
+     * Without this, a fully-signed envelope stayed stuck at 'sent' on the deal's
+     * Signatures tab and the linked document never flipped to signed.
+     */
+    async handleEsignCompletion(event: CompletionEvent): Promise<void> {
+        const { envelope, sourceContext, documents, signers } = event;
+
+        if (sourceContext.entityType !== 'signature_envelope') {
+            logger.warn('Invalid entity type for CRM signature e-sign completion', {
+                expected: 'signature_envelope',
+                received: sourceContext.entityType,
+            });
+            return;
+        }
+
+        const crmEnvelopeId = sourceContext.entityId;
+
+        try {
+            const existing = await db.query<SignatureEnvelope>(
+                `SELECT * FROM signature_envelopes WHERE id = $1`,
+                [crmEnvelopeId]
+            );
+
+            if (existing.rows.length === 0) {
+                logger.warn('CRM signature envelope not found for completion', { crmEnvelopeId });
+                return;
+            }
+
+            const env = existing.rows[0];
+            const signedDoc = documents?.[0];
+
+            // Map terminal e-sign event → CRM signature status
+            const terminalStatus: SignatureStatus =
+                event.event === 'envelope.voided' ? 'cancelled'
+                    : event.event === 'envelope.expired' ? 'expired'
+                        : 'signed';
+
+            // Stamp per-signer signed status by matching on email
+            const signedByEmail = new Map(
+                (signers || []).map(s => [s.email.toLowerCase(), s])
+            );
+            const updatedSigners: SignerInfo[] = (env.signers || []).map(s => {
+                const match = signedByEmail.get(s.email.toLowerCase());
+                return match
+                    ? {
+                        ...s,
+                        status: 'signed' as const,
+                        signed_at: match.signedAt,
+                        ip_address: match.ipAddress,
+                    }
+                    : s;
+            });
+
+            await db.query(
+                `UPDATE signature_envelopes
+                 SET status = $1,
+                     signers = $2,
+                     completed_at = CASE WHEN $1 = 'signed' THEN NOW() ELSE completed_at END,
+                     updated_at = NOW()
+                 WHERE id = $3`,
+                [terminalStatus, JSON.stringify(updatedSigners), crmEnvelopeId]
+            );
+
+            // Flip the linked CRM document to signed (only on a real completion)
+            if (terminalStatus === 'signed' && env.document_id && signedDoc?.signedUrl) {
+                try {
+                    const signedBy = (signers || []).map(s => {
+                        const envSigner = (env.signers || []).find(
+                            es => es.email.toLowerCase() === s.email.toLowerCase()
+                        );
+                        return {
+                            user_id: (envSigner?.user_id || envSigner?.contact_id || s.email) as string,
+                            signed_at: s.signedAt,
+                            ip_address: s.ipAddress,
+                        };
+                    });
+                    await crmDocumentService.markDocumentAsSigned(
+                        env.document_id,
+                        env.organization_id,
+                        envelope.id,
+                        signedBy
+                    );
+                } catch (docError: any) {
+                    logger.error('Failed to mark CRM document as signed on completion', {
+                        documentId: env.document_id,
+                        crmEnvelopeId,
+                        error: docError?.message,
+                    });
+                }
+            }
+
+            // Log activity on the associated deal
+            if (env.deal_id) {
+                try {
+                    await activityService.createActivity({
+                        deal_id: env.deal_id,
+                        // No acting user at completion time — column is nullable.
+                        user_id: (env.created_by || null) as unknown as string,
+                        activity_type: terminalStatus === 'signed' ? 'document_received' : 'document_request',
+                        subject: terminalStatus === 'signed'
+                            ? 'Document fully signed'
+                            : `Signature ${terminalStatus}`,
+                        description: terminalStatus === 'signed'
+                            ? 'All parties have signed the document'
+                            : `Signature envelope ${terminalStatus}`,
+                        new_value: {
+                            envelope_id: crmEnvelopeId,
+                            esign_envelope_id: envelope.id,
+                            signed_url: signedDoc?.signedUrl,
+                        },
+                    });
+                } catch (activityError) {
+                    logger.error('Failed to log CRM signature completion activity', activityError);
+                }
+            }
+
+            logger.info('CRM signature envelope completion processed', {
+                crmEnvelopeId,
+                esignEnvelopeId: envelope.id,
+                status: terminalStatus,
+            });
+        } catch (error) {
+            logger.error('Error processing CRM signature completion', { error, crmEnvelopeId });
             throw error;
         }
     }

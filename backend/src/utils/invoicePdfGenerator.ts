@@ -45,6 +45,15 @@ export interface InvoicePdfData {
   notes?: string;
   terms?: string;
   paymentLink?: string;
+
+  // Optional firm branding (all fall back to PROPMETRIK defaults)
+  brandName?: string;
+  brandTagline?: string;
+  brandLogo?: Buffer | null;
+  brandLogoMime?: string | null;
+  brandAccent?: string;   // "#RRGGBB"
+  brandPrimary?: string;  // "#RRGGBB"
+  brandFooter?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,14 +106,27 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
       const ccy = data.currency || 'GHS';
       let y = 0;
 
-      // ════════════ HEADER BAND (compact) ════════════
-      doc.rect(0, 0, PW, 70).fill(C.dark);
-      doc.rect(0, 70, PW, 3).fill(C.amber);
+      // Firm branding (falls back to PROPMETRIK)
+      const brandName = data.brandName || 'PROPMETRIK';
+      const brandTagline = data.brandTagline || 'PROJECT MANAGEMENT';
+      const accent = data.brandAccent || C.amber;
+      const primary = data.brandPrimary || C.dark;
+      const footerText = data.brandFooter || 'PROPMETRIK Ghana Ltd.';
 
-      doc.fontSize(16).fillColor(C.amber).font('Helvetica-Bold')
-        .text('PROPMETRIK', M, 18, { ...NB, width: CW / 2 });
-      doc.fontSize(8).fillColor(C.muted).font('Helvetica')
-        .text('PROJECT MANAGEMENT', M, 38, { ...NB, width: CW / 2 });
+      // ════════════ HEADER BAND (compact) ════════════
+      doc.rect(0, 0, PW, 70).fill(primary);
+      doc.rect(0, 70, PW, 3).fill(accent);
+
+      let logoShown = false;
+      if (data.brandLogo && data.brandLogo.length > 24) {
+        try { doc.image(data.brandLogo, M, 15, { fit: [150, 40] }); logoShown = true; } catch { /* fall back to name text */ }
+      }
+      if (!logoShown) {
+        doc.fontSize(16).fillColor(accent).font('Helvetica-Bold')
+          .text(brandName, M, 18, { ...NB, width: CW / 2 });
+        doc.fontSize(8).fillColor(C.muted).font('Helvetica')
+          .text(brandTagline, M, 38, { ...NB, width: CW / 2 });
+      }
 
       doc.fontSize(18).fillColor(C.white).font('Helvetica-Bold')
         .text('INVOICE', PW - M - 180, 18, { ...NB, width: 180, align: 'right' });
@@ -216,7 +238,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
       if (data.taxAmount && data.taxAmount > 0) addRow('Tax', `${ccy} ${fmtAmt(data.taxAmount)}`);
       if (data.discount && data.discount > 0) addRow('Discount', `- ${ccy} ${fmtAmt(data.discount)}`);
       if (data.retention && data.retention > 0) addRow('Retention', `- ${ccy} ${fmtAmt(data.retention)}`);
-      if (data.platformFee && data.platformFee > 0) addRow('PROPMETRIK Fee (0.25%)', `${ccy} ${fmtAmt(data.platformFee)}`);
+      if (data.platformFee && data.platformFee > 0) addRow('Platform Fee (0.25%)', `${ccy} ${fmtAmt(data.platformFee)}`);
 
       y += 2;
       addRow('TOTAL DUE', `${ccy} ${fmtAmt(data.totalDue)}`, true, C.amberLight);
@@ -225,7 +247,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
       // ════════════ PAYMENT LINK ════════════
       if (data.paymentLink) {
         if (y + 36 > 770) { doc.addPage(); y = M; }
-        doc.roundedRect(M, y, CW, 30, 4).fill(C.amber);
+        doc.roundedRect(M, y, CW, 30, 4).fill(accent);
         doc.fontSize(9).fillColor(C.dark).font('Helvetica-Bold')
           .text(`Pay Online: ${data.paymentLink}`, M + 10, y + 9, { ...NB, width: CW - 20, link: data.paymentLink });
         y += 38;
@@ -248,7 +270,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
         doc.switchToPage(i);
         const footY = 841.89 - 24;
         doc.fontSize(6).fillColor(C.muted).font('Helvetica');
-        doc.text('PROPMETRIK Ghana Ltd.', M, footY, { ...NB, width: CW / 2, align: 'left' });
+        doc.text(footerText, M, footY, { ...NB, width: CW / 2, align: 'left' });
         doc.text(`Page ${i + 1} of ${pages.count}`, M + CW / 2, footY, { ...NB, width: CW / 2, align: 'right' });
       }
 

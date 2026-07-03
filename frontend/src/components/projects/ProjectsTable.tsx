@@ -221,7 +221,7 @@ function FilterPanel({
           <div>
             <label className="font-mono text-xs text-muted-foreground block mb-2">Region</label>
             <div className="flex flex-wrap gap-1.5">
-              {GHANA_REGIONS.slice(0, 6).map(region => (
+              {GHANA_REGIONS.map(region => (
                 <Badge
                   key={region}
                   className={cn(

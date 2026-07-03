@@ -13,6 +13,10 @@
  */
 
 import { pool } from '../../database';
+import { logger } from '../../utils/logger';
+// Commission records carry no currency of their own — the share is in the deal's
+// currency. Join deals for it and GHS-normalize every summed share.
+import { getGhsRateMap, ghsValueSql } from '../property-management/utils/currencyFx';
 
 // Types
 export type PlanType = 'standard' | 'tiered' | 'flat' | 'graduated';
@@ -182,15 +186,15 @@ class CommissionService {
         return result.rows[0];
     }
 
-    async getPlan(id: string): Promise<CommissionPlan | null> {
+    async getPlan(id: string, organizationId: string): Promise<CommissionPlan | null> {
         const result = await pool.query(
-            `SELECT cp.*, 
+            `SELECT cp.*,
                 json_agg(ct.* ORDER BY ct.tier_order) FILTER (WHERE ct.id IS NOT NULL) AS tiers
             FROM commission_plans cp
             LEFT JOIN commission_tiers ct ON ct.plan_id = cp.id
-            WHERE cp.id = $1
+            WHERE cp.id = $1 AND cp.organization_id = $2
             GROUP BY cp.id`,
-            [id]
+            [id, organizationId]
         );
         return result.rows[0] || null;
     }
@@ -210,13 +214,13 @@ class CommissionService {
         return result.rows;
     }
 
-    async updatePlan(id: string, updates: Partial<CommissionPlan>): Promise<CommissionPlan | null> {
+    async updatePlan(id: string, updates: Partial<CommissionPlan>, organizationId: string): Promise<CommissionPlan | null> {
         const fields: string[] = [];
         const values: any[] = [];
         let paramIndex = 1;
 
         const allowedFields = ['name', 'description', 'plan_type', 'base_rate', 'is_default', 'is_active', 'effective_from', 'effective_to'];
-        
+
         for (const [key, value] of Object.entries(updates)) {
             if (allowedFields.includes(key) && value !== undefined) {
                 fields.push(`${key} = $${paramIndex}`);
@@ -225,22 +229,25 @@ class CommissionService {
             }
         }
 
-        if (fields.length === 0) return this.getPlan(id);
+        if (fields.length === 0) return this.getPlan(id, organizationId);
 
         values.push(id);
+        const idParam = paramIndex++;
+        values.push(organizationId);
+        const orgParam = paramIndex;
         const result = await pool.query(
             `UPDATE commission_plans SET ${fields.join(', ')}, updated_at = NOW()
-            WHERE id = $${paramIndex}
+            WHERE id = $${idParam} AND organization_id = $${orgParam}
             RETURNING *`,
             values
         );
         return result.rows[0] || null;
     }
 
-    async deletePlan(id: string): Promise<boolean> {
+    async deletePlan(id: string, organizationId: string): Promise<boolean> {
         const result = await pool.query(
-            'DELETE FROM commission_plans WHERE id = $1 RETURNING id',
-            [id]
+            'DELETE FROM commission_plans WHERE id = $1 AND organization_id = $2 RETURNING id',
+            [id, organizationId]
         );
         return result.rowCount! > 0;
     }
@@ -249,7 +256,14 @@ class CommissionService {
     // COMMISSION TIERS
     // =====================================================
 
-    async addTier(planId: string, tier: Partial<CommissionTier>): Promise<CommissionTier> {
+    async addTier(planId: string, tier: Partial<CommissionTier>, organizationId: string): Promise<CommissionTier | null> {
+        // Verify the parent plan belongs to the caller's org before inserting a tier
+        const planCheck = await pool.query(
+            'SELECT id FROM commission_plans WHERE id = $1 AND organization_id = $2',
+            [planId, organizationId]
+        );
+        if (planCheck.rowCount === 0) return null;
+
         const result = await pool.query(
             `INSERT INTO commission_tiers (
                 plan_id, tier_name, min_value, max_value, 
@@ -269,7 +283,7 @@ class CommissionService {
         return result.rows[0];
     }
 
-    async updateTier(id: string, updates: Partial<CommissionTier>): Promise<CommissionTier | null> {
+    async updateTier(id: string, updates: Partial<CommissionTier>, organizationId: string): Promise<CommissionTier | null> {
         const fields: string[] = [];
         const values: any[] = [];
         let paramIndex = 1;
@@ -285,19 +299,32 @@ class CommissionService {
         if (fields.length === 0) return null;
 
         values.push(id);
+        const idParam = paramIndex++;
+        values.push(organizationId);
+        const orgParam = paramIndex;
+        // commission_tiers has no organization_id → scope via parent plan
         const result = await pool.query(
-            `UPDATE commission_tiers SET ${fields.join(', ')}
-            WHERE id = $${paramIndex}
-            RETURNING *`,
+            `UPDATE commission_tiers ct SET ${fields.join(', ')}
+            FROM commission_plans cp
+            WHERE ct.id = $${idParam}
+              AND cp.id = ct.plan_id
+              AND cp.organization_id = $${orgParam}
+            RETURNING ct.*`,
             values
         );
         return result.rows[0] || null;
     }
 
-    async deleteTier(id: string): Promise<boolean> {
+    async deleteTier(id: string, organizationId: string): Promise<boolean> {
+        // commission_tiers has no organization_id → scope via parent plan
         const result = await pool.query(
-            'DELETE FROM commission_tiers WHERE id = $1 RETURNING id',
-            [id]
+            `DELETE FROM commission_tiers ct
+             USING commission_plans cp
+             WHERE ct.id = $1
+               AND cp.id = ct.plan_id
+               AND cp.organization_id = $2
+             RETURNING ct.id`,
+            [id, organizationId]
         );
         return result.rowCount! > 0;
     }
@@ -370,9 +397,9 @@ class CommissionService {
 
     async getSplits(dealId: string): Promise<CommissionSplit[]> {
         const result = await pool.query(
-            `SELECT cs.*, u.display_name AS agent_name
+            `SELECT cs.*, TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name
             FROM commission_splits cs
-            JOIN users u ON cs.agent_id = u.id
+            LEFT JOIN agents a ON cs.agent_id = a.id
             WHERE cs.deal_id = $1
             ORDER BY cs.split_percentage DESC`,
             [dealId]
@@ -455,17 +482,17 @@ class CommissionService {
         return result.rows[0];
     }
 
-    async getRecord(id: string): Promise<CommissionRecord | null> {
+    async getRecord(id: string, organizationId: string): Promise<CommissionRecord | null> {
         const result = await pool.query(
-            `SELECT cr.*, 
-                u.display_name AS agent_name,
+            `SELECT cr.*,
+                TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name,
                 d.title AS deal_name,
                 (SELECT p.address_street FROM crm_properties p WHERE p.id = ANY(d.property_ids) LIMIT 1) AS property_address
             FROM commission_records cr
-            JOIN users u ON cr.agent_id = u.id
+            LEFT JOIN agents a ON cr.agent_id = a.id
             LEFT JOIN deals d ON cr.deal_id = d.id
-            WHERE cr.id = $1`,
-            [id]
+            WHERE cr.id = $1 AND cr.organization_id = $2`,
+            [id, organizationId]
         );
         return result.rows[0] || null;
     }
@@ -515,11 +542,11 @@ class CommissionService {
         params.push(limit, offset);
         const result = await pool.query(
             `SELECT cr.*, 
-                u.display_name AS agent_name,
+                TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name,
                 d.title AS deal_name,
                 (SELECT p.address_street FROM crm_properties p WHERE p.id = ANY(d.property_ids) LIMIT 1) AS property_address
             FROM commission_records cr
-            JOIN users u ON cr.agent_id = u.id
+            LEFT JOIN agents a ON cr.agent_id = a.id
             LEFT JOIN deals d ON cr.deal_id = d.id
             ${whereClause}
             ORDER BY cr.deal_close_date DESC
@@ -543,24 +570,24 @@ class CommissionService {
         return result.rows;
     }
 
-    async approveRecord(id: string, approvedBy: string): Promise<CommissionRecord | null> {
+    async approveRecord(id: string, approvedBy: string, organizationId: string): Promise<CommissionRecord | null> {
         const result = await pool.query(
-            `UPDATE commission_records 
+            `UPDATE commission_records
             SET status = 'approved', approved_at = NOW(), approved_by = $2, updated_at = NOW()
-            WHERE id = $1 AND status = 'pending'
+            WHERE id = $1 AND status = 'pending' AND organization_id = $3
             RETURNING *`,
-            [id, approvedBy]
+            [id, approvedBy, organizationId]
         );
         return result.rows[0] || null;
     }
 
-    async markAsPaid(id: string): Promise<CommissionRecord | null> {
+    async markAsPaid(id: string, organizationId: string): Promise<CommissionRecord | null> {
         const result = await pool.query(
-            `UPDATE commission_records 
+            `UPDATE commission_records
             SET status = 'paid', paid_at = NOW(), updated_at = NOW()
-            WHERE id = $1 AND status = 'approved'
+            WHERE id = $1 AND status = 'approved' AND organization_id = $2
             RETURNING *`,
-            [id]
+            [id, organizationId]
         );
         return result.rows[0] || null;
     }
@@ -568,10 +595,11 @@ class CommissionService {
     async createClawback(
         originalRecordId: string,
         reason: string,
+        organizationId: string,
         createdBy?: string
     ): Promise<CommissionRecord | null> {
-        // Get original record
-        const original = await this.getRecord(originalRecordId);
+        // Get original record (org-scoped)
+        const original = await this.getRecord(originalRecordId, organizationId);
         if (!original || original.is_clawback) return null;
 
         // Create clawback record (negative values)
@@ -602,8 +630,8 @@ class CommissionService {
 
         // Mark original as clawback
         await pool.query(
-            `UPDATE commission_records SET status = 'clawback', updated_at = NOW() WHERE id = $1`,
-            [originalRecordId]
+            `UPDATE commission_records SET status = 'clawback', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+            [originalRecordId, organizationId]
         );
 
         return result.rows[0];
@@ -653,13 +681,13 @@ class CommissionService {
         return statementIds;
     }
 
-    async getStatement(id: string): Promise<CommissionStatement | null> {
+    async getStatement(id: string, organizationId: string): Promise<CommissionStatement | null> {
         const result = await pool.query(
-            `SELECT cs.*, u.display_name AS agent_name
+            `SELECT cs.*, TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name
             FROM commission_statements cs
-            JOIN users u ON cs.agent_id = u.id
-            WHERE cs.id = $1`,
-            [id]
+            LEFT JOIN agents a ON cs.agent_id = a.id
+            WHERE cs.id = $1 AND cs.organization_id = $2`,
+            [id, organizationId]
         );
         
         if (!result.rows[0]) return null;
@@ -709,9 +737,9 @@ class CommissionService {
 
         params.push(limit);
         const result = await pool.query(
-            `SELECT cs.*, u.display_name AS agent_name
+            `SELECT cs.*, TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name
             FROM commission_statements cs
-            JOIN users u ON cs.agent_id = u.id
+            LEFT JOIN agents a ON cs.agent_id = a.id
             ${whereClause}
             ORDER BY cs.period_end DESC
             LIMIT $${paramIndex}`,
@@ -721,14 +749,14 @@ class CommissionService {
         return result.rows;
     }
 
-    async approveStatement(id: string, approvedBy: string): Promise<CommissionStatement | null> {
+    async approveStatement(id: string, approvedBy: string, organizationId: string): Promise<CommissionStatement | null> {
         // Approve statement
         const result = await pool.query(
-            `UPDATE commission_statements 
+            `UPDATE commission_statements
             SET status = 'approved', approved_at = NOW(), approved_by = $2, updated_at = NOW()
-            WHERE id = $1 AND status = 'draft'
+            WHERE id = $1 AND status = 'draft' AND organization_id = $3
             RETURNING *`,
-            [id, approvedBy]
+            [id, approvedBy, organizationId]
         );
 
         if (!result.rows[0]) return null;
@@ -748,15 +776,16 @@ class CommissionService {
     async markStatementPaid(
         id: string,
         paymentMethod: string,
-        paymentReference: string
+        paymentReference: string,
+        organizationId: string
     ): Promise<CommissionStatement | null> {
         const result = await pool.query(
-            `UPDATE commission_statements 
-            SET status = 'paid', payment_method = $2, payment_reference = $3, 
+            `UPDATE commission_statements
+            SET status = 'paid', payment_method = $2, payment_reference = $3,
                 paid_at = NOW(), updated_at = NOW()
-            WHERE id = $1 AND status = 'approved'
+            WHERE id = $1 AND status = 'approved' AND organization_id = $4
             RETURNING *`,
-            [id, paymentMethod, paymentReference]
+            [id, paymentMethod, paymentReference, organizationId]
         );
 
         if (!result.rows[0]) return null;
@@ -818,9 +847,9 @@ class CommissionService {
         }
 
         const result = await pool.query(
-            `SELECT ca.*, u.display_name AS agent_name
+            `SELECT ca.*, TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name
             FROM commission_adjustments ca
-            JOIN users u ON ca.agent_id = u.id
+            LEFT JOIN agents a ON ca.agent_id = a.id
             ${whereClause}
             ORDER BY ca.effective_date DESC`,
             params
@@ -829,13 +858,13 @@ class CommissionService {
         return result.rows;
     }
 
-    async approveAdjustment(id: string, approvedBy: string): Promise<CommissionAdjustment | null> {
+    async approveAdjustment(id: string, approvedBy: string, organizationId: string): Promise<CommissionAdjustment | null> {
         const result = await pool.query(
-            `UPDATE commission_adjustments 
+            `UPDATE commission_adjustments
             SET status = 'approved', approved_at = NOW(), approved_by = $2
-            WHERE id = $1 AND status = 'pending'
+            WHERE id = $1 AND status = 'pending' AND organization_id = $3
             RETURNING *`,
-            [id, approvedBy]
+            [id, approvedBy, organizationId]
         );
         return result.rows[0] || null;
     }
@@ -845,27 +874,30 @@ class CommissionService {
     // =====================================================
 
     async getSummary(organizationId: string, agentId?: string): Promise<CommissionSummary> {
-        const agentFilter = agentId ? 'AND agent_id = $2' : '';
+        const agentFilter = agentId ? 'AND cr.agent_id = $2' : '';
         const params = agentId ? [organizationId, agentId] : [organizationId];
 
+        const fx = await getGhsRateMap();
+        const shareGhs = ghsValueSql('cr.agent_share', 'd.currency', fx);
         const result = await pool.query(
-            `SELECT 
-                COALESCE(SUM(CASE WHEN status = 'pending' THEN agent_share ELSE 0 END), 0) AS total_pending,
-                COALESCE(SUM(CASE WHEN status = 'approved' THEN agent_share ELSE 0 END), 0) AS total_approved,
-                COALESCE(SUM(CASE WHEN status = 'paid' THEN agent_share ELSE 0 END), 0) AS total_paid,
-                COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending_count,
-                COUNT(CASE WHEN status = 'approved' THEN 1 END) AS approved_count,
-                COUNT(CASE WHEN status = 'paid' THEN 1 END) AS paid_count,
-                COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM deal_close_date) = EXTRACT(YEAR FROM CURRENT_DATE) 
-                    THEN agent_share ELSE 0 END), 0) AS ytd_commission,
-                COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM deal_close_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-                    AND EXTRACT(MONTH FROM deal_close_date) = EXTRACT(MONTH FROM CURRENT_DATE) 
-                    THEN agent_share ELSE 0 END), 0) AS mtd_commission,
-                COALESCE(AVG(agent_share), 0) AS avg_deal_commission
-            FROM commission_records
-            WHERE organization_id = $1 
-              AND status != 'voided'
-              AND is_clawback = FALSE
+            `SELECT
+                COALESCE(SUM(CASE WHEN cr.status = 'pending' THEN ${shareGhs} ELSE 0 END), 0) AS total_pending,
+                COALESCE(SUM(CASE WHEN cr.status = 'approved' THEN ${shareGhs} ELSE 0 END), 0) AS total_approved,
+                COALESCE(SUM(CASE WHEN cr.status = 'paid' THEN ${shareGhs} ELSE 0 END), 0) AS total_paid,
+                COUNT(CASE WHEN cr.status = 'pending' THEN 1 END) AS pending_count,
+                COUNT(CASE WHEN cr.status = 'approved' THEN 1 END) AS approved_count,
+                COUNT(CASE WHEN cr.status = 'paid' THEN 1 END) AS paid_count,
+                COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM cr.deal_close_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+                    THEN ${shareGhs} ELSE 0 END), 0) AS ytd_commission,
+                COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM cr.deal_close_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+                    AND EXTRACT(MONTH FROM cr.deal_close_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+                    THEN ${shareGhs} ELSE 0 END), 0) AS mtd_commission,
+                COALESCE(AVG(${shareGhs}), 0) AS avg_deal_commission
+            FROM commission_records cr
+            LEFT JOIN deals d ON cr.deal_id = d.id
+            WHERE cr.organization_id = $1
+              AND cr.status != 'voided'
+              AND cr.is_clawback = FALSE
               ${agentFilter}`,
             params
         );
@@ -931,40 +963,124 @@ class CommissionService {
     }
 
     async recalculateCommissions(dealId: string): Promise<void> {
-        // Get deal info
+        // Get deal info. NOTE: the deals table uses assigned_agent + deal_value
+        // (there is no owner_id/value column — selecting those would throw).
         const deal = await pool.query(
-            `SELECT id, organization_id, owner_id, value FROM deals WHERE id = $1`,
+            `SELECT id, organization_id, assigned_agent, deal_value FROM deals WHERE id = $1`,
             [dealId]
         );
 
         if (!deal.rows[0]) return;
 
-        const { organization_id, owner_id, value } = deal.rows[0];
+        const { organization_id, assigned_agent, deal_value } = deal.rows[0];
+        const value = Number(deal_value) || 0;
 
         // Recalculate for primary agent
-        if (owner_id && value > 0) {
-            const calc = await this.calculateCommission(dealId, owner_id, value, organization_id);
-            
+        if (assigned_agent && value > 0) {
+            const calc = await this.calculateCommission(dealId, assigned_agent, value, organization_id);
+
             await pool.query(
-                `UPDATE commission_records 
-                SET commission_rate = $1, gross_commission = $2, agent_share = $3, 
+                `UPDATE commission_records
+                SET commission_rate = $1, gross_commission = $2, agent_share = $3,
                     company_share = $4, updated_at = NOW()
                 WHERE deal_id = $5 AND agent_id = $6 AND source_type = 'deal_close'`,
-                [calc.commission_rate, calc.gross_commission, calc.agent_share, calc.company_share, dealId, owner_id]
+                [calc.commission_rate, calc.gross_commission, calc.agent_share, calc.company_share, dealId, assigned_agent]
             );
         }
 
-        // Recalculate for split agents
+        // Recalculate split-agent commission amounts off each agent's own plan
+        // (not a hardcoded 3%): full plan commission apportioned by split %.
         const splits = await this.getSplits(dealId);
         for (const split of splits) {
-            const gross = value * 0.03; // Could lookup actual rate
-            const agentShare = gross * (split.split_percentage / 100);
-            
+            const calc = await this.calculateCommission(dealId, split.agent_id, value, organization_id);
+            const agentShare = calc.gross_commission * ((Number(split.split_percentage) || 0) / 100);
+
             await pool.query(
                 `UPDATE commission_splits SET commission_amount = $1 WHERE id = $2`,
                 [agentShare, split.id]
             );
         }
+    }
+
+    /**
+     * Auto-generate pending commission record(s) the moment a deal is won —
+     * the core "I closed → my commission appears" behaviour. Idempotent: a
+     * no-op if any deal_close record already exists for the deal (so re-saving
+     * a won deal never double-books). Honours multi-agent commission splits;
+     * otherwise books 100% to the assigned agent. Each participant's commission
+     * is computed from THEIR own plan via calculate_deal_commission, then
+     * apportioned by split %. Returns the records created (possibly empty).
+     */
+    async generateRecordsForWonDeal(
+        organizationId: string,
+        deal: {
+            id: string;
+            assigned_agent?: string | null;
+            agent_id?: string | null;
+            deal_value?: number | string | null;
+            actual_close_date?: string | Date | null;
+        }
+    ): Promise<CommissionRecord[]> {
+        const dealId = deal.id;
+        const dealValue = Number(deal.deal_value ?? 0);
+        if (!dealId || !(dealValue > 0)) return [];
+
+        // Idempotency — never double-book a won deal.
+        const existing = await pool.query(
+            `SELECT 1 FROM commission_records
+             WHERE deal_id = $1 AND organization_id = $2 AND source_type = 'deal_close'
+             LIMIT 1`,
+            [dealId, organizationId]
+        );
+        if ((existing.rowCount || 0) > 0) return [];
+
+        // Participants: explicit deal splits, else the assigned agent at 100%.
+        const splits = await this.getSplits(dealId);
+        const participants: Array<{ agentId: string; splitPct: number }> =
+            splits.length > 0
+                ? splits
+                      .filter(s => s.agent_id)
+                      .map(s => ({ agentId: s.agent_id, splitPct: Number(s.split_percentage) || 0 }))
+                : (deal.assigned_agent || deal.agent_id
+                      ? [{ agentId: (deal.assigned_agent || deal.agent_id) as string, splitPct: 100 }]
+                      : []);
+        if (participants.length === 0) {
+            logger.warn('Won deal has no agent/splits — no commission booked', { dealId, organizationId });
+            return [];
+        }
+
+        const closeDate = deal.actual_close_date ? new Date(deal.actual_close_date) : new Date();
+        const created: CommissionRecord[] = [];
+        for (const p of participants) {
+            if (!p.agentId || !(p.splitPct > 0)) continue;
+            // calculate_deal_commission ALREADY applies this agent's split % from
+            // commission_splits (agent_share = gross × split%). Do NOT re-apply the
+            // split here or it double-counts — store the engine's figures as-is.
+            const calc = await this.calculateCommission(dealId, p.agentId, dealValue, organizationId);
+            const rec = await this.createRecord({
+                organization_id: organizationId,
+                deal_id: dealId,
+                agent_id: p.agentId,
+                source_type: 'deal_close',
+                deal_value: dealValue,
+                commission_rate: calc.commission_rate,
+                split_percentage: p.splitPct,
+                gross_commission: calc.gross_commission,
+                agent_share: calc.agent_share,
+                company_share: calc.company_share,
+                status: 'pending',
+                deal_close_date: closeDate,
+                accrual_date: closeDate,
+            });
+            created.push(rec);
+        }
+        logger.info('Auto-generated commission record(s) for won deal', {
+            dealId,
+            organizationId,
+            count: created.length,
+            agents: participants.map(p => p.agentId),
+        });
+        return created;
     }
 }
 

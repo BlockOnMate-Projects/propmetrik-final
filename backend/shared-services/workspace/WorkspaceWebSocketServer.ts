@@ -463,7 +463,9 @@ class WorkspaceWebSocketServerImpl {
             return;
         }
 
-        const validTypes: KobbyEntityType[] = ['project', 'valuation', 'deal', 'property', 'platform'];
+        // 'crm' is a context-only scope (deals section) — answers persist/broadcast to the
+        // connection's workspace (client.workspaceId), so no dedicated 'crm' workspace exists.
+        const validTypes: KobbyEntityType[] = ['project', 'valuation', 'deal', 'property', 'platform', 'crm'];
         if (!validTypes.includes(entityType)) {
             this.send(client.ws, { type: 'kobby_error', error: 'Invalid entity type' });
             return;

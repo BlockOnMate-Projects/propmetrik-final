@@ -31,7 +31,8 @@ export type {
 } from './e-sign/integration/types';
 
 // Payment Services
-export * from './payments/paystack';
+// (paystack shared-services copy removed — canonical is
+//  src/services/property-management/payment/paystackService.ts)
 export { feeEngine } from './payments/feeEngine';
 
 // Crypto Payment Services (USDT on Polygon)

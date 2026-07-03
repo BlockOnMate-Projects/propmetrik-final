@@ -50,6 +50,7 @@ interface Invoice {
     clientName: string
     clientEmail: string | null
     feeModel: FeeModel
+    propertyValue: number | null
     subtotal: number
     totalTax: number
     totalAmount: number
@@ -129,6 +130,15 @@ function getHeaders(): Record<string, string> {
     }
 }
 
+// Effective fee % for a percentage_of_value invoice, derived from stored values
+// (subtotal = propertyValue × rate). Falls back to the GhIS 0.5% standard.
+function displayFeePct(inv: { feeModel: FeeModel; propertyValue: number | null; subtotal: number }): string {
+    if (inv.feeModel === 'percentage_of_value' && inv.propertyValue && inv.propertyValue > 0) {
+        return `${Number(((inv.subtotal / inv.propertyValue) * 100).toFixed(4))}%`
+    }
+    return '0.5%'
+}
+
 export default function FinancePage() {
     const [activeTab, setActiveTab] = useState<'invoices' | 'payments'>('invoices')
     const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -162,6 +172,7 @@ export default function FinancePage() {
         feeModel: 'percentage_of_value' as FeeModel,
         propertyAddress: '',
         propertyValue: '',
+        feePercentage: '0.5', // GhIS standard; editable per invoice for negotiated rates
         manDays: [{ category: 'consultant', days: 1, rate: MWH_RATES.consultant.dailyRate }] as { category: string; days: number; rate: number }[],
         flatFee: '',
         notes: '',
@@ -224,7 +235,10 @@ export default function FinancePage() {
             try {
                 const params = new URLSearchParams()
                 params.set('feeModel', newInvoice.feeModel)
-                if (newInvoice.feeModel === 'percentage_of_value') params.set('propertyValue', newInvoice.propertyValue)
+                if (newInvoice.feeModel === 'percentage_of_value') {
+                    params.set('propertyValue', newInvoice.propertyValue)
+                    params.set('feePercentage', newInvoice.feePercentage || '0.5')
+                }
                 if (newInvoice.feeModel === 'man_day_rate') params.set('manDays', JSON.stringify(newInvoice.manDays.filter(d => d.days > 0).map(d => ({ category: d.category, days: d.days, rate: d.rate }))))
                 if (newInvoice.feeModel === 'flat_fee') params.set('flatFee', newInvoice.flatFee)
                 const res = await authedFetch(`${API_BASE}/valuation-invoices/fee-calculator?${params.toString()}`, { headers: getHeaders() })
@@ -232,7 +246,7 @@ export default function FinancePage() {
             } catch { /* ignore */ } finally { setLiveCalcLoading(false) }
         }, 500)
         return () => clearTimeout(timer)
-    }, [newInvoice.feeModel, newInvoice.propertyValue, newInvoice.manDays, newInvoice.flatFee, showCreateModal])
+    }, [newInvoice.feeModel, newInvoice.propertyValue, newInvoice.feePercentage, newInvoice.manDays, newInvoice.flatFee, showCreateModal])
 
     const filteredDropdownClients = clients.filter(c => {
         if (!clientSearch) return true
@@ -345,7 +359,7 @@ export default function FinancePage() {
                 setShowCreateModal(false)
                 setNewInvoice({
                     clientId: '', clientName: '', clientEmail: '', clientPhone: '', clientCompany: '', clientAddress: '',
-                    feeModel: 'percentage_of_value', propertyAddress: '', propertyValue: '', 
+                    feeModel: 'percentage_of_value', propertyAddress: '', propertyValue: '', feePercentage: '0.5',
                     manDays: [{ category: 'consultant', days: 1, rate: MWH_RATES.consultant.dailyRate }], flatFee: '', notes: '', dueInDays: '30', valuationType: 'market_value',
                 })
                 setLiveCalc(null)
@@ -818,7 +832,7 @@ export default function FinancePage() {
                                             </button>
                                         </td>
                                         <td className="py-3 px-4 text-muted-foreground">
-                                            {inv.feeModel === 'percentage_of_value' ? '0.5%' : inv.feeModel === 'man_day_rate' ? 'MAN-DAY' : 'FLAT'}
+                                            {inv.feeModel === 'percentage_of_value' ? displayFeePct(inv) : inv.feeModel === 'man_day_rate' ? 'MAN-DAY' : 'FLAT'}
                                         </td>
                                         <td className="py-3 px-4 text-right text-foreground font-bold">
                                             {formatCurrency(inv.totalAmount)}
@@ -1026,9 +1040,24 @@ export default function FinancePage() {
                                         </div>
 
                                         {newInvoice.feeModel === 'percentage_of_value' && (
-                                            <div>
-                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">PROPERTY VALUE (GHS) *</label>
-                                                <input type="number" value={newInvoice.propertyValue} onChange={(e) => setNewInvoice({ ...newInvoice, propertyValue: e.target.value })} placeholder="e.g. 500000" className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs placeholder-zinc-600 focus:outline-none focus:border-amber-500/50" />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="font-mono text-[10px] text-muted-foreground block mb-1">PROPERTY VALUE (GHS) *</label>
+                                                    <input type="number" value={newInvoice.propertyValue} onChange={(e) => setNewInvoice({ ...newInvoice, propertyValue: e.target.value })} placeholder="e.g. 500000" className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs placeholder-zinc-600 focus:outline-none focus:border-amber-500/50" />
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[10px] text-muted-foreground mb-1 flex items-center gap-1.5">
+                                                        FEE % OF VALUE
+                                                        {newInvoice.feePercentage !== '0.5' && (
+                                                            <button type="button" onClick={() => setNewInvoice({ ...newInvoice, feePercentage: '0.5' })} className="font-mono text-[9px] text-muted-foreground hover:text-amber-400 underline" title="Reset to GhIS 0.5%">reset to 0.5%</button>
+                                                        )}
+                                                    </label>
+                                                    <div className="relative">
+                                                        <input type="number" step="0.05" min="0" value={newInvoice.feePercentage} onChange={(e) => setNewInvoice({ ...newInvoice, feePercentage: e.target.value })} placeholder="0.5" className={`w-full px-3 py-2 pr-7 bg-background border text-foreground font-mono text-xs placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 ${newInvoice.feePercentage !== '0.5' ? 'border-amber-500/50 text-amber-600 dark:text-amber-400' : 'border-border'}`} />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground pointer-events-none">%</span>
+                                                    </div>
+                                                    <p className="font-mono text-[9px] text-muted-foreground mt-1">GhIS standard 0.5% · edit for negotiated rate</p>
+                                                </div>
                                             </div>
                                         )}
 
@@ -1295,7 +1324,7 @@ export default function FinancePage() {
                                     <div className="flex justify-between">
                                         <span className="font-mono text-[10px] text-muted-foreground">Fee Model</span>
                                         <span className="font-mono text-xs text-zinc-800 font-medium">
-                                            {previewInvoice.feeModel === 'percentage_of_value' ? 'GhIS 0.5%' : previewInvoice.feeModel === 'man_day_rate' ? 'MWH 2021' : 'Flat Fee'}
+                                            {previewInvoice.feeModel === 'percentage_of_value' ? `GhIS ${displayFeePct(previewInvoice)}` : previewInvoice.feeModel === 'man_day_rate' ? 'MWH 2021' : 'Flat Fee'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
@@ -1322,7 +1351,7 @@ export default function FinancePage() {
                                         <td className="py-3 text-zinc-800">
                                             <div className="font-medium">Professional Valuation Service</div>
                                             <div className="text-[10px] text-muted-foreground mt-0.5">
-                                                {previewInvoice.feeModel === 'percentage_of_value' ? 'Based on 0.5% of property value per GhIS guidelines' :
+                                                {previewInvoice.feeModel === 'percentage_of_value' ? `Based on ${displayFeePct(previewInvoice)} of property value (GhIS basis)` :
                                                  previewInvoice.feeModel === 'man_day_rate' ? 'Professional services per MWH 2021 published rates' :
                                                  'Agreed flat fee for valuation services'}
                                             </div>

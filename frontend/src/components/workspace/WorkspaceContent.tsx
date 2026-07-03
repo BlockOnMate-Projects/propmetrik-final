@@ -12,6 +12,7 @@ import { useKobbyAI } from './hooks/useKobbyAI';
 import { Button } from '@/components/ui/button';
 import { Users, MessageSquare, Bot, Wifi, WifiOff, Search, ExternalLink, X, UserPlus, UserMinus } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 
 type ActiveTab = 'chat' | 'members' | 'kobby';
 
@@ -41,6 +42,16 @@ export function WorkspaceContent({
     const { data: session } = useSession();
     const resolvedToken = token || ((session as any)?.accessToken ?? null);
     const resolvedUserId = currentUserId || ((session as any)?.user?.id as string | undefined) || null;
+
+    // In the deals/CRM section, scope the Kobby tab to CRM pipeline intelligence
+    // (deals, contacts, agents) instead of the generic platform scope. Chat and
+    // members stay on the same workspace — only the Kobby query context changes.
+    // The panel is platform-scoped here, so entityId is already the organizationId
+    // that CRM context needs.
+    const pathname = usePathname();
+    const isCrmSection = !!pathname && pathname.startsWith('/dashboard/deals');
+    const kobbyEntityType: EntityType = isCrmSection ? 'crm' : entityType;
+    const kobbyEntityId = entityId;
     const [workspace, setWorkspace] = useState<Workspace | null>(null);
     const [members, setMembers] = useState<WorkspaceMember[]>([]);
     const [conversations, setConversations] = useState<WorkspaceConversation[]>([]);
@@ -237,8 +248,8 @@ export function WorkspaceContent({
 
     const { suggestions } = useKobbyAI({
         workspaceId: workspace?.id || '',
-        entityType,
-        entityId,
+        entityType: kobbyEntityType,
+        entityId: kobbyEntityId,
     });
 
     useEffect(() => {
@@ -284,20 +295,20 @@ export function WorkspaceContent({
                     ]);
 
                     const sessionId = `kobby-${Date.now()}`;
-                    sendKobbyQuery(query, entityType, entityId, sessionId, activeConversationId || undefined);
+                    sendKobbyQuery(query, kobbyEntityType, kobbyEntityId, sessionId, activeConversationId || undefined);
                 }
             } else {
                 sendMessage(content, activeConversationId || undefined, threadId, metadata);
             }
         },
-        [workspace, sendMessage, sendKobbyQuery, entityType, entityId, activeTab, resolvedUserId, activeConversationId]
+        [workspace, sendMessage, sendKobbyQuery, kobbyEntityType, kobbyEntityId, activeTab, resolvedUserId, activeConversationId]
     );
 
     const handleKobbyFollowUp = useCallback((suggestion: string) => {
         if (!workspace) return;
         const sessionId = `kobby-${Date.now()}`;
-        sendKobbyQuery(suggestion, entityType, entityId, sessionId, activeConversationId || undefined);
-    }, [workspace, sendKobbyQuery, entityType, entityId, activeConversationId]);
+        sendKobbyQuery(suggestion, kobbyEntityType, kobbyEntityId, sessionId, activeConversationId || undefined);
+    }, [workspace, sendKobbyQuery, kobbyEntityType, kobbyEntityId, activeConversationId]);
 
     const handleRead = useCallback((messageId: string) => markRead(messageId), [markRead]);
 

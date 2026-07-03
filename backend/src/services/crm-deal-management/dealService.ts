@@ -18,6 +18,10 @@ import {
 } from './types';
 import { pipelineValidator } from './pipelineValidator';
 import { activityService } from './activityService';
+import { commissionService } from './commissionService';
+import { targetService } from './targetService';
+import { dealInvoiceService } from './dealInvoiceService';
+import { getGhsRateMap } from '../property-management/utils/currencyFx';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
 import { calendarService } from '../../../shared-services/calendar/calendarService';
@@ -493,10 +497,54 @@ export class DealService {
             // PM↔CRM bridge close-the-loop: a WON deal on a bridged PM property marks
             // that PM property sold + delists it, and closes sibling open enquiries.
             if (data.deal_status === 'won') {
+                // Stamp the close date on win if the caller didn't provide one. Every
+                // downstream keys off actual_close_date — sales targets, forecasting
+                // (closed-in-period), commission accrual, AR aging — so a null here
+                // silently zeroes all of them.
+                if (!updatedDeal.actual_close_date) {
+                    try {
+                        const stamp = await db.query(
+                            `UPDATE deals SET actual_close_date = CURRENT_DATE
+                             WHERE id = $1 AND organization_id = $2 AND actual_close_date IS NULL
+                             RETURNING actual_close_date`,
+                            [dealId, organizationId],
+                        );
+                        if (stamp.rows[0]) updatedDeal.actual_close_date = stamp.rows[0].actual_close_date;
+                    } catch (stampErr: any) {
+                        logger.warn('Failed to stamp close date on won deal', { dealId, error: stampErr.message });
+                    }
+                }
+
                 try {
                     await this.closeLoopOnWonDeal(organizationId, updatedDeal);
                 } catch (loopErr: any) {
                     logger.warn('Failed to close PM loop on won deal (non-fatal)', { dealId, error: loopErr.message });
+                }
+
+                // Book the agent's commission the moment the deal is won (idempotent).
+                // This is what turns a closed deal into money owed — the engine was
+                // never triggered before, so records only ever existed if hand-created.
+                try {
+                    await commissionService.generateRecordsForWonDeal(organizationId, updatedDeal);
+                } catch (commErr: any) {
+                    logger.warn('Failed to auto-generate commission on won deal (non-fatal)', { dealId, error: commErr.message });
+                }
+
+                // Advance the agent's sales targets / streaks / achievements on the win.
+                try {
+                    const agentId = updatedDeal.assigned_agent;
+                    if (agentId) {
+                        await targetService.onDealClosed(organizationId, agentId, Number(updatedDeal.deal_value) || 0);
+                    }
+                } catch (targetErr: any) {
+                    logger.warn('Failed to update targets on won deal (non-fatal)', { dealId, error: targetErr.message });
+                }
+
+                // Raise a draft receivable (invoice) for the won deal (idempotent).
+                try {
+                    await dealInvoiceService.generateForWonDeal(organizationId, updatedDeal);
+                } catch (invErr: any) {
+                    logger.warn('Failed to auto-generate invoice on won deal (non-fatal)', { dealId, error: invErr.message });
                 }
             }
 
@@ -519,7 +567,18 @@ export class DealService {
         const crmPropertyIds: string[] = Array.isArray(deal?.property_ids) ? deal.property_ids : [];
         if (crmPropertyIds.length === 0) return;
 
-        const soldPrice = deal?.deal_value != null ? Number(deal.deal_value) : null;
+        // The sold price must be recorded in the PROPERTY's listing currency
+        // (price_currency), not blindly copied from deal_value (which is in the
+        // deal's own currency). Convert deal_value → GHS → the property's currency
+        // via the live rate map. Same-currency deals round-trip to the identical
+        // number, so this is a no-op for the common GHS-deal/GHS-property case.
+        const rawSold = deal?.deal_value != null ? Number(deal.deal_value) : null;
+        const fx = await getGhsRateMap();
+        const dealCur = String(deal?.currency || 'GHS').toUpperCase();
+        const soldGhs = rawSold != null ? rawSold * (fx.rates[dealCur] || 1) : null;
+        // SQL expression: GHS value ÷ the property's own currency rate.
+        const propRateCase = `(CASE UPPER(COALESCE(price_currency::text,'GHS')) `
+            + `WHEN 'USD' THEN ${fx.rates.USD || 1} WHEN 'EUR' THEN ${fx.rates.EUR || 1} WHEN 'GBP' THEN ${fx.rates.GBP || 1} ELSE 1 END)`;
         // A bridged deal is only ever 'sale' or 'rental' (lease is modelled as 'rental').
         // Rentals/leases never reach here as native rentals (those aren't bridged), so a
         // 'rental' deal_type here means a won LEASE → mark the PM property 'rented'.
@@ -555,11 +614,11 @@ export class DealService {
                     `UPDATE properties
                         SET status = 'sold',
                             sold_at = NOW(),
-                            sold_price = COALESCE($2, sold_price, price),
+                            sold_price = COALESCE($2::numeric / ${propRateCase}, sold_price, price),
                             marketplace_enabled = FALSE,
                             updated_at = CURRENT_TIMESTAMP
                       WHERE id = $1::uuid AND organization_id = $3`,
-                    [pmId, soldPrice, organizationId],
+                    [pmId, soldGhs, organizationId],
                 );
             }
 
@@ -588,7 +647,7 @@ export class DealService {
                 [pmId, organizationId, deal.id],
             );
 
-            logger.info('PM loop closed on won deal', { dealId: deal.id, pmPropertyId: pmId, crmPropertyId: crmId, soldPrice });
+            logger.info('PM loop closed on won deal', { dealId: deal.id, pmPropertyId: pmId, crmPropertyId: crmId, dealValue: rawSold, dealCurrency: dealCur });
         }
     }
 

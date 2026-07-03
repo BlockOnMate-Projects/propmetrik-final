@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { randomBytes } from 'crypto';
 import { Pool } from 'pg';
 import { logger } from '../../src/utils/logger';
+import { config } from '../../src/config';
 import {
     Envelope,
     EnvelopeSigner,
@@ -222,12 +223,10 @@ export class EnvelopeService {
         const row = res.rows[0];
         if (!row.email || !row.access_token) return false;
 
-        // Resolve the public frontend URL the same way the app config does, so signing links in
-        // emails are reachable by external signers. FRONTEND_URL overrides; otherwise pick the
-        // env-specific URL (these are the vars actually defined in .env), falling back to localhost.
-        const frontendUrl = process.env.FRONTEND_URL
-            || (process.env.NODE_ENV === 'production' ? process.env.PROD_FRONTEND_URL : process.env.DEV_FRONTEND_URL)
-            || 'http://localhost:3000';
+        // Resolve the public frontend URL from central config so signing links in emails are
+        // reachable by external signers. FRONTEND_URL is an explicit override; otherwise use the
+        // env-aware config (prod → https://propmetrik.com), which never falls back to localhost.
+        const frontendUrl = process.env.FRONTEND_URL || config.app.frontendUrl;
         const signingUrl = `${frontendUrl}/sign/${row.access_token}`;
         const docName = row.envelope_name || 'a document';
         const greeting = row.name ? `Hi ${row.name},` : 'Hello,';

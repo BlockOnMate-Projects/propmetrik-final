@@ -32,7 +32,6 @@ import { pool } from '../../database';
 import { v4 as uuidv4 } from 'uuid';
 import { complianceService, ProjectPermit, PermitInspection, ComplianceScore } from './complianceService';
 import { projectService } from './projectService';
-import { signingService } from '../../../shared-services/e-sign/signingService';
 import { pdfSigningService } from '../../../shared-services/e-sign/pdfSigningService';
 import { logger } from '../../utils/logger';
 
@@ -164,39 +163,11 @@ class ComplianceReportService {
       ]
     );
     
-    let signingRequestId: string | undefined;
-    
-    // Create e-sign request if needed
-    if (input.for_signing && input.signees && input.signees.length > 0) {
-      const signingRequest = await signingService.createSigningRequest(
-        {
-          documentId: reportId,
-          documentType: 'compliance_report',
-          documentTitle: `Compliance Report - ${reportData.project.name}`,
-          originalPdfUrl: pdfUrl,
-          signees: input.signees.map((s, index) => ({
-            signeeType: s.signee_type,
-            userId: s.user_id,
-            externalName: s.name,
-            externalEmail: s.email,
-            signeeRole: s.role || 'Reviewer',
-            signingOrder: index + 1,
-          })),
-        },
-        input.generated_by,
-        input.organization_id
-      );
-      
-      signingRequestId = signingRequest.id;
-      
-      // Update report with signing request
-      await pool.query(
-        `UPDATE compliance_reports SET signing_request_id = $1 WHERE id = $2`,
-        [signingRequestId, reportId]
-      );
-    }
-    
-    logger.info('Compliance report generated', { 
+    // Legacy in-report e-sign creation has been retired; signing now flows through
+    // the envelope engine (esign_envelopes) initiated from the e-sign module.
+    const signingRequestId: string | undefined = undefined;
+
+    logger.info('Compliance report generated', {
       reportId, 
       projectId: input.project_id,
       forSigning: input.for_signing 
@@ -1190,9 +1161,8 @@ class ComplianceReportService {
   
   async getReportsByProject(projectId: string): Promise<any[]> {
     const result = await pool.query(
-      `SELECT cr.*, sr.status as signing_status
+      `SELECT cr.*
        FROM compliance_reports cr
-       LEFT JOIN signing_requests sr ON cr.signing_request_id = sr.id
        WHERE cr.project_id = $1
        ORDER BY cr.created_at DESC`,
       [projectId]
@@ -1202,9 +1172,8 @@ class ComplianceReportService {
   
   async getReportById(reportId: string): Promise<any> {
     const result = await pool.query(
-      `SELECT cr.*, sr.status as signing_status, sr.completed_at as signed_at
+      `SELECT cr.*
        FROM compliance_reports cr
-       LEFT JOIN signing_requests sr ON cr.signing_request_id = sr.id
        WHERE cr.id = $1`,
       [reportId]
     );

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 type Status = 'verifying' | 'success' | 'failed';
 
 export default function PaymentCallbackPage() {
@@ -39,7 +39,7 @@ export default function PaymentCallbackPage() {
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/v1/tenant-portal/payments/verify/${encodeURIComponent(reference)}`);
+        const res = await fetch(`${API_URL}/api/tenant-portal/payments/verify/${encodeURIComponent(reference)}`);
         const result = await res.json();
 
         if (res.ok && result.success !== false) {

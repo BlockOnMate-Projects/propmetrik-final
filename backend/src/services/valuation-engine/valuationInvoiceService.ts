@@ -19,6 +19,7 @@ import { config } from '../../config';
 import { feeEngine } from '../../../shared-services/payments/feeEngine';
 import { notificationService } from '../../../shared-services/notifications/unified';
 import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
+import { resolveReportBranding } from './brandingService';
 
 // ============================================================================
 // TYPES
@@ -157,11 +158,13 @@ class ValuationInvoiceService {
     async calculateFee(params: {
         feeModel: FeeModel;
         propertyValue?: number;
+        /** Per-invoice % override for percentage_of_value (e.g. 0.5 = 0.5%). Defaults to the GhIS 0.5% standard. */
+        feePercentage?: number;
         manDays?: { category: string; days: number }[];
         flatFee?: number;
         organizationId?: string;
     }): Promise<FeeCalculation> {
-        const { feeModel, propertyValue, manDays, flatFee, organizationId } = params;
+        const { feeModel, propertyValue, feePercentage, manDays, flatFee, organizationId } = params;
         let subtotal = 0;
         const lineItems: LineItem[] = [];
         let breakdown = '';
@@ -169,16 +172,19 @@ class ValuationInvoiceService {
         switch (feeModel) {
             case 'percentage_of_value': {
                 if (!propertyValue) throw new Error('Property value required for percentage model');
-                const rate = 0.005; // 0.5% GhIS standard
+                // GhIS standard is 0.5%; allow a client-negotiated percentage to override it.
+                const pct = feePercentage != null && feePercentage > 0 ? feePercentage : 0.5;
+                const pctLabel = `${Number(pct.toFixed(4))}%`;
+                const rate = pct / 100;
                 subtotal = propertyValue * rate;
                 lineItems.push({
-                    description: `Valuation Fee (0.5% of GHS ${propertyValue.toLocaleString()})`,
+                    description: `Valuation Fee (${pctLabel} of GHS ${propertyValue.toLocaleString()})`,
                     quantity: 1,
                     unit: 'lot',
                     unitPrice: subtotal,
                     amount: subtotal,
                 });
-                breakdown = `0.5% of GHS ${propertyValue.toLocaleString()} = GHS ${subtotal.toLocaleString()}`;
+                breakdown = `${pctLabel} of GHS ${propertyValue.toLocaleString()} = GHS ${subtotal.toLocaleString()}`;
                 break;
             }
 
@@ -590,15 +596,9 @@ class ValuationInvoiceService {
         // ────────────────────────────────────────────────────────
         if (sentInvoice.clientEmail) {
             try {
-                // Fetch org name for branding
-                let organizationName = 'PROPMETRIK Valuations';
-                try {
-                    const orgResult = await pool.query(
-                        `SELECT name FROM organizations WHERE id = $1`,
-                        [sentInvoice.organizationId]
-                    );
-                    if (orgResult.rows[0]?.name) organizationName = orgResult.rows[0].name;
-                } catch { /* fallback to default */ }
+                // Resolve full company branding (name, logo, colors, contact) — falls back to PROPMETRIK
+                const branding = await resolveReportBranding(sentInvoice.organizationId, { context: 'valuation', withLogo: false });
+                const organizationName = branding.name;
 
                 const dueDate = sentInvoice.dueDate
                     ? new Date(sentInvoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -635,9 +635,10 @@ class ValuationInvoiceService {
                     html: `
                         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1e293b;">
                             <!-- Header -->
-                            <div style="background: #09090b; padding: 28px 32px; border-radius: 12px 12px 0 0; text-align: center;">
-                                <h1 style="color: #f59e0b; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 2px;">PROPMETRIK</h1>
-                                <p style="color: #71717a; margin: 4px 0 0; font-size: 11px; letter-spacing: 1px;">${organizationName}</p>
+                            <div style="background: ${branding.primaryColor}; padding: 28px 32px; border-radius: 12px 12px 0 0; text-align: center;">
+                                ${branding.logoUrl ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-height: 44px; max-width: 220px; margin: 0 auto 8px; display: block;" />` : ''}
+                                <h1 style="color: ${branding.accentColor}; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 2px;">${organizationName.toUpperCase()}</h1>
+                                ${branding.credentialLine ? `<p style="color: #a1a1aa; margin: 6px 0 0; font-size: 10px; letter-spacing: 0.5px;">${branding.credentialLine}</p>` : ''}
                             </div>
 
                             <!-- Body -->
@@ -653,7 +654,7 @@ class ValuationInvoiceService {
                                     <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                                         <tr>
                                             <td style="padding: 4px 0; color: #64748b;">Invoice No.</td>
-                                            <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #f59e0b;">${sentInvoice.invoiceNumber}</td>
+                                            <td style="padding: 4px 0; text-align: right; font-weight: 700; color: ${branding.accentColor};">${sentInvoice.invoiceNumber}</td>
                                         </tr>
                                         <tr>
                                             <td style="padding: 4px 0; color: #64748b;">Date</td>
@@ -698,7 +699,7 @@ class ValuationInvoiceService {
                                         </tr>` : ''}
                                         <tr style="font-size: 16px; font-weight: 700;">
                                             <td style="padding: 12px 0 4px; border-top: 2px solid #09090b;">Total Due</td>
-                                            <td style="padding: 12px 0 4px; border-top: 2px solid #09090b; text-align: right; color: #f59e0b;">GHS ${sentInvoice.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                            <td style="padding: 12px 0 4px; border-top: 2px solid #09090b; text-align: right; color: ${branding.accentColor};">GHS ${sentInvoice.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                     </table>
                                 </div>
@@ -713,11 +714,12 @@ class ValuationInvoiceService {
                             </div>
 
                             <!-- Footer -->
-                            <div style="background: #09090b; padding: 20px 32px; border-radius: 0 0 12px 12px; text-align: center;">
-                                <p style="color: #71717a; font-size: 11px; margin: 0;">This invoice was generated by PROPMETRIK on behalf of ${organizationName}.</p>
-                                <p style="color: #52525b; font-size: 10px; margin: 8px 0 0;">
-                                    Questions about this invoice? Contact ${organizationName} directly.
-                                </p>
+                            <div style="background: ${branding.primaryColor}; padding: 20px 32px; border-radius: 0 0 12px 12px; text-align: center;">
+                                <p style="color: #d4d4d8; font-size: 12px; margin: 0; font-weight: 600;">${organizationName}</p>
+                                ${branding.addressLines.length ? `<p style="color: #71717a; font-size: 10px; margin: 4px 0 0;">${branding.addressLines.join(' · ')}</p>` : ''}
+                                ${branding.contactLine ? `<p style="color: #71717a; font-size: 10px; margin: 2px 0 0;">${branding.contactLine}</p>` : ''}
+                                ${branding.taxId ? `<p style="color: #52525b; font-size: 10px; margin: 2px 0 0;">TIN: ${branding.taxId}</p>` : ''}
+                                <p style="color: #3f3f46; font-size: 9px; margin: 10px 0 0;">Powered by PROPMETRIK</p>
                             </div>
                         </div>
                     `,

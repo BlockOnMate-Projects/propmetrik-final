@@ -12,6 +12,31 @@ import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 
 // =====================================================
+// PURE MONEY HELPERS (exact integer-pesewa arithmetic)
+// =====================================================
+
+/**
+ * Apply a payment to a buyer payment plan using EXACT integer-minor-unit (pesewa) math.
+ * Plain float subtraction can leave a sub-pesewa residue (e.g. 50000.00 - 49999.996 = 0.004)
+ * that would wrongly keep a fully-paid plan open and never mark the unit sold. Pure + tested
+ * (paymentPlanMoney.test.ts) so the completion boundary is locked.
+ */
+export function computePlanBalanceUpdate(
+  financedAmount: number,
+  totalPaid: number,
+  paymentAmount: number
+): { newTotalPaid: number; newRemainingBalance: number; isCompleted: boolean } {
+  const toMinor = (n: number) => Math.round(Number(n || 0) * 100);
+  const newTotalPaidMinor = toMinor(totalPaid) + toMinor(paymentAmount);
+  const newRemainingMinor = toMinor(financedAmount) - newTotalPaidMinor;
+  return {
+    newTotalPaid: newTotalPaidMinor / 100,
+    newRemainingBalance: newRemainingMinor / 100,
+    isCompleted: newRemainingMinor <= 0,
+  };
+}
+
+// =====================================================
 // TYPES
 // =====================================================
 
@@ -415,11 +440,12 @@ class PaymentPlanService extends BaseService {
         input.recorded_by
       ]);
       
-      // Update plan totals
-      const newTotalPaid = plan.total_paid + input.amount;
-      const newRemainingBalance = plan.financed_amount - newTotalPaid;
+      // Update plan totals via the pure exact-money helper (integer pesewas — see
+      // computePlanBalanceUpdate / paymentPlanMoney.test.ts).
+      const { newTotalPaid, newRemainingBalance, isCompleted } = computePlanBalanceUpdate(
+        plan.financed_amount, plan.total_paid, input.amount
+      );
       const newPaymentsMade = plan.payments_made + 1;
-      const isCompleted = newRemainingBalance <= 0;
       
       // Calculate next payment date
       let nextPaymentDate: Date | null = null;

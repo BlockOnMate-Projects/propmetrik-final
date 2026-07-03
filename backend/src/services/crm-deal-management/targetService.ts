@@ -198,15 +198,15 @@ class TargetService {
     /**
      * Get a target by ID
      */
-    async getById(id: string): Promise<SalesTarget | null> {
+    async getById(id: string, organizationId: string): Promise<SalesTarget | null> {
         const result = await db.query<SalesTarget>(`
-            SELECT t.*, 
+            SELECT t.*,
                    CONCAT(a.first_name, ' ', a.last_name) AS agent_name,
                    a.avatar_url AS agent_avatar
             FROM sales_targets t
             LEFT JOIN agents a ON a.id = t.agent_id
-            WHERE t.id = $1
-        `, [id]);
+            WHERE t.id = $1 AND t.organization_id = $2
+        `, [id, organizationId]);
 
         return result.rows[0] || null;
     }
@@ -295,7 +295,7 @@ class TargetService {
     /**
      * Update a target
      */
-    async update(id: string, input: UpdateTargetInput): Promise<SalesTarget | null> {
+    async update(id: string, input: UpdateTargetInput, organizationId: string): Promise<SalesTarget | null> {
         const fields: string[] = [];
         const values: any[] = [];
         let paramIndex = 1;
@@ -330,15 +330,18 @@ class TargetService {
             values.push(input.notes);
         }
 
-        if (fields.length === 0) return this.getById(id);
+        if (fields.length === 0) return this.getById(id, organizationId);
 
         fields.push(`updated_at = NOW()`);
         values.push(id);
+        const idParam = paramIndex++;
+        values.push(organizationId);
+        const orgParam = paramIndex;
 
         const result = await db.query<SalesTarget>(`
             UPDATE sales_targets
             SET ${fields.join(', ')}
-            WHERE id = $${paramIndex}
+            WHERE id = $${idParam} AND organization_id = $${orgParam}
             RETURNING *
         `, values);
 
@@ -352,10 +355,10 @@ class TargetService {
     /**
      * Delete a target
      */
-    async delete(id: string): Promise<boolean> {
+    async delete(id: string, organizationId: string): Promise<boolean> {
         const result = await db.query(`
-            DELETE FROM sales_targets WHERE id = $1
-        `, [id]);
+            DELETE FROM sales_targets WHERE id = $1 AND organization_id = $2
+        `, [id, organizationId]);
 
         return (result.rowCount ?? 0) > 0;
     }
@@ -506,13 +509,13 @@ class TargetService {
     /**
      * Get achievements for an agent
      */
-    async getAgentAchievements(agentId: string, limit: number = 50): Promise<Achievement[]> {
+    async getAgentAchievements(agentId: string, organizationId: string, limit: number = 50): Promise<Achievement[]> {
         const result = await db.query<Achievement>(`
             SELECT * FROM agent_achievements
-            WHERE agent_id = $1
+            WHERE agent_id = $1 AND organization_id = $2
             ORDER BY created_at DESC
-            LIMIT $2
-        `, [agentId, limit]);
+            LIMIT $3
+        `, [agentId, organizationId, limit]);
 
         return result.rows;
     }
@@ -597,11 +600,11 @@ class TargetService {
     /**
      * Get streak for an agent
      */
-    async getStreak(agentId: string, streakType: string): Promise<AgentStreak | null> {
+    async getStreak(agentId: string, streakType: string, organizationId: string): Promise<AgentStreak | null> {
         const result = await db.query<AgentStreak>(`
             SELECT * FROM agent_streaks
-            WHERE agent_id = $1 AND streak_type = $2
-        `, [agentId, streakType]);
+            WHERE agent_id = $1 AND streak_type = $2 AND organization_id = $3
+        `, [agentId, streakType, organizationId]);
 
         return result.rows[0] || null;
     }
@@ -656,36 +659,46 @@ class TargetService {
         checkpointNumber: number,
         expectedValue: number,
         actualValue: number,
+        organizationId: string,
         notes?: string
     ): Promise<any> {
-        const variancePercentage = expectedValue > 0 
-            ? ((actualValue - expectedValue) / expectedValue) * 100 
+        const variancePercentage = expectedValue > 0
+            ? ((actualValue - expectedValue) / expectedValue) * 100
             : 0;
 
         const pacingStatus = variancePercentage >= 10 ? 'ahead'
             : variancePercentage >= -10 ? 'on_track'
             : 'behind';
 
+        // target_checkpoints has no organization_id → guard via parent sales_targets
         const result = await db.query(`
             INSERT INTO target_checkpoints (
                 target_id, checkpoint_date, checkpoint_number,
                 expected_value, actual_value, variance_percentage, pacing_status, notes
-            ) VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, $6, $7)
+            )
+            SELECT $1, CURRENT_DATE, $2, $3, $4, $5, $6, $7
+            WHERE EXISTS (
+                SELECT 1 FROM sales_targets t WHERE t.id = $1 AND t.organization_id = $8
+            )
             RETURNING *
-        `, [targetId, checkpointNumber, expectedValue, actualValue, variancePercentage, pacingStatus, notes]);
+        `, [targetId, checkpointNumber, expectedValue, actualValue, variancePercentage, pacingStatus, notes, organizationId]);
 
-        return result.rows[0];
+        return result.rows[0] || null;
     }
 
     /**
      * Get checkpoints for a target
      */
-    async getCheckpoints(targetId: string): Promise<any[]> {
+    async getCheckpoints(targetId: string, organizationId: string): Promise<any[]> {
+        // target_checkpoints has no organization_id → guard via parent sales_targets
         const result = await db.query(`
-            SELECT * FROM target_checkpoints
-            WHERE target_id = $1
-            ORDER BY checkpoint_date
-        `, [targetId]);
+            SELECT tc.* FROM target_checkpoints tc
+            WHERE tc.target_id = $1
+              AND EXISTS (
+                SELECT 1 FROM sales_targets t WHERE t.id = $1 AND t.organization_id = $2
+              )
+            ORDER BY tc.checkpoint_date
+        `, [targetId, organizationId]);
 
         return result.rows;
     }
@@ -762,7 +775,7 @@ class TargetService {
             await this.updateProgress(target.id);
 
             // Check for achievement
-            const updated = await this.getById(target.id);
+            const updated = await this.getById(target.id, organizationId);
             if (updated && updated.status === 'achieved' && target.status !== 'achieved') {
                 await this.awardAchievement(organizationId, agentId, 'target_achieved', {
                     target_id: target.id,

@@ -3687,6 +3687,48 @@ import { capRateService, CapRateMethodology, ListingDerivedCapRate } from '../se
 import { constructionCostService } from '../services/data-hub/constructionCostService';
 
 /**
+/**
+ * @route GET /api/valuations/neighborhood-premiums
+ * @desc Location premium factors for sales-comparison adjustments, sourced from the
+ *       neighborhood_premiums table (single source of truth). Replaces the hardcoded
+ *       copy that used to live in the frontend AdjustmentGrid. Optional ?region filter.
+ * @access Private
+ */
+router.get('/neighborhood-premiums', async (req: Request, res: Response) => {
+  try {
+    const region = (req.query.region as string | undefined)?.toLowerCase();
+    // Order canonical (no-space) neighborhood rows FIRST so that, combined with the
+    // first-write-wins map build below, a canonical row (e.g. 'east_legon') deterministically
+    // wins over a space-variant duplicate ('East Legon') that normalizes to the same key.
+    const result = region
+      ? await query(
+          `SELECT neighborhood, region, premium_factor, market_tier
+           FROM neighborhood_premiums WHERE LOWER(region) = $1
+           ORDER BY (neighborhood LIKE '% %') ASC, premium_factor DESC`,
+          [region]
+        )
+      : await query(
+          `SELECT neighborhood, region, premium_factor, market_tier
+           FROM neighborhood_premiums
+           ORDER BY (neighborhood LIKE '% %') ASC, region, premium_factor DESC`
+        );
+
+    // Map keyed by normalized neighborhood (underscore + lowercase) for fast client lookup.
+    // First-write-wins (see ORDER BY above) makes the result deterministic.
+    const premiums: Record<string, number> = {};
+    for (const row of result.rows) {
+      const key = String(row.neighborhood).toLowerCase().trim().replace(/\s+/g, '_');
+      if (!(key in premiums)) premiums[key] = Number(row.premium_factor);
+    }
+
+    res.json({ success: true, data: { premiums, rows: result.rows, count: result.rows.length } });
+  } catch (error: any) {
+    logger.error('Failed to fetch neighborhood premiums', { error: error?.message });
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch neighborhood premiums' });
+  }
+});
+
+/**
  * @route GET /api/valuations/cap-rate/:region/:propertyType
  * @desc Get current market cap rate for region/property type combination.
  *       Uses RICS-compliant fallback hierarchy:

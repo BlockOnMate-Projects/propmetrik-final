@@ -32,35 +32,80 @@ pool.on('remove', () => {
 /**
  * Execute a SQL query with optional parameters
  */
+// Transient connection-level errors (network reset, pool timeout, server dropped the
+// connection). Retrying these with a fresh pooled connection recovers the request.
+// Deliberately EXCLUDES SQL errors (syntax, constraint, etc.) — those are deterministic.
+function isTransientConnectionError(error: any): boolean {
+  const code = error?.code;
+  // pg SQLSTATE class 08 = connection_exception; 57P0x = server shutdown/cannot-connect.
+  if (typeof code === 'string' && (code.startsWith('08') || code === '57P01' || code === '57P02' || code === '57P03')) {
+    return true;
+  }
+  // node socket errors
+  if (['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EPIPE', 'ENOTFOUND'].includes(code)) {
+    return true;
+  }
+  const msg = String(error?.message || '').toLowerCase();
+  return (
+    msg.includes('connection terminated') ||
+    msg.includes('connection error') ||
+    msg.includes('server closed the connection') ||
+    msg.includes('timeout exceeded when trying to connect')
+  );
+}
+
+// A read query (SELECT / CTE) is idempotent → safe to retry. Writes are NEVER retried
+// here (a lost-response write could double-apply money/valuation mutations).
+function isReadQuery(text: string): boolean {
+  const t = text.trimStart().slice(0, 8).toLowerCase();
+  return t.startsWith('select') || t.startsWith('with') || t.startsWith('show') || t.startsWith('explain');
+}
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[]
 ): Promise<QueryResult<T>> {
   const start = Date.now();
-  try {
-    const result = await pool.query<T>(text, params);
-    const duration = Date.now() - start;
-    // Only log slow queries. A single dashboard load can fire hundreds of fast queries;
-    // logging every one adds real overhead (and noise) on the hot path.
-    if (duration >= SLOW_QUERY_MS) {
-      logger.warn('Slow query', {
-        text: text.substring(0, 100),
-        duration,
-        rows: result.rowCount,
+  const maxAttempts = isReadQuery(text) ? 3 : 1;
+  let lastError: any;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const result = await pool.query<T>(text, params);
+      const duration = Date.now() - start;
+      // Only log slow queries. A single dashboard load can fire hundreds of fast queries;
+      // logging every one adds real overhead (and noise) on the hot path.
+      if (duration >= SLOW_QUERY_MS) {
+        logger.warn('Slow query', {
+          text: text.substring(0, 100),
+          duration,
+          rows: result.rowCount,
+        });
+      }
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      // Retry only transient connection failures on read queries; a fresh pool
+      // connection on the next attempt typically recovers a remote-DB blip.
+      if (attempt < maxAttempts && isTransientConnectionError(error)) {
+        logger.warn('Transient DB connection error — retrying read query', {
+          attempt, code: error?.code, error: error?.message,
+        });
+        await new Promise((r) => setTimeout(r, 150 * attempt));
+        continue;
+      }
+      logger.error('Query error', {
+        text: text.substring(0, 500),
+        error: error instanceof Error ? error.message : 'Unknown error',
+        code: error?.code,
+        detail: error?.detail,
+        hint: error?.hint,
+        position: error?.position,
       });
+      throw error;
     }
-    return result;
-  } catch (error: any) {
-    logger.error('Query error', {
-      text: text.substring(0, 500),
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: error?.code,
-      detail: error?.detail,
-      hint: error?.hint,
-      position: error?.position,
-    });
-    throw error;
   }
+  throw lastError;
 }
 
 /**

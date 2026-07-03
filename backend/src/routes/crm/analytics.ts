@@ -9,8 +9,19 @@
 import { Router, Request, Response } from 'express';
 import { getOrganizationId, asyncHandler, getUserId } from './helpers';
 import db from '../../database';
+// Reuse the SHARED, service-agnostic FX helper (same one PM uses) — no CRM copy.
+// deal_value is stored in the deal's native `currency`; every SUM across deals
+// must convert each row to GHS first (you can't add USD + GHS as raw numbers).
+import { getGhsRateMap, ghsValueSql, ghsHistoricalValueSql, fxMeta } from '../../services/property-management/utils/currencyFx';
 
 const router = Router();
+
+// ──────────────────────────────────────────────
+// FX rates (GHS base) — for currency-aware client aggregates + rate stamp
+// ──────────────────────────────────────────────
+router.get('/fx/rates', asyncHandler(async (_req: Request, res: Response) => {
+    res.json(fxMeta(await getGhsRateMap()));
+}));
 
 // ──────────────────────────────────────────────
 // Pipeline Analytics
@@ -93,25 +104,30 @@ router.get('/analytics/deals', asyncHandler(async (req: Request, res: Response) 
         whereClause += ` AND d.created_at <= $${params.length}`;
     }
 
+    // GHS-normalize every money aggregate: live rate for open/total value,
+    // as-of-close-date (historical) rate for realized won revenue.
+    const fx = await getGhsRateMap();
+    const valGhs = ghsValueSql('deal_value', 'currency', fx);
+    const wonGhs = ghsHistoricalValueSql('deal_value', 'currency', 'actual_close_date', fx);
     const query = `
-        SELECT 
+        SELECT
             COUNT(*) as "totalDeals",
-            COALESCE(SUM(deal_value), 0) as "totalValue",
-            COALESCE(SUM(CASE WHEN deal_status = 'won' THEN deal_value ELSE 0 END), 0) as "wonValue",
-            COALESCE(SUM(CASE WHEN deal_status = 'lost' THEN deal_value ELSE 0 END), 0) as "lostValue",
+            COALESCE(SUM(${valGhs}), 0) as "totalValue",
+            COALESCE(SUM(CASE WHEN deal_status = 'won' THEN ${wonGhs} ELSE 0 END), 0) as "wonValue",
+            COALESCE(SUM(CASE WHEN deal_status = 'lost' THEN ${valGhs} ELSE 0 END), 0) as "lostValue",
             COUNT(CASE WHEN deal_status = 'won' THEN 1 END) as "wonDeals",
             COUNT(CASE WHEN deal_status = 'lost' THEN 1 END) as "lostDeals",
-            CASE 
-                WHEN COUNT(*) > 0 
-                THEN COUNT(CASE WHEN deal_status = 'won' THEN 1 END)::float / 
+            CASE
+                WHEN COUNT(*) > 0
+                THEN COUNT(CASE WHEN deal_status = 'won' THEN 1 END)::float /
                      NULLIF(COUNT(CASE WHEN deal_status IN ('won', 'lost') THEN 1 END), 0)
-                ELSE 0 
+                ELSE 0
             END as "conversionRate"
         FROM deals d WHERE ${whereClause}
     `;
 
     const result = await db.query(query, params);
-    res.json(result.rows[0] || { totalDeals: 0, totalValue: 0, wonValue: 0, lostValue: 0, conversionRate: 0 });
+    res.json({ ...(result.rows[0] || { totalDeals: 0, totalValue: 0, wonValue: 0, lostValue: 0, conversionRate: 0 }), fx: fxMeta(fx) });
 }));
 
 // ──────────────────────────────────────────────
@@ -124,15 +140,18 @@ router.get('/analytics/agents', asyncHandler(async (req: Request, res: Response)
         return res.status(401).json({ error: 'Organization not found' });
     }
 
+    const fx = await getGhsRateMap();
+    const valD = ghsValueSql('d.deal_value', 'd.currency', fx);
+    const wonHist = ghsHistoricalValueSql('d.deal_value', 'd.currency', 'd.actual_close_date', fx);
     const query = `
-        SELECT 
+        SELECT
             d.assigned_agent as user_id,
             COALESCE(u.first_name || ' ' || u.last_name, 'Unassigned') as name,
             COUNT(d.id) as total_deals,
             COUNT(CASE WHEN d.deal_status = 'won' THEN 1 END) as won_deals,
-            COALESCE(SUM(d.deal_value), 0) as pipeline_value,
-            COALESCE(SUM(CASE WHEN d.deal_status = 'won' THEN d.deal_value END), 0) as won_value,
-            CASE 
+            COALESCE(SUM(${valD}), 0) as pipeline_value,
+            COALESCE(SUM(CASE WHEN d.deal_status = 'won' THEN ${wonHist} END), 0) as won_value,
+            CASE
                 WHEN COUNT(CASE WHEN d.deal_status IN ('won', 'lost') THEN 1 END) > 0
                 THEN ROUND((COUNT(CASE WHEN d.deal_status = 'won' THEN 1 END)::numeric / 
                      COUNT(CASE WHEN d.deal_status IN ('won', 'lost') THEN 1 END)) * 100, 1)
@@ -166,43 +185,47 @@ router.get('/analytics/revenue-forecast', asyncHandler(async (req: Request, res:
     const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
     const quarterEnd = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0);
 
+    // GHS-normalize forecast money (live rate — forward-looking figures).
+    const fx = await getGhsRateMap();
+    const valD = ghsValueSql('d.deal_value', 'd.currency', fx);
+    const valBare = ghsValueSql('deal_value', 'currency', fx);
     const query = `
         WITH stage_forecasts AS (
-            SELECT 
+            SELECT
                 ds.stage_name,
-                COALESCE(SUM(d.deal_value), 0) as value,
+                COALESCE(SUM(${valD}), 0) as value,
                 COALESCE(ds.probability, 50) as probability
             FROM deals d
             JOIN deal_stages ds ON d.stage_id = ds.id
-            WHERE d.organization_id = $1 
-              AND d.deleted_at IS NULL 
+            WHERE d.organization_id = $1
+              AND d.deleted_at IS NULL
               AND d.deal_status = 'active'
             GROUP BY ds.stage_name, ds.probability
         )
-        SELECT 
+        SELECT
             json_build_object(
                 'current_month', COALESCE((
-                    SELECT SUM(deal_value) 
-                    FROM deals 
-                    WHERE organization_id = $1 
-                      AND deal_status = 'won' 
-                      AND actual_close_date >= $2 
+                    SELECT SUM(${valBare})
+                    FROM deals
+                    WHERE organization_id = $1
+                      AND deal_status = 'won'
+                      AND actual_close_date >= $2
                       AND actual_close_date < $3
                 ), 0),
                 'next_month', COALESCE((
-                    SELECT SUM(deal_value * COALESCE(ds.probability, 50) / 100.0)
+                    SELECT SUM((${valD}) * COALESCE(ds.probability, 50) / 100.0)
                     FROM deals d
                     JOIN deal_stages ds ON d.stage_id = ds.id
-                    WHERE d.organization_id = $1 
+                    WHERE d.organization_id = $1
                       AND d.deal_status = 'active'
-                      AND d.estimated_close_date >= $3 
+                      AND d.estimated_close_date >= $3
                       AND d.estimated_close_date <= $4
                 ), 0),
                 'quarter', COALESCE((
-                    SELECT SUM(deal_value * COALESCE(ds.probability, 50) / 100.0)
+                    SELECT SUM((${valD}) * COALESCE(ds.probability, 50) / 100.0)
                     FROM deals d
                     JOIN deal_stages ds ON d.stage_id = ds.id
-                    WHERE d.organization_id = $1 
+                    WHERE d.organization_id = $1
                       AND d.deal_status = 'active'
                       AND d.estimated_close_date <= $5
                 ), 0),
@@ -218,6 +241,199 @@ router.get('/analytics/revenue-forecast', asyncHandler(async (req: Request, res:
         quarterEnd
     ]);
     res.json(result.rows[0]?.forecast || { current_month: 0, next_month: 0, quarter: 0, by_stage: [] });
+}));
+
+// ──────────────────────────────────────────────
+// Revenue Recognition (recognized-on-collection vs deferred + monthly schedule)
+// ──────────────────────────────────────────────
+
+router.get('/analytics/revenue-recognition', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    // Recognized = cash actually collected against invoices (point of collection).
+    // Deferred   = invoiced but not yet collected (a future receivable, unrecognized).
+    // Backlog    = won-deal value not yet invoiced at all.
+    // Payments carry no currency — the amount is in the parent invoice's currency;
+    // join deal_invoices and GHS-normalize. Deferred reads the invoice currency directly.
+    const fx = await getGhsRateMap();
+    const payGhs = ghsValueSql('p.amount', 'di.currency', fx);
+    const totals = await db.query(
+        `SELECT
+            COALESCE((SELECT SUM(${payGhs}) FROM deal_invoice_payments p
+                      JOIN deal_invoices di ON p.invoice_id = di.id
+                      WHERE p.organization_id = $1), 0) AS recognized,
+            COALESCE((SELECT SUM(${ghsValueSql('(amount - paid_amount)', 'currency', fx)}) FROM deal_invoices
+                      WHERE organization_id = $1 AND status IN ('sent','partially_paid','overdue')), 0) AS deferred`,
+        [organizationId],
+    );
+
+    // Monthly recognized-revenue schedule (last 12 months of collections).
+    const monthly = await db.query(
+        `SELECT to_char(date_trunc('month', p.paid_at), 'YYYY-MM') AS period,
+                to_char(date_trunc('month', p.paid_at), 'Mon YYYY') AS period_label,
+                SUM(${payGhs}) AS recognized
+         FROM deal_invoice_payments p
+         JOIN deal_invoices di ON p.invoice_id = di.id
+         WHERE p.organization_id = $1
+           AND p.paid_at >= (date_trunc('month', CURRENT_DATE) - INTERVAL '11 months')
+         GROUP BY 1, 2
+         ORDER BY 1`,
+        [organizationId],
+    );
+
+    const r = totals.rows[0] || {};
+    res.json({
+        recognized: Number(r.recognized) || 0,
+        deferred: Number(r.deferred) || 0,
+        monthly: monthly.rows.map((m) => ({
+            period: m.period,
+            period_label: m.period_label,
+            recognized: Number(m.recognized) || 0,
+        })),
+    });
+}));
+
+// ──────────────────────────────────────────────
+// Forecast Categories (Salesforce-style: Commit / Best Case / Pipeline / Closed)
+// ──────────────────────────────────────────────
+
+router.get('/analytics/forecast-categories', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    // Closed bucket = won deals in the current fiscal year to date.
+    const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    // Effective category = rep override (deals.forecast_category) else derived
+    // from the deal's win probability (stage probability, falling back to the
+    // deal's own close_probability). Won → closed; 'omitted' is excluded below.
+    // GHS-normalize deal_value inside the CTE so downstream SUMs are single-currency.
+    const fx = await getGhsRateMap();
+    const query = `
+        WITH categorized AS (
+            SELECT
+                d.id,
+                ${ghsValueSql('d.deal_value', 'd.currency', fx)} AS deal_value,
+                COALESCE(ds.probability, d.close_probability, 50) AS prob,
+                CASE
+                    WHEN d.deal_status = 'won' THEN 'closed'
+                    WHEN d.forecast_category IS NOT NULL THEN d.forecast_category
+                    WHEN COALESCE(ds.probability, d.close_probability, 50) >= 75 THEN 'commit'
+                    WHEN COALESCE(ds.probability, d.close_probability, 50) >= 40 THEN 'best_case'
+                    ELSE 'pipeline'
+                END AS category
+            FROM deals d
+            LEFT JOIN deal_stages ds ON d.stage_id = ds.id
+            WHERE d.organization_id = $1
+              AND d.deleted_at IS NULL
+              AND (
+                    d.deal_status = 'active'
+                 OR (d.deal_status = 'won' AND d.actual_close_date >= $2)
+              )
+        )
+        SELECT
+            category,
+            COUNT(*)::int AS deal_count,
+            COALESCE(SUM(deal_value), 0) AS amount,
+            COALESCE(SUM(deal_value * prob / 100.0), 0) AS weighted
+        FROM categorized
+        WHERE category <> 'omitted'
+        GROUP BY category
+    `;
+    const result = await db.query(query, [organizationId, yearStart]);
+
+    const order = ['commit', 'best_case', 'pipeline', 'closed'];
+    const byCat: Record<string, { deal_count: number; amount: number; weighted: number }> = {};
+    for (const r of result.rows) {
+        byCat[r.category] = {
+            deal_count: Number(r.deal_count) || 0,
+            amount: Number(r.amount) || 0,
+            weighted: Number(r.weighted) || 0,
+        };
+    }
+    const categories = order.map((key) => ({
+        category: key,
+        deal_count: byCat[key]?.deal_count || 0,
+        amount: byCat[key]?.amount || 0,
+        weighted: byCat[key]?.weighted || 0,
+    }));
+    // "Committed forecast" = closed + commit (the number a manager banks on).
+    const committed = (byCat['closed']?.amount || 0) + (byCat['commit']?.amount || 0);
+    const bestCaseTotal = committed + (byCat['best_case']?.amount || 0);
+    res.json({ categories, committed, best_case_total: bestCaseTotal, fx: fxMeta(fx) });
+}));
+
+// ──────────────────────────────────────────────
+// Quota Attainment (per-rep target vs actual won in the target period)
+// ──────────────────────────────────────────────
+
+router.get('/analytics/quota-attainment', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    // Attained = won revenue in the target window, GHS-normalized at each deal's
+    // close-date rate (targets are set in GHS).
+    const fx = await getGhsRateMap();
+    const query = `
+        SELECT
+            st.id,
+            st.agent_id,
+            TRIM(COALESCE(a.first_name,'') || ' ' || COALESCE(a.last_name,'')) AS agent_name,
+            st.target_name,
+            st.target_period,
+            st.period_start,
+            st.period_end,
+            st.target_value AS quota,
+            COALESCE((
+                SELECT SUM(${ghsHistoricalValueSql('d.deal_value', 'd.currency', 'd.actual_close_date', fx)})
+                FROM deals d
+                WHERE d.assigned_agent = st.agent_id
+                  AND d.deal_status = 'won'
+                  AND d.actual_close_date BETWEEN st.period_start AND st.period_end
+            ), 0) AS attained
+        FROM sales_targets st
+        LEFT JOIN agents a ON st.agent_id = a.id
+        WHERE st.organization_id = $1
+          AND st.target_type = 'revenue'
+          AND st.status IN ('active', 'achieved')
+          AND st.agent_id IS NOT NULL
+        ORDER BY st.period_end DESC, agent_name ASC
+    `;
+    const result = await db.query(query, [organizationId]);
+
+    const rows = result.rows.map((r) => {
+        const quota = Number(r.quota) || 0;
+        const attained = Number(r.attained) || 0;
+        return {
+            id: r.id,
+            agent_id: r.agent_id,
+            agent_name: r.agent_name || 'Unassigned',
+            target_name: r.target_name,
+            target_period: r.target_period,
+            period_start: r.period_start,
+            period_end: r.period_end,
+            quota,
+            attained,
+            attainment_pct: quota > 0 ? (attained / quota) * 100 : 0,
+            gap: Math.max(quota - attained, 0),
+        };
+    });
+    const totalQuota = rows.reduce((s, r) => s + r.quota, 0);
+    const totalAttained = rows.reduce((s, r) => s + r.attained, 0);
+    res.json({
+        rows,
+        total_quota: totalQuota,
+        total_attained: totalAttained,
+        total_pct: totalQuota > 0 ? (totalAttained / totalQuota) * 100 : 0,
+    });
 }));
 
 // ──────────────────────────────────────────────
@@ -248,12 +464,13 @@ router.get('/analytics/leaderboard', asyncHandler(async (req: Request, res: Resp
             dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
+    const fx = await getGhsRateMap();
     const query = `
-        SELECT 
+        SELECT
             d.assigned_agent as user_id,
             u.first_name || ' ' || u.last_name as user_name,
             COUNT(d.id) as deals_closed,
-            COALESCE(SUM(d.deal_value), 0) as total_value,
+            COALESCE(SUM(${ghsHistoricalValueSql('d.deal_value', 'd.currency', 'd.actual_close_date', fx)}), 0) as total_value,
             COUNT(CASE WHEN d.deal_status = 'won' THEN 1 END) as deals_won
         FROM deals d
         LEFT JOIN users u ON u.id = d.assigned_agent
@@ -279,6 +496,9 @@ router.get('/analytics/revenue-trend', asyncHandler(async (req: Request, res: Re
 
     const months = parseInt(req.query.months as string) || 12;
 
+    const fx = await getGhsRateMap();
+    const valD = ghsValueSql('d.deal_value', 'd.currency', fx);
+    const wonHist = ghsHistoricalValueSql('d.deal_value', 'd.currency', 'd.actual_close_date', fx);
     const query = `
         WITH months AS (
             SELECT generate_series(
@@ -288,14 +508,14 @@ router.get('/analytics/revenue-trend', asyncHandler(async (req: Request, res: Re
             )::date as month_start
         ),
         monthly_data AS (
-            SELECT 
+            SELECT
                 date_trunc('month', COALESCE(d.actual_close_date, d.created_at))::date as period,
                 COUNT(*) FILTER (WHERE d.deal_status = 'won') as won_count,
                 COUNT(*) FILTER (WHERE d.deal_status = 'lost') as lost_count,
                 COUNT(*) as deal_count,
-                COALESCE(SUM(d.deal_value) FILTER (WHERE d.deal_status = 'won'), 0) as won_value,
-                COALESCE(SUM(d.deal_value) FILTER (WHERE d.deal_status = 'lost'), 0) as lost_value,
-                COALESCE(SUM(d.deal_value) FILTER (WHERE d.deal_status = 'active'), 0) as new_pipeline
+                COALESCE(SUM(${wonHist}) FILTER (WHERE d.deal_status = 'won'), 0) as won_value,
+                COALESCE(SUM(${valD}) FILTER (WHERE d.deal_status = 'lost'), 0) as lost_value,
+                COALESCE(SUM(${valD}) FILTER (WHERE d.deal_status = 'active'), 0) as new_pipeline
             FROM deals d
             WHERE d.organization_id = $1 AND d.deleted_at IS NULL
                 AND COALESCE(d.actual_close_date, d.created_at) >= date_trunc('month', NOW() - interval '1 month' * ($2 - 1))
@@ -918,6 +1138,55 @@ router.delete('/analytics/scheduled-reports/:id', asyncHandler(async (req: Reque
         // Table doesn't exist — ignore
     }
     res.status(204).send();
+}));
+
+// ──────────────────────────────────────────────
+// Marketing Attribution — deal outcomes grouped by lead source / campaign.
+// Columns already live on `deals` (lead_source, campaign_source, utm_data); this
+// simply surfaces them, FX-normalized to GHS. ?dimension=campaign switches the axis.
+// ──────────────────────────────────────────────
+router.get('/analytics/attribution', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+    const dimension = req.query.dimension === 'campaign' ? 'campaign_source' : 'lead_source';
+    const fx = await getGhsRateMap();
+    const valBare = ghsValueSql('deal_value', 'currency', fx);
+
+    const result = await db.query(
+        `SELECT COALESCE(NULLIF(TRIM(${dimension}::text), ''), 'Unknown') AS source,
+                COUNT(*)::int AS total_deals,
+                COUNT(*) FILTER (WHERE deal_status = 'won')::int  AS won_deals,
+                COUNT(*) FILTER (WHERE deal_status = 'lost')::int AS lost_deals,
+                COUNT(*) FILTER (WHERE deal_status = 'active')::int AS active_deals,
+                COALESCE(SUM(${valBare}), 0)::numeric AS total_value_ghs,
+                COALESCE(SUM(${valBare}) FILTER (WHERE deal_status = 'won'), 0)::numeric AS won_value_ghs,
+                COALESCE(SUM(${valBare}) FILTER (WHERE deal_status = 'active'), 0)::numeric AS pipeline_value_ghs
+         FROM deals
+         WHERE organization_id = $1 AND deleted_at IS NULL
+         GROUP BY 1
+         ORDER BY won_value_ghs DESC, total_deals DESC`,
+        [organizationId]
+    );
+
+    const sources = result.rows.map((r) => {
+        const won = Number(r.won_deals);
+        const decided = won + Number(r.lost_deals);
+        return {
+            source: r.source,
+            total_deals: Number(r.total_deals),
+            won_deals: won,
+            lost_deals: Number(r.lost_deals),
+            active_deals: Number(r.active_deals),
+            total_value_ghs: Number(r.total_value_ghs),
+            won_value_ghs: Number(r.won_value_ghs),
+            pipeline_value_ghs: Number(r.pipeline_value_ghs),
+            win_rate: decided > 0 ? Math.round((won / decided) * 1000) / 10 : 0,
+        };
+    });
+
+    res.json({ dimension, sources });
 }));
 
 export default router;

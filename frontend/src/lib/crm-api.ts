@@ -1015,59 +1015,10 @@ export const crmPaymentConfigApi = {
         fetchApi<SettlementCoin[]>(`${CRM_BASE}/payments/settlement-coins`),
 };
 
-// =====================================================
-// AI ASSISTANT API
-// =====================================================
-
-export interface CrmAIResponse {
-    answer: string;
-    confidence: number;
-    sources: string[];
-    suggestions: string[];
-    data_points: Array<{ metric: string; value: string }>;
-    actions: Array<{ type: string; priority: string; title: string; description: string }>;
-}
-
-export interface CrmAISuggestionCategory {
-    label: string;
-    prompts: string[];
-}
-
-export interface DealScore {
-    deal_id: string;
-    score: number;
-    health: 'healthy' | 'at_risk' | 'critical';
-    factors: Array<{ factor: string; weight: number; score: number; detail: string }>;
-}
-
-export interface NextAction {
-    type: string;
-    priority: 'high' | 'medium' | 'low';
-    title: string;
-    description: string;
-}
-
-export const aiApi = {
-    /** Natural language CRM query */
-    ask: (query: string, entityType?: string, entityId?: string) =>
-        fetchApi<CrmAIResponse>(`${CRM_BASE}/ai/ask`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, entity_type: entityType, entity_id: entityId }),
-        }),
-
-    /** Get pre-built suggestion prompts */
-    getSuggestions: () =>
-        fetchApi<{ categories: CrmAISuggestionCategory[] }>(`${CRM_BASE}/ai/suggestions`),
-
-    /** Get AI-suggested next actions for a deal */
-    getNextActions: (dealId: string) =>
-        fetchApi<{ deal_id: string; stage: string; actions: NextAction[] }>(`${CRM_BASE}/ai/next-actions/${dealId}`),
-
-    /** Get AI-enhanced deal score */
-    getDealScore: (dealId: string) =>
-        fetchApi<DealScore>(`${CRM_BASE}/ai/deal-score/${dealId}`),
-};
+// CRM AI API removed: the standalone CRM assistant popup was retired in favour of
+// the Workspace panel's CRM-scoped "KOBBY AI" tab (backend: KobbyAIService 'crm'
+// scope). The former /crm/ai/* endpoints (ask/suggestions/deal-score/next-actions)
+// had no remaining callers and were deleted with the route.
 
 // =====================================================
 // EMAIL INTEGRATION API
@@ -1242,7 +1193,6 @@ export const crmApi = {
     analytics: analyticsApi,
     documentTemplates: documentTemplatesApi,
     documentGeneration: documentGenerationApi,
-    ai: aiApi,
     emails: emailsApi,
     dripCampaigns: dripCampaignsApi,
 };

@@ -66,25 +66,53 @@ class ValuationMethodResponse(BaseModel):
 # ============================================================================
 
 def _normalize_region(region: str) -> str:
-    """Normalize region string"""
+    """
+    Normalize a Ghana region string to one of the 5 pricing clusters.
+
+    Covers all 16 current administrative regions (post-2019 split). A region that is
+    NOT recognised falls through to the raw lowercased input — so the downstream
+    multiplier lookup (`regional_multipliers.get(region, 1.0)`) returns the neutral
+    1.0 national baseline. Previously the fallback was "greater_accra", which silently
+    applied Accra's premium (1.20×) to every unrecognised region — e.g. a Savannah or
+    Oti property (rural, low-value) was over-valued by ~60%.
+    """
     region_map = {
+        # Greater Accra cluster
         "greater_accra": "greater_accra",
         "accra": "greater_accra",
+        "central": "greater_accra",
+        # Ashanti / Bono cluster
         "kumasi": "kumasi_metro",
         "kumasi_metro": "kumasi_metro",
         "ashanti": "kumasi_metro",
+        "bono": "kumasi_metro",
+        "bono_east": "kumasi_metro",
+        "brong_ahafo": "kumasi_metro",  # legacy pre-2019 name
+        "ahafo": "kumasi_metro",
+        # Eastern / Volta cluster
         "eastern": "eastern",
+        "volta": "eastern",
+        "oti": "eastern",               # split from Volta (2019)
+        # Western cluster
         "western": "western_cluster",
         "western_cluster": "western_cluster",
+        "western_north": "western_cluster",  # split from Western (2019)
+        # Northern cluster
         "northern": "northern_cluster",
         "northern_cluster": "northern_cluster",
         "upper_east": "northern_cluster",
         "upper_west": "northern_cluster",
-        "volta": "eastern",
-        "central": "greater_accra",
-        "bono": "kumasi_metro",
+        "savannah": "northern_cluster",  # split from Northern (2019)
+        "north_east": "northern_cluster",  # split from Northern (2019)
     }
-    return region_map.get(region.lower(), "greater_accra")
+    key = region.lower().strip().replace(" ", "_") if region else ""
+    if key not in region_map:
+        logger.warning(
+            "Unrecognised region '%s' — using neutral 1.0 baseline multiplier "
+            "(no longer defaulting to Greater Accra's premium)", region
+        )
+        return key
+    return region_map[key]
 
 
 def _normalize_property_type(prop_type: str) -> str:
@@ -120,3 +148,16 @@ def _get_confidence_level(score: float) -> str:
         return "medium"
     else:
         return "low"
+
+
+def _to_float(value, default: float = 0.0) -> float:
+    """Coerce an untyped option value (which may arrive as a JSON string, e.g. a
+    Postgres NUMERIC rate serialized as "8708") to float. Returns `default` for
+    None / empty / non-numeric values. Method `options` are `Dict[str, Any]`, so
+    they bypass pydantic coercion and MUST be coerced before any arithmetic."""
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default

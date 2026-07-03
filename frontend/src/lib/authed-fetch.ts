@@ -3,7 +3,11 @@
  *
  * Drop-in replacement for the global `fetch()`:
  *   import { authedFetch } from '@/lib/authed-fetch';
- *   const res = await authedFetch('/api/v1/projects/123');
+ *   const res = await authedFetch('/api/projects/123');
+ *
+ * IMPORTANT: use the RELATIVE `/api/...` path (NOT `/api/v1/...`). The Next proxy
+ * rewrites `/api/:path*` → backend `/api/v1/:path*`, so a client `/api/v1/...`
+ * would double-version to `/api/v1/v1/...`. Never hardcode an absolute host.
  *
  * Automatically attaches the NextAuth JWT as `Authorization: Bearer <token>`.
  * Token is cached for 60 seconds to avoid hammering the session endpoint.

@@ -13,6 +13,7 @@ from ._shared import (
     ValuationMethodRequest,
     ValuationMethodResponse,
     _get_confidence_level,
+    _to_float,
     logger,
 )
 
@@ -44,9 +45,11 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
         condition = prop.condition or "good"
         age = datetime.now().year - year_built
 
-        # Use user-provided construction cost per sqm (from Data Hub) — required
-        cost_per_sqm = opts.get("construction_cost_per_sqm")
-        if not cost_per_sqm or cost_per_sqm <= 0:
+        # Use user-provided construction cost per sqm (from Data Hub) — required.
+        # `options` is Dict[str, Any] (no pydantic coercion), so numerics MUST be
+        # coerced: a Postgres NUMERIC rate can arrive as the string "8708".
+        cost_per_sqm = _to_float(opts.get("construction_cost_per_sqm"), 0)
+        if cost_per_sqm <= 0:
             raise HTTPException(
                 status_code=400,
                 detail="construction_cost_per_sqm is required in options (from Data Hub market rates)"
@@ -54,16 +57,16 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
 
         # Use user-provided land value per sqm (from comparable land sales)
         # Defaults to 0 if not yet available (frontend calculates indicatedValue independently)
-        land_value_per_sqm = opts.get("land_value_per_sqm", 0) or 0
+        land_value_per_sqm = _to_float(opts.get("land_value_per_sqm"), 0)
 
         # ---- Reproduction Cost New (full RICS/GhIS cost approach) ----
         # Hard costs: component breakdown if supplied, else market rate × building area.
-        hard_costs = opts.get("hard_costs") or (building_sqm * cost_per_sqm)
+        hard_costs = _to_float(opts.get("hard_costs"), 0) or (building_sqm * cost_per_sqm)
 
         # Soft costs (% of hard), siteworks (absolute), entrepreneurial profit (% of construction cost).
-        soft_costs_pct = (opts.get("soft_costs_percent", 10) or 0) / 100.0
-        siteworks = opts.get("siteworks", 0) or 0
-        profit_pct = (opts.get("entrepreneurial_profit_percent", 15) or 0) / 100.0
+        soft_costs_pct = _to_float(opts.get("soft_costs_percent"), 10) / 100.0
+        siteworks = _to_float(opts.get("siteworks"), 0)
+        profit_pct = _to_float(opts.get("entrepreneurial_profit_percent"), 15) / 100.0
 
         soft_costs = hard_costs * soft_costs_pct
         total_construction_cost = hard_costs + soft_costs + siteworks
@@ -76,10 +79,10 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
         # Depreciation from the depreciation service. Inputs are PERCENTAGES (e.g. 1.8),
         # kept to full precision (no rounding). Applied to the FULL reproduction cost new —
         # hard costs, soft costs and profit all depreciate, not just hard costs.
-        depreciation_overrides = opts.get("depreciation_overrides", {})
-        physical_dep = (depreciation_overrides.get("physical", 0) or 0) / 100.0
-        functional_dep = (depreciation_overrides.get("functional", 0) or 0) / 100.0
-        external_dep = (depreciation_overrides.get("external", 0) or 0) / 100.0
+        depreciation_overrides = opts.get("depreciation_overrides", {}) or {}
+        physical_dep = _to_float(depreciation_overrides.get("physical"), 0) / 100.0
+        functional_dep = _to_float(depreciation_overrides.get("functional"), 0) / 100.0
+        external_dep = _to_float(depreciation_overrides.get("external"), 0) / 100.0
         total_depreciation_pct = physical_dep + functional_dep + external_dep
 
         depreciation_amount = reproduction_cost_new * total_depreciation_pct

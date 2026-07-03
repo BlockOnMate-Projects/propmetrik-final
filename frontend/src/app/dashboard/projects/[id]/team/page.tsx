@@ -2,16 +2,18 @@
 
 import React from 'react'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { TeamManager } from '@/components/projects/team/TeamManager'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 export default function ProjectTeamPage() {
   const params = useParams()
+  const { data: session } = useSession()
   const projectId = params.id as string
-  
-  // Get organization ID from session — falls back to first org in profile
-  const organizationId = '' // TODO: pull from auth context/session
+
+  // Real org from the authenticated session (was hardcoded '' — team scoping prop was empty).
+  const organizationId = ((session?.user as any)?.organizationId as string) || ''
   
   return (
     <div className="min-h-screen bg-background text-foreground p-6">

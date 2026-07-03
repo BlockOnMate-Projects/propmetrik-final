@@ -68,7 +68,7 @@ export function ContactMergeDialog({ open, onOpenChange, onMergeComplete }: Cont
         const fetchDuplicates = async () => {
             try {
                 const res = await authedFetch(
-                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/crm/contacts/duplicates?limit=50&min_confidence=0.5`,
+                    `/api/crm/contacts/duplicates?limit=50&min_confidence=0.5`,
                     { credentials: 'include' }
                 )
                 if (res.ok) {
@@ -106,7 +106,7 @@ export function ContactMergeDialog({ open, onOpenChange, onMergeComplete }: Cont
         try {
             const useFields = Array.from(useFromDuplicate)
             const res = await authedFetch(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/crm/contacts/merge`,
+                `/api/crm/contacts/merge`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

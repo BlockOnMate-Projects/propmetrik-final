@@ -20,6 +20,7 @@ import { query } from '../../database';
 import { logger } from '../../utils/logger';
 import { uploadFile, getPresignedDownloadUrl } from '../../database/minio';
 import { reportDataService } from './reportDataService';
+import { resolveReportBranding, type ResolvedBranding } from './brandingService';
 import { valuationReportService } from './valuationReportService';
 import { reportTemplateService } from './reportTemplateService';
 import { valuationDocumentService } from './valuationDocumentService';
@@ -83,6 +84,8 @@ export interface ReportSectionData {
     order: number;
     content: string; // HTML
   }>;
+  /** Resolved firm branding (logo/name/colors/credentials) — falls back to PROPMETRIK. */
+  branding?: ResolvedBranding;
 }
 
 // =====================================================
@@ -317,6 +320,7 @@ class DocGenerationService {
       floorPlanImages,
       weightingRationale: (valuationReportData as any).weighting_rationale || null,
       editorSections,
+      branding: await resolveReportBranding(report.valuer_organization_id, { context: 'valuation', withLogo: true }),
     };
   }
 
@@ -732,7 +736,7 @@ class DocGenerationService {
    */
   private async getReport(reportId: string): Promise<any> {
     const result = await query(
-      `SELECT r.*, v.property_id
+      `SELECT r.*, v.property_id, v.valuer_organization_id
        FROM valuation_reports r
        JOIN valuations v ON r.valuation_id = v.id
        WHERE r.id = $1`,

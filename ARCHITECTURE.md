@@ -78,8 +78,8 @@ npm run migrate                    # apply pending migrations (hits PROD DB — 
 # Frontend
 cd frontend && npm run dev         # http://localhost:3000
 
-# Python valuation service
-cd backend/src/services/valuation-engine/python && python simple_start.py   # :8001
+# Python valuation service (single entrypoint app.main:app — mounts all app/methods/* routers)
+cd backend/src/services/valuation-engine/python && uvicorn app.main:app --port 8001 --reload   # :8001
 ```
 
 ## 7. Key conventions & gotchas

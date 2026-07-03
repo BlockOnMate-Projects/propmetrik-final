@@ -222,6 +222,56 @@ router.get('/auth/keycloak/reset-password-url', asyncHandler(async (req: Request
 }));
 
 /**
+ * POST /api/v1/tenant-portal/auth/request-password-reset
+ * Self-service forgot-password for tenants.
+ *
+ * WHY THIS EXISTS: the Keycloak realm has NO SMTP configured, so Keycloak's hosted
+ * reset-credentials flow (getResetPasswordUrl) can never deliver a reset email — a
+ * tenant who forgets their password is otherwise locked out. This mirrors the INVITE
+ * flow instead: generate a magic link to /tenant/set-password (consumed by
+ * /auth/setup-password, which sets the password in Keycloak) and deliver it through the
+ * app's own 3-tier notifier (MS Graph → SES → Google), NOT Keycloak SMTP.
+ *
+ * Always returns a generic success to avoid account enumeration.
+ */
+router.post('/auth/request-password-reset', asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body || {};
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({ error: 'A valid email is required' });
+    }
+
+    // Honour the caller's origin for multi-domain deployments; fall back to config.
+    let baseUrl = config.app.tenantPortalUrl;
+    const origin = req.headers['origin'] as string | undefined;
+    if (origin) {
+        try { baseUrl = new URL(origin).origin; } catch { /* keep config default */ }
+    }
+
+    try {
+        // generateMagicLink returns success (no token) for unknown emails — no enumeration.
+        const linkResult = await tenantAuthService.generateMagicLink(email, baseUrl, '/tenant/set-password', 60);
+        if (linkResult.success && linkResult.token) {
+            const emailResult = await notificationService.sendPortalInvite(email, linkResult.token, {
+                tenantName: 'Tenant',
+                organizationName: 'Your property manager',
+                propertyTitle: 'your tenancy',
+                propertyAddress: ''
+            });
+            if (!emailResult.success) {
+                logger.warn('Password-reset email failed to send', { error: emailResult.error });
+            }
+        }
+    } catch (err: any) {
+        logger.warn('request-password-reset failed', { error: err?.message });
+    }
+
+    return res.json({
+        success: true,
+        message: 'If an account exists for that email, a link to set your password has been sent.'
+    });
+}));
+
+/**
  * POST /api/v1/tenant-portal/auth/magic-link
  * Request a magic link for login
  */

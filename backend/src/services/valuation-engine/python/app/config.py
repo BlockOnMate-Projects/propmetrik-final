@@ -79,26 +79,17 @@ class Settings(BaseSettings):
     default_comparable_age_days: int = Field(365, env='DEFAULT_COMPARABLE_AGE_DAYS')
     min_comparables_required: int = Field(3, env='MIN_COMPARABLES_REQUIRED')
     max_comparables_to_analyze: int = Field(20, env='MAX_COMPARABLES_TO_ANALYZE')
-    
-    # Regional Pricing Multipliers (can be overridden via environment)
-    regional_multipliers: Dict[str, float] = Field(default={
-        "greater_accra": 1.30,
-        "kumasi_metro": 1.00,
-        "eastern": 1.00,
-        "western_cluster": 1.00,
-        "northern_cluster": 0.70
-    })
-    
-    # Valuation Method Default Weights
-    default_method_weights: Dict[str, float] = Field(default={
-        "sales_comparison": 0.60,
-        "cost_approach": 0.40,
-        "income_approach": 0.30,  # When applicable
-        "residual_method": 0.50,  # For development sites
-        "profits_method": 0.40,   # For income-producing properties
-        "drc_method": 0.35        # For specialized properties
-    })
-    
+
+    # Regional pricing multipliers live solely in the sales-comparison path
+    # (app/main.py regional_multipliers, keyed by the 5 clusters from
+    # _shared._normalize_region). The former copy here + its get_regional_multiplier()
+    # reader were dead (never called) and had divergent values — removed.
+
+    # Valuation method reconciliation weights are owned solely by the reconcile
+    # endpoint (app/methods/multi_method.py weight_profiles). The former
+    # default_method_weights table + get_method_weight() reader here were dead
+    # (never called) and a divergent copy — removed for a single source of truth.
+
     # Confidence Score Thresholds
     high_confidence_threshold: float = Field(0.80, env='HIGH_CONFIDENCE_THRESHOLD')
     medium_confidence_threshold: float = Field(0.60, env='MEDIUM_CONFIDENCE_THRESHOLD')
@@ -148,14 +139,6 @@ class Settings(BaseSettings):
     # Custom parsers for environment variables
     # Note: simple comma-separated list parsing for cors_origins handled by Pydantic V2 if valid JSON or via validation if needed.
     # Complex parsing logic from Pydantic V1 Config.parse_env_var is removed for V2 compatibility.
-    
-    def get_regional_multiplier(self, region: GhanaRegion) -> float:
-        """Get pricing multiplier for a specific region"""
-        return self.regional_multipliers.get(region.value, 1.0)
-    
-    def get_method_weight(self, method: ValuationMethod) -> float:
-        """Get default weight for a valuation method"""
-        return self.default_method_weights.get(method.value, 0.5)
     
     def is_production(self) -> bool:
         """Check if running in production environment"""

@@ -142,6 +142,9 @@ export const config = {
   // Keycloak Authentication
   keycloak: {
     url: process.env.KEYCLOAK_URL,
+    // Server-to-server admin traffic (token + /admin/realms/*) can be pointed at a
+    // non-Cloudflare origin to bypass edge bot-challenges. Falls back to the public URL.
+    adminUrl: process.env.KEYCLOAK_ADMIN_URL || process.env.KEYCLOAK_URL,
     realm: process.env.KEYCLOAK_REALM,
     clientId: process.env.KEYCLOAK_CLIENT_ID,
     clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,

@@ -47,7 +47,8 @@ router.post('/commissions/plans', validate(createCommissionPlanBody), asyncHandl
 }));
 
 router.get('/commissions/plans/:id', asyncHandler(async (req: Request, res: Response) => {
-    const plan = await commissionService.getPlan(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const plan = await commissionService.getPlan(req.params.id, organizationId);
     if (!plan) {
         return res.status(404).json({ error: 'Plan not found' });
     }
@@ -55,7 +56,8 @@ router.get('/commissions/plans/:id', asyncHandler(async (req: Request, res: Resp
 }));
 
 router.patch('/commissions/plans/:id', validate(updateCommissionPlanBody), asyncHandler(async (req: Request, res: Response) => {
-    const plan = await commissionService.updatePlan(req.params.id, req.body);
+    const organizationId = await getOrganizationId(req);
+    const plan = await commissionService.updatePlan(req.params.id, req.body, organizationId);
     if (!plan) {
         return res.status(404).json({ error: 'Plan not found' });
     }
@@ -63,7 +65,8 @@ router.patch('/commissions/plans/:id', validate(updateCommissionPlanBody), async
 }));
 
 router.delete('/commissions/plans/:id', asyncHandler(async (req: Request, res: Response) => {
-    const deleted = await commissionService.deletePlan(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const deleted = await commissionService.deletePlan(req.params.id, organizationId);
     if (!deleted) {
         return res.status(404).json({ error: 'Plan not found' });
     }
@@ -71,12 +74,17 @@ router.delete('/commissions/plans/:id', asyncHandler(async (req: Request, res: R
 }));
 
 router.post('/commissions/plans/:id/tiers', validate(createCommissionTierBody), asyncHandler(async (req: Request, res: Response) => {
-    const tier = await commissionService.addTier(req.params.id, req.body);
+    const organizationId = await getOrganizationId(req);
+    const tier = await commissionService.addTier(req.params.id, req.body, organizationId);
+    if (!tier) {
+        return res.status(404).json({ error: 'Plan not found' });
+    }
     res.status(201).json({ tier });
 }));
 
 router.patch('/commissions/tiers/:id', asyncHandler(async (req: Request, res: Response) => {
-    const tier = await commissionService.updateTier(req.params.id, req.body);
+    const organizationId = await getOrganizationId(req);
+    const tier = await commissionService.updateTier(req.params.id, req.body, organizationId);
     if (!tier) {
         return res.status(404).json({ error: 'Tier not found' });
     }
@@ -84,7 +92,8 @@ router.patch('/commissions/tiers/:id', asyncHandler(async (req: Request, res: Re
 }));
 
 router.delete('/commissions/tiers/:id', asyncHandler(async (req: Request, res: Response) => {
-    const deleted = await commissionService.deleteTier(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const deleted = await commissionService.deleteTier(req.params.id, organizationId);
     if (!deleted) {
         return res.status(404).json({ error: 'Tier not found' });
     }
@@ -116,7 +125,8 @@ router.get('/commissions/records/pending', asyncHandler(async (req: Request, res
 }));
 
 router.get('/commissions/records/:id', asyncHandler(async (req: Request, res: Response) => {
-    const record = await commissionService.getRecord(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const record = await commissionService.getRecord(req.params.id, organizationId);
     if (!record) {
         return res.status(404).json({ error: 'Record not found' });
     }
@@ -124,8 +134,9 @@ router.get('/commissions/records/:id', asyncHandler(async (req: Request, res: Re
 }));
 
 router.post('/commissions/records/:id/approve', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
-    const record = await commissionService.approveRecord(req.params.id, userId!);
+    const record = await commissionService.approveRecord(req.params.id, userId!, organizationId);
     if (!record) {
         return res.status(404).json({ error: 'Record not found or already approved' });
     }
@@ -133,7 +144,8 @@ router.post('/commissions/records/:id/approve', asyncHandler(async (req: Request
 }));
 
 router.post('/commissions/records/:id/pay', asyncHandler(async (req: Request, res: Response) => {
-    const record = await commissionService.markAsPaid(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const record = await commissionService.markAsPaid(req.params.id, organizationId);
     if (!record) {
         return res.status(404).json({ error: 'Record not found or not approved' });
     }
@@ -141,10 +153,11 @@ router.post('/commissions/records/:id/pay', asyncHandler(async (req: Request, re
 }));
 
 router.post('/commissions/records/:id/clawback', validate(commissionClawbackBody), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     const { reason } = req.body;
-    
-    const record = await commissionService.createClawback(req.params.id, reason, userId);
+
+    const record = await commissionService.createClawback(req.params.id, reason, organizationId, userId);
     if (!record) {
         return res.status(400).json({ error: 'Cannot create clawback' });
     }
@@ -221,7 +234,8 @@ router.post('/commissions/statements/generate', validate(commissionGenerateState
 }));
 
 router.get('/commissions/statements/:id', asyncHandler(async (req: Request, res: Response) => {
-    const statement = await commissionService.getStatement(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const statement = await commissionService.getStatement(req.params.id, organizationId);
     if (!statement) {
         return res.status(404).json({ error: 'Statement not found' });
     }
@@ -229,8 +243,9 @@ router.get('/commissions/statements/:id', asyncHandler(async (req: Request, res:
 }));
 
 router.post('/commissions/statements/:id/approve', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
-    const statement = await commissionService.approveStatement(req.params.id, userId!);
+    const statement = await commissionService.approveStatement(req.params.id, userId!, organizationId);
     if (!statement) {
         return res.status(404).json({ error: 'Statement not found or already approved' });
     }
@@ -238,12 +253,14 @@ router.post('/commissions/statements/:id/approve', asyncHandler(async (req: Requ
 }));
 
 router.post('/commissions/statements/:id/pay', validate(commissionPayBody), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const { payment_method, payment_reference } = req.body;
-    
+
     const statement = await commissionService.markStatementPaid(
         req.params.id,
         payment_method,
-        payment_reference
+        payment_reference,
+        organizationId
     );
     if (!statement) {
         return res.status(404).json({ error: 'Statement not found or not approved' });
@@ -326,8 +343,9 @@ router.get('/commissions/adjustments', asyncHandler(async (req: Request, res: Re
 }));
 
 router.post('/commissions/adjustments/:id/approve', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
-    const adjustment = await commissionService.approveAdjustment(req.params.id, userId!);
+    const adjustment = await commissionService.approveAdjustment(req.params.id, userId!, organizationId);
     if (!adjustment) {
         return res.status(404).json({ error: 'Adjustment not found or already processed' });
     }

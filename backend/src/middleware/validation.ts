@@ -107,12 +107,27 @@ export const passwordSchema = z
   .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
 // Ghana-specific schemas
+// The 16 current Ghana administrative regions (post-2019 split), snake_case — matches
+// the properties partition (mig 241) and the frontend region filters. Previously this
+// listed 5 internal PRICING-CLUSTER names (kumasi_metro/western_cluster/northern_cluster),
+// so filtering/querying by a real region like `ashanti` failed validation with a 400.
 export const ghanaRegionSchema = z.enum([
   'greater_accra',
-  'kumasi_metro',
+  'ashanti',
+  'western',
+  'western_north',
+  'central',
   'eastern',
-  'western_cluster',
-  'northern_cluster',
+  'volta',
+  'oti',
+  'bono',
+  'bono_east',
+  'ahafo',
+  'northern',
+  'savannah',
+  'north_east',
+  'upper_east',
+  'upper_west',
 ]);
 
 export const ghanaPhoneSchema = z.string().regex(

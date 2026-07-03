@@ -60,12 +60,13 @@ router.use((req, res, next) => {
  */
 router.get('/fee-calculator', async (req: Request, res: Response) => {
     try {
-        const { feeModel, propertyValue, manDays, flatFee } = req.query;
+        const { feeModel, propertyValue, feePercentage, manDays, flatFee } = req.query;
         const organizationId = getOrgId(req);
 
         const calculation = await valuationInvoiceService.calculateFee({
             feeModel: (feeModel as FeeModel) || 'percentage_of_value',
             propertyValue: propertyValue ? parseFloat(propertyValue as string) : undefined,
+            feePercentage: feePercentage ? parseFloat(feePercentage as string) : undefined,
             manDays: manDays ? JSON.parse(manDays as string) : undefined,
             flatFee: flatFee ? parseFloat(flatFee as string) : undefined,
             organizationId,
