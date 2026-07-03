@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { cn } from '@/lib/utils'
 import {
   MessageSquare,
@@ -656,6 +657,9 @@ export function CommunicationLog({
   const [error, setError] = useState<string | null>(null)
 
   const [searchQuery, setSearchQuery] = useState('')
+  // PERF: debounce so filtering/fetching runs once the user pauses typing
+  // (this fetch also pulls team + vendor lists — expensive against the remote DB).
+  const debouncedSearch = useDebouncedValue(searchQuery, 300)
   const [typeFilter, setTypeFilter] = useState<CommunicationType | 'all'>('all')
   const [showPendingOnly, setShowPendingOnly] = useState(false)
 
@@ -675,7 +679,7 @@ export function CommunicationLog({
           projectId,
           communicationType: typeFilter !== 'all' ? typeFilter as CommunicationType : undefined,
           hasFollowUp: showPendingOnly ? true : undefined,
-          search: searchQuery || undefined,
+          search: debouncedSearch || undefined,
         }),
         teamApi.getProjectTeam(projectId),
         vendorApi.getAll().then(r => r.data),
@@ -707,7 +711,7 @@ export function CommunicationLog({
     } finally {
       setIsLoading(false)
     }
-  }, [projectId, typeFilter, showPendingOnly, searchQuery])
+  }, [projectId, typeFilter, showPendingOnly, debouncedSearch])
 
   useEffect(() => {
     fetchData()

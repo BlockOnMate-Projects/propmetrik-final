@@ -32,7 +32,8 @@ from datetime import datetime, date
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 
-from fastapi import FastAPI, HTTPException, Query, Path, Depends, BackgroundTasks
+import hmac
+from fastapi import FastAPI, HTTPException, Query, Path, Depends, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -144,28 +145,56 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI app
+# SECURITY: environment + engine access controls.
+_IS_PROD = os.getenv("ENVIRONMENT", os.getenv("NODE_ENV", "development")).strip().lower() == "production"
+ENGINE_SHARED_SECRET = os.getenv("ENGINE_SHARED_SECRET", "").strip()
+
+# Interactive API docs are disabled in production (they enumerate the whole
+# compute surface). Set ENGINE_ENABLE_DOCS=true to force-enable if ever needed.
+_DOCS_ENABLED = (not _IS_PROD) or os.getenv("ENGINE_ENABLE_DOCS", "").strip().lower() == "true"
+
 app = FastAPI(
     title="PROPMETRIK Valuation Engine",
     description="Ghana property valuation calculations - Python implementation",
     version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if _DOCS_ENABLED else None,
+    redoc_url="/redoc" if _DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if _DOCS_ENABLED else None,
     lifespan=lifespan
 )
 
-# CORS middleware
+# CORS — explicit allowlist only (never "*" with credentials). Extra production
+# origins can be supplied via ENGINE_CORS_ORIGINS (comma-separated).
+_cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:4000",
+    "https://propmetrik.com",
+    "https://tenant.propmetrik.com",
+    "https://api.propmetrik.com",
+]
+_extra_origins = [o.strip() for o in os.getenv("ENGINE_CORS_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:4000",
-        "https://propmetrik.com",
-        "*"
-    ],
+    allow_origins=_cors_origins + _extra_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# SECURITY: require a shared secret on all compute endpoints. The engine is only
+# ever called server-to-server (Node orchestrator + the Next /ml-api proxy), both
+# of which attach X-Engine-Secret. When ENGINE_SHARED_SECRET is unset the check is
+# skipped (dev/rollout); production MUST set it on the engine AND both callers.
+@app.middleware("http")
+async def require_engine_secret(request: Request, call_next):
+    path = request.url.path
+    if request.method == "OPTIONS" or path in ("/", "/health", "/docs", "/redoc", "/openapi.json"):
+        return await call_next(request)
+    if ENGINE_SHARED_SECRET:
+        provided = request.headers.get("x-engine-secret", "")
+        if not hmac.compare_digest(provided, ENGINE_SHARED_SECRET):
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing engine credentials"})
+    return await call_next(request)
 
 
 # ============================================================================

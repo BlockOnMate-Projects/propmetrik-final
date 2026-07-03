@@ -78,16 +78,12 @@ async function resolveUserType(req: Request): Promise<string> {
   }
 
   try {
-    const { pool } = await import('../database');
     const userId = req.user?.id || req.user?.sub;
     if (!userId) return 'staff';
-    const result = await pool.query(
-      'SELECT user_type FROM users WHERE id = $1',
-      [userId],
-    );
-    if (result.rows.length > 0 && result.rows[0].user_type) {
-      return result.rows[0].user_type;
-    }
+    // PERF: cached lookup (see utils/userContextCache) — avoids a per-request RTT.
+    const { getUserAuthRecord } = await import('../utils/userContextCache');
+    const rec = await getUserAuthRecord(userId);
+    if (rec?.user_type) return rec.user_type;
   } catch {
     // Default to staff
   }
@@ -217,13 +213,14 @@ async function resolveUserRoleAndType(req: Request): Promise<{ role: string; use
   let userType = (req.user as any)?.userType as string | undefined;
   let role: string | undefined;
   try {
-    const { pool } = await import('../database');
     const userId = req.user?.id || req.user?.sub;
     if (userId) {
-      const r = await pool.query('SELECT role, user_type FROM users WHERE id = $1', [userId]);
-      if (r.rows.length) {
-        role = r.rows[0].role;
-        userType = userType || r.rows[0].user_type;
+      // PERF: cached lookup (see utils/userContextCache).
+      const { getUserAuthRecord } = await import('../utils/userContextCache');
+      const rec = await getUserAuthRecord(userId);
+      if (rec) {
+        role = rec.role ?? undefined;
+        userType = userType || rec.user_type || undefined;
       }
     }
   } catch { /* fall through */ }

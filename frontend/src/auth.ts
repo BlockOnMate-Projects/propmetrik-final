@@ -168,15 +168,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // For Google OAuth: create/find user in backend, store backend JWT on user
       if (account?.provider === 'google' && profile?.email) {
         try {
+          // SECURITY: the backend verifies the Google-signed id_token and derives
+          // identity from its claims. We no longer send client-controlled
+          // email/googleId (which the backend must not trust).
           const res = await fetch(`${API_BASE}/api/v1/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: profile.email,
-              firstName: (profile as any).given_name || user.name?.split(' ')[0] || '',
-              lastName: (profile as any).family_name || user.name?.split(' ').slice(1).join(' ') || '',
-              googleId: account.providerAccountId,
-              image: user.image,
+              idToken: account.id_token,
             }),
           });
           const data = await res.json();

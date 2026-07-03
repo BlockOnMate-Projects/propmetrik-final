@@ -66,36 +66,28 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// Extract user ID from JWT (set by auth middleware)
-// Throws a structured error for proper 401 response via asyncHandler + error handler
+// Extract user ID from the VERIFIED JWT only (set by auth middleware).
+// SECURITY: the previous x-user-id header fallback let an unauthenticated caller
+// impersonate any user on these (optionalAuth-mounted) routes. Identity now comes
+// exclusively from the authenticated session. Throws 401 when absent.
 const getUserId = (req: Request): string => {
     const jwtUserId = (req as any).userId || (req as any).user?.id;
     if (jwtUserId) return jwtUserId;
-
-    // Fall back to header (for internal/webhook calls)
-    const headerUserId = req.headers['x-user-id'] as string;
-    if (headerUserId) return headerUserId;
 
     const err: any = new Error('Authentication required');
     err.statusCode = 401;
     throw err;
 };
 
-// Extract user email from JWT or header
+// Extract user email from the verified JWT only (no header trust).
 const getUserEmail = (req: Request): string | undefined => {
-    // Try to get from JWT token first
-    const jwtEmail = (req as any).user?.email;
-    if (jwtEmail) return jwtEmail;
-
-    // Fall back to header
-    const headerEmail = req.headers['x-user-email'] as string;
-    if (headerEmail) return headerEmail;
-
-    return undefined;
+    return (req as any).user?.email || undefined;
 };
 
+// SECURITY: derive the org from the authenticated session, never from a
+// client-supplied x-organization-id header (which was fully spoofable).
 const getOrganizationId = (req: Request): string | undefined => {
-    return req.headers['x-organization-id'] as string || undefined;
+    return (req as any).user?.organizationId || (req as any).organizationId || undefined;
 };
 
 const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Promise<void> => {
@@ -1361,7 +1353,7 @@ function createSampleSignature(): string {
  * POST /api/v1/esign/templates
  */
 router.post('/templates', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     try {
@@ -1381,7 +1373,7 @@ router.post('/templates', asyncHandler(async (req: Request, res: Response) => {
  * GET /api/v1/esign/templates
  */
 router.get('/templates', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     const { templates, total } = await templateService.listTemplates(organizationId, {
         category: req.query.category as string | undefined,
@@ -1403,7 +1395,7 @@ router.get('/templates', asyncHandler(async (req: Request, res: Response) => {
  * GET /api/v1/esign/templates/categories
  */
 router.get('/templates/categories', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     const categories = await templateService.getCategories(organizationId);
     res.json({
@@ -1417,7 +1409,7 @@ router.get('/templates/categories', asyncHandler(async (req: Request, res: Respo
  * GET /api/v1/esign/templates/popular
  */
 router.get('/templates/popular', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
     const templates = await templateService.getPopularTemplates(organizationId, limit);
@@ -1432,7 +1424,7 @@ router.get('/templates/popular', asyncHandler(async (req: Request, res: Response
  * GET /api/v1/esign/templates/:id
  */
 router.get('/templates/:id', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     const template = await templateService.getTemplateById(req.params.id, organizationId);
     if (!template) {
@@ -1450,7 +1442,7 @@ router.get('/templates/:id', asyncHandler(async (req: Request, res: Response) =>
  * PUT /api/v1/esign/templates/:id
  */
 router.put('/templates/:id', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     try {
@@ -1480,7 +1472,7 @@ router.put('/templates/:id', asyncHandler(async (req: Request, res: Response) =>
  * POST /api/v1/esign/templates/:id/use
  */
 router.post('/templates/:id/use', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     const template = await templateService.useTemplate(req.params.id, organizationId);
     if (!template) {
@@ -1498,7 +1490,7 @@ router.post('/templates/:id/use', asyncHandler(async (req: Request, res: Respons
  * POST /api/v1/esign/templates/:id/clone
  */
 router.post('/templates/:id/clone', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     const template = await templateService.cloneTemplate(
@@ -1522,7 +1514,7 @@ router.post('/templates/:id/clone', asyncHandler(async (req: Request, res: Respo
  * DELETE /api/v1/esign/templates/:id
  */
 router.delete('/templates/:id', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     const deleted = await templateService.deleteTemplate(req.params.id, organizationId, userId);
@@ -1545,7 +1537,7 @@ router.delete('/templates/:id', asyncHandler(async (req: Request, res: Response)
  * POST /api/v1/esign/envelopes/from-template
  */
 router.post('/envelopes/from-template', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     const { templateId, ...data } = req.body;
@@ -1586,7 +1578,7 @@ router.post('/envelopes/from-template', asyncHandler(async (req: Request, res: R
  * and appends it to the stored PDF.
  */
 router.post('/envelopes/create', esignUpload.single('files'), scanUploadedFile, asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     try {
@@ -1758,7 +1750,7 @@ router.post('/envelopes/create', esignUpload.single('files'), scanUploadedFile, 
  * POST /api/v1/esign/envelopes
  */
 router.post('/envelopes', esignUpload.single('file'), scanUploadedFile, asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     try {
@@ -1870,7 +1862,7 @@ router.post('/envelopes', esignUpload.single('file'), scanUploadedFile, asyncHan
  *   - signerEmail: Email to filter by (used with inbox)
  */
 router.get('/envelopes', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     
     // Handle inbox filter - get user's email to find pending signatures
     let signerEmail: string | undefined;
@@ -1895,7 +1887,7 @@ router.get('/envelopes', asyncHandler(async (req: Request, res: Response) => {
  * GET /api/v1/esign/envelopes/:id
  */
 router.get('/envelopes/:id', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     const envelope = await esignEnvelopeService.getEnvelopeById(req.params.id, organizationId);
     if (!envelope) {
@@ -1921,7 +1913,7 @@ router.get('/envelopes/:id', asyncHandler(async (req: Request, res: Response) =>
  * POST /api/v1/esign/envelopes/:id/void
  */
 router.post('/envelopes/:id/void', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     try {
@@ -1945,7 +1937,7 @@ router.post('/envelopes/:id/void', asyncHandler(async (req: Request, res: Respon
  * DELETE /api/v1/esign/envelopes/:id
  */
 router.delete('/envelopes/:id', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     try {
         await esignEnvelopeService.deleteEnvelope(req.params.id, organizationId);
@@ -1963,7 +1955,7 @@ router.delete('/envelopes/:id', asyncHandler(async (req: Request, res: Response)
  * POST /api/v1/esign/envelopes/:id/resend
  */
 router.post('/envelopes/:id/resend', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
 
     try {
@@ -1982,7 +1974,7 @@ router.post('/envelopes/:id/resend', asyncHandler(async (req: Request, res: Resp
  * GET /api/v1/esign/envelopes/:id/audit
  */
 router.get('/envelopes/:id/audit', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     try {
         const auditLog = await esignEnvelopeService.getAuditLog(req.params.id, organizationId);
@@ -2280,7 +2272,7 @@ router.post('/envelopes/:id/resend-completed', asyncHandler(async (req: Request,
  * Only available for completed or voided envelopes.
  */
 router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const includeAuditPage = req.query.includeAuditPage !== 'false'; // Default to true
 
     try {
@@ -2528,7 +2520,7 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
  * Only available for completed envelopes.
  */
 router.get('/envelopes/:id/certificate', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     try {
         // Get envelope with signers and fields
@@ -2672,10 +2664,16 @@ function getAuditEventDescription(eventType: string, signerName?: string): strin
     return descriptions[eventType] || eventType.replace(/_/g, ' ');
 }
 
-// Helper to get default org ID
-async function getDefaultOrgId(): Promise<string> {
-    const result = await dbQuery('SELECT id FROM organizations LIMIT 1');
-    return result.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
+// SECURITY: require the caller's real org. The previous implementation fell back
+// to "the first org in the DB" (or the zero-UUID), which let unscoped/spoofed
+// requests attach to an arbitrary organization. Callers must be authenticated
+// with an organization; otherwise this throws a 401.
+function requireOrgId(req: Request): string {
+    const orgId = getOrganizationId(req);
+    if (orgId) return orgId;
+    const err: any = new Error('Organization context required');
+    err.statusCode = 401;
+    throw err;
 }
 
 // =====================================================
@@ -2693,7 +2691,7 @@ router.post('/documents/upload', esignUpload.single('file'), scanUploadedFile, a
         return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const userId = getUserId(req);
     const userEmail = getUserEmail(req) || 'unknown@propmetrik.com';
     const filename = req.file.originalname;
@@ -2749,7 +2747,7 @@ router.post('/documents/upload', esignUpload.single('file'), scanUploadedFile, a
  * GET /api/v1/esign/documents/
  */
 router.get('/documents/', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
     const skip = parseInt(req.query.skip as string) || 0;
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
@@ -2797,7 +2795,13 @@ router.get('/documents/:id', asyncHandler(async (req: Request, res: Response) =>
  * DELETE /api/v1/esign/documents/:id
  */
 router.delete('/documents/:id', asyncHandler(async (req: Request, res: Response) => {
-    const result = await dbQuery(`DELETE FROM esign.documents WHERE id = $1 RETURNING *`, [req.params.id]);
+    // SECURITY: scope the delete to the caller's org (previously ANY authenticated
+    // caller could delete ANY org's signed document by id).
+    const organizationId = requireOrgId(req);
+    const result = await dbQuery(
+        `DELETE FROM esign.documents WHERE id = $1 AND organization_id = $2 RETURNING *`,
+        [req.params.id, organizationId],
+    );
     if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Document not found' });
     }
@@ -2963,7 +2967,7 @@ router.get('/signing/signature-request/:token/document', asyncHandler(async (req
  */
 router.get('/reports/stats', asyncHandler(async (req: Request, res: Response) => {
     const days = parseInt(req.query.days as string) || 30;
-    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const organizationId = requireOrgId(req);
 
     const result = await dbQuery(`
         SELECT 

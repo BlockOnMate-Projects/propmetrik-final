@@ -34,6 +34,12 @@ export const config = {
     env: process.env.NODE_ENV || 'development',
     financeMode: process.env.FINANCE_MODE || 'test',
     paymentBypass: process.env.PAYMENT_BYPASS === 'yes',
+    // SECURITY: the unauthenticated "dev mode" login is now an EXPLICIT opt-in.
+    // It requires AUTH_DEV_BYPASS=true AND a non-production NODE_ENV. This closes
+    // the previous hole where an *unset* NODE_ENV defaulted to 'development' and
+    // silently logged every request in as the first super_admin. In production
+    // (or with the flag unset) the bypass is impossible regardless of NODE_ENV.
+    devAuthBypass: process.env.AUTH_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production',
     port: parseInt(process.env.PORT || '4000', 10),
     apiVersion: process.env.API_VERSION || 'v1',
     url: envSelect(
@@ -148,7 +154,19 @@ export const config = {
 
   // JWT (for internal tokens)
   jwt: {
-    secret: process.env.JWT_SECRET || 'change-this-in-production',
+    // SECURITY: never fall back to a well-known constant secret. In production a
+    // missing JWT_SECRET is a hard startup failure (a constant secret lets anyone
+    // mint super_admin tokens). Outside production we allow a random per-boot
+    // secret so local runs work without a shared, guessable value.
+    secret: (() => {
+      const s = process.env.JWT_SECRET;
+      if (s && s.length >= 16) return s;
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET must be set to a strong value (>=16 chars) in production');
+      }
+      // Non-production: derive an ephemeral, non-guessable secret for this process.
+      return require('crypto').randomBytes(48).toString('hex');
+    })(),
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   },

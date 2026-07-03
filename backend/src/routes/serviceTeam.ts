@@ -162,12 +162,16 @@ router.put('/:serviceKey/members/:userId/role', async (req: Request, res: Respon
   try {
     const { serviceKey, userId: targetUserId } = req.params;
     const requestingUserId = getUserId(req);
+    const callerOrgId = getOrgId(req);
     const { role } = req.body;
 
     await requireServiceAdmin(req, serviceKey);
 
     if (requestingUserId === targetUserId) {
       return res.status(400).json({ error: 'Cannot change your own role' });
+    }
+    if (!callerOrgId) {
+      return res.status(403).json({ error: 'Organization membership required' });
     }
 
     if (!role) {
@@ -215,16 +219,20 @@ router.put('/:serviceKey/members/:userId/role', async (req: Request, res: Respon
       }
     }
 
+    // SECURITY: scope the target to the caller's org (join users) so a
+    // service_admin cannot change roles for users in other organizations.
     const updated = await pool.query(
       `UPDATE user_service_subscriptions uss
        SET service_role = $1
-       FROM platform_services ps
+       FROM platform_services ps, users u
        WHERE ps.id = uss.service_id
+         AND u.id = uss.user_id
          AND ps.service_key = $2
          AND uss.user_id = $3
+         AND u.organization_id = $4
          AND uss.status = 'active'
        RETURNING uss.user_id, uss.service_role`,
-      [role, normKey(serviceKey), targetUserId],
+      [role, normKey(serviceKey), targetUserId, callerOrgId],
     );
 
     if (!updated.rows.length) {
@@ -249,11 +257,15 @@ router.delete('/:serviceKey/members/:userId', async (req: Request, res: Response
   try {
     const { serviceKey, userId: targetUserId } = req.params;
     const requestingUserId = getUserId(req);
+    const callerOrgId = getOrgId(req);
 
     await requireServiceAdmin(req, serviceKey);
 
     if (requestingUserId === targetUserId) {
       return res.status(400).json({ error: 'Cannot remove yourself from the service' });
+    }
+    if (!callerOrgId) {
+      return res.status(403).json({ error: 'Organization membership required' });
     }
 
     // Prevent removing the last service_admin
@@ -284,16 +296,20 @@ router.delete('/:serviceKey/members/:userId', async (req: Request, res: Response
       }
     }
 
+    // SECURITY: scope the target to the caller's org (join users) so a
+    // service_admin cannot deactivate users in other organizations.
     const updated = await pool.query(
       `UPDATE user_service_subscriptions uss
        SET status = 'inactive'
-       FROM platform_services ps
+       FROM platform_services ps, users u
        WHERE ps.id = uss.service_id
+         AND u.id = uss.user_id
          AND ps.service_key = $1
          AND uss.user_id = $2
+         AND u.organization_id = $3
          AND uss.status = 'active'
        RETURNING uss.user_id`,
-      [normKey(serviceKey), targetUserId],
+      [normKey(serviceKey), targetUserId, callerOrgId],
     );
 
     if (!updated.rows.length) {

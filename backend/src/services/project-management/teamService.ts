@@ -21,6 +21,7 @@
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { NotFoundError } from '../../middleware/errorHandler';
 import { notify } from '../../../shared-services/notifications/in-mail';
 
 // ============================================================================
@@ -788,12 +789,15 @@ class TeamService {
    */
   async updateMemberPermissions(
     memberId: string,
-    permissions: Partial<ProjectTeamMember['permissions']>
+    permissions: Partial<ProjectTeamMember['permissions']>,
+    orgId: string
   ): Promise<ProjectTeamMember> {
     try {
       const updates: string[] = [];
-      const params: any[] = [memberId];
-      let paramIndex = 2;
+      // SECURITY: scope by organization_id so a member in another org can never
+      // be modified (the shared :id param guard could previously fall through).
+      const params: any[] = [memberId, orgId];
+      let paramIndex = 3;
       
       const permissionMap: Record<string, string> = {
         canView: 'can_view',
@@ -819,18 +823,18 @@ class TeamService {
         if (!current) throw new Error(`Team member not found: ${memberId}`);
         return current;
       }
-      
+
       updates.push('updated_at = NOW()');
-      
+
       const result = await pool.query(
-        `UPDATE project_team_members SET ${updates.join(', ')} WHERE id = $1 RETURNING *`,
+        `UPDATE project_team_members SET ${updates.join(', ')} WHERE id = $1 AND organization_id = $2 RETURNING *`,
         params
       );
-      
+
       if (!result.rows[0]) {
         throw new Error(`Team member not found: ${memberId}`);
       }
-      
+
       logger.info('Team member permissions updated', { memberId });
       return this.mapTeamMember(result.rows[0]);
     } catch (error) {
@@ -844,12 +848,12 @@ class TeamService {
    * If the member is already inactive/terminated, hard-delete the row.
    * Otherwise, soft-delete (deactivate) first.
    */
-  async removeTeamMember(memberId: string): Promise<void> {
+  async removeTeamMember(memberId: string, orgId: string): Promise<void> {
     try {
-      // Check current status
+      // SECURITY: scope by organization_id — never remove another org's member.
       const check = await pool.query(
-        `SELECT is_active, status, role, user_id, project_id FROM project_team_members WHERE id = $1`,
-        [memberId]
+        `SELECT is_active, status, role, user_id, project_id FROM project_team_members WHERE id = $1 AND organization_id = $2`,
+        [memberId, orgId]
       );
 
       if (check.rows.length === 0) {
@@ -870,17 +874,17 @@ class TeamService {
       if (!is_active || status === 'terminated') {
         // Already inactive — hard delete
         await pool.query(
-          `DELETE FROM project_team_members WHERE id = $1`,
-          [memberId]
+          `DELETE FROM project_team_members WHERE id = $1 AND organization_id = $2`,
+          [memberId, orgId]
         );
         logger.info('Team member permanently removed', { memberId });
       } else {
         // Active — soft delete (deactivate)
         await pool.query(
-          `UPDATE project_team_members 
+          `UPDATE project_team_members
            SET is_active = false, status = 'terminated', end_date = CURRENT_DATE, updated_at = NOW()
-           WHERE id = $1`,
-          [memberId]
+           WHERE id = $1 AND organization_id = $2`,
+          [memberId, orgId]
         );
         logger.info('Team member deactivated', { memberId });
       }
@@ -1575,7 +1579,7 @@ class TeamService {
     return result.rows[0] ? this.mapCommunicationLog(result.rows[0]) : null;
   }
 
-  async updateCommunication(id: string, updates: any): Promise<CommunicationLog> {
+  async updateCommunication(id: string, updates: any, orgId: string): Promise<CommunicationLog> {
     const allowed = ['subject', 'summary', 'notes', 'outcome', 'follow_up_required', 'follow_up_date', 'follow_up_notes', 'is_important', 'status', 'communication_date', 'communication_type', 'direction'];
     const fields: string[] = [];
     const values: any[] = [];
@@ -1584,17 +1588,20 @@ class TeamService {
       const val = updates[key] ?? updates[key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
       if (val !== undefined) { fields.push(`${key} = $${idx++}`); values.push(val); }
     }
+    // SECURITY: scope by organization_id — never mutate another org's log.
     if (fields.length === 0) {
-      const row = await pool.query(`SELECT * FROM communication_logs WHERE id = $1`, [id]);
+      const row = await pool.query(`SELECT * FROM communication_logs WHERE id = $1 AND organization_id = $2`, [id, orgId]);
+      if (!row.rows[0]) throw new NotFoundError('Communication log', id);
       return this.mapCommunicationLog(row.rows[0]);
     }
-    values.push(id);
-    const result = await pool.query(`UPDATE communication_logs SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, values);
+    values.push(id, orgId);
+    const result = await pool.query(`UPDATE communication_logs SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} AND organization_id = $${idx + 1} RETURNING *`, values);
+    if (!result.rows[0]) throw new NotFoundError('Communication log', id);
     return this.mapCommunicationLog(result.rows[0]);
   }
 
-  async deleteCommunication(id: string): Promise<void> {
-    await pool.query(`DELETE FROM communication_logs WHERE id = $1`, [id]);
+  async deleteCommunication(id: string, orgId: string): Promise<void> {
+    await pool.query(`DELETE FROM communication_logs WHERE id = $1 AND organization_id = $2`, [id, orgId]);
   }
 
   // ============================================================================

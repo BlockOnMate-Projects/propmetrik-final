@@ -432,9 +432,19 @@ export class TenantAuthService {
     }
 
     /**
-     * Validate a session token
+     * Validate a session token.
+     *
+     * PERF: tenant requests previously paid 3 remote round-trips EACH (session
+     * SELECT + last_used_at UPDATE + full profile). Now:
+     *   - successful validations are cached for a short TTL (skips all 3 on repeat),
+     *   - the last_used_at write is fire-and-forget (never blocks the request).
      */
     async validateSession(sessionToken: string): Promise<SessionResult> {
+        const now = Date.now();
+        const cached = TenantAuthService._sessionCache.get(sessionToken);
+        if (cached && cached.expires > now) {
+            return cached.value;
+        }
         try {
             const result = await this.db.query(
                 `SELECT * FROM tenant_sessions
@@ -450,24 +460,39 @@ export class TenantAuthService {
 
             const session = this.mapRowToSession(result.rows[0]);
 
-            // Update last used timestamp
-            await this.db.query(
+            // Fire-and-forget: never block the request on the last_used_at write.
+            void this.db.query(
                 `UPDATE tenant_sessions SET last_used_at = NOW() WHERE id = $1`,
                 [session.id]
-            );
+            ).catch(() => { /* best-effort */ });
 
             // Get tenant profile
             const tenant = await this.getTenantProfile(session.tenantId);
 
-            return {
+            const value: SessionResult = {
                 success: true,
                 session,
                 tenant: tenant || undefined
             };
+            // Cache only successful validations (short TTL bounds staleness).
+            if (TenantAuthService._sessionCache.size >= 5000) {
+                const oldest = TenantAuthService._sessionCache.keys().next().value;
+                if (oldest !== undefined) TenantAuthService._sessionCache.delete(oldest);
+            }
+            TenantAuthService._sessionCache.set(sessionToken, { value, expires: now + TenantAuthService._SESSION_TTL_MS });
+            return value;
         } catch (error: any) {
             logger.error('Error validating session', { error: error.message });
             return { success: false, error: error.message };
         }
+    }
+
+    /** Short-TTL cache of successful session validations (see validateSession). */
+    private static _sessionCache = new Map<string, { value: SessionResult; expires: number }>();
+    private static _SESSION_TTL_MS = Number(process.env.TENANT_SESSION_CACHE_TTL_MS || 10_000);
+    /** Drop a token from the session cache (on logout/revoke). */
+    static invalidateSessionCache(sessionToken: string): void {
+        TenantAuthService._sessionCache.delete(sessionToken);
     }
 
     /**
@@ -481,6 +506,9 @@ export class TenantAuthService {
                  WHERE session_token = $1`,
                 [sessionToken]
             );
+
+            // Drop from the short-TTL cache so logout takes effect immediately.
+            TenantAuthService.invalidateSessionCache(sessionToken);
 
             logger.info('Revoked tenant session');
             return true;

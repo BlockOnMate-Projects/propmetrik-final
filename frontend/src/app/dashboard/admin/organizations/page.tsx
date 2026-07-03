@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Building2, Search, RefreshCw, Users, MapPin, Trash2, ArrowDownCircle } from 'lucide-react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { ConfirmModal } from '@/components/admin/ConfirmModal'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 
 interface Organization {
@@ -22,6 +23,8 @@ export default function OrganizationsPage() {
   const [orgs, setOrgs] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  // PERF: debounce so the remote-DB search runs once the user pauses typing.
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [pendingDelete, setPendingDelete] = useState<Organization | null>(null)
   const [pendingFree, setPendingFree] = useState<Organization | null>(null)
   const [busy, setBusy] = useState(false)
@@ -30,7 +33,7 @@ export default function OrganizationsPage() {
   const fetchOrgs = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authedFetch(`/api/admin/organizations?search=${encodeURIComponent(search)}`)
+      const res = await authedFetch(`/api/admin/organizations?search=${encodeURIComponent(debouncedSearch)}`)
       if (res.ok) {
         const data = (await res.json()) as { data: Organization[] }
         setOrgs(data.data || [])
@@ -40,7 +43,7 @@ export default function OrganizationsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [debouncedSearch])
 
   useEffect(() => { fetchOrgs() }, [fetchOrgs])
 

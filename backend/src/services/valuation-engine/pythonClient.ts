@@ -349,6 +349,12 @@ export class PythonClient {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'propmetrik-typescript-orchestrator/2.0.0',
+        // SECURITY: shared secret so the (otherwise unauthenticated) Python engine
+        // only accepts calls from this server-side orchestrator. Must match the
+        // engine's ENGINE_SHARED_SECRET. Omitted until configured (rollout), then required.
+        ...(process.env.ENGINE_SHARED_SECRET
+          ? { 'X-Engine-Secret': process.env.ENGINE_SHARED_SECRET }
+          : {}),
       },
     });
 

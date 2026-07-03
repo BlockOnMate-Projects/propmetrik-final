@@ -52,7 +52,8 @@ import {
   ExternalDocumentData,
   RECIPIENT_COLORS,
 } from "@/lib/esign-types";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+// pdf-lib is heavy and only needed when self-signing a PDF. Loaded lazily inside
+// generateSignedPdf() (via dynamic import) so it stays out of the initial bundle.
 
 // ─── Current user mock (replace with auth context) ──────
 
@@ -460,6 +461,8 @@ export default function NewEnvelopePage() {
     if (!doc?.file) return null;
 
     try {
+      // Lazy-load pdf-lib only when actually generating a signed PDF.
+      const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
       const pdfBytes = await doc.file.arrayBuffer();
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const pages = pdfDoc.getPages();

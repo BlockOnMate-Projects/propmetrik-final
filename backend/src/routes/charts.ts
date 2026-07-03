@@ -229,18 +229,26 @@ router.get('/catalog', (_req: Request, res: Response) => {
 router.get('/preview', async (req: Request, res: Response) => {
   try {
     const { endpoint } = req.query;
-    if (!endpoint) {
+    if (!endpoint || typeof endpoint !== 'string') {
       return res.status(400).json({ success: false, error: 'endpoint query parameter is required' });
     }
 
-    // Fetch from the internal analytics API
+    // SECURITY: prevent SSRF — only allow endpoints that exist in the chart
+    // catalog. A user-supplied URL must never be concatenated into a fetch.
+    const allowed = new Set(CHART_CATALOG.map(c => c.endpoint));
+    if (!allowed.has(endpoint)) {
+      return res.status(400).json({ success: false, error: 'Unknown chart endpoint' });
+    }
+
+    // Fetch from the internal analytics API. Identity comes from the
+    // authenticated session only — never from client-supplied headers.
     const apiBase = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
     const apiUrl = `${apiBase}${endpoint}`;
 
     const response = await fetch(apiUrl, {
       headers: {
-        'x-user-id': req.headers['x-user-id'] as string || (req as any).user?.id || '',
-        'x-organization-id': req.headers['x-organization-id'] as string || (req as any).user?.organizationId || '',
+        'x-user-id': (req as any).user?.id || '',
+        'x-organization-id': (req as any).user?.organizationId || '',
       },
     });
 

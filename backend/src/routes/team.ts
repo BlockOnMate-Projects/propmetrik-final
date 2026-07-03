@@ -444,23 +444,13 @@ router.post('/members/:id/resend-invite', requirePMWrite, async (req: Request, r
  */
 router.get('/admins', async (req: Request, res: Response) => {
   try {
-    const projectId = req.query.projectId as string | undefined;
-    const organizationId = req.query.organizationId as string | undefined;
-
-    let resolvedOrgId = organizationId;
-
-    if (!resolvedOrgId && projectId) {
-      const projectResult = await pool.query(
-        'SELECT organization_id FROM development_projects WHERE id = $1',
-        [projectId]
-      );
-      resolvedOrgId = projectResult.rows[0]?.organization_id;
-    }
-
+    // SECURITY: derive the org from the authenticated session, never from a
+    // client-supplied query param (which allowed reading any org's admins).
+    const resolvedOrgId = getAuthOrgId(req);
     if (!resolvedOrgId) {
-      return res.status(400).json({
+      return res.status(403).json({
         success: false,
-        error: 'organizationId or projectId is required',
+        error: 'Organization membership required',
       });
     }
 
@@ -495,14 +485,15 @@ router.get('/admins', async (req: Request, res: Response) => {
 router.get('/members/:id', async (req: Request, res: Response) => {
   try {
     const member = await teamService.getTeamMemberById(req.params.id);
-    
-    if (!member) {
+
+    // SECURITY: 404 when the member belongs to another org — don't leak existence.
+    if (!member || member.organizationId !== getAuthOrgId(req)) {
       return res.status(404).json({
         success: false,
         error: 'Team member not found',
       });
     }
-    
+
     res.json({
       success: true,
       data: member,
@@ -574,8 +565,8 @@ router.put('/members/:id', requirePMWrite, validate(updateTeamMemberSchema), asy
 router.put('/members/:id/permissions', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { permissions } = req.body;
-    
-    const member = await teamService.updateMemberPermissions(req.params.id, permissions);
+
+    const member = await teamService.updateMemberPermissions(req.params.id, permissions, getAuthOrgId(req));
     
     res.json({
       success: true,
@@ -638,7 +629,7 @@ router.post('/members/:id/reactivate', requirePMWrite, async (req: Request, res:
  */
 router.delete('/members/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
-    await teamService.removeTeamMember(req.params.id);
+    await teamService.removeTeamMember(req.params.id, getAuthOrgId(req));
     
     res.json({
       success: true,
@@ -835,19 +826,26 @@ router.post('/communications', requirePMWrite, async (req: Request, res: Respons
  */
 router.get('/communications', async (req: Request, res: Response) => {
   try {
+    // SECURITY: force the org scope from the session. getCommunicationLogs is
+    // fail-open (no org filter → every org's logs), so a client-supplied
+    // organizationId must never be trusted.
+    const authOrgId = getAuthOrgId(req);
+    if (!authOrgId) {
+      return res.status(403).json({ success: false, error: 'Organization membership required' });
+    }
     const filters = {
       projectId: req.query.projectId as string,
-      organizationId: req.query.organizationId as string,
+      organizationId: authOrgId,
       teamMemberId: req.query.teamMemberId as string,
       vendorId: req.query.vendorId as string,
       communicationType: req.query.communicationType as CommunicationType | undefined,
       hasFollowUp: req.query.hasFollowUp === 'true',
       search: req.query.search as string,
     };
-    
+
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
-    
+
     const { logs, total } = await ts.getCommunicationLogs(filters, limit, offset);
     
     res.json({
@@ -875,14 +873,15 @@ router.get('/communications', async (req: Request, res: Response) => {
 router.get('/communications/:id', async (req: Request, res: Response) => {
   try {
     const log = await ts.getCommunicationById(req.params.id);
-    
-    if (!log) {
+
+    // SECURITY: 404 (not 403) when the log belongs to another org — don't leak existence.
+    if (!log || log.organizationId !== getAuthOrgId(req)) {
       return res.status(404).json({
         success: false,
         error: 'Communication log not found',
       });
     }
-    
+
     res.json({
       success: true,
       data: log,
@@ -925,7 +924,7 @@ router.get('/projects/:projectId/communications', async (req: Request, res: Resp
  */
 router.put('/communications/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
-    const log = await ts.updateCommunication(req.params.id, req.body);
+    const log = await ts.updateCommunication(req.params.id, req.body, getAuthOrgId(req));
     
     res.json({
       success: true,
@@ -967,8 +966,11 @@ router.post('/communications/:id/complete-followup', requirePMWrite, async (req:
  */
 router.get('/follow-ups/pending', async (req: Request, res: Response) => {
   try {
-    const organizationId = req.query.organizationId as string;
-    
+    // SECURITY: derive org from session, not a client-supplied query param.
+    const organizationId = getAuthOrgId(req);
+    if (!organizationId) {
+      return res.status(403).json({ success: false, error: 'Organization membership required' });
+    }
     const followUps = await teamService.getPendingFollowUps(organizationId);
     
     res.json({
@@ -990,7 +992,7 @@ router.get('/follow-ups/pending', async (req: Request, res: Response) => {
  */
 router.delete('/communications/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
-    await ts.deleteCommunication(req.params.id);
+    await ts.deleteCommunication(req.params.id, getAuthOrgId(req));
     
     res.json({
       success: true,

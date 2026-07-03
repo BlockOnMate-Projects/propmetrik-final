@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { cn } from '@/lib/utils'
 import {
   Building2,
@@ -932,6 +933,8 @@ export function VendorDirectory({
   const [error, setError] = useState<string | null>(null)
 
   const [searchQuery, setSearchQuery] = useState('')
+  // PERF: debounce so the remote-DB vendor search runs once the user pauses typing.
+  const debouncedSearch = useDebouncedValue(searchQuery, 300)
   const [categoryFilter, setCategoryFilter] = useState<VendorCategory | 'all'>('all')
   const [showApprovedOnly, setShowApprovedOnly] = useState(false)
   const [minRating, setMinRating] = useState(0)
@@ -951,7 +954,7 @@ export function VendorDirectory({
         category: categoryFilter !== 'all' ? categoryFilter : undefined,
         isApproved: showApprovedOnly ? true : undefined,
         minRating: minRating > 0 ? minRating : undefined,
-        search: searchQuery || undefined,
+        search: debouncedSearch || undefined,
       })
 
       setVendors(data)
@@ -961,7 +964,7 @@ export function VendorDirectory({
     } finally {
       setIsLoading(false)
     }
-  }, [organizationId, categoryFilter, showApprovedOnly, minRating, searchQuery])
+  }, [organizationId, categoryFilter, showApprovedOnly, minRating, debouncedSearch])
 
   useEffect(() => {
     fetchData()
