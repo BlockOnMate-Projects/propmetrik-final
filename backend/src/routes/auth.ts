@@ -14,11 +14,15 @@ import { logger } from '../utils/logger';
 import config from '../config';
 import { keycloakAdminService } from '../services/keycloakAdminService';
 import { sendWelcomeEmail } from '../services/email/welcomeEmail';
+import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
 
 const JWT_SECRET = config.jwt.secret;
 const JWT_EXPIRES_IN = config.jwt.expiresIn;
+
+// Verifies Google ID tokens for POST /auth/google (audience checked per-request).
+const googleOAuthClient = new OAuth2Client();
 
 /**
  * Query the active service subscriptions for a user.
@@ -99,11 +103,16 @@ router.post('/signup', async (req: Request, res: Response) => {
     // ---- Create or link Organization if company name provided ----
     let organizationId: string | null = null;
     if (companyName && companyName.trim()) {
-      const orgSlug = companyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const baseSlug = companyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'org';
+      // SECURITY: never join a self-service signup into an EXISTING org (the old
+      // `ON CONFLICT (slug) DO UPDATE ... RETURNING id` made the new user
+      // firm_principal of whoever already owned that slug). Always create a fresh
+      // org; on slug collision, disambiguate with a short random suffix.
+      const slugTaken = await client.query('SELECT 1 FROM organizations WHERE slug = $1', [baseSlug]);
+      const orgSlug = slugTaken.rows.length > 0 ? `${baseSlug}-${uuidv4().slice(0, 8)}` : baseSlug;
       const orgResult = await client.query(
         `INSERT INTO organizations (id, name, slug, type, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, 'valuation_firm', true, NOW(), NOW())
-         ON CONFLICT (slug) DO UPDATE SET updated_at = NOW()
          RETURNING id`,
         [uuidv4(), companyName.trim(), orgSlug]
       );
@@ -503,16 +512,38 @@ router.post('/login', async (req: Request, res: Response) => {
 router.post('/google', async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
-    const { email, firstName, lastName, googleId, image } = req.body;
+    const { idToken } = req.body;
 
-    if (!email || !googleId) {
-      return res.status(400).json({
+    // SECURITY: verify the Google ID token server-side. Previously this endpoint
+    // trusted client-supplied {email, googleId} and minted a JWT for ANY email —
+    // a full account-takeover. We now accept only a Google-signed id_token and
+    // derive identity from its verified claims.
+    const audiences = [config.google.clientId, process.env.AUTH_GOOGLE_ID].filter(Boolean) as string[];
+    if (!idToken || audiences.length === 0) {
+      return res.status(401).json({
         success: false,
-        message: 'Email and Google ID are required',
+        message: 'A verifiable Google ID token is required',
       });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    let normalizedEmail: string;
+    let googleId: string;
+    let firstName = '';
+    let lastName = '';
+    try {
+      const ticket = await googleOAuthClient.verifyIdToken({ idToken, audience: audiences });
+      const p = ticket.getPayload();
+      if (!p || !p.sub || !p.email || !p.email_verified) {
+        throw new Error('Google token missing verified email');
+      }
+      normalizedEmail = p.email.toLowerCase().trim();
+      googleId = p.sub;
+      firstName = (p.given_name || '').trim();
+      lastName = (p.family_name || '').trim();
+    } catch (verr: any) {
+      logger.warn('Google ID token verification failed', { error: verr?.message });
+      return res.status(401).json({ success: false, message: 'Invalid Google credentials' });
+    }
 
     // Check if user already exists
     const existing = await client.query(

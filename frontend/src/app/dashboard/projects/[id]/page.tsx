@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -49,7 +50,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ProjectHeader } from '@/components/projects/dashboard/ProjectHeader'
-import { ProjectMetrics } from '@/components/projects/dashboard/ProjectMetrics'
+// PERF: ProjectMetrics pulls in recharts — load it lazily (ssr:false) so the
+// chart bundle isn't part of the initial project-detail page load.
+const ProjectMetrics = dynamic(
+  () => import('@/components/projects/dashboard/ProjectMetrics').then((m) => m.ProjectMetrics),
+  { ssr: false }
+)
 import {
   Dialog,
   DialogContent,
@@ -955,20 +961,26 @@ export default function ProjectDetailPage() {
         setIsLoading(true)
         setError(null)
 
-        const [projectRes, phasesRes, budgetRes, assignmentsRes, teamRes] = await Promise.all([
+        // PERF: all of these reads are independent — run them as a SINGLE parallel
+        // wave instead of three sequential batches (was 3 serial remote round-trip
+        // waves incl. the documents fetch below; now 1).
+        const [
+          projectRes, phasesRes, budgetRes, assignmentsRes, teamRes,
+          rfiStatsRes, submittalStatsRes, coStatsRes, punchStatsRes,
+          docsRes,
+        ] = await Promise.all([
           projectsApi.getById(projectId),
           phasesApi.getByProject(projectId),
           costsApi.getBudgetSummary(projectId).catch(() => null),
           assignmentsApi.getByProject(projectId).catch(() => []),
           teamApi.getProjectTeam(projectId).catch(() => []),
-        ])
-
-        // Fetch PM data stats (non-blocking)
-        const [rfiStatsRes, submittalStatsRes, coStatsRes, punchStatsRes] = await Promise.all([
           rfiApi.getStats(projectId).catch(() => null),
           submittalApi.getStats(projectId).catch(() => null),
           changeOrderApi.getStats(projectId).catch(() => null),
           punchListApi.getStats(projectId).catch(() => null),
+          authedFetch(`/api/projects/${projectId}/documents`)
+            .then((r) => (r.ok ? r.json() : []))
+            .catch(() => []),
         ])
 
         const teamMembers = Array.isArray(teamRes) ? teamRes : []
@@ -1000,17 +1012,7 @@ export default function ProjectDetailPage() {
         setSubmittalStats(submittalStatsRes)
         setCoStats(coStatsRes)
         setPunchStats(punchStatsRes)
-
-        // Fetch documents (non-blocking)
-        try {
-          const docsRes = await authedFetch(`/api/projects/${projectId}/documents`)
-          if (docsRes.ok) {
-            const docsData = await docsRes.json()
-            setDocuments(Array.isArray(docsData) ? docsData : [])
-          }
-        } catch (err) {
-          console.error('Failed to fetch documents:', err)
-        }
+        setDocuments(Array.isArray(docsRes) ? docsRes : [])
       } catch (err: any) {
         console.error('Failed to fetch project:', err)
         setError(err.message || 'Failed to load project')

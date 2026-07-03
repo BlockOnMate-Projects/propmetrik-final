@@ -186,23 +186,23 @@ async function getUserDbInfo(req: Request): Promise<{ role: string; organization
       };
     }
 
-    // In production, query the DB for the user's org-level role + org + userType
+    // In production, resolve the user's org-level role + org + userType.
+    // PERF: cached lookup (see utils/userContextCache) — shared with the auth &
+    // serviceAccess middleware so it's one DB round-trip per user per TTL window,
+    // not one per middleware per request.
     try {
-      const { pool } = await import('../database');
       const userId = req.user.id || req.user.sub;
-      const result = await pool.query(
-        'SELECT role, organization_id, user_type FROM users WHERE id = $1',
-        [userId]
-      );
-      if (result.rows.length > 0) {
+      const { getUserAuthRecord } = await import('../utils/userContextCache');
+      const rec = await getUserAuthRecord(userId);
+      if (rec) {
         return {
-          role: result.rows[0].role,
-          organizationId: result.rows[0].organization_id || req.user.organizationId || null,
-          userType: result.rows[0].user_type || 'staff',
+          role: rec.role || 'viewer',
+          organizationId: rec.organization_id || req.user.organizationId || null,
+          userType: rec.user_type || 'staff',
         };
       }
     } catch {
-      // If DB query fails, fall back to Keycloak roles
+      // If the lookup fails, fall back to Keycloak roles
     }
 
     // Fallback: check Keycloak realm roles for matching DB roles
@@ -356,7 +356,10 @@ async function logAuthDecision(
     const userId = req.user?.id || req.user?.sub || null;
     const resourceId = req.params.id || req.params.valuationId || req.params.reportId || null;
 
-    await pool.query(
+    // PERF: fire-and-forget — never block the request on the audit INSERT. On a
+    // remote DB an awaited INSERT here adds a full round-trip to every audited
+    // (write/denied) request. The audit trail is best-effort by design.
+    void pool.query(
       `INSERT INTO audit_logs (action, entity_type, entity_id, user_id, user_email, organization_id, request_id, ip_address, user_agent, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
@@ -371,7 +374,7 @@ async function logAuthDecision(
         req.headers['user-agent'] || null,
         JSON.stringify({ role, decision, reason: reason || null, policy: `${resourceType}:${action}` }),
       ]
-    );
+    ).catch(() => { /* best-effort audit */ });
   } catch {
     // Non-fatal — never block the request for audit logging
   }

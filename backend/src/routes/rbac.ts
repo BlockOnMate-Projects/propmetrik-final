@@ -273,9 +273,7 @@ router.get('/config', async (req: Request, res: Response) => {
  * Admin-only: force-clear the RBAC config cache.
  */
 router.post('/config/invalidate', async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  const role = user?.role || user?.realmRoles?.[0];
-  if (role !== 'super_admin' && role !== 'admin') {
+  if (!isPlatformPolicyAdmin((req as any).user)) {
     return res.status(403).json({ success: false, error: 'Admin access required' });
   }
 
@@ -298,11 +296,21 @@ router.post('/config/invalidate', async (req: Request, res: Response) => {
 // RBAC Admin — Policy Management (super_admin / admin only)
 // ══════════════════════════════════════════════════════════════════════════════
 
-/** Guard: require super_admin or admin role */
+/**
+ * True only for PLATFORM staff holding an admin role. Authorization policies are
+ * platform-wide, so the gate requires BOTH an admin role (checked across ALL
+ * roles, not just realmRoles[0]) AND user_type='staff' — a customer-org user who
+ * happens to hold an 'admin' role must never rewrite global policy.
+ */
+function isPlatformPolicyAdmin(user: any): boolean {
+  const roles = [...(user?.realmRoles || []), ...(user?.clientRoles || []), user?.role].filter(Boolean);
+  const hasAdminRole = roles.includes('super_admin') || roles.includes('admin');
+  return hasAdminRole && user?.userType === 'staff';
+}
+
+/** Guard: require platform-staff admin */
 function requirePolicyAdmin(req: Request, res: Response, next: Function) {
-  const user = (req as any).user;
-  const role = user?.role || user?.realmRoles?.[0];
-  if (role !== 'super_admin' && role !== 'admin') {
+  if (!isPlatformPolicyAdmin((req as any).user)) {
     return res.status(403).json({ success: false, error: 'Admin access required' });
   }
   next();
@@ -482,9 +490,10 @@ router.delete('/policies/:id', requirePolicyAdmin, async (req: Request, res: Res
   try {
     const { pool } = await import('../database');
 
-    // Only super_admin can hard-delete; admin can soft-deactivate
-    const role = (req as any).user?.role || (req as any).user?.realmRoles?.[0];
-    if (req.query.hard === 'true' && role === 'super_admin') {
+    // Only super_admin can hard-delete; admin can soft-deactivate.
+    // Check across ALL roles (not just realmRoles[0]).
+    const allRoles = [...((req as any).user?.realmRoles || []), ...((req as any).user?.clientRoles || []), (req as any).user?.role].filter(Boolean);
+    if (req.query.hard === 'true' && allRoles.includes('super_admin')) {
       await pool.query('DELETE FROM authorization_policies WHERE id = $1', [req.params.id]);
       logger.info('Policy hard-deleted', { policyId: req.params.id, user: (req as any).user?.email });
     } else {

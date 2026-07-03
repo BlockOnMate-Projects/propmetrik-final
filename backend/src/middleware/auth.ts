@@ -195,19 +195,15 @@ async function enrichUserFromDb(req: Request): Promise<void> {
   if (req.user.userType) return;
 
   try {
-    const { pool } = await import('../database');
-    const result = await pool.query(
-      `SELECT u.user_type, o.subscription_tier
-       FROM users u
-       LEFT JOIN organizations o ON o.id = u.organization_id
-       WHERE u.id = $1`,
-      [userId],
-    );
-    if (result.rows.length > 0) {
+    // PERF: served from a short-TTL cache so this isn't a fresh remote-DB
+    // round-trip on every request (see utils/userContextCache).
+    const { getUserAuthRecord } = await import('../utils/userContextCache');
+    const rec = await getUserAuthRecord(userId);
+    if (rec) {
       // Least-privilege default: unknown/unset → 'customer', never 'staff'
       // ('staff' = PropMetrik employee = member of the platform org).
-      req.user.userType = result.rows[0].user_type || 'customer';
-      req.user.tier = result.rows[0].subscription_tier || 'starter';
+      req.user.userType = rec.user_type || 'customer';
+      req.user.tier = rec.subscription_tier || 'starter';
     } else {
       req.user.userType = 'customer';
     }
@@ -293,8 +289,10 @@ export async function authenticate(
       return;
     }
 
-    // Development mode bypass - allow unauthenticated access
-    if (!token && config.app.env === 'development') {
+    // Development mode bypass - allow unauthenticated access.
+    // Gated on an EXPLICIT opt-in (AUTH_DEV_BYPASS=true + non-prod), never on a
+    // defaulted NODE_ENV. See config.app.devAuthBypass.
+    if (!token && config.app.devAuthBypass) {
       try {
         const devUser = await getDevModeUser();
         req.user = { 
@@ -360,7 +358,7 @@ export async function authenticate(
     
     if (error.code === 'ERR_JWT_EXPIRED') {
       // In dev mode, fall back to dev user when token is expired
-      if (config.app.env === 'development') {
+      if (config.app.devAuthBypass) {
         try {
           const devUser = await getDevModeUser();
           req.user = { ...devUser, organization_id: devUser.organizationId } as any;
@@ -373,7 +371,7 @@ export async function authenticate(
     
     if (error.code === 'ERR_JWT_INVALID' || error.code === 'ERR_JWS_INVALID') {
       // In dev mode, fall back to dev user when token is invalid
-      if (config.app.env === 'development') {
+      if (config.app.devAuthBypass) {
         try {
           const devUser = await getDevModeUser();
           req.user = { ...devUser, organization_id: devUser.organizationId } as any;

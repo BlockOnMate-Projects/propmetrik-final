@@ -313,8 +313,9 @@ export function ProjectGantt({
     mutationFn: (data: { phaseId: string; updates: Partial<ProjectPhase> }) =>
       phasesApi.update(data.phaseId, data.updates),
     onSuccess: () => {
+      // invalidateQueries already refetches the active gantt query — no explicit
+      // refetch() (that was a second, redundant round-trip per mutation).
       queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
-      refetch()
     },
   })
 
@@ -322,8 +323,9 @@ export function ProjectGantt({
   const addPhaseMutation = useMutation({
     mutationFn: (newPhase: Partial<ProjectPhase>) => phasesApi.create(projectId, newPhase),
     onSuccess: () => {
+      // invalidateQueries already refetches the active gantt query — no explicit
+      // refetch() (that was a second, redundant round-trip per mutation).
       queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
-      refetch()
     },
   })
 
@@ -331,8 +333,9 @@ export function ProjectGantt({
   const deletePhaseMutation = useMutation({
     mutationFn: (phaseId: string) => phasesApi.delete(phaseId),
     onSuccess: () => {
+      // invalidateQueries already refetches the active gantt query — no explicit
+      // refetch() (that was a second, redundant round-trip per mutation).
       queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
-      refetch()
     },
   })
 
@@ -341,8 +344,9 @@ export function ProjectGantt({
     mutationFn: (v: { milestoneId: string; date: string }) =>
       milestonesApi.setDate(projectId, v.milestoneId, v.date),
     onSuccess: () => {
+      // invalidateQueries already refetches the active gantt query — no explicit
+      // refetch() (that was a second, redundant round-trip per mutation).
       queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
-      refetch()
     },
     onError: () => toast.error('Failed to move milestone'),
   })
@@ -363,8 +367,9 @@ export function ProjectGantt({
       } else if (res.reason === 'already_has_phases') {
         toast.info('This project already has a schedule')
       }
+      // invalidateQueries already refetches the active gantt query — no explicit
+      // refetch() (that was a second, redundant round-trip per mutation).
       queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
-      refetch()
     },
     onError: () => toast.error('Failed to generate schedule'),
   })

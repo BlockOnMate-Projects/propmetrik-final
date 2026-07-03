@@ -35,8 +35,14 @@ const ESIGN_WEBHOOK_SECRET = process.env.ESIGN_WEBHOOK_SECRET || '';
  */
 function verifyESignWebhookSignature(req: Request): boolean {
   if (!ESIGN_WEBHOOK_SECRET) {
-    logger.warn('ESIGN_WEBHOOK_SECRET not set - skipping signature verification');
-    return true; // Skip verification in development
+    // SECURITY: fail CLOSED in production. An unset secret must never allow an
+    // unverified webhook to mutate signing state; only skip outside production.
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('ESIGN_WEBHOOK_SECRET not set — rejecting webhook in production');
+      return false;
+    }
+    logger.warn('ESIGN_WEBHOOK_SECRET not set - skipping signature verification (non-production only)');
+    return true;
   }
 
   const signature = req.headers['x-esign-signature'] as string;
@@ -265,8 +271,10 @@ router.post('/nowpayments/ipn', async (req: Request, res: Response) => {
     const signature = req.headers['x-nowpayments-sig'] as string;
     if (!signature) {
       logger.warn('NOWPayments IPN: missing x-nowpayments-sig header');
-      // In sandbox mode, signature may be absent — still process but log warning
-      const isSandbox = process.env.NOWPAYMENTS_SANDBOX === 'true';
+      // SECURITY: the unsigned-sandbox bypass is only permitted OUTSIDE production.
+      // In production a missing signature is always rejected, even if the sandbox
+      // flag is somehow set.
+      const isSandbox = process.env.NOWPAYMENTS_SANDBOX === 'true' && process.env.NODE_ENV !== 'production';
       if (!isSandbox) {
         return res.status(400).json({ error: 'Missing IPN signature' });
       }

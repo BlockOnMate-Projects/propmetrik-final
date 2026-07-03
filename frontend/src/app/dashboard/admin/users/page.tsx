@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Users, Search, RefreshCw, Shield, Mail, Building2, Trash2 } from 'lucide-react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { ConfirmModal } from '@/components/admin/ConfirmModal'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 
 interface User {
@@ -34,6 +35,9 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  // PERF: debounce so the remote-DB search runs once the user pauses typing,
+  // not on every keystroke.
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [pendingDelete, setPendingDelete] = useState<User | null>(null)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -41,7 +45,7 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authedFetch(`/api/admin/users?search=${encodeURIComponent(search)}`)
+      const res = await authedFetch(`/api/admin/users?search=${encodeURIComponent(debouncedSearch)}`)
       if (res.ok) {
         const data = (await res.json()) as { data: User[] }
         setUsers(data.data || [])
@@ -51,7 +55,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [debouncedSearch])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 

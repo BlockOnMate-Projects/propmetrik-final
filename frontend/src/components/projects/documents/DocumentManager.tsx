@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import {
   Upload,
   FileText,
@@ -165,6 +166,9 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  // PERF: debounce so the react-query key only changes (→ server refetch) once
+  // the user pauses typing, not on every keystroke.
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const [typeFilter, setTypeFilter] = useState<DocumentType | 'all'>('all');
   
   // Dialog states
@@ -199,12 +203,12 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
 
   // Fetch documents
   const { data: documents, isLoading, error } = useQuery({
-    queryKey: ['project-documents', projectId, selectedFolderId, typeFilter, searchQuery],
+    queryKey: ['project-documents', projectId, selectedFolderId, typeFilter, debouncedSearch],
     queryFn: () =>
       documentsApi.getDocuments(projectId, {
         folder: selectedFolderId || undefined,
         type: typeFilter !== 'all' ? typeFilter : undefined,
-        search: searchQuery || undefined
+        search: debouncedSearch || undefined
       })
   });
 

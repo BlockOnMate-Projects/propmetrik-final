@@ -46,11 +46,9 @@ const nextConfig = {
         source: '/api/auth/:path*',
         destination: '/api/auth/:path*',
       },
-      {
-        // Python ML-serving proxy (valuation calculations)
-        source: '/ml-api/:path*',
-        destination: `${process.env.PYTHON_API_URL || 'http://localhost:8001'}/api/v1/:path*`,
-      },
+      // NOTE: the Python ML-serving proxy is now a Route Handler at
+      // src/app/ml-api/[...path]/route.ts (a rewrite cannot inject the required
+      // X-Engine-Secret header). Do NOT re-add an /ml-api rewrite here.
       {
         // Public endpoints (not under /api/v1)
         source: '/api/public/:path*',

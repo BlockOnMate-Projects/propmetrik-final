@@ -3,8 +3,12 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
-// All pages are dynamic (authenticated, real-time data) — never statically prerender
-export const dynamic = 'force-dynamic'
+// PERF: do NOT force every route dynamic from the root. The blanket flag made all
+// ~46 public marketing/legal pages pay full server + remote-DB latency on every
+// hit. Authenticated pages opt into dynamic rendering automatically via their use
+// of dynamic APIs (cookies/headers/auth/searchParams) and dynamic route segments;
+// static/marketing pages can now be prerendered. Scope force-dynamic to the
+// specific server segments that truly need per-request rendering.
 
 const inter = Inter({ subsets: ['latin'] })
 

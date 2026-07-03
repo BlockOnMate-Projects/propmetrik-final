@@ -22,7 +22,11 @@ export class AppError extends Error {
     this.details = details;
     
     Error.captureStackTrace(this, this.constructor);
-    Object.setPrototypeOf(this, AppError.prototype);
+    // Use new.target (the actual constructed subclass) rather than AppError.
+    // Setting it to AppError.prototype in the BASE ctor overwrote every subclass
+    // instance's prototype, so `instanceof UnauthorizedError/ForbiddenError` was
+    // always false and auth error branches never fired.
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
