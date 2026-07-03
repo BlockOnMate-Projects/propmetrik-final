@@ -37,7 +37,7 @@ import {
 import { PythonClient } from './pythonClient';
 import { economicDataService } from '../data-hub/economicDataService';
 import { constructionCostService } from '../data-hub/constructionCostService';
-import { capRateService } from './CapRateService';
+import { capRateService } from '../analytics/capRateService';
 
 // Initialize Python client for valuation method calculations
 const pythonClient = new PythonClient();
@@ -1039,7 +1039,13 @@ class ValuationEngineService {
         p.building_size_sqm as prop_building_size,
         p.total_area_sqm as prop_total_area,
         p.year_built as prop_year_built,
-        p.condition as prop_condition
+        p.condition as prop_condition,
+        p.description as prop_description,
+        p.owner_name as prop_owner_name,
+        p.owner_email as prop_owner_email,
+        p.owner_phone as prop_owner_phone,
+        p.owner_address as prop_owner_address,
+        p.metadata as prop_metadata
        FROM valuations v
        LEFT JOIN properties p ON v.property_id = p.id
        WHERE v.id = $1`,
@@ -1211,6 +1217,14 @@ class ValuationEngineService {
       yearBuilt: row.prop_year_built,
       year_built: row.prop_year_built,
       condition: row.prop_condition,
+      description: row.prop_description,
+      owner_name: row.prop_owner_name,
+      owner_email: row.prop_owner_email,
+      owner_phone: row.prop_owner_phone,
+      owner_address: row.prop_owner_address,
+      // Chapter 3 report writeups (city/neighbourhood/location/services/land-value etc.) and
+      // all other subject fields live in metadata — without this the [id]/subject form reloads blank.
+      metadata: row.prop_metadata || {},
     } : null;
 
     return {

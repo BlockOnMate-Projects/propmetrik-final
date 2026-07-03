@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
-import Link from 'next/link';
 import {
   Building2,
   Mail,
@@ -30,6 +29,17 @@ export default function TenantLoginPage() {
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard/tenant';
   // Keycloak appends loginHint on the post-onboarding redirect; pre-fill the email.
   const loginHint = searchParams.get('loginHint') || searchParams.get('email');
+
+  // Staff login lives on the MAIN host — this page runs on the tenant.* subdomain, where
+  // the middleware bounces a relative /login back to /tenant-login. Derive the main-host URL
+  // env-aware by stripping the 'tenant.' prefix → dev http://localhost:3000/login,
+  // prod https://propmetrik.com/login. Prod URL is the SSR fallback before mount.
+  const [staffLoginUrl, setStaffLoginUrl] = useState('https://propmetrik.com/login');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setStaffLoginUrl(`${window.location.protocol}//${window.location.host.replace(/^tenant\./, '')}/login`);
+    }
+  }, []);
 
   useEffect(() => {
     if (loginHint) setEmail(loginHint);
@@ -78,17 +88,22 @@ export default function TenantLoginPage() {
     setError('');
     setNotice('');
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${apiUrl}/api/tenant-portal/auth/request-password-reset`, {
+      // Call the bare /api path — next.config rewrites /api/* → backend /api/v1/*.
+      // Do NOT prefix NEXT_PUBLIC_API_URL (it is '/api'), which would double to /api/api/… → 404.
+      const res = await fetch(`/api/tenant-portal/auth/request-password-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setNotice(data.message || 'If an account exists for that email, a link to set your password has been sent. Check your inbox.');
+      let data: any = {};
+      try { data = await res.json(); } catch { /* non-JSON body (e.g. an HTML error page) */ }
+      // Error/notice state MUST be a string — assigning an object ({code,message}) crashes React.
+      const asText = (v: any, fallback: string): string =>
+        typeof v === 'string' ? v : (v && typeof v.message === 'string' ? v.message : fallback);
+      if (res.ok && data?.success) {
+        setNotice(asText(data?.message, 'If an account exists for that email, a link to set your password has been sent. Check your inbox.'));
       } else {
-        setError(data.error || 'Could not send the password link. Contact your property manager.');
+        setError(asText(data?.error, 'Could not send the password link. Contact your property manager.'));
       }
     } catch {
       setError('Could not send the password link. Contact your property manager.');
@@ -167,9 +182,9 @@ export default function TenantLoginPage() {
         <div className="mt-6 text-center">
           <p className="text-xs text-muted-foreground">
             Not a tenant?{' '}
-            <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-medium">
+            <a href={staffLoginUrl} className="text-cyan-600 hover:text-cyan-700 font-medium">
               Staff Login
-            </Link>
+            </a>
           </p>
           <div className="flex items-center justify-center gap-2 mt-3 text-gray-300">
             <Building2 className="w-3.5 h-3.5" />

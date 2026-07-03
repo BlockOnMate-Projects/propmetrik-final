@@ -1013,7 +1013,36 @@ export const crmPaymentConfigApi = {
     /** Get supported settlement/payout currencies */
     getSettlementCoins: () =>
         fetchApi<SettlementCoin[]>(`${CRM_BASE}/payments/settlement-coins`),
+
+    /** List this org's deal payment transactions (refund surface). Admin-only. Requires migration 272. */
+    listTransactions: (limit = 100) =>
+        fetchApi<DealPaymentTransaction[]>(`${CRM_BASE}/payments/transactions?limit=${limit}`),
+
+    /** Initiate a refund (full or partial) on a paid deal payment. Admin-only. Amount in pesewas. */
+    refund: (reference: string, body?: { amount?: number; reason?: string }) =>
+        fetchApi<{ status: string; refundReference?: string; refundedAmount?: number; message: string }>(
+            `${CRM_BASE}/payments/${encodeURIComponent(reference)}/refund`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }
+        ),
 };
+
+export interface DealPaymentTransaction {
+    reference: string;
+    paystack_reference: string | null;
+    payment_type: string;
+    gross_amount: number;      // pesewas
+    principal_amount: number;  // pesewas
+    currency: string;
+    status: 'pending' | 'success' | 'failed' | 'refunded' | 'abandoned';
+    refund_status: 'pending' | 'processing' | 'processed' | 'failed' | null;
+    refunded_amount: number | null;
+    refund_reference: string | null;
+    refunded_at: string | null;
+    payer_email: string | null;
+    channel: string | null;
+    created_at: string;
+    verified_at: string | null;
+}
 
 // CRM AI API removed: the standalone CRM assistant popup was retired in favour of
 // the Workspace panel's CRM-scoped "KOBBY AI" tab (backend: KobbyAIService 'crm'
@@ -1114,6 +1143,17 @@ export interface DripCampaign {
     steps?: DripCampaignStep[];
 }
 
+export interface DripStepVariant {
+    id: string;
+    step_id: string;
+    label: string;
+    subject: string;
+    body: string;
+    weight: number;
+    is_active: boolean;
+    created_at: string;
+}
+
 export interface DripCampaignStep {
     id: string;
     campaign_id: string;
@@ -1123,6 +1163,7 @@ export interface DripCampaignStep {
     body: string;
     template_id: string | null;
     created_at: string;
+    variants?: DripStepVariant[];
 }
 
 export interface DripEnrollment {
@@ -1168,6 +1209,14 @@ export const dripCampaignsApi = {
     deleteStep: (campaignId: string, stepId: string) =>
         fetchApi<void>(`${CRM_BASE}/drip-campaigns/${campaignId}/steps/${stepId}`, { method: 'DELETE' }),
 
+    addVariant: (campaignId: string, stepId: string, data: { label?: string; subject: string; body: string; weight?: number }) =>
+        fetchApi<DripStepVariant>(`${CRM_BASE}/drip-campaigns/${campaignId}/steps/${stepId}/variants`, {
+            method: 'POST', body: JSON.stringify(data),
+        }),
+
+    deleteVariant: (campaignId: string, stepId: string, variantId: string) =>
+        fetchApi<void>(`${CRM_BASE}/drip-campaigns/${campaignId}/steps/${stepId}/variants/${variantId}`, { method: 'DELETE' }),
+
     enroll: (campaignId: string, contact_ids: string[]) =>
         fetchApi<{ enrolled: number }>(`${CRM_BASE}/drip-campaigns/${campaignId}/enroll`, {
             method: 'POST',
@@ -1176,6 +1225,124 @@ export const dripCampaignsApi = {
 
     getEnrollments: (campaignId: string) =>
         fetchApi<DripEnrollment[]>(`${CRM_BASE}/drip-campaigns/${campaignId}/enrollments`),
+
+    /** Delivery log from the execution engine (sent/failed per step). Requires migration 271. */
+    getSends: (campaignId: string) =>
+        fetchApi<DripStepSend[]>(`${CRM_BASE}/drip-campaigns/${campaignId}/sends`),
+};
+
+export interface DripStepSend {
+    id: string;
+    enrollment_id: string;
+    step_id: string;
+    status: 'sending' | 'sent' | 'failed';
+    attempts: number;
+    error: string | null;
+    sent_at: string | null;
+    created_at: string;
+    opened_at: string | null;
+    open_count: number;
+    first_clicked_at: string | null;
+    click_count: number;
+    variant_id: string | null;
+    subject: string;
+    step_order: number;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+}
+
+// ── Campaign audience segments ────────────────────────
+export interface SegmentFilter {
+    lead_status?: string[];
+    contact_type?: string[];
+    region?: string[];
+    lead_source?: string[];
+    city?: string;
+    assigned_agent?: string;
+    tags?: string[];
+    search?: string;
+}
+
+export interface CampaignSegment {
+    id: string;
+    organization_id: string;
+    name: string;
+    description: string | null;
+    filter: SegmentFilter;
+    created_at: string;
+    updated_at: string;
+}
+
+export const segmentsApi = {
+    getAll: () => fetchApi<CampaignSegment[]>(`${CRM_BASE}/segments`),
+    create: (data: { name: string; description?: string; filter?: SegmentFilter }) =>
+        fetchApi<CampaignSegment>(`${CRM_BASE}/segments`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    delete: (id: string) => fetchApi<void>(`${CRM_BASE}/segments/${id}`, { method: 'DELETE' }),
+    preview: (filter: SegmentFilter) =>
+        fetchApi<{ count: number; sample: { id: string; first_name: string; last_name: string; email: string | null }[] }>(
+            `${CRM_BASE}/segments/preview`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filter }) }
+        ),
+    enroll: (segmentId: string, campaignId: string) =>
+        fetchApi<{ enrolled: number; matched: number }>(`${CRM_BASE}/segments/${segmentId}/enroll`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ campaignId }),
+        }),
+};
+
+// =====================================================
+// AGENT TERRITORIES API
+// =====================================================
+
+export interface AgentTerritory {
+    id: string;
+    organization_id: string;
+    agent_id: string;
+    agent_name?: string | null;
+    name: string;
+    description: string | null;
+    boundary: GeoJSON.Geometry;   // MultiPolygon
+    is_exclusive: boolean;
+    priority: number;
+    color: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    overlaps?: { id: string; name: string; agent_id: string }[];
+}
+
+export interface TerritoryInput {
+    agentId: string;
+    name: string;
+    description?: string;
+    boundary: GeoJSON.Geometry;   // Polygon or MultiPolygon
+    isExclusive?: boolean;
+    priority?: number;
+    color?: string;
+    allowOverlap?: boolean;
+}
+
+export const territoriesApi = {
+    getAll: () => fetchApi<AgentTerritory[]>(`${CRM_BASE}/territories`),
+    getById: (id: string) => fetchApi<AgentTerritory>(`${CRM_BASE}/territories/${id}`),
+    create: (data: TerritoryInput) =>
+        fetchApi<AgentTerritory>(`${CRM_BASE}/territories`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    update: (id: string, data: Partial<TerritoryInput> & { isActive?: boolean }) =>
+        fetchApi<AgentTerritory>(`${CRM_BASE}/territories/${id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    delete: (id: string) =>
+        fetchApi<void>(`${CRM_BASE}/territories/${id}`, { method: 'DELETE' }),
+    /** Resolve owning agent for a point, or auto-assign a contact by its geocoded location. */
+    resolve: (body: { lng?: number; lat?: number; contactId?: string }) =>
+        fetchApi<{ owner?: { agent_id: string; territory_id: string; name: string } | null; assigned?: { agent_id: string; territory_id: string } | null }>(
+            `${CRM_BASE}/territories/resolve`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        ),
 };
 
 // COMBINED CRM API EXPORT
@@ -1195,6 +1362,8 @@ export const crmApi = {
     documentGeneration: documentGenerationApi,
     emails: emailsApi,
     dripCampaigns: dripCampaignsApi,
+    territories: territoriesApi,
+    segments: segmentsApi,
 };
 
 export default crmApi;

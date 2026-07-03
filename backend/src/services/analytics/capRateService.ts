@@ -250,6 +250,14 @@ export class CapRateService {
       'land': { rate: 0.05, low: 0.03, high: 0.08 },
       // Mixed use
       'mixeduse': { rate: 0.085, low: 0.065, high: 0.12 },
+      // Trading / specialized (mirror trading_property_benchmarks seeds — safety net only;
+      // getTradingCapRate reads the real rows first).
+      'hotel': { rate: 0.095, low: 0.085, high: 0.115 },
+      'hospital': { rate: 0.10, low: 0.09, high: 0.12 },
+      'school': { rate: 0.105, low: 0.095, high: 0.125 },
+      'restaurant': { rate: 0.11, low: 0.10, high: 0.13 },
+      'fuelstation': { rate: 0.11, low: 0.10, high: 0.13 },
+      'healthcare': { rate: 0.10, low: 0.09, high: 0.12 },
     };
 
     const def = defaults[normalized] || { rate: 0.08, low: 0.06, high: 0.12 };
@@ -265,6 +273,77 @@ export class CapRateService {
       dataQuality: 'none',
       effectiveDate: new Date(),
     };
+  }
+
+  /**
+   * Trading / specialized property types that carry their OWN yield evidence in
+   * trading_property_benchmarks (hotels, hospitals, schools, restaurants, fuel stations,
+   * healthcare). These are NOT mapped to a commercial-office proxy — they read their own rate.
+   */
+  private static readonly TRADING_TYPES = new Set([
+    'hotel', 'hospital', 'school', 'restaurant', 'fuel_station', 'healthcare',
+  ]);
+
+  isTradingType(propertyType: string): boolean {
+    return CapRateService.TRADING_TYPES.has(String(propertyType || '').toLowerCase().trim());
+  }
+
+  /**
+   * Cap rate for a trading/specialized property, read DIRECTLY from trading_property_benchmarks
+   * (no proxy to commercial_office). Prefers the property's own region, then falls back to the
+   * seeded greater_accra row so a trading type is never starved for a region without its own seed.
+   * Returns null only if the type truly has no benchmark row (caller then uses defaults).
+   */
+  async getTradingCapRate(region: string, tradingType: string): Promise<MarketCapRateBenchmark | null> {
+    const t = String(tradingType || '').toLowerCase().trim();
+    try {
+      const result = await query(`
+        SELECT typical_cap_rate, cap_rate_low, cap_rate_high, source, region
+          FROM trading_property_benchmarks
+         WHERE property_type = $1 AND region IN ($2, 'greater_accra')
+         ORDER BY (region = $2) DESC
+         LIMIT 1
+      `, [t, region]);
+
+      if (result.rows.length === 0) return null;
+      const row = result.rows[0];
+      const rate = parseFloat(row.typical_cap_rate);
+      if (!rate || rate <= 0) return null;
+
+      return {
+        benchmarkCapRate: rate,
+        capRateRangeLow: parseFloat(row.cap_rate_low) || rate * 0.85,
+        capRateRangeHigh: parseFloat(row.cap_rate_high) || rate * 1.15,
+        // Seed-reviewed benchmarks → moderate-low confidence, flagged so real evidence supersedes.
+        confidenceScore: row.source === 'seed_review' ? 0.5 : 0.6,
+        sampleSize: 0,
+        marketCondition: 'unknown',
+        yieldTrend: 'unknown',
+        dataQuality: 'low',
+        effectiveDate: row.effective_date || new Date(),
+      };
+    } catch (error: any) {
+      logger.warn('Failed to get trading cap rate', { region, tradingType, error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * UNIFIED cap-rate resolver for ANY property type — the single entry point valuation methods
+   * should use. Trading types read their own trading_property_benchmarks yields (no commercial-
+   * office proxy); every other type reads market_cap_rate_benchmarks. Always returns a benchmark.
+   */
+  async resolveCapRate(
+    region: string,
+    propertyType: string,
+    propertySubtype?: string
+  ): Promise<MarketCapRateBenchmark> {
+    if (this.isTradingType(propertyType)) {
+      const trading = await this.getTradingCapRate(region, propertyType);
+      // Fall back to type-specific defaults (NOT the commercial-office proxy) if no row exists.
+      return trading || this.getDefaultCapRate(propertyType);
+    }
+    return this.getMarketCapRate(region, propertyType, propertySubtype);
   }
 
   /**
@@ -1588,6 +1667,64 @@ export class CapRateService {
     if (score >= 3) return 'acceptable';
     if (score >= 1) return 'limited';
     return 'insufficient';
+  }
+
+  /**
+   * Refresh the rental_yield_analytics snapshot table (analytics layer completeness). Yields come
+   * from the authoritative per-region×type cap-rate benchmarks (net yield = benchmark_cap_rate,
+   * gross grossed-up by a typical 25% operating-expense ratio); rent metrics come from the REAL
+   * rental_market_benchmarks (Data Hub listings) matched to the region where available. Idempotent
+   * per data month (delete + insert). Called by the analytics scheduler.
+   */
+  async refreshRentalYieldAnalytics(asOf: Date = new Date()): Promise<{ rows: number }> {
+    const period = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1))
+      .toISOString().slice(0, 10);
+    try {
+      await query(`DELETE FROM rental_yield_analytics WHERE period_date = $1 AND period_type = 'monthly'`, [period]);
+      const res = await query(`
+        WITH cap AS (
+          -- Collapse property_subtype rows to ONE net yield per region × property_type.
+          SELECT region, property_type,
+                 AVG(benchmark_cap_rate) AS net_yield,
+                 SUM(COALESCE(sample_size, 0)) AS ss
+          FROM market_cap_rate_benchmarks
+          WHERE valid_until IS NULL
+          GROUP BY region, property_type
+        )
+        INSERT INTO rental_yield_analytics (
+          region, property_type, period_date, period_type, sample_size,
+          median_monthly_rent, avg_monthly_rent, avg_rent_per_sqm,
+          avg_gross_yield, avg_net_yield, yield_trend_12m, vacancy_rate_estimate
+        )
+        SELECT
+          c.region::text,
+          c.property_type::text,
+          $1::date,
+          'monthly',
+          COALESCE(r.listing_count, c.ss, 0),
+          r.median_rent_monthly,
+          r.avg_rent_monthly,
+          r.avg_rent_per_sqm,
+          ROUND((c.net_yield / 0.75)::numeric, 4),   -- gross ≈ net / (1 - 25% opex)
+          ROUND(c.net_yield::numeric, 4),
+          NULL::numeric,   -- yield_trend_12m is a numeric change value; no 12m history yet
+          r.vacancy_rate_estimate
+        FROM cap c
+        LEFT JOIN LATERAL (
+          SELECT median_rent_monthly, avg_rent_monthly, avg_rent_per_sqm, listing_count, vacancy_rate_estimate
+          FROM rental_market_benchmarks rmb
+          WHERE rmb.property_type = c.property_type::text
+            AND lower(rmb.area_name) = lower(replace(c.region::text, '_', ' '))
+          ORDER BY rmb.computed_at DESC NULLS LAST
+          LIMIT 1
+        ) r ON true
+      `, [period]);
+      logger.info('[capRateService] rental_yield_analytics refreshed', { period, rows: res.rowCount });
+      return { rows: res.rowCount ?? 0 };
+    } catch (error: any) {
+      logger.error('[capRateService] Failed to refresh rental_yield_analytics', { error: error.message });
+      throw error;
+    }
   }
 }
 

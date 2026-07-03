@@ -38,16 +38,23 @@ router.get('/analytics/pipeline', asyncHandler(async (req: Request, res: Respons
         return res.status(400).json({ error: 'pipelineId is required' });
     }
 
+    // Deals are stored in their native currency; convert each to GHS before summing so a
+    // USD deal isn't mis-added as GHS. Open-pipeline value uses the live rate; won value
+    // uses the rate at close (historical), matching the other analytics endpoints.
+    const fx = await getGhsRateMap();
+    const valD = ghsValueSql('d.deal_value', 'd.currency', fx);
+    const wonHist = ghsHistoricalValueSql('d.deal_value', 'd.currency', 'd.actual_close_date', fx);
+
     const analyticsQuery = `
         WITH stage_metrics AS (
-            SELECT 
+            SELECT
                 ds.id as stage_id,
                 ds.stage_name as stage_name,
                 ds.stage_order,
                 COUNT(DISTINCT d.id) as deal_count,
-                COALESCE(SUM(d.deal_value), 0) as total_value
+                COALESCE(SUM(${valD}), 0) as total_value
             FROM deal_stages ds
-            LEFT JOIN deals d ON d.stage_id = ds.id 
+            LEFT JOIN deals d ON d.stage_id = ds.id
                 AND d.deleted_at IS NULL
                 AND d.organization_id = $1
             WHERE ds.pipeline_id = $2 AND ds.is_active = true
@@ -55,11 +62,11 @@ router.get('/analytics/pipeline', asyncHandler(async (req: Request, res: Respons
             ORDER BY ds.stage_order
         ),
         conversion_metrics AS (
-            SELECT 
+            SELECT
                 COUNT(CASE WHEN d.deal_status = 'won' THEN 1 END) as won_deals,
                 COUNT(CASE WHEN d.deal_status = 'lost' THEN 1 END) as lost_deals,
                 COUNT(*) as total_deals,
-                COALESCE(SUM(CASE WHEN d.deal_status = 'won' THEN d.deal_value END), 0) as won_value
+                COALESCE(SUM(CASE WHEN d.deal_status = 'won' THEN ${wonHist} END), 0) as won_value
             FROM deals d
             WHERE d.pipeline_id = $2 AND d.organization_id = $1 AND d.deleted_at IS NULL
         )

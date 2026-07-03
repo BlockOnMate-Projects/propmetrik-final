@@ -1587,6 +1587,27 @@ export default function IncomeApproachPage() {
                     className="w-full px-2 py-1 bg-background border border-border text-foreground font-mono"
                   />
                 </div>
+                <div>
+                  <label className="font-mono text-[10px] text-muted-foreground flex items-center gap-1 mb-1">
+                    RESERVES (% EGI)
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-2.5 h-2.5 text-amber-500/50 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-2">
+                          <p className="text-[10px] text-muted-foreground">Replacement/capital reserves — an annual allowance (default 3% of EGI) for periodic major repairs and component replacement, per RICS normalized operating assumptions. Included in operating expenses and the expense ratio. Set to 0 to exclude.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </label>
+                  <input
+                    type="number"
+                    value={reserves}
+                    onChange={(e) => setReserves(parseFloat(e.target.value) || 0)}
+                    className="w-full px-2 py-1 bg-background border border-border text-foreground font-mono"
+                  />
+                </div>
               </div>
               <div className="mt-3 pt-3 border-t border-border">
                 <div className="flex justify-between text-xs font-mono items-center">

@@ -13,6 +13,7 @@ import { fetchApi } from '@/lib/api'
 import type { Property, ValuationPurpose } from '@/types/valuation'
 import ComprehensivePropertyForm from '@/components/forms/ComprehensivePropertyForm'
 import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
+import { buildPropertyUpdatePayload } from '@/lib/valuationPropertyPayload'
 import {
   ArrowLeft,
   Search,
@@ -140,15 +141,22 @@ export default function NewValuationPage() {
     return () => { cancelled = true }
   }, [initialClientId])
 
-  // ── Draft persistence ──────────────────────────────────────────────────────
-  // /new holds the ENTIRE subject form (property details + report writeups) in local
-  // React state with no server-side draft. So navigating away from /new — or an aborted
-  // create — used to wipe everything the valuer typed. Persist the draft to sessionStorage
-  // and restore it on return, so work is never lost. Cleared on a successful create.
+  // ── Auto-create draft + auto-save ────────────────────────────────────────────
+  // The valuer fills the ENTIRE subject form here. Two things depend on a real valuation
+  // existing: (a) the inline "Generate with AI" writeup buttons (they call
+  // /valuations/{id}/ai/writeup) and (b) never losing work. So we create a DRAFT valuation
+  // the moment there's enough to create (address + city), then auto-save every change to it.
+  // sessionStorage bridges the pre-draft window AND remembers the draft id so returning to
+  // /new resumes the SAME draft instead of spawning duplicates.
   const DRAFT_KEY = 'pm:valuation-new-draft'
+  const [draftIds, setDraftIds] = useState<{ valuationId: string; propertyId: string } | null>(null)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const draftIdsRef = useRef<{ valuationId: string; propertyId: string } | null>(null)
+  const creatingDraftRef = useRef(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const draftSkipFirstSave = useRef(true)
 
-  // Restore any in-progress draft once, on mount (client-only, after hydration).
+  // Restore an in-progress draft (form data + draft ids) once, on mount.
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY)
@@ -158,17 +166,93 @@ export default function NewValuationPage() {
       if (d.valuationPurpose) setValuationPurpose(d.valuationPurpose)
       if (typeof d.createNewProperty === 'boolean') setCreateNewProperty(d.createNewProperty)
       if (typeof d.step === 'number') setStep(d.step)
+      if (d.draftIds?.valuationId && d.draftIds?.propertyId) {
+        setDraftIds(d.draftIds)
+        draftIdsRef.current = d.draftIds
+        creatingDraftRef.current = true // a draft already exists — never create a second
+      }
     } catch { /* corrupt draft — ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Persist on every change (skips the initial mount fire so a restore can't be clobbered).
+  // Persist form + draft ids so leaving /new never loses work (skips the initial mount fire
+  // so a restore can't be clobbered by an empty first write).
   useEffect(() => {
     if (draftSkipFirstSave.current) { draftSkipFirstSave.current = false; return }
     try {
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ newProperty, valuationPurpose, createNewProperty, step }))
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ newProperty, valuationPurpose, createNewProperty, step, draftIds }))
     } catch { /* quota / serialisation — non-fatal */ }
-  }, [newProperty, valuationPurpose, createNewProperty, step])
+  }, [newProperty, valuationPurpose, createNewProperty, step, draftIds])
+
+  // Create the draft valuation IMMEDIATELY (not debounced) the instant address+city both
+  // exist. This is deliberately NOT inside the auto-save debounce: the debounce timer resets
+  // on every keystroke, so a valuer filling the form in one continuous flow would never pause
+  // long enough to trigger creation — leaving `valuationId` unset and every inline
+  // "Generate with AI" writeup button (which gates on valuationId) grayed out the whole time.
+  // Firing on the address+city fields directly makes the draft — and thus the AI buttons —
+  // available as soon as the property is identifiable. Refs gate creation (set synchronously
+  // before the await) so a rapid address→city change, or React StrictMode's double-invoke,
+  // can't spawn a duplicate valuation.
+  useEffect(() => {
+    if (!createNewProperty) return
+    if (draftIdsRef.current || creatingDraftRef.current) return
+    const np = newProperty
+    if (!np.address || !np.city) return // not enough to identify a property yet
+    creatingDraftRef.current = true
+    setAutoSaveStatus('saving')
+    ;(async () => {
+      try {
+        const res = await valuationsApi.createWithNewProperty({
+          property: {
+            address: np.address,
+            address_street: np.address,
+            address_city: np.city,
+            region: np.region || 'greater_accra',
+            digital_address: np.digital_address || null,
+            property_type: np.property_type || 'house',
+            comprehensive_data: np,
+          },
+          valuation_type: 'professional',
+          valuation_purpose: (np.valuation_purpose as ValuationPurpose) || valuationPurpose,
+          client_id: (np as any).client_id || initialClientId || undefined,
+        })
+        const v: any = res.data
+        if (v?.id && v?.property_id) {
+          const ids = { valuationId: v.id, propertyId: v.property_id }
+          draftIdsRef.current = ids
+          setDraftIds(ids)
+          setAutoSaveStatus('saved')
+        } else {
+          creatingDraftRef.current = false // incomplete response — allow retry
+          setAutoSaveStatus('error')
+        }
+      } catch {
+        creatingDraftRef.current = false // allow retry on the next address/city change
+        setAutoSaveStatus('error')
+      }
+    })()
+    // Depend on the address/city fields directly (not the whole object) so creation is not
+    // starved by continuous edits to other fields.
+  }, [createNewProperty, newProperty.address, newProperty.city, valuationPurpose, initialClientId])
+
+  // Debounced auto-save of every subsequent edit to the SAME draft (creation is handled above).
+  // Uses the SAME endpoint [id]/subject uses (PUT /properties/{id}) with the SAME payload
+  // builder, so the two screens round-trip identically. No-ops until the draft exists.
+  useEffect(() => {
+    if (!createNewProperty || !draftIdsRef.current) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      if (!draftIdsRef.current) return
+      try {
+        setAutoSaveStatus('saving')
+        await fetchApi(`/properties/${draftIdsRef.current.propertyId}`, { method: 'PUT', body: JSON.stringify(buildPropertyUpdatePayload(newProperty)) })
+        setAutoSaveStatus('saved')
+      } catch {
+        setAutoSaveStatus('error')
+      }
+    }, 900)
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
+  }, [newProperty, createNewProperty])
 
   // Search for existing properties
   useEffect(() => {
@@ -212,6 +296,15 @@ export default function NewValuationPage() {
     try {
       setCreating(true)
       setError(null)
+
+      // A draft valuation was already auto-created + auto-saved as the valuer typed.
+      // Don't create a second one — flush the latest snapshot and continue to Documents.
+      if (draftIds) {
+        try { await fetchApi(`/properties/${draftIds.propertyId}`, { method: 'PUT', body: JSON.stringify(buildPropertyUpdatePayload(newProperty)) }) } catch { /* best-effort */ }
+        try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* non-fatal */ }
+        router.push(`/dashboard/valuations/${draftIds.valuationId}/documents`)
+        return
+      }
 
       // Validate property selection
       if (!selectedProperty && !createNewProperty) {
@@ -454,6 +547,13 @@ export default function NewValuationPage() {
             {createNewProperty && (
               <div className="mt-4 space-y-4">
                 {/* Comprehensive Property Form - includes Purpose of Valuation */}
+                {createNewProperty && autoSaveStatus !== 'idle' && (
+                  <div className={`text-[10px] font-mono ${autoSaveStatus === 'error' ? 'text-red-500' : autoSaveStatus === 'saving' ? 'text-muted-foreground' : 'text-emerald-600'}`}>
+                    {autoSaveStatus === 'saving' ? 'Saving draft…'
+                      : autoSaveStatus === 'saved' ? '✓ Draft saved automatically'
+                      : 'Auto-save failed — will retry on your next edit'}
+                  </div>
+                )}
                 <ComprehensivePropertyForm
                   data={newProperty}
                   onChange={(data) => {
@@ -466,6 +566,9 @@ export default function NewValuationPage() {
                   mode="subject"
                   showLocationFields={true}
                   showTransactionFields={false}
+                  // Once the draft valuation exists (after address+city), the inline writeup
+                  // "Generate with AI" buttons light up and work against it.
+                  valuationId={draftIds?.valuationId}
                 />
 
                 <button

@@ -256,6 +256,26 @@ class DocumentGenerationService {
   }
 
   /**
+   * Render an arbitrary template string (e.g. a drip-campaign step subject/body)
+   * against a contact/deal/property merge context, using the SAME gather → flatten →
+   * Handlebars pipeline as generate()/preview(). Keeps a single merge-field engine
+   * across generated documents and drip campaigns (no duplicated {{field}} rendering).
+   *
+   * `context` carries the merge ids only (no templateId needed — gatherMergeData does
+   * not read it). Unresolved placeholders are stripped by processTemplate.
+   */
+  async renderString(
+    organizationId: string,
+    context: Pick<GenerateDocumentInput, 'dealId' | 'contactId' | 'propertyId' | 'unitId' | 'projectId' | 'customData'>,
+    template: string
+  ): Promise<string> {
+    if (!template) return '';
+    const mergeData = await this.gatherMergeData(organizationId, context as GenerateDocumentInput);
+    const flattenedData = this.flattenMergeData(mergeData);
+    return this.processTemplate(template, flattenedData);
+  }
+
+  /**
    * Get generated document by ID
    */
   async getById(documentId: string, organizationId: string): Promise<GeneratedDocument | null> {

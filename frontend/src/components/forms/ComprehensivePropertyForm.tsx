@@ -256,37 +256,39 @@ export default function ComprehensivePropertyForm({
   // Inline "Generate with AI" for the free-text report writeups. Needs a created valuation
   // (the endpoint grounds Land Value Evidence in the property's real land comparables).
   const [writeupBusy, setWriteupBusy] = useState<string | null>(null)
+  const [writeupError, setWriteupError] = useState<{ section: string; message: string } | null>(null)
   type WriteupSection = 'land_value_evidence' | 'grounds_external_works' | 'condition_state' | 'services_description'
   const generateWriteup = async (section: WriteupSection) => {
     if (!valuationId || writeupBusy) return
     setWriteupBusy(section)
+    setWriteupError(null)
     try {
       const res: any = await fetchApi<any>(`/valuations/${valuationId}/ai/writeup`, {
         method: 'POST',
         body: JSON.stringify({ section }),
       })
       if (res?.text) onChange({ ...data, [section]: res.text } as any)
-    } catch { /* ignore — the valuer can still type manually */ } finally {
+      else setWriteupError({ section, message: 'The AI returned no text — please retry.' })
+    } catch (e: any) {
+      // NEVER swallow silently — the valuer must know it failed (land-value in particular hits
+      // the Python land-comparables service, which can transiently error) so they can retry.
+      setWriteupError({ section, message: e?.message || 'AI generation failed — please retry.' })
+    } finally {
       setWriteupBusy(null)
     }
   }
   const renderAiBtn = (section: WriteupSection) => {
-    // The writeup AI drafts from a CREATED valuation's data + comparables
-    // (POST /valuations/{id}/ai/writeup). Before the valuation exists — e.g. the /new
-    // property-setup step, which has no valuationId — there is nothing to draft from, so
-    // don't render a permanently-disabled ("grayed out") button; just omit it. It appears
-    // on the Subject step where valuationId is set.
-    if (!valuationId) return null
+    const failed = writeupError?.section === section && writeupBusy !== section
     return (
       <button
         type="button"
         onClick={() => generateWriteup(section)}
-        disabled={writeupBusy !== null}
-        title="Draft from the property data + comparables"
-        className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono uppercase rounded border border-cyan-600/40 text-cyan-500 hover:bg-cyan-600/10 disabled:opacity-40 disabled:cursor-not-allowed"
+        disabled={!valuationId || writeupBusy !== null}
+        title={failed ? writeupError!.message : (valuationId ? 'Draft from the property data + comparables' : 'Available once the draft valuation is created (fill address & city)')}
+        className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono uppercase rounded border hover:bg-cyan-600/10 disabled:opacity-40 disabled:cursor-not-allowed ${failed ? 'border-red-500/50 text-red-500' : 'border-cyan-600/40 text-cyan-500'}`}
       >
         {writeupBusy === section ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-        {writeupBusy === section ? 'Generating…' : 'Generate with AI'}
+        {writeupBusy === section ? 'Generating…' : failed ? 'Retry' : 'Generate with AI'}
       </button>
     )
   }

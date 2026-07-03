@@ -493,10 +493,13 @@ export default function CostApproachPage() {
           building_size_sqm: property.builtArea || property.grossFloorArea || property.building_area_sqm || gfa,
           bedrooms: property.bedrooms,
           bathrooms: property.bathrooms,
-          parking_spaces: property.parking_spaces,
-          has_ac: property.has_air_conditioning || property.hasAirConditioning,
-          has_generator: property.has_generator || property.hasGenerator,
-          has_borehole: property.has_borehole || property.hasBorehole,
+          // Amenity flags have NO dedicated property column — they live in metadata. Reading
+          // property.<flag> here sent undefined, starving the shared FunctionalObsolescenceCalculator
+          // (e.g. "no generator on a premium type") so functional obsolescence always read 0%.
+          parking_spaces: property.parking_spaces ?? property.metadata?.parking_spaces,
+          has_ac: property.metadata?.has_air_conditioning ?? property.has_air_conditioning ?? property.hasAirConditioning,
+          has_generator: property.metadata?.has_generator ?? property.has_generator ?? property.hasGenerator,
+          has_borehole: property.metadata?.has_borehole ?? property.has_borehole ?? property.hasBorehole,
         },
         {
           include_external: true,

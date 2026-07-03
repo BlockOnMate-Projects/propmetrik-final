@@ -503,7 +503,7 @@ All migrations must be **idempotent** (`IF NOT EXISTS`), append-only, `npm run m
 ### Phase 3 — Build the true green-field (~8–10 weeks)
 - **Social syndication** (Facebook/Instagram/TikTok) service + composer UI.
 - **Agent territory management** (PostGIS polygons + exclusivity).
-- **Land Commission / tenure** CRM API over Data Hub staging; tenure classification.
+- **Land Commission / tenure** CRM API over Data Hub staging; tenure classification. - Deferred
 - **Property condition inspections** (PM).
 - **Voice calling** (Twilio Voice, click-to-call + logging) — optional.
 - **Campaign segmentation + A/B + open/click analytics.**

@@ -14,6 +14,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { query } from '../database';
 import { logger } from '../utils/logger';
 import { ghanaPostService } from '../services/data-hub/ghanaPostGeocodingService';
@@ -39,6 +40,20 @@ import type {
 } from '../services/valuation-engine/types';
 
 const router = Router();
+
+// In-memory multer for valuation document uploads (photos + title/indenture scans).
+// Streamed multipart avoids the base64-in-JSON path, which inflates files ~33% and blows
+// the global 10 MB express.json limit — a scanned title deed of ~8 MB used to 500 there.
+// Accepts images and PDFs up to 50 MB, buffered in memory then streamed to MinIO.
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /^image\//.test(file.mimetype) || file.mimetype === 'application/pdf';
+    if (ok) cb(null, true);
+    else cb(new Error('Only image or PDF files are allowed'));
+  },
+});
 
 // =====================================================
 // MIDDLEWARE
@@ -3049,45 +3064,44 @@ router.post('/:id/profits/value', validateUUID('id'), async (req: Request, res: 
     const operatingCostRatios = ratiosOverride ? b.operating_cost_ratios : bm?.operating_cost_ratios;
     const operatorRemPct = num(b.operator_remuneration_pct) ?? num(bm?.operator_remuneration_pct);
 
-    // Cap rate resolution (priority): 1) valuer override, 2) LIVE market analytics (CapRateService,
-    // evidence from market_cap_rate_benchmarks / listing-derived) for the closest analytics class,
-    // 3) the seeded trading benchmark — used ONLY when analytics has no evidence. Provenance is
-    // surfaced so the report never presents a seed as if it were evidence.
-    const TRADING_TO_ANALYTICS_CLASS: Record<string, string> = {
-      hotel: 'commercial_office', hospital: 'commercial_office', healthcare: 'commercial_office',
-      school: 'commercial_office', restaurant: 'commercial_shop', fuel_station: 'commercial_shop',
-    };
+    // Cap rate resolution (priority): 1) valuer override, 2) the trading type's OWN yield from the
+    // analytics cap-rate authority (capRateService.resolveCapRate → reads trading_property_benchmarks
+    // directly; NO commercial-office proxy). Provenance is surfaced so a seeded yield is never
+    // presented as hard market evidence.
     let capRate = num(b.cap_rate);
     let capLow: number | null = null;
     let capHigh: number | null = null;
     let capRateSource = 'valuer_override';
     let capRateMeta: any = null;
     if (capRate == null || capRate <= 0) {
-      const analyticsClass = TRADING_TO_ANALYTICS_CLASS[tradingType] || 'commercial_office';
       try {
-        const mk = await capRateService.getMarketCapRate(region, analyticsClass);
-        if (mk && mk.sampleSize > 0 && mk.benchmarkCapRate > 0) {
+        const mk = await capRateService.resolveCapRate(region, tradingType);
+        if (mk && mk.benchmarkCapRate > 0) {
           capRate = mk.benchmarkCapRate;
           capLow = mk.capRateRangeLow;
           capHigh = mk.capRateRangeHigh;
-          capRateSource = 'market_analytics';
+          // sampleSize > 0 ⇒ real transaction evidence; trading seeds carry sampleSize 0.
+          capRateSource = mk.sampleSize > 0 ? 'market_analytics' : 'indicative_benchmark';
           capRateMeta = {
-            analytics_class: analyticsClass,
+            property_type: tradingType,
             sample_size: mk.sampleSize,
             confidence: mk.confidenceScore,
             data_quality: mk.dataQuality,
-            note: `Mapped from ${analyticsClass} (no trading-specific yield evidence in the hub yet).`,
+            note: mk.sampleSize > 0
+              ? `Trading yield for ${tradingType} derived from market analytics.`
+              : `Indicative ${tradingType} yield — valuer to confirm as market evidence accrues.`,
           };
         }
       } catch (e: any) {
-        logger.debug('CapRateService lookup failed for profits; falling back to seed', { error: e?.message });
+        logger.debug('CapRateService.resolveCapRate failed for profits; falling back to seed', { error: e?.message });
       }
+      // Last resort: the trading benchmark row already fetched above.
       if (capRate == null || capRate <= 0) {
         capRate = num(bm?.typical_cap_rate);
         capLow = num(bm?.cap_rate_low);
         capHigh = num(bm?.cap_rate_high);
         capRateSource = 'indicative_benchmark';
-        capRateMeta = { note: 'Seeded indicative trading yield — no market evidence available; valuer to confirm.' };
+        capRateMeta = { note: 'Indicative trading yield — no market evidence available; valuer to confirm.' };
       }
     } else {
       capLow = num(bm?.cap_rate_low);
@@ -3683,7 +3697,7 @@ router.get('/rental-benchmarks/:area', async (req: Request, res: Response) => {
 // CAP RATE ENDPOINTS
 // =====================================================
 
-import { capRateService, CapRateMethodology, ListingDerivedCapRate } from '../services/valuation-engine/CapRateService';
+import { capRateService, CapRateMethodology, ListingDerivedCapRate } from '../services/analytics/capRateService';
 import { constructionCostService } from '../services/data-hub/constructionCostService';
 
 /**
@@ -4432,24 +4446,58 @@ import { valuationDocumentService, ValuationDocType } from '../services/valuatio
 // =====================================================
 
 /** POST /api/valuations/:id/documents — upload a photo or title document (base64 data URL). */
-router.post('/:id/documents', validateUUID('id'), async (req: Request, res: Response) => {
-  try {
-    const { dataUrl, filename, docType, caption, propertyId, displayOrder } = req.body || {};
-    if (!dataUrl || typeof dataUrl !== 'string') {
-      return res.status(400).json({ error: 'Bad Request', message: 'dataUrl (base64 data URL) is required' });
+// Multer middleware wrapper that turns size/type rejections into clean client errors
+// (a LIMIT_FILE_SIZE would otherwise surface as an opaque 500).
+const handleDocumentUpload = (req: Request, res: Response, next: NextFunction) => {
+  documentUpload.single('file')(req, res, (err: any) => {
+    if (err) {
+      const tooBig = err?.code === 'LIMIT_FILE_SIZE';
+      return res.status(tooBig ? 413 : 400).json({
+        error: tooBig ? 'File too large' : 'Upload rejected',
+        message: tooBig ? 'Maximum document size is 50MB' : (err?.message || 'Invalid upload'),
+      });
     }
+    next();
+  });
+};
+
+router.post('/:id/documents', validateUUID('id'), handleDocumentUpload, async (req: Request, res: Response) => {
+  try {
+    const body = req.body || {};
+    const file = (req as any).file as { buffer: Buffer; mimetype: string; originalname: string } | undefined;
     const allowed: ValuationDocType[] = ['photo', 'title_document'];
-    const type: ValuationDocType = allowed.includes(docType) ? docType : 'photo';
-    const row = await valuationDocumentService.saveFromDataUrl({
-      valuationId: req.params.id,
-      propertyId: propertyId || null,
-      dataUrl,
-      filename: filename || null,
-      docType: type,
-      caption: caption || null,
-      displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
-      createdBy: (req as any).user?.id || null,
-    });
+    const type: ValuationDocType = allowed.includes(body.docType) ? body.docType : 'photo';
+    const displayOrder = body.displayOrder != null && Number.isFinite(Number(body.displayOrder)) ? Number(body.displayOrder) : 0;
+
+    let row;
+    if (file?.buffer) {
+      // Preferred path: streamed multipart file (no base64 inflation, no 10 MB JSON gate).
+      row = await valuationDocumentService.saveFromBuffer({
+        valuationId: req.params.id,
+        propertyId: body.propertyId || null,
+        buffer: file.buffer,
+        mime: file.mimetype,
+        filename: body.filename || file.originalname || null,
+        docType: type,
+        caption: body.caption || null,
+        displayOrder,
+        createdBy: (req as any).user?.id || null,
+      });
+    } else if (typeof body.dataUrl === 'string' && body.dataUrl) {
+      // Legacy base64 path — retained for backward compatibility with any older callers.
+      row = await valuationDocumentService.saveFromDataUrl({
+        valuationId: req.params.id,
+        propertyId: body.propertyId || null,
+        dataUrl: body.dataUrl,
+        filename: body.filename || null,
+        docType: type,
+        caption: body.caption || null,
+        displayOrder,
+        createdBy: (req as any).user?.id || null,
+      });
+    } else {
+      return res.status(400).json({ error: 'Bad Request', message: 'A file (multipart field "file") or dataUrl is required' });
+    }
     res.json({ success: true, data: row });
   } catch (err: any) {
     logger.error('Failed to upload valuation document', { error: err.message });

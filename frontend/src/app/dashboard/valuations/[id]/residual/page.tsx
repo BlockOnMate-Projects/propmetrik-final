@@ -274,11 +274,11 @@ export default function ResidualMethodPage() {
         let devType = 'house'
         if (prop) {
           // Set plot/land size from property
-          const landSize = prop.land_area_sqm || prop.plot_size || 0
+          const landSize = prop.land_area_sqm || prop.plot_size || prop.metadata?.plot_size || 0
           setPlotSize(landSize)
-          
-          // Set number of floors from property
-          const floors = prop.floors || 1
+
+          // Set number of floors from property (metadata.total_floors — no dedicated column)
+          const floors = prop.floors || prop.metadata?.total_floors || 1
           setNumberOfFloors(floors)
           
           // Determine development type from property type
@@ -589,7 +589,7 @@ export default function ResidualMethodPage() {
                   <div>
                     <span className="font-mono text-[10px] text-muted-foreground block">LAND AREA</span>
                     <span className="font-mono text-sm text-amber-600 dark:text-amber-400">
-                      {(valuation.property.land_area_sqm || valuation.property.plot_size || 0).toLocaleString()} sqm
+                      {(valuation.property.land_area_sqm || valuation.property.plot_size || (valuation.property as any).metadata?.plot_size || 0).toLocaleString()} sqm
                     </span>
                   </div>
                   <div>
@@ -601,7 +601,7 @@ export default function ResidualMethodPage() {
                   <div>
                     <span className="font-mono text-[10px] text-muted-foreground block">FLOORS</span>
                     <span className="font-mono text-sm text-foreground">
-                      {valuation.property.floors || 1}
+                      {valuation.property.floors || (valuation.property as any).metadata?.total_floors || 1}
                     </span>
                   </div>
                 </div>
@@ -1067,8 +1067,8 @@ export default function ResidualMethodPage() {
                   // Reset to property defaults
                   const prop = valuation?.property
                   if (prop) {
-                    setPlotSize(prop.land_area_sqm || 500)
-                    setNumberOfFloors(prop.floors || 1)
+                    setPlotSize(prop.land_area_sqm || (prop as any).metadata?.plot_size || 500)
+                    setNumberOfFloors(prop.floors || (prop as any).metadata?.total_floors || 1)
                     setPlotCoverage(0.5)
                     const propType = (prop.property_type || '').toLowerCase()
                     let devType = 'house'

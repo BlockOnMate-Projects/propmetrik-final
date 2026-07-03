@@ -228,6 +228,103 @@ export class PaystackService {
     }
 
     /**
+     * Refund a transaction (full or partial).
+     *
+     * Paystack processes refunds ASYNCHRONOUSLY — this call only *submits* the refund;
+     * completion arrives later via the `refund.processed` webhook. Returns Paystack's
+     * refund record (data.id / data.status).
+     *
+     * @param transaction the ORIGINAL transaction reference or Paystack transaction id
+     * @param amount      optional partial amount in pesewas (GHS minor units); omit for a full refund
+     * @param merchantNote optional reason recorded on the Paystack refund
+     */
+    async refundTransaction(transaction: string, amount?: number, merchantNote?: string): Promise<any> {
+        try {
+            const payload: Record<string, any> = { transaction };
+            if (amount && amount > 0) payload.amount = Math.round(amount);
+            if (merchantNote) payload.merchant_note = merchantNote;
+
+            const response = await this.client.post('/refund', payload);
+            return response.data;
+        } catch (error: any) {
+            this.handleError(error, 'refundTransaction');
+            throw error;
+        }
+    }
+
+    /**
+     * Create a transfer recipient (required before initiating a Paystack transfer/payout).
+     * @param type 'nuban' for a bank account, 'mobile_money' for a MoMo wallet
+     * @param name recipient display name
+     * @param accountNumber bank account number or MoMo phone number
+     * @param bankCode Paystack bank code (banks) or telco code (mobile money)
+     * @returns Paystack response; data.recipient_code is what initiateTransfer needs
+     */
+    async createTransferRecipient(params: {
+        type: 'nuban' | 'mobile_money';
+        name: string;
+        accountNumber: string;
+        bankCode: string;
+        currency?: string;
+    }): Promise<any> {
+        try {
+            const response = await this.client.post('/transferrecipient', {
+                type: params.type,
+                name: params.name,
+                account_number: params.accountNumber,
+                bank_code: params.bankCode,
+                currency: params.currency || 'GHS',
+            });
+            return response.data;
+        } catch (error: any) {
+            this.handleError(error, 'createTransferRecipient');
+            throw error;
+        }
+    }
+
+    /**
+     * Initiate a transfer (payout) to a previously-created recipient.
+     * Paystack processes transfers asynchronously — the outcome (or an OTP requirement)
+     * arrives via the transfer.success / transfer.failed webhook. `amount` is in pesewas.
+     * Use a unique `reference` per attempt so reconciliation stays idempotent.
+     */
+    async initiateTransfer(params: {
+        recipientCode: string;
+        amount: number;   // pesewas
+        reference: string;
+        reason?: string;
+        source?: string;
+    }): Promise<any> {
+        try {
+            const response = await this.client.post('/transfer', {
+                source: params.source || 'balance',
+                recipient: params.recipientCode,
+                amount: Math.round(params.amount),
+                reference: params.reference,
+                reason: params.reason,
+            });
+            return response.data;
+        } catch (error: any) {
+            this.handleError(error, 'initiateTransfer');
+            throw error;
+        }
+    }
+
+    /**
+     * Check the integration's Paystack balance (pesewas). Used to pre-flight a payout
+     * so we don't submit a transfer that will bounce for insufficient funds.
+     */
+    async getBalance(): Promise<any> {
+        try {
+            const response = await this.client.get('/balance');
+            return response.data;
+        } catch (error: any) {
+            this.handleError(error, 'getBalance');
+            throw error;
+        }
+    }
+
+    /**
      * Get List of Banks (Ghana)
      */
     async getBanks(country: string = 'ghana') {

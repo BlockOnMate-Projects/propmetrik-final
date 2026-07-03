@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/terminal'
 import { valuationsApi } from '@/lib/valuation-api'
 import type { Valuation } from '@/types/valuation'
+import { TENURE_TYPES } from '@/types/comprehensiveProperty'
 import {
   ArrowLeft,
   ArrowRight,
@@ -210,15 +211,20 @@ export default function PropertySetupPage() {
             </div>
             <div>
               <div className="font-mono text-[10px] text-muted-foreground mb-1">CONSTRUCTION</div>
-              <div className="font-mono text-sm text-foreground">{property?.construction_type || property?.constructionType || '—'}</div>
+              <div className="font-mono text-sm text-foreground">{property?.construction_type || property?.constructionType || property?.metadata?.wall_construction || '—'}</div>
             </div>
             <div>
               <div className="font-mono text-[10px] text-muted-foreground mb-1">FLOORS</div>
-              <div className="font-mono text-sm text-foreground">{property?.floors || property?.total_floors || '—'}</div>
+              <div className="font-mono text-sm text-foreground">{property?.floors || property?.total_floors || property?.metadata?.total_floors || '—'}</div>
             </div>
             <div>
               <div className="font-mono text-[10px] text-muted-foreground mb-1">TENURE</div>
-              <div className="font-mono text-sm text-foreground">{property?.tenure || '—'}</div>
+              <div className="font-mono text-sm text-foreground">
+                {(() => {
+                  const t = property?.tenure || property?.tenure_type || property?.metadata?.tenure_type
+                  return t ? (TENURE_TYPES.find((x) => x.value === t)?.label || t) : '—'
+                })()}
+              </div>
             </div>
           </div>
         </TerminalPanel>

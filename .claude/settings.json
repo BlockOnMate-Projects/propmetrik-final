@@ -57,7 +57,9 @@
       "Bash(find financials *)",
       "Bash(find . -type d \\\\\\( -iname \"*lease*\" -o -iname \"*report*\" -o -iname \"*payment*\" \\\\\\))",
       "Bash(gh run *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit $? | errors $\\(grep -c 'error TS' /tmp/topnav.log\\)\")"
     ]
   }
 }

@@ -8,6 +8,7 @@ export const dripCampaignKeys = {
   list: () => [...dripCampaignKeys.all, 'list'] as const,
   detail: (id: string) => [...dripCampaignKeys.all, 'detail', id] as const,
   enrollments: (id: string) => [...dripCampaignKeys.all, 'enrollments', id] as const,
+  sends: (id: string) => [...dripCampaignKeys.all, 'sends', id] as const,
 }
 
 export function useDripCampaigns() {
@@ -29,6 +30,15 @@ export function useDripEnrollments(campaignId: string) {
   return useQuery({
     queryKey: dripCampaignKeys.enrollments(campaignId),
     queryFn: () => dripCampaignsApi.getEnrollments(campaignId),
+    enabled: !!campaignId,
+  })
+}
+
+export function useDripSends(campaignId: string) {
+  return useQuery({
+    queryKey: dripCampaignKeys.sends(campaignId),
+    // The step-send ledger only exists after migration 271; fail soft to an empty log.
+    queryFn: () => dripCampaignsApi.getSends(campaignId).catch(() => []),
     enabled: !!campaignId,
   })
 }
@@ -82,6 +92,28 @@ export function useDeleteDripStep() {
   return useMutation({
     mutationFn: ({ campaignId, stepId }: { campaignId: string; stepId: string }) =>
       dripCampaignsApi.deleteStep(campaignId, stepId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: dripCampaignKeys.detail(variables.campaignId) })
+    },
+  })
+}
+
+export function useAddDripStepVariant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ campaignId, stepId, data }: { campaignId: string; stepId: string; data: { label?: string; subject: string; body: string; weight?: number } }) =>
+      dripCampaignsApi.addVariant(campaignId, stepId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: dripCampaignKeys.detail(variables.campaignId) })
+    },
+  })
+}
+
+export function useDeleteDripStepVariant() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ campaignId, stepId, variantId }: { campaignId: string; stepId: string; variantId: string }) =>
+      dripCampaignsApi.deleteVariant(campaignId, stepId, variantId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: dripCampaignKeys.detail(variables.campaignId) })
     },

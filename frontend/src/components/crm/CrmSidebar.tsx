@@ -24,6 +24,7 @@ import {
   Target,
   Mail,
   Percent,
+  Map as MapIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -42,6 +43,7 @@ const crmNavItems = [
   { href: '/dashboard/deals/properties', label: 'Properties', icon: Home, subTabKey: 'crm-properties' },
   { href: '/dashboard/deals/contacts', label: 'Contacts', icon: Users, subTabKey: 'crm-contacts' },
   { href: '/dashboard/deals/agents', label: 'Agents', icon: UserCircle, subTabKey: 'crm-agents' },
+  { href: '/dashboard/deals/territories', label: 'Territories', icon: MapIcon, subTabKey: 'crm-territories' },
   { href: '/dashboard/deals/companies', label: 'Companies', icon: Building2, subTabKey: 'crm-companies' },
   { href: '/dashboard/deals/tasks', label: 'Tasks', icon: CheckSquare, subTabKey: 'crm-tasks' },
   { href: '/dashboard/deals/documents', label: 'Documents', icon: FileText, subTabKey: 'crm-documents' },

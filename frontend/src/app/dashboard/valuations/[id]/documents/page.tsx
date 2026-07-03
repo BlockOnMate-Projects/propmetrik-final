@@ -27,14 +27,6 @@ interface ReportRow {
 const REPORT_FINAL = ['approved', 'completed']
 const isReportFinalized = (s?: string) => REPORT_FINAL.includes(String(s || ''))
 
-const fileToDataUrl = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(r.result as string)
-    r.onerror = reject
-    r.readAsDataURL(file)
-  })
-
 export default function DocumentsPhotosPage() {
   const params = useParams()
   const router = useRouter()
@@ -96,13 +88,23 @@ export default function DocumentsPhotosPage() {
     setError(null)
     try {
       for (const file of Array.from(files)) {
-        const dataUrl = await fileToDataUrl(file)
+        // Stream the file as multipart/form-data — NOT base64-in-JSON. Base64 inflates a file
+        // ~33% and a scanned title deed then blows the backend's 10MB JSON body limit (→ 500).
+        // Multipart avoids both. Let the browser set the multipart Content-Type + boundary.
+        const form = new FormData()
+        form.append('file', file, file.name)
+        form.append('docType', docType)
+        form.append('filename', file.name)
+        form.append('caption', file.name.replace(/\.[^.]+$/, ''))
         const res = await authedFetch(`/api/valuations/${valuationId}/documents`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataUrl, filename: file.name, docType, caption: file.name.replace(/\.[^.]+$/, '') }),
+          body: form,
         })
-        if (!res.ok) throw new Error(`Upload failed (${res.status})`)
+        if (!res.ok) {
+          let msg = `Upload failed (${res.status})`
+          try { const j = await res.json(); if (j?.message) msg = j.message } catch { /* non-JSON */ }
+          throw new Error(msg)
+        }
       }
       await load()
     } catch (e: any) {

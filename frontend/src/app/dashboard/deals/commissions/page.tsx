@@ -126,6 +126,26 @@ interface CommissionSummary {
     avg_deal_commission: number;
 }
 
+interface PayoutRequest {
+    id: string;
+    payout_type: string;
+    source_id: string | null;
+    source_reference: string | null;
+    amount: number;          // pesewas
+    currency: string;
+    recipient_name: string | null;
+    recipient_type: string | null;
+    settlement_method: 'bank' | 'momo' | 'crypto';
+    account_number: string | null;
+    status: 'pending_approval' | 'approved' | 'processing' | 'paid' | 'failed' | 'rejected' | 'cancelled';
+    requested_by: string;
+    requested_at: string;
+    approved_by: string | null;
+    review_notes: string | null;
+    provider_reference: string | null;
+    error: string | null;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Helper functions
@@ -600,6 +620,184 @@ function StatementsTable({
     );
 }
 
+// Request Payout Dialog — MAKER step. Creates a payout REQUEST for an approved
+// commission; a DIFFERENT admin must approve it (in the Payout Approvals tab) before
+// any money moves. This replaces the old one-click "mark as paid" (which moved nothing).
+function RequestPayoutDialog({ record, onOpenChange, onDone }: {
+    record: CommissionRecord | null;
+    onOpenChange: (open: boolean) => void;
+    onDone: () => void;
+}) {
+    const [method, setMethod] = useState<'bank' | 'momo'>('bank');
+    const [bankCode, setBankCode] = useState('');
+    const [accountNumber, setAccountNumber] = useState('');
+    const [recipientName, setRecipientName] = useState('');
+    const [notes, setNotes] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (record) {
+            setRecipientName(record.agent_name || '');
+            setBankCode(''); setAccountNumber(''); setNotes(''); setMethod('bank');
+        }
+    }, [record]);
+
+    const submit = async () => {
+        if (!record) return;
+        if (!bankCode.trim() || !accountNumber.trim()) {
+            toast.error('Bank/telco code and account/MoMo number are required');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            const res = await authedFetch(`${API_BASE}/api/crm/payouts`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    commissionId: record.id,
+                    settlementMethod: method,
+                    bankCode: bankCode.trim(),
+                    accountNumber: accountNumber.trim(),
+                    recipientName: recipientName.trim() || undefined,
+                    requestNotes: notes.trim() || undefined,
+                }),
+            });
+            if (!res.ok) {
+                const e = await res.json().catch(() => ({}));
+                throw new Error(e.error || 'Failed to request payout');
+            }
+            toast.success("Payout requested — awaiting a second admin's approval");
+            onOpenChange(false);
+            onDone();
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to request payout');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <Dialog open={!!record} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Request Commission Payout</DialogTitle>
+                    <DialogDescription>
+                        {record
+                            ? `Pay ${record.agent_name} ${formatCurrency(Math.abs(record.agent_share))}. This creates a request that a different admin must approve before any money moves.`
+                            : ''}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <div>
+                        <Label>Method</Label>
+                        <Select value={method} onValueChange={(v) => setMethod(v as 'bank' | 'momo')}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="bank">Bank transfer</SelectItem>
+                                <SelectItem value="momo">Mobile money</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label>{method === 'momo' ? 'Telco code' : 'Bank code'}</Label>
+                        <Input value={bankCode} onChange={(e) => setBankCode(e.target.value)} placeholder={method === 'momo' ? 'e.g. MTN' : 'e.g. 058'} />
+                    </div>
+                    <div>
+                        <Label>{method === 'momo' ? 'Mobile money number' : 'Account number'}</Label>
+                        <Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder={method === 'momo' ? '024xxxxxxx' : '0123456789'} />
+                    </div>
+                    <div>
+                        <Label>Recipient name</Label>
+                        <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
+                    </div>
+                    <div>
+                        <Label>Notes (optional)</Label>
+                        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={submit} disabled={submitting}>{submitting ? 'Requesting...' : 'Request Payout'}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function payoutStatusColor(s: string): string {
+    switch (s) {
+        case 'paid': return 'text-green-500 border-green-500/30';
+        case 'processing':
+        case 'approved': return 'text-blue-500 border-blue-500/30';
+        case 'pending_approval': return 'text-yellow-500 border-yellow-500/30';
+        case 'failed':
+        case 'rejected':
+        case 'cancelled': return 'text-red-500 border-red-500/30';
+        default: return 'text-muted-foreground';
+    }
+}
+
+// Payout Approvals — CHECKER step. Lists payout requests; a DIFFERENT admin than the
+// maker approves (executes the transfer) or rejects. Two-person rule enforced server-side.
+function PayoutsTable({ payouts, onApprove, onReject }: {
+    payouts: PayoutRequest[];
+    onApprove: (id: string) => void;
+    onReject: (id: string) => void;
+}) {
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                    <TableHead>Recipient</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Destination</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {payouts.map((p) => (
+                    <TableRow key={p.id} className="border-border">
+                        <TableCell className="font-medium">{p.recipient_name || p.recipient_type || '—'}</TableCell>
+                        <TableCell className="capitalize">{p.payout_type}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(p.amount / 100)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                            {p.settlement_method}{p.account_number ? ` · ${p.account_number}` : ''}
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant="outline" className={payoutStatusColor(p.status)}>{p.status.replace(/_/g, ' ')}</Badge>
+                            {p.error && <div className="text-[10px] text-red-500 mt-1 max-w-[180px] truncate" title={p.error}>{p.error}</div>}
+                        </TableCell>
+                        <TableCell className="text-sm">{formatDate(p.requested_at)}</TableCell>
+                        <TableCell className="text-right">
+                            {p.status === 'pending_approval' ? (
+                                <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="sm" onClick={() => onApprove(p.id)} className="h-8 px-2 text-green-500 hover:text-green-400" title="Approve & pay">
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => onReject(p.id)} className="h-8 px-2 text-red-500 hover:text-red-400" title="Reject">
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                        </TableCell>
+                    </TableRow>
+                ))}
+                {payouts.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No payout requests yet</TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    );
+}
+
 // Main Page Component
 export default function CommissionsPage() {
     const router = useRouter();
@@ -617,13 +815,18 @@ export default function CommissionsPage() {
     // Filters
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
+    // Payouts (maker-checker rail)
+    const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
+    const [payoutRecord, setPayoutRecord] = useState<CommissionRecord | null>(null);
+
     const fetchData = useCallback(async () => {
         try {
-            const [recordsRes, statementsRes, summaryRes, plansRes] = await Promise.all([
+            const [recordsRes, statementsRes, summaryRes, plansRes, payoutsRes] = await Promise.all([
                 authedFetch(`${API_BASE}/api/crm/commissions/records?limit=100`, { credentials: 'include' }),
                 authedFetch(`${API_BASE}/api/crm/commissions/statements?limit=50`, { credentials: 'include' }),
                 authedFetch(`${API_BASE}/api/crm/commissions/summary`, { credentials: 'include' }),
                 authedFetch(`${API_BASE}/api/crm/commissions/plans`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/payouts`, { credentials: 'include' }),
             ]);
 
             if (recordsRes.ok) {
@@ -641,6 +844,11 @@ export default function CommissionsPage() {
             if (plansRes.ok) {
                 const data = await plansRes.json();
                 setPlans(data.plans || []);
+            }
+            // Payouts endpoint returns an array directly. Non-admins / pre-migration → leave empty.
+            if (payoutsRes.ok) {
+                const data = await payoutsRes.json();
+                setPayouts(Array.isArray(data) ? data : []);
             }
         } catch (error) {
             console.error('Failed to fetch commission data:', error);
@@ -668,17 +876,43 @@ export default function CommissionsPage() {
         }
     };
 
-    const handlePayRecord = async (id: string) => {
+    // Approve (checker) a pending payout — executes the transfer. Must be a different
+    // admin than the maker; the server rejects self-approval (maker-checker rule).
+    const handleApprovePayout = async (id: string) => {
         try {
-            const response = await authedFetch(`${API_BASE}/api/crm/commissions/records/${id}/pay`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/payouts/${id}/approve`, {
                 method: 'POST',
                 credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
             });
-            if (!response.ok) throw new Error('Failed to mark as paid');
-            toast.success('Commission marked as paid');
+            if (!response.ok) {
+                const e = await response.json().catch(() => ({}));
+                throw new Error(e.error || 'Failed to approve payout');
+            }
+            toast.success('Payout approved and submitted');
             fetchData();
-        } catch (error) {
-            toast.error('Failed to mark as paid');
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to approve payout');
+        }
+    };
+
+    const handleRejectPayout = async (id: string) => {
+        try {
+            const response = await authedFetch(`${API_BASE}/api/crm/payouts/${id}/reject`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'Rejected by approver' }),
+            });
+            if (!response.ok) {
+                const e = await response.json().catch(() => ({}));
+                throw new Error(e.error || 'Failed to reject payout');
+            }
+            toast.success('Payout rejected');
+            fetchData();
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to reject payout');
         }
     };
 
@@ -909,6 +1143,15 @@ export default function CommissionsPage() {
                         <FileText className="h-4 w-4 mr-2" />
                         Statements
                     </TabsTrigger>
+                    <TabsTrigger value="payouts">
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Payout Approvals
+                        {payouts.filter(p => p.status === 'pending_approval').length > 0 && (
+                            <Badge variant="outline" className="ml-2 text-[10px] text-yellow-500 border-yellow-500/30">
+                                {payouts.filter(p => p.status === 'pending_approval').length}
+                            </Badge>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="records" className="space-y-4">
@@ -949,7 +1192,7 @@ export default function CommissionsPage() {
                             <CommissionRecordsTable
                                 records={filteredRecords}
                                 onApprove={handleApproveRecord}
-                                onPay={handlePayRecord}
+                                onPay={(id) => { const rec = records.find(r => r.id === id); if (rec) setPayoutRecord(rec); }}
                                 selectedIds={selectedIds}
                                 onSelectId={handleSelectId}
                                 onSelectAll={handleSelectAll}
@@ -975,14 +1218,38 @@ export default function CommissionsPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+
+                <TabsContent value="payouts" className="space-y-4">
+                    <Card className="shadow-sm">
+                        <CardHeader>
+                            <CardTitle>Payout Approvals</CardTitle>
+                            <CardDescription>
+                                Two-person control: a payout requested from an approved commission must be approved
+                                here by a <strong>different</strong> admin before any funds are transferred.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <PayoutsTable
+                                payouts={payouts}
+                                onApprove={handleApprovePayout}
+                                onReject={handleRejectPayout}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
             </Tabs>
 
             {/* Dialogs */}
             <CalculateDialog open={calculateDialogOpen} onOpenChange={setCalculateDialogOpen} />
-            <GenerateStatementDialog 
-                open={generateDialogOpen} 
+            <GenerateStatementDialog
+                open={generateDialogOpen}
                 onOpenChange={setGenerateDialogOpen}
                 onGenerated={fetchData}
+            />
+            <RequestPayoutDialog
+                record={payoutRecord}
+                onOpenChange={(o) => { if (!o) setPayoutRecord(null); }}
+                onDone={fetchData}
             />
         </div>
     );

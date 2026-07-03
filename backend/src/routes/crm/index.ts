@@ -33,6 +33,8 @@ import stackingPlanRoutes from './stacking-plan';
 import savedViewRoutes from './saved-views';
 import globalSearchRoutes from './global-search';
 import dripCampaignRoutes from './drip-campaigns';
+import territoryRoutes from './territories';
+import segmentRoutes from './segments';
 import notificationRoutes from './notifications';
 
 const router = Router();
@@ -74,7 +76,9 @@ const CRM_RESOURCE_MAP: Array<{ prefix: string; resource: string }> = [
     { prefix: '/stacking-plan',  resource: 'crm_analytics' },
     { prefix: '/agents',         resource: 'crm_agent' },
     { prefix: '/team',           resource: 'crm_agent' },
+    { prefix: '/territories',    resource: 'crm_agent' },
     { prefix: '/drip-campaigns', resource: 'crm_campaign' },
+    { prefix: '/segments',       resource: 'crm_campaign' },
     { prefix: '/emails',         resource: 'crm_campaign' },
     { prefix: '/properties',     resource: 'crm_contact' },
 ];
@@ -167,6 +171,8 @@ router.use('/', stackingPlanRoutes);
 router.use('/', savedViewRoutes);
 router.use('/', globalSearchRoutes);
 router.use('/', dripCampaignRoutes);
+router.use('/', territoryRoutes);
+router.use('/', segmentRoutes);
 router.use('/', notificationRoutes);
 
 // =====================================================

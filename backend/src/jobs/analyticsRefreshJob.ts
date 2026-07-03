@@ -25,7 +25,7 @@ import { logger } from '../utils/logger';
 import { marketIntelligenceService } from '../services/analytics/marketIntelligenceService';
 import { investmentScoringService } from '../services/analytics/investmentScoringService';
 import { valuationAnalyticsService } from '../services/analytics/valuationAnalyticsService';
-import { capRateService } from '../services/valuation-engine/CapRateService';
+import { capRateService } from '../services/analytics/capRateService';
 import { publishAllMarketPriceIndex, publishMacroAlerts } from '../services/analytics/analyticsStreamSnapshots';
 
 let running = false;
