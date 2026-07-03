@@ -98,7 +98,7 @@ interface SortablePhotoProps {
 // CONSTANTS
 // =====================================================
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const CATEGORY_OPTIONS: { value: PhotoCategory; label: string }[] = [
   { value: 'exterior', label: 'Exterior' },

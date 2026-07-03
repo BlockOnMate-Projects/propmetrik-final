@@ -74,7 +74,7 @@ interface NowPaymentsStatus {
 
 type FlowStep = 'loading' | 'select-coin' | 'estimate' | 'preview' | 'deposit' | 'success' | 'error'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 function formatCurrency(amount: number): string {
   return `GHS ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

@@ -504,7 +504,7 @@ export const documentsApi = {
         if (metadata.description) formData.append('description', metadata.description);
         if (metadata.tags) formData.append('tags', JSON.stringify(metadata.tags));
 
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
         const token = (session as any)?.accessToken;

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { authedFetch } from '@/lib/authed-fetch'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 export interface PropertyImage {
     id: string

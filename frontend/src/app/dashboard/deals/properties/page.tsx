@@ -32,7 +32,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/crm/EmptyState'
 
 // API base URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // Property types for CRM context
 interface CRMProperty {

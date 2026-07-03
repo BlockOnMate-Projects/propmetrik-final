@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 const defaultCostCategories = [
     'Site Preparation', 'Foundation', 'Structural', 'Roofing',

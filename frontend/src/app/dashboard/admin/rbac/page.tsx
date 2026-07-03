@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Shield, Search, Plus, Edit2, Trash2, ChevronLeft, ChevronRight, RefreshCw, Filter, Eye, X, Check } from 'lucide-react'
 import { authedFetch } from '@/lib/authed-fetch'
 
-const API = process.env.NEXT_PUBLIC_API_URL || ''
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // All available roles
 const ALL_ROLES = [

@@ -115,7 +115,7 @@ interface Achievement {
     badge_icon?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Helper functions
 function formatCurrency(amount: number): string {

@@ -12,7 +12,7 @@
  * 4. Document upload support for RFI responses
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 import { getSession } from 'next-auth/react';
 

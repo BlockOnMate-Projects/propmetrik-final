@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Pencil, Download, Loader2, Eye, GitCompare, FileText, CheckCircle, Upload, Trash2 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface Drawing {
   id: string; project_id: string; drawing_number: string; title: string; discipline: string;

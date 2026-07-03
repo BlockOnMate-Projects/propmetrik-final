@@ -95,7 +95,7 @@ interface FeeCalculation {
     breakdown: string
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 const STATUS_STYLES: Record<InvoiceStatus, { label: string; color: string }> = {
     draft: { label: 'DRAFT', color: 'text-muted-foreground bg-zinc-500/10 border-zinc-500/20' },

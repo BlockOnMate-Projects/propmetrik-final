@@ -79,7 +79,7 @@ const STATUS_COLORS: Record<string, string> = {
     approved: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 const TYPE_STYLES: Record<string, { label: string; color: string }> = {
     individual: { label: 'INDIVIDUAL', color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20' },

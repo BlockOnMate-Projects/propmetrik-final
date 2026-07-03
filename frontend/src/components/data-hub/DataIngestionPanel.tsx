@@ -25,7 +25,7 @@ export function DataIngestionPanel() {
     const [uploadModalOpen, setUploadModalOpen] = useState(false)
     const [selectedSource, setSelectedSource] = useState<DataSource | null>(null)
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
     // Fetch Tier 1 Sources
     const { data: tier1Data } = useQuery({

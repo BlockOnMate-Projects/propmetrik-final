@@ -62,7 +62,7 @@ import { useToast } from '@/hooks/use-toast';
 import ProjectSubnav from '@/components/dashboard/projects/ProjectSubnav';
 import { authedFetch } from '@/lib/authed-fetch';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const fetch = authedFetch;
 
 type ChecklistStatus = 'not_started' | 'in_progress' | 'completed' | 'failed';

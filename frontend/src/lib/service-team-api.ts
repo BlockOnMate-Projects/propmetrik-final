@@ -8,7 +8,7 @@
 
 import { authedFetch } from '@/lib/authed-fetch'
 
-const API = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // ── Types ────────────────────────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, AlertTriangle, ShieldAlert, Download, Filter, Loader2, LayoutGrid, List, Calendar as CalendarIcon } from 'lucide-react';
 import { PmKanbanBoard, type KanbanColumnDef } from '@/components/projects/PmKanbanBoard';
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // Columns for the issue task board (status drives the column).
 const ISSUE_COLUMNS: KanbanColumnDef[] = [
