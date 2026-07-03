@@ -64,7 +64,13 @@ router.get('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Respons
     if (!campaign.rows[0]) return res.status(404).json({ error: 'Campaign not found' });
 
     const steps = await db.query(
-        `SELECT * FROM crm_drip_campaign_steps WHERE campaign_id = $1 ORDER BY step_order ASC`,
+        `SELECT s.*,
+                COALESCE((SELECT json_agg(v.* ORDER BY v.created_at)
+                            FROM crm_drip_step_variants v
+                           WHERE v.step_id = s.id AND v.is_active = true), '[]') AS variants
+           FROM crm_drip_campaign_steps s
+          WHERE s.campaign_id = $1
+          ORDER BY s.step_order ASC`,
         [req.params.id]
     );
 
@@ -130,6 +136,57 @@ router.delete('/drip-campaigns/:campaignId/steps/:stepId', asyncHandler(async (r
     res.status(204).send();
 }));
 
+// ── A/B step variants ──────────────────────────────
+// The step's own subject/body is the control ("A"); these are alternates. Org-scope via campaign.
+router.get('/drip-campaigns/:id/steps/:stepId/variants', asyncHandler(async (req: Request, res: Response) => {
+    const orgId = await getOrganizationId(req);
+    if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
+    const owns = await db.query(
+        `SELECT 1 FROM crm_drip_campaign_steps s JOIN crm_drip_campaigns c ON c.id = s.campaign_id
+          WHERE s.id = $1 AND c.id = $2 AND c.organization_id = $3 AND c.deleted_at IS NULL`,
+        [req.params.stepId, req.params.id, orgId]
+    );
+    if (!owns.rows[0]) return res.status(404).json({ error: 'Step not found' });
+    const result = await db.query(
+        `SELECT * FROM crm_drip_step_variants WHERE step_id = $1 AND is_active = true ORDER BY created_at ASC`,
+        [req.params.stepId]
+    );
+    res.json(result.rows);
+}));
+
+router.post('/drip-campaigns/:id/steps/:stepId/variants', asyncHandler(async (req: Request, res: Response) => {
+    const orgId = await getOrganizationId(req);
+    if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
+    const { label, subject, body, weight } = req.body;
+    if (!subject || !body) return res.status(400).json({ error: 'subject and body are required' });
+    // Verify the step belongs to a campaign in this org.
+    const owns = await db.query(
+        `SELECT 1 FROM crm_drip_campaign_steps s JOIN crm_drip_campaigns c ON c.id = s.campaign_id
+          WHERE s.id = $1 AND c.id = $2 AND c.organization_id = $3 AND c.deleted_at IS NULL`,
+        [req.params.stepId, req.params.id, orgId]
+    );
+    if (!owns.rows[0]) return res.status(404).json({ error: 'Step not found' });
+    const result = await db.query(
+        `INSERT INTO crm_drip_step_variants (step_id, label, subject, body, weight)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [req.params.stepId, label || 'B', subject, body, Math.max(0, parseInt(weight, 10) || 1)]
+    );
+    res.status(201).json(result.rows[0]);
+}));
+
+router.delete('/drip-campaigns/:id/steps/:stepId/variants/:variantId', asyncHandler(async (req: Request, res: Response) => {
+    const orgId = await getOrganizationId(req);
+    if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
+    // Org-scope the delete via the campaign join.
+    await db.query(
+        `UPDATE crm_drip_step_variants v SET is_active = false
+           FROM crm_drip_campaign_steps s JOIN crm_drip_campaigns c ON c.id = s.campaign_id
+          WHERE v.id = $1 AND v.step_id = s.id AND s.id = $2 AND c.organization_id = $3`,
+        [req.params.variantId, req.params.stepId, orgId]
+    );
+    res.status(204).send();
+}));
+
 // ── Enroll contact ─────────────────────────────────
 router.post('/drip-campaigns/:id/enroll', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
@@ -162,6 +219,35 @@ router.post('/drip-campaigns/:id/enroll', asyncHandler(async (req: Request, res:
     );
 
     res.json({ enrolled });
+}));
+
+// ── Get step-send log (delivery history from the execution engine) ─────────
+router.get('/drip-campaigns/:id/sends', asyncHandler(async (req: Request, res: Response) => {
+    const orgId = await getOrganizationId(req);
+    if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Org-scope via the campaign.
+    const campaign = await db.query(
+        `SELECT id FROM crm_drip_campaigns WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+        [req.params.id, orgId]
+    );
+    if (!campaign.rows[0]) return res.status(404).json({ error: 'Campaign not found' });
+
+    const result = await db.query(
+        `SELECT s.id, s.enrollment_id, s.step_id, s.status, s.attempts, s.error, s.sent_at, s.created_at,
+                s.opened_at, s.open_count, s.first_clicked_at, s.click_count, s.variant_id,
+                st.subject, st.step_order,
+                c.first_name, c.last_name, c.email
+           FROM crm_drip_step_sends s
+           JOIN crm_drip_campaign_steps st ON st.id = s.step_id
+      LEFT JOIN crm_drip_enrollments e   ON e.id = s.enrollment_id
+      LEFT JOIN contacts c                ON c.id = e.contact_id
+          WHERE s.campaign_id = $1
+          ORDER BY s.created_at DESC
+          LIMIT 200`,
+        [req.params.id]
+    );
+    res.json(result.rows);
 }));
 
 // ── Get enrollments ────────────────────────────────

@@ -151,7 +151,7 @@ export {
   type IncomeApproachResult,
   type ListingDerivedCapRate,
   type CapRateMethodology,
-} from './CapRateService';
+} from '../analytics/capRateService';
 
 // Contribution workflow
 export {

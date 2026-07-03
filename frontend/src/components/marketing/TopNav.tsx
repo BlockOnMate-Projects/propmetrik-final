@@ -24,6 +24,13 @@ export default function TopNav() {
     // Light nav (white bg) OR light theme → use the dark-text logo so it's readable.
     const useLightLogo = isWhiteBackground || (mounted && resolvedTheme !== 'dark');
 
+    // Tenant Portal lives on the tenant.* subdomain of the current host — env-aware:
+    // prod → https://tenant.propmetrik.com, dev → http://tenant.localhost:3000.
+    // Falls back to the prod URL for SSR / before mount.
+    const tenantPortalUrl = mounted && typeof window !== 'undefined'
+        ? `${window.location.protocol}//tenant.${window.location.host}`
+        : 'https://tenant.propmetrik.com';
+
     useMotionValueEvent(scrollY, "change", (latest) => {
         setIsScrolled(latest > 50);
     });
@@ -33,31 +40,13 @@ export default function TopNav() {
         return pathname === href || pathname.startsWith(`${href}/`);
     };
 
-    const navLinks = [
+    const navLinks: Array<{ name: string; href: string; children?: { name: string; href: string }[] }> = [
         { name: 'Home', href: '/' },
         { name: 'Marketplace', href: '/marketplace' },
         { name: 'Services', href: '/services' },
         { name: 'About', href: '/about' },
         { name: 'Pricing', href: '/pricing' },
-        {
-            name: 'Insights',
-            href: '/insights',
-            children: [
-                { name: 'Ghana Real Estate Outlook', href: '/insights/outlook' },
-                { name: 'Ghana Property Snapshot', href: '/insights/snapshot' },
-                { name: 'Indices & Data', href: '/insights/indices' },
-                { name: 'Policy Papers', href: '/insights/policy-papers' },
-            ],
-        },
-        {
-            name: 'Press',
-            href: '/press',
-            children: [
-                { name: 'Press Releases', href: '/press/releases' },
-                { name: 'Expert Commentary', href: '/press/commentary' },
-                { name: 'Media Kit', href: '/press/media-kit' },
-            ],
-        },
+        // Insights & Press intentionally omitted from the top nav — they live in the footer (Footer.tsx).
     ];
 
     return (
@@ -163,6 +152,17 @@ export default function TopNav() {
                             ))}
                         </div>
                     )}
+                    <a
+                        href={tenantPortalUrl}
+                        className={cn(
+                            "text-xs font-bold uppercase tracking-widest transition-colors hidden sm:inline",
+                            isWhiteBackground
+                                ? "text-muted-foreground hover:text-indigo-600"
+                                : "text-muted-foreground hover:text-amber-500"
+                        )}
+                    >
+                        Tenant Portal
+                    </a>
                     <Link
                         href="/login"
                         className={cn(
@@ -257,6 +257,18 @@ export default function TopNav() {
                                     )}
                                 </div>
                             ))}
+                            <a
+                                href={tenantPortalUrl}
+                                onClick={() => setMobileOpen(false)}
+                                className={cn(
+                                    "py-3 text-sm font-medium tracking-wide uppercase transition-colors sm:hidden",
+                                    isWhiteBackground
+                                        ? "text-muted-foreground hover:text-indigo-600"
+                                        : "text-muted-foreground hover:text-amber-500"
+                                )}
+                            >
+                                Tenant Portal
+                            </a>
                             <Link
                                 href="/login"
                                 onClick={() => setMobileOpen(false)}

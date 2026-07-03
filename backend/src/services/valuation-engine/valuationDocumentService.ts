@@ -66,8 +66,36 @@ class ValuationDocumentService {
   }) {
     const m = input.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!m) throw new Error('Invalid data URL (expected data:<mime>;base64,<data>)');
-    const mime = m[1];
-    const buffer = Buffer.from(m[2], 'base64');
+    return this.saveFromBuffer({
+      valuationId: input.valuationId,
+      propertyId: input.propertyId,
+      buffer: Buffer.from(m[2], 'base64'),
+      mime: m[1],
+      filename: input.filename,
+      docType: input.docType,
+      caption: input.caption,
+      displayOrder: input.displayOrder,
+      createdBy: input.createdBy,
+    });
+  }
+
+  /**
+   * Persist a document from a raw buffer (the streamed-multipart path — no base64 inflation).
+   * Uploads to MinIO then records the row in valuation_documents. Shared by saveFromDataUrl.
+   */
+  async saveFromBuffer(input: {
+    valuationId: string;
+    propertyId?: string | null;
+    buffer: Buffer;
+    mime: string;
+    filename?: string | null;
+    docType?: ValuationDocType;
+    caption?: string | null;
+    displayOrder?: number;
+    createdBy?: string | null;
+  }) {
+    const mime = input.mime || 'application/octet-stream';
+    const buffer = input.buffer;
     const ext = (mime.split('/')[1] || 'bin').replace('+xml', '').replace('jpeg', 'jpg');
     const docType: ValuationDocType = input.docType || 'photo';
 

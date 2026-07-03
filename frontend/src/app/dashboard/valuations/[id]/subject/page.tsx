@@ -12,6 +12,7 @@ import {
 import { valuationsApi } from '@/lib/valuation-api'
 import { fetchApi } from '@/lib/api'
 import ComprehensivePropertyForm from '@/components/forms/ComprehensivePropertyForm'
+import { buildPropertyUpdatePayload } from '@/lib/valuationPropertyPayload'
 import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
 import type { Valuation } from '@/types/valuation'
 import {
@@ -130,27 +131,44 @@ export default function SubjectPropertyPage() {
           gfa: property.gfa || property.building_area_sqm,
           plot_size: property.plotSize || property.land_area_sqm,
           land_area: property.land_area_sqm,
-          quality_rating: property.quality_rating || 'standard',
-          condition: property.condition || 'good',
-          view_quality: property.view_quality || 'standard',
-          neighborhood_rating: property.neighborhood_rating || 'secondary',
-          accessibility_rating: property.accessibility_rating || 'good',
-          tenure_type: property.tenure_type || property.tenure || 'freehold',
-          owner_name: property.owner_name || '',
-          owner_email: property.owner_email || '',
-          owner_phone: property.owner_phone || '',
-          owner_address: property.owner_address || '',
-          // Valuation dates
-          inspection_date: (val as any).inspection_date || '',
-          valuation_date: val.effective_date || '',
-          instruction_date: (val as any).instruction_date || '',
+          quality_rating: metadata.quality_rating || property.quality_rating || 'standard',
+          condition: metadata.condition || property.condition || 'good',
+          view_quality: metadata.view_quality || property.view_quality || 'standard',
+          neighborhood_rating: metadata.neighborhood_rating || property.neighborhood_rating || 'secondary',
+          accessibility_rating: metadata.accessibility_rating || property.accessibility_rating || 'good',
+          tenure_type: metadata.tenure_type || property.tenure_type || property.tenure || 'freehold',
+          lease_years_remaining: metadata.lease_years_remaining,
+          // Amenities live in metadata (no dedicated columns) — read them back so toggles persist.
+          has_pool: metadata.has_pool ?? false,
+          has_garden: metadata.has_garden ?? false,
+          has_security: metadata.has_security ?? false,
+          has_elevator: metadata.has_elevator ?? false,
+          has_balcony: metadata.has_balcony ?? false,
+          has_terrace: metadata.has_terrace ?? false,
+          has_gym: metadata.has_gym ?? false,
+          has_generator: metadata.has_generator ?? false,
+          has_solar: metadata.has_solar ?? false,
+          has_borehole: metadata.has_borehole ?? false,
+          has_parking: metadata.has_parking ?? false,
+          parking_spaces: metadata.parking_spaces,
+          // Owner — real columns first, then metadata fallback (from the /new draft).
+          owner_name: property.owner_name || metadata.owner_name || '',
+          owner_email: property.owner_email || metadata.owner_email || '',
+          owner_phone: property.owner_phone || metadata.owner_phone || '',
+          owner_address: property.owner_address || metadata.owner_address || '',
+          owner_contact_preference: metadata.owner_contact_preference || 'email',
+          // Valuation dates — valuation record first, then metadata fallback (/new stores them there).
+          inspection_date: (val as any).inspection_date || metadata.inspection_date || '',
+          valuation_date: val.effective_date || metadata.valuation_date || '',
+          instruction_date: (val as any).instruction_date || metadata.instruction_date || '',
           is_retrospective: (val as any).is_retrospective || false,
-          // Client info (from engagement record, NOT from property owner)
-          client_name: engagement.client_name || '',
-          client_address: engagement.client_address || '',
-          client_email: engagement.client_email || '',
-          client_phone: engagement.client_contact || engagement.client_phone || '',
-          request_type: engagement.request_type || 'written',
+          // Client info — engagement record first, then metadata fallback (/new stores them there).
+          client_name: engagement.client_name || metadata.client_name || '',
+          client_address: engagement.client_address || metadata.client_address || '',
+          client_email: engagement.client_email || metadata.client_email || '',
+          client_phone: engagement.client_contact || engagement.client_phone || metadata.client_phone || '',
+          client_company: engagement.client_company || metadata.client_company || '',
+          request_type: engagement.request_type || metadata.request_type || 'written',
           // Chapter 3 Report Data (from metadata)
           // City Data
           city_description: metadata.city_description || '',
@@ -210,65 +228,8 @@ export default function SubjectPropertyPage() {
         throw new Error('Property ID not found')
       }
 
-      // Update property fields
-      const propertyUpdate = {
-        address_street: propertyData.address,
-        address_city: propertyData.city,
-        region: propertyData.region,
-        digital_address: propertyData.digital_address,
-        property_type: propertyData.property_type,
-        bedrooms: propertyData.bedrooms,
-        bathrooms: propertyData.bathrooms,
-        total_floors: propertyData.total_floors,
-        year_built: propertyData.year_built,
-        building_area_sqm: propertyData.gfa,
-        land_area_sqm: propertyData.land_area || propertyData.plot_size,
-        quality_rating: propertyData.quality_rating,
-        condition: propertyData.condition,
-        tenure_type: propertyData.tenure_type,
-        owner_name: propertyData.owner_name,
-        owner_email: propertyData.owner_email,
-        owner_phone: propertyData.owner_phone,
-        owner_address: propertyData.owner_address,
-        description: propertyData.brief_description,
-        // Store Chapter 3 report data in metadata
-        metadata: {
-          // City Data
-          city_description: propertyData.city_description,
-          city_details: propertyData.city_details,
-          // Neighbourhood Data
-          neighbourhood_description: propertyData.neighbourhood_description,
-          neighborhood_class: propertyData.neighborhood_class,
-          resident_income_level: propertyData.resident_income_level,
-          primary_use: propertyData.primary_use,
-          neighborhood_details: propertyData.neighborhood_details,
-          // Location
-          location_description: propertyData.location_description,
-          // Brief Description
-          brief_description: propertyData.brief_description,
-          // Grounds and External Works
-          grounds_external_works: propertyData.grounds_external_works,
-          // Construction Details
-          floor_finish: propertyData.floor_finish,
-          wall_construction: propertyData.wall_construction,
-          doors: propertyData.doors,
-          windows: propertyData.windows,
-          ceiling: propertyData.ceiling,
-          roofing: propertyData.roofing,
-          // Fixtures and Fittings
-          fixtures_fittings: propertyData.fixtures_fittings,
-          // Drainage/Sanitation
-          drainage_sanitation: propertyData.drainage_sanitation,
-          // Condition
-          condition_state: propertyData.condition_state,
-          // Services
-          services_description: propertyData.services_description,
-          // Land Value Evidence
-          land_value_evidence: propertyData.land_value_evidence,
-          // Risk Assessment (GhIS Section 3)
-          risk_assessment: propertyData.risk_assessment,
-        },
-      }
+      // Update property fields (shared with the /new draft auto-save — see valuationPropertyPayload).
+      const propertyUpdate = buildPropertyUpdatePayload(propertyData)
 
       // Save each part INDEPENDENTLY so a failure in one (e.g. valuation dates) doesn't drop the
       // others — previously a mid-sequence 500 meant the client info (saved last) was lost.

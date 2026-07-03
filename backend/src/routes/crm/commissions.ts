@@ -143,14 +143,11 @@ router.post('/commissions/records/:id/approve', asyncHandler(async (req: Request
     res.json({ record });
 }));
 
-router.post('/commissions/records/:id/pay', asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = await getOrganizationId(req);
-    const record = await commissionService.markAsPaid(req.params.id, organizationId);
-    if (!record) {
-        return res.status(404).json({ error: 'Record not found or not approved' });
-    }
-    res.json({ record });
-}));
+// NOTE: the old `POST /commissions/records/:id/pay` (status-only "mark as paid", no
+// money movement) was removed — a commission is now disbursed through the two-person
+// payout rail (POST /crm/payouts → approve), which flips it to paid via
+// commissionService.markAsPaid() only after the transfer is confirmed. The service
+// method is intentionally retained for that callback.
 
 router.post('/commissions/records/:id/clawback', validate(commissionClawbackBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);

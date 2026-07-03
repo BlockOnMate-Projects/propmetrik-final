@@ -1,17 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Mail,
+  MailOpen,
+  MousePointerClick,
   Plus,
   Play,
   Pause,
   Trash2,
   Users,
+  UserPlus,
+  Target,
   Clock,
   ChevronRight,
   ArrowLeft,
   Send,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  FlaskConical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,13 +46,17 @@ import {
   useDripCampaigns,
   useDripCampaign,
   useDripEnrollments,
+  useDripSends,
   useCreateDripCampaign,
   useUpdateDripCampaign,
   useDeleteDripCampaign,
   useAddDripStep,
   useDeleteDripStep,
+  useAddDripStepVariant,
+  useDeleteDripStepVariant,
 } from '@/hooks/crm/use-drip-campaigns';
-import type { DripCampaign, DripCampaignStep } from '@/lib/crm-api';
+import { segmentsApi, type DripCampaign, type DripCampaignStep, type CampaignSegment, type SegmentFilter } from '@/lib/crm-api';
+import { toast } from 'sonner';
 
 export default function DripCampaignsPage() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
@@ -59,12 +71,100 @@ export default function DripCampaignsPage() {
   const { data: campaigns, isLoading } = useDripCampaigns();
   const { data: selectedCampaign } = useDripCampaign(selectedCampaignId || '');
   const { data: enrollments } = useDripEnrollments(selectedCampaignId || '');
+  const { data: sends } = useDripSends(selectedCampaignId || '');
 
   const createMutation = useCreateDripCampaign();
   const updateMutation = useUpdateDripCampaign();
   const deleteMutation = useDeleteDripCampaign();
   const addStepMutation = useAddDripStep();
   const deleteStepMutation = useDeleteDripStep();
+  const addVariantMutation = useAddDripStepVariant();
+  const deleteVariantMutation = useDeleteDripStepVariant();
+
+  // ── A/B variants ─────────────────────────────────────
+  const [variantStepId, setVariantStepId] = useState<string | null>(null);
+  const [variantForm, setVariantForm] = useState({ label: 'B', subject: '', body: '', weight: 1 });
+
+  const handleAddVariant = async () => {
+    if (!selectedCampaignId || !variantStepId || !variantForm.subject.trim() || !variantForm.body.trim()) return;
+    try {
+      await addVariantMutation.mutateAsync({ campaignId: selectedCampaignId, stepId: variantStepId, data: variantForm });
+      setVariantForm({ label: 'B', subject: '', body: '', weight: 1 });
+      setVariantStepId(null);
+    } catch (e: any) { toast.error(e?.message || 'Failed to add variant'); }
+  };
+
+  // Per-step, per-variant engagement (variant_id null = control "A").
+  const variantStats = useMemo(() => {
+    const m: Record<string, Record<string, { sent: number; opened: number; clicked: number }>> = {};
+    for (const s of sends || []) {
+      const key = s.variant_id || 'control';
+      (m[s.step_id] ??= {})[key] ??= { sent: 0, opened: 0, clicked: 0 };
+      const g = m[s.step_id][key];
+      if (s.status === 'sent') g.sent++;
+      if ((s.open_count || 0) > 0) g.opened++;
+      if ((s.click_count || 0) > 0) g.clicked++;
+    }
+    return m;
+  }, [sends]);
+
+  // ── Segments (audience) ──────────────────────────────
+  const [segments, setSegments] = useState<CampaignSegment[]>([]);
+  const [showSegDialog, setShowSegDialog] = useState(false);
+  const [segForm, setSegForm] = useState({ name: '', lead_status: '', region: '', tags: '', city: '' });
+  const [segPreview, setSegPreview] = useState<number | null>(null);
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
+
+  const loadSegments = useCallback(() => {
+    segmentsApi.getAll().then(setSegments).catch(() => setSegments([]));
+  }, []);
+  useEffect(() => { if (selectedCampaignId) loadSegments(); }, [selectedCampaignId, loadSegments]);
+
+  const csv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+  const buildFilter = (): SegmentFilter => ({
+    lead_status: segForm.lead_status ? csv(segForm.lead_status) : undefined,
+    region: segForm.region ? csv(segForm.region) : undefined,
+    tags: segForm.tags ? csv(segForm.tags) : undefined,
+    city: segForm.city.trim() || undefined,
+  });
+
+  const previewSegment = async () => {
+    try { setSegPreview((await segmentsApi.preview(buildFilter())).count); }
+    catch (e: any) { toast.error(e?.message || 'Preview failed'); }
+  };
+  const createSegment = async () => {
+    if (!segForm.name.trim()) { toast.error('Segment name is required'); return; }
+    try {
+      await segmentsApi.create({ name: segForm.name.trim(), filter: buildFilter() });
+      toast.success('Segment created');
+      setShowSegDialog(false);
+      setSegForm({ name: '', lead_status: '', region: '', tags: '', city: '' });
+      setSegPreview(null);
+      loadSegments();
+    } catch (e: any) { toast.error(e?.message || 'Failed to create segment'); }
+  };
+  const enrollSegment = async (segmentId: string) => {
+    if (!selectedCampaignId) return;
+    setEnrollingId(segmentId);
+    try {
+      const r = await segmentsApi.enroll(segmentId, selectedCampaignId);
+      toast.success(`Enrolled ${r.enrolled} new contact${r.enrolled === 1 ? '' : 's'} (${r.matched} matched)`);
+    } catch (e: any) { toast.error(e?.message || 'Enrollment failed'); }
+    finally { setEnrollingId(null); }
+  };
+
+  // ── Engagement (open/click) from the send ledger ─────
+  const engagement = useMemo(() => {
+    const list = sends || [];
+    const sent = list.filter((s) => s.status === 'sent').length;
+    const opened = list.filter((s) => (s.open_count || 0) > 0).length;
+    const clicked = list.filter((s) => (s.click_count || 0) > 0).length;
+    return {
+      sent, opened, clicked,
+      openRate: sent ? Math.round((opened / sent) * 100) : 0,
+      clickRate: sent ? Math.round((clicked / sent) * 100) : 0,
+    };
+  }, [sends]);
 
   const handleCreate = async () => {
     if (!newCampaign.name.trim()) return;
@@ -165,6 +265,30 @@ export default function DripCampaignsPage() {
           </Card>
         </div>
 
+        {/* Engagement (open/click) — from the tracking-enabled send ledger */}
+        {engagement.sent > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="bg-card border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Send className="h-5 w-5 text-muted-foreground" />
+                <div><p className="text-xs text-muted-foreground uppercase">Sent</p><p className="text-lg font-bold text-zinc-100">{engagement.sent}</p></div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <MailOpen className="h-5 w-5 text-blue-500" />
+                <div><p className="text-xs text-muted-foreground uppercase">Opened</p><p className="text-lg font-bold text-zinc-100">{engagement.opened} <span className="text-sm text-muted-foreground">({engagement.openRate}%)</span></p></div>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4 flex items-center gap-3">
+                <MousePointerClick className="h-5 w-5 text-emerald-500" />
+                <div><p className="text-xs text-muted-foreground uppercase">Clicked</p><p className="text-lg font-bold text-zinc-100">{engagement.clicked} <span className="text-sm text-muted-foreground">({engagement.clickRate}%)</span></p></div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Email Sequence Timeline */}
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -189,20 +313,51 @@ export default function DripCampaignsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-medium text-zinc-200 truncate">{step.subject}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          Day {step.delay_days}
-                        </Badge>
+                        <Badge variant="outline" className="text-[10px]">Day {step.delay_days}</Badge>
+                        {step.variants && step.variants.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] text-violet-400 border-violet-500/30">
+                            <FlaskConical className="h-3 w-3 mr-0.5" /> A/B ×{step.variants.length + 1}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{step.body}</p>
+
+                      {step.variants && step.variants.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">A · control</Badge>
+                            <span className="truncate flex-1">{step.subject}</span>
+                            {variantStats[step.id]?.['control'] && (
+                              <span>{variantStats[step.id]['control'].sent} sent · {variantStats[step.id]['control'].opened} open · {variantStats[step.id]['control'].clicked} click</span>
+                            )}
+                          </div>
+                          {step.variants.map((v) => {
+                            const vs = variantStats[step.id]?.[v.id];
+                            return (
+                              <div key={v.id} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-violet-400 border-violet-500/30">{v.label} · w{v.weight}</Badge>
+                                <span className="truncate flex-1">{v.subject}</span>
+                                {vs && <span>{vs.sent} sent · {vs.opened} open · {vs.clicked} click</span>}
+                                <button className="text-muted-foreground hover:text-red-400" title="Remove variant"
+                                  onClick={() => deleteVariantMutation.mutate({ campaignId: selectedCampaignId, stepId: step.id, variantId: v.id })}>
+                                  <XCircle className="h-3 w-3" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-muted-foreground hover:text-red-400"
-                      onClick={() => deleteStepMutation.mutate({ campaignId: selectedCampaignId, stepId: step.id })}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <div className="flex flex-col gap-1">
+                      <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-violet-400 h-7 w-7 p-0" title="Add A/B variant"
+                        onClick={() => { setVariantForm({ label: 'B', subject: '', body: '', weight: 1 }); setVariantStepId(step.id); }}>
+                        <FlaskConical className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-400 h-7 w-7 p-0"
+                        onClick={() => deleteStepMutation.mutate({ campaignId: selectedCampaignId, stepId: step.id })}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -230,7 +385,9 @@ export default function DripCampaignsPage() {
                       {e.email && <span className="text-xs text-muted-foreground ml-2">{e.email}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px]">Step {e.current_step}</Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        Step {e.current_step}{selectedCampaign.steps?.length ? ` of ${selectedCampaign.steps.length}` : ''}
+                      </Badge>
                       <Badge variant={e.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
                         {e.status}
                       </Badge>
@@ -241,6 +398,190 @@ export default function DripCampaignsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Audience Segments — bulk-enroll a saved contact segment into this campaign */}
+        <Card className="bg-card border-border">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-mono text-muted-foreground flex items-center gap-2">
+              <Target className="h-4 w-4" /> Audience Segments
+            </CardTitle>
+            <Button size="sm" variant="outline" onClick={() => { setSegPreview(null); setShowSegDialog(true); }}>
+              <Plus className="h-3 w-3 mr-1" /> New Segment
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {segments.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No segments yet. Create one to bulk-enroll matching contacts.</p>
+            ) : (
+              <div className="space-y-2">
+                {segments.map((seg) => {
+                  const f = seg.filter || {};
+                  const summary = [
+                    f.lead_status?.length ? `status: ${f.lead_status.join('/')}` : null,
+                    f.region?.length ? `region: ${f.region.join('/')}` : null,
+                    f.tags?.length ? `tags: ${f.tags.join('/')}` : null,
+                    f.city ? `city: ${f.city}` : null,
+                  ].filter(Boolean).join(' · ') || 'all contacts';
+                  return (
+                    <div key={seg.id} className="flex items-center justify-between p-2 bg-muted/30 rounded gap-2">
+                      <div className="min-w-0">
+                        <span className="text-sm text-zinc-200">{seg.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2 truncate">{summary}</span>
+                      </div>
+                      <Button size="sm" variant="ghost" className="text-amber-500 hover:text-amber-400 shrink-0"
+                        disabled={enrollingId === seg.id} onClick={() => enrollSegment(seg.id)}>
+                        {enrollingId === seg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><UserPlus className="h-3.5 w-3.5 mr-1" /> Enroll</>}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Delivery Log — from the execution engine (crm_drip_step_sends). Empty until migration 271 + first send. */}
+        {sends && sends.length > 0 && (
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-sm font-mono text-muted-foreground">Delivery Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {sends.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {s.status === 'sent' ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      ) : s.status === 'failed' ? (
+                        <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                      ) : (
+                        <Loader2 className="h-4 w-4 text-blue-500 shrink-0 animate-spin" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-sm text-zinc-200 truncate">
+                          {s.subject}
+                          <span className="text-xs text-muted-foreground ml-2">
+                            → {[s.first_name, s.last_name].filter(Boolean).join(' ') || s.email || 'contact'}
+                          </span>
+                        </div>
+                        {s.status === 'failed' && s.error && (
+                          <div className="text-[10px] text-red-500 truncate max-w-[320px]" title={s.error}>{s.error}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                      {s.open_count > 0 && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-blue-500" title={`Opened ${s.open_count}×${s.opened_at ? ' — ' + new Date(s.opened_at).toLocaleString() : ''}`}>
+                          <MailOpen className="h-3 w-3" /> {s.open_count}
+                        </span>
+                      )}
+                      {s.click_count > 0 && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-emerald-500" title={`Clicked ${s.click_count}×`}>
+                          <MousePointerClick className="h-3 w-3" /> {s.click_count}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {s.sent_at ? new Date(s.sent_at).toLocaleString() : new Date(s.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add A/B Variant Dialog */}
+        <Dialog open={!!variantStepId} onOpenChange={(o) => { if (!o) setVariantStepId(null); }}>
+          <DialogContent className="bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-zinc-100 flex items-center gap-2"><FlaskConical className="h-4 w-4 text-violet-400" /> Add A/B Variant</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                An alternate subject/body for this step. Recipients are split by weight; the step's own copy is the control (A).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-muted-foreground">Label</Label>
+                  <Input value={variantForm.label} onChange={(e) => setVariantForm((v) => ({ ...v, label: e.target.value }))}
+                    placeholder="B" className="bg-muted border-border" />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Weight</Label>
+                  <Input type="number" min={0} value={variantForm.weight}
+                    onChange={(e) => setVariantForm((v) => ({ ...v, weight: parseInt(e.target.value) || 0 }))} className="bg-muted border-border" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Subject Line</Label>
+                <Input value={variantForm.subject} onChange={(e) => setVariantForm((v) => ({ ...v, subject: e.target.value }))}
+                  placeholder="Alternate subject" className="bg-muted border-border" />
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Email Body</Label>
+                <Textarea value={variantForm.body} onChange={(e) => setVariantForm((v) => ({ ...v, body: e.target.value }))}
+                  placeholder="Alternate body…" rows={5} className="bg-muted border-border" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVariantStepId(null)}>Cancel</Button>
+              <Button onClick={handleAddVariant} disabled={addVariantMutation.isPending || !variantForm.subject || !variantForm.body}>
+                {addVariantMutation.isPending ? 'Adding…' : 'Add Variant'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* New Segment Dialog */}
+        <Dialog open={showSegDialog} onOpenChange={setShowSegDialog}>
+          <DialogContent className="bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-zinc-100">New Audience Segment</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                A reusable filter over your contacts. Comma-separate multiple values.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-muted-foreground">Segment Name</Label>
+                <Input value={segForm.name} onChange={(e) => setSegForm((s) => ({ ...s, name: e.target.value }))}
+                  placeholder="e.g. Accra hot leads" className="bg-muted border-border" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-muted-foreground">Lead status</Label>
+                  <Input value={segForm.lead_status} onChange={(e) => { setSegForm((s) => ({ ...s, lead_status: e.target.value })); setSegPreview(null); }}
+                    placeholder="new, qualified" className="bg-muted border-border" />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Region</Label>
+                  <Input value={segForm.region} onChange={(e) => { setSegForm((s) => ({ ...s, region: e.target.value })); setSegPreview(null); }}
+                    placeholder="greater_accra" className="bg-muted border-border" />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Tags</Label>
+                  <Input value={segForm.tags} onChange={(e) => { setSegForm((s) => ({ ...s, tags: e.target.value })); setSegPreview(null); }}
+                    placeholder="vip, investor" className="bg-muted border-border" />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">City</Label>
+                  <Input value={segForm.city} onChange={(e) => { setSegForm((s) => ({ ...s, city: e.target.value })); setSegPreview(null); }}
+                    placeholder="Accra" className="bg-muted border-border" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button size="sm" variant="outline" onClick={previewSegment}>Preview count</Button>
+                {segPreview !== null && <span className="text-sm text-muted-foreground">{segPreview} contact{segPreview === 1 ? '' : 's'} match</span>}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSegDialog(false)}>Cancel</Button>
+              <Button onClick={createSegment} disabled={!segForm.name.trim()}>Create Segment</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Add Step Dialog */}
         <Dialog open={showStepDialog} onOpenChange={setShowStepDialog}>

@@ -36,6 +36,7 @@ import propertyManagementRoutes, { propertyManagementPublicRouter } from './rout
 import crmRoutes from './routes/crm';
 import marketplaceRoutes from './routes/marketplace';
 import webhooksRoutes from './routes/webhooks';
+import trackingRoutes from './routes/tracking';
 import authIntegrationsRoutes from './routes/auth-integrations';
 import authRoutes from './routes/auth';
 import messagingRoutes from './routes/messaging';
@@ -111,6 +112,7 @@ import { initKobbyMonitor } from './jobs/kobbyAIMonitor';
 import { initWhatsAppDigest } from './jobs/whatsappDigest';
 import { initRentReminderJob } from './jobs/rentReminderJob';
 import { initCrmTaskReminderJob } from './jobs/crmTaskReminderJob';
+import { initDripExecutionJob } from './jobs/dripExecutionJob';
 import { initSubscriptionRenewalJob } from './jobs/subscriptionRenewalJob';
 import { initDataHubSyncJob } from './jobs/dataHubSyncJob';
 import { initContributionProcessorJob } from './jobs/contributionProcessorJob';
@@ -222,6 +224,7 @@ app.use('/api/v1/pm', authenticate, requireServiceAccess('property_management'),
 app.use('/api/v1/crm', authenticate, requireServiceAccess('crm'), crmRoutes);
 app.use('/api/crm', authenticate, requireServiceAccess('crm'), crmRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/marketplace', marketplaceRoutes);  // Public marketplace - no auth required
+app.use('/api/track', trackingRoutes);   // Public email open/click tracking - no auth (hit by email clients)
 
 // ── Public PM Invoice endpoint (no auth — client payment page) ──
 app.get('/api/v1/pm-invoices/public/:id', async (req, res) => {
@@ -1011,6 +1014,8 @@ const server = app.listen(config.port, async () => {
   initRentReminderJob();
   // Start daily CRM task due / overdue reminder job
   initCrmTaskReminderJob();
+  // Start CRM drip-campaign execution engine (sends due enrollment steps by email)
+  initDripExecutionJob();
   // Start daily subscription renewal / dunning sweep
   initSubscriptionRenewalJob();
   // Start CRM→data-hub property sync sweep (DH-B) so Deal Management properties

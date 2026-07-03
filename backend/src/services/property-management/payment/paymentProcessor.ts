@@ -28,6 +28,8 @@ import type { FxConversion } from '../../../../shared-services/payments/crypto/e
 import { logger } from '../../../utils/logger';
 import { pool } from '../../../database';
 import { notify, resolveOrgStaff, resolveTenantByTenancy } from '../../../../shared-services/notifications/in-mail';
+import { refundService } from './refundService';
+import { payoutService } from './payoutService';
 
 // =====================================================
 // TYPES
@@ -1017,6 +1019,8 @@ export class PaymentProcessor {
                      WHERE paystack_reference = $1`,
                     [data.reference]
                 ).catch(() => {}); // Best-effort
+                // Reconcile an outbound payout keyed on this transfer reference (no-op if none).
+                await payoutService.markPaidByReference(data.reference).catch(() => {});
                 break;
 
             case 'transfer.failed':
@@ -1024,7 +1028,7 @@ export class PaymentProcessor {
                     reference: data.reference,
                     reason: data.reason
                 });
-                // TODO: Alert admin, retry logic
+                await payoutService.markFailedByReference(data.reference, data.reason).catch(() => {});
                 break;
 
             case 'charge.failed':
@@ -1034,6 +1038,26 @@ export class PaymentProcessor {
                     [data.gateway_response || 'charge.failed', data.reference]
                 ).catch(() => {});
                 await this.notifyPaymentFailed(data.reference);
+                break;
+
+            case 'refund.processed': {
+                // Paystack echoes the ORIGINAL transaction reference; amount is refunded pesewas.
+                const txRef = data?.transaction?.reference || data?.transaction_reference;
+                if (txRef) await refundService.markRefundProcessed(txRef, data?.amount);
+                break;
+            }
+
+            case 'refund.failed': {
+                const txRef = data?.transaction?.reference || data?.transaction_reference;
+                if (txRef) await refundService.markRefundFailed(txRef);
+                break;
+            }
+
+            case 'refund.pending':
+            case 'refund.processing':
+                logger.info('Refund in progress (per Paystack webhook)', {
+                    reference: data?.transaction?.reference || data?.transaction_reference,
+                });
                 break;
 
             default:

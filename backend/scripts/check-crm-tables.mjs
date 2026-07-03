@@ -26,11 +26,16 @@ const SCAN_DIRS = ['src', 'shared-services'].map((d) => join(BACKEND_ROOT, d));
 
 // Authoritative real crm_* tables (public schema) + runtime-created crm_emails.
 const REAL_CRM_TABLES = new Set([
+  'crm_agent_territories', // mig 274 — PostGIS agent territories
+  'crm_campaign_segments', // mig 275 — audience segments
   'crm_deal_document_checklist',
   'crm_document_templates',
   'crm_drip_campaign_steps',
   'crm_drip_campaigns',
   'crm_drip_enrollments',
+  'crm_drip_step_sends', // mig 271 — idempotent drip execution send ledger
+  'crm_drip_step_variants', // mig 276 — A/B step variants
+  'crm_drip_tracking_events', // mig 275 — open/click event log
   'crm_emails', // runtime-created via ensureTable()
   'crm_esign_audit',
   'crm_generated_documents',

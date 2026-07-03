@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, formatCurrencyCompact } from '@/lib/utils';
 
 // pg NUMERIC / API money comes back as strings or may be absent — coerce safely.
 const n = (v: unknown): number => {
@@ -112,27 +112,21 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
     const totalDeals = useMemo(() =>
         stageRows.reduce((sum, r) => sum + r.deal_count, 0), [stageRows]);
 
-    // Scenarios: best = 100% close, expected = weighted, worst = 50% of weighted
-    const scenarios: ScenarioData[] = useMemo(() => [
-        {
-            label: 'Best Case',
-            value: totalPipeline,
-            icon: <TrendingUp className="w-4 h-4" />,
-            color: 'text-success',
-        },
-        {
-            label: 'Expected',
-            value: totalWeighted,
-            icon: <Minus className="w-4 h-4" />,
-            color: 'text-primary',
-        },
-        {
-            label: 'Worst Case',
-            value: totalWeighted * 0.5,
-            icon: <TrendingDown className="w-4 h-4" />,
-            color: 'text-destructive',
-        },
-    ], [totalPipeline, totalWeighted]);
+    // Scenario band derived from each stage's REAL close probability (not a flat multiplier):
+    //   expected = Σ value·p  (linear, the honest weighted number)
+    //   best     = Σ value·√p (optimistic — credits lower-probability deals more)
+    //   worst    = Σ value·p² (conservative — discounts them harder)
+    // A p=100% deal counts fully in all three; uncertainty only widens the band for open deals.
+    const scenarios: ScenarioData[] = useMemo(() => {
+        const clamp = (p: number) => Math.min(1, Math.max(0, p / 100));
+        const best = stageRows.reduce((s, r) => s + r.total_value * Math.sqrt(clamp(r.probability)), 0);
+        const worst = stageRows.reduce((s, r) => s + r.total_value * Math.pow(clamp(r.probability), 2), 0);
+        return [
+            { label: 'Best Case', value: best, icon: <TrendingUp className="w-4 h-4" />, color: 'text-success' },
+            { label: 'Expected', value: totalWeighted, icon: <Minus className="w-4 h-4" />, color: 'text-primary' },
+            { label: 'Worst Case', value: worst, icon: <TrendingDown className="w-4 h-4" />, color: 'text-destructive' },
+        ];
+    }, [stageRows, totalWeighted]);
 
     // Monthly trend bars
     const trendData = useMemo(() => {
@@ -254,29 +248,41 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
             {/* Revenue Trend */}
             {trendData.length > 0 && (
                 <div className="rounded-xl border border-border bg-card p-4">
-                    <h3 className="text-sm font-medium mb-4">Revenue Trend (Last 6 Months)</h3>
-                    <div className="flex items-end gap-2 h-32">
-                        {trendData.map((d, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                                <div className="w-full flex gap-0.5 items-end" style={{ height: '100px' }}>
-                                    <div
-                                        className="flex-1 bg-primary/20 rounded-t"
-                                        style={{ height: `${(d.pipeline / maxTrend) * 100}%` }}
-                                        title={`Pipeline: ${formatCurrency(d.pipeline)}`}
-                                    />
-                                    <div
-                                        className="flex-1 bg-success rounded-t"
-                                        style={{ height: `${(d.won / maxTrend) * 100}%` }}
-                                        title={`Won: ${formatCurrency(d.won)}`}
-                                    />
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-medium">Revenue Trend (Last 6 Months)</h3>
+                        <span className="text-[10px] text-muted-foreground">peak {formatCurrencyCompact(maxTrend)}</span>
+                    </div>
+                    <div className="flex items-end gap-2 h-40">
+                        {trendData.map((d, i) => {
+                            // Floor non-zero bars to a visible minimum so one outlier month can't
+                            // squash every other month to an invisible sliver.
+                            const barH = (v: number) => (v <= 0 ? 0 : Math.max(6, (v / maxTrend) * 100));
+                            const top = Math.max(d.won, d.pipeline);
+                            return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                    <span className="text-[9px] text-muted-foreground h-3 leading-3">
+                                        {top > 0 ? formatCurrencyCompact(top) : ''}
+                                    </span>
+                                    <div className="w-full flex gap-0.5 items-end" style={{ height: '110px' }}>
+                                        <div
+                                            className="flex-1 bg-primary/30 rounded-t"
+                                            style={{ height: `${barH(d.pipeline)}%` }}
+                                            title={`Pipeline: ${formatCurrency(d.pipeline)}`}
+                                        />
+                                        <div
+                                            className="flex-1 bg-success rounded-t"
+                                            style={{ height: `${barH(d.won)}%` }}
+                                            title={`Won: ${formatCurrency(d.won)}`}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground">{d.label}</span>
                                 </div>
-                                <span className="text-[10px] text-muted-foreground">{d.label}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                     <div className="flex items-center gap-4 mt-3 justify-center">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="w-3 h-2 rounded bg-primary/20" /> Pipeline
+                            <span className="w-3 h-2 rounded bg-primary/30" /> Pipeline
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <span className="w-3 h-2 rounded bg-success" /> Won

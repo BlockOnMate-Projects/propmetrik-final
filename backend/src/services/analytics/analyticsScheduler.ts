@@ -28,6 +28,7 @@ import { logger } from '../../utils/logger';
 import { ghaiService } from './ghaiService';
 import { constructionCostIndexService } from './constructionCostIndexService';
 import { marketIntelligenceService } from './marketIntelligenceService';
+import { capRateService } from './capRateService';
 import { investmentScoringService } from './investmentScoringService';
 import { valuationAnalyticsService } from './valuationAnalyticsService';
 import { housingDemandScoreService } from './housingDemandScoreService';
@@ -102,6 +103,11 @@ export class AnalyticsScheduler {
         name: 'RHDS (regional housing demand)',
         freshness: { table: 'regional_housing_demand_scores', column: 'computed_at' },
         run: async () => { await housingDemandScoreService.computeAndStore(); },
+      },
+      {
+        name: 'Rental yield analytics (cap-rate authority)',
+        freshness: { table: 'rental_yield_analytics', column: 'period_date' },
+        run: async () => { await capRateService.refreshRentalYieldAnalytics(now); },
       },
     ];
   }

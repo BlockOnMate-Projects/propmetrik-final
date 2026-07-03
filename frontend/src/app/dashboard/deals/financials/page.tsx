@@ -14,6 +14,7 @@ import {
     ArrowUpRight,
     Trophy,
     Receipt,
+    RotateCcw,
 } from 'lucide-react'
 import {
     ResponsiveContainer,
@@ -26,11 +27,23 @@ import {
     Tooltip as RTooltip,
     Legend,
 } from 'recharts'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import PaymentSettings from '@/components/property-management/PaymentSettings'
-import { crmPaymentConfigApi } from '@/lib/crm-api'
+import { crmPaymentConfigApi, type DealPaymentTransaction } from '@/lib/crm-api'
 import { authedFetch } from '@/lib/authed-fetch'
 import { formatCurrency, formatCurrencyCompact, formatNumber } from '@/lib/utils'
 import {
@@ -65,7 +78,7 @@ interface CommissionSummary {
     avg_deal_commission: number
 }
 
-type TabKey = 'overview' | 'commissions' | 'forecast' | 'billing' | 'payment-settings'
+type TabKey = 'overview' | 'commissions' | 'forecast' | 'billing' | 'payments' | 'payment-settings'
 type PeriodKey = 'quarter' | 'year' | 'all'
 
 const PERIODS: { key: PeriodKey; label: string }[] = [
@@ -73,6 +86,110 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
     { key: 'year', label: 'This Year' },
     { key: 'all', label: 'All Time' },
 ]
+
+// Deal payments + admin refund action. The list endpoint is admin-only server-side, so
+// non-admins see an empty table. Refund columns require migration 272; amounts are pesewas.
+function PaymentsPanel() {
+    const queryClient = useQueryClient()
+    const { data: txns, isLoading } = useQuery({
+        queryKey: ['crm', 'deal-payments'],
+        queryFn: () => crmPaymentConfigApi.listTransactions(100).catch(() => [] as DealPaymentTransaction[]),
+    })
+    const [refundTarget, setRefundTarget] = useState<DealPaymentTransaction | null>(null)
+    const [reason, setReason] = useState('')
+    const [submitting, setSubmitting] = useState(false)
+
+    const pesewas = (v: number | null) => formatCurrency(n(v) / 100)
+    const statusColor = (s: string) =>
+        s === 'success' ? 'text-green-500 border-green-500/30'
+            : s === 'refunded' ? 'text-purple-500 border-purple-500/30'
+                : s === 'failed' ? 'text-red-500 border-red-500/30'
+                    : 'text-muted-foreground'
+
+    const doRefund = async () => {
+        if (!refundTarget) return
+        setSubmitting(true)
+        try {
+            await crmPaymentConfigApi.refund(refundTarget.reference, { reason: reason.trim() || undefined })
+            toast.success('Refund submitted — completion is confirmed via webhook')
+            setRefundTarget(null)
+            setReason('')
+            queryClient.invalidateQueries({ queryKey: ['crm', 'deal-payments'] })
+        } catch (err: any) {
+            toast.error(err?.message || 'Refund failed')
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Deal Payments</CardTitle>
+                <CardDescription>
+                    Successful payments can be refunded (admin only). Refunds are processed asynchronously by Paystack.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : !txns || txns.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">No deal payments found.</div>
+                ) : (
+                    <div className="space-y-2">
+                        {txns.map((t) => {
+                            const refundable = t.status === 'success' && (!t.refund_status || t.refund_status === 'failed')
+                            return (
+                                <div key={t.reference} className="flex items-center justify-between p-3 bg-muted/30 rounded border border-border/50">
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-medium text-foreground truncate">{pesewas(t.principal_amount || t.gross_amount)}</div>
+                                        <div className="text-xs text-muted-foreground truncate">
+                                            {t.payer_email || 'unknown'} · {new Date(t.created_at).toLocaleDateString()} · {t.reference}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Badge variant="outline" className={statusColor(t.status)}>{t.status}</Badge>
+                                        {t.refund_status && t.refund_status !== 'failed' && (
+                                            <Badge variant="outline" className="text-purple-500 border-purple-500/30 text-[10px]">
+                                                refund {t.refund_status}
+                                            </Badge>
+                                        )}
+                                        {refundable && (
+                                            <Button variant="outline" size="sm" onClick={() => { setRefundTarget(t); setReason('') }}>
+                                                <RotateCcw className="h-3.5 w-3.5 mr-1" /> Refund
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </CardContent>
+
+            <Dialog open={!!refundTarget} onOpenChange={(o) => { if (!o) setRefundTarget(null) }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Refund payment</DialogTitle>
+                        <DialogDescription>
+                            {refundTarget
+                                ? `Refund ${pesewas(refundTarget.principal_amount || refundTarget.gross_amount)} to ${refundTarget.payer_email || 'the payer'}. This returns money to the customer.`
+                                : ''}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label>Reason (optional)</Label>
+                        <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. duplicate charge" />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setRefundTarget(null)}>Cancel</Button>
+                        <Button onClick={doRefund} disabled={submitting}>{submitting ? 'Refunding...' : 'Confirm Refund'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
+    )
+}
 
 /** Compute an ISO date_from for the selected period (undefined = all time). */
 function periodStart(period: PeriodKey): string | undefined {
@@ -221,6 +338,7 @@ export default function DealsFinancialsPage() {
         { key: 'commissions', label: 'Commissions', icon: Coins },
         { key: 'forecast', label: 'Forecast', icon: TrendingUp },
         { key: 'billing', label: 'Billing', icon: Receipt },
+        { key: 'payments', label: 'Payments', icon: Wallet },
         { key: 'payment-settings', label: 'Payment Settings', icon: CreditCard },
     ]
 
@@ -442,6 +560,11 @@ export default function DealsFinancialsPage() {
             {/* ============ BILLING / AR ============ */}
             {activeTab === 'billing' && (
                 <BillingBoard />
+            )}
+
+            {/* ============ PAYMENTS (refunds) ============ */}
+            {activeTab === 'payments' && (
+                <PaymentsPanel />
             )}
 
             {/* ============ PAYMENT SETTINGS ============ */}

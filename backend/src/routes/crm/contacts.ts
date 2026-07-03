@@ -10,6 +10,8 @@ import { getOrganizationId, getUserId, asyncHandler, getAgentIdForUser } from '.
 import { contactService } from '../../services/crm-deal-management';
 import { ContactType, LeadStatus } from '../../services/crm-deal-management/types';
 import { contactMergeService } from '../../services/crm-deal-management/contactMergeService';
+import { territoryService } from '../../services/crm-deal-management/territoryService';
+import { logger } from '../../utils/logger';
 import db from '../../database';
 import { validate, validateRequest } from '../../middleware/validation';
 import { createContactBody, updateContactBody, uuidParam } from '../../middleware/schemas/crm.schemas';
@@ -140,6 +142,14 @@ router.post('/contacts', validate(createContactBody), asyncHandler(async (req: R
         return res.status(401).json({ error: 'Organization not found' });
     }
     const contact = await contactService.createContact(organizationId, req.body, userId);
+    // Best-effort geo-routing: if the org runs territories and this lead has no agent yet,
+    // assign the owning agent by point-in-polygon. Fire-and-forget so it never delays or
+    // blocks contact creation (it geocodes + updates the row asynchronously; it also
+    // no-ops when the org has no territories or the contact is already assigned).
+    if (contact?.id) {
+        territoryService.resolveAndAssignContact(organizationId, contact.id)
+            .catch((e: any) => logger.warn('Territory auto-route failed', { contactId: contact.id, error: e?.message }));
+    }
     res.status(201).json(contact);
 }));
 

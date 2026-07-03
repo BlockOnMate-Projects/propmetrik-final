@@ -60,6 +60,47 @@ interface OrgBranding {
     address_line1: string; city: string; region: string; country: string;
 }
 
+// Defined at MODULE scope (not inside SettingsPage) so their component identity is stable across
+// renders. When these lived inside the component, every keystroke re-created them → React remounted
+// the <input> → the field lost focus after each character.
+const InputField = ({ label, value, onChange, type = 'text', suffix }: {
+    label: string; value: string; onChange: (v: string) => void; type?: string; suffix?: string
+}) => (
+    <div>
+        <label className="font-mono text-[10px] text-muted-foreground block mb-1">{label}</label>
+        <div className="relative">
+            <input
+                type={type}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
+            />
+            {suffix && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">{suffix}</span>
+            )}
+        </div>
+    </div>
+)
+
+const Toggle = ({ label, description, checked, onChange }: {
+    label: string; description?: string; checked: boolean; onChange: (v: boolean) => void
+}) => (
+    <div className="flex items-center justify-between py-2">
+        <div>
+            <div className="font-mono text-xs text-foreground">{label}</div>
+            {description && <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{description}</div>}
+        </div>
+        <button
+            onClick={() => onChange(!checked)}
+            className={`w-10 h-5 rounded-full transition-colors relative ${checked ? 'bg-amber-500' : 'bg-zinc-700'
+                }`}
+        >
+            <div className={`w-4 h-4 rounded-full bg-card absolute top-0.5 transition-transform ${checked ? 'left-5' : 'left-0.5'
+                }`} />
+        </button>
+    </div>
+)
+
 export default function SettingsPage() {
     const [mounted, setMounted] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -198,44 +239,6 @@ export default function SettingsPage() {
             setApprovalChains(prev => prev.filter(c => c.id !== id))
         } catch { /* handled */ }
     }
-
-    const InputField = ({ label, value, onChange, type = 'text', suffix }: {
-        label: string; value: string; onChange: (v: string) => void; type?: string; suffix?: string
-    }) => (
-        <div>
-            <label className="font-mono text-[10px] text-muted-foreground block mb-1">{label}</label>
-            <div className="relative">
-                <input
-                    type={type}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono text-xs focus:outline-none focus:border-amber-500/50"
-                />
-                {suffix && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">{suffix}</span>
-                )}
-            </div>
-        </div>
-    )
-
-    const Toggle = ({ label, description, checked, onChange }: {
-        label: string; description?: string; checked: boolean; onChange: (v: boolean) => void
-    }) => (
-        <div className="flex items-center justify-between py-2">
-            <div>
-                <div className="font-mono text-xs text-foreground">{label}</div>
-                {description && <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{description}</div>}
-            </div>
-            <button
-                onClick={() => onChange(!checked)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${checked ? 'bg-amber-500' : 'bg-zinc-700'
-                    }`}
-            >
-                <div className={`w-4 h-4 rounded-full bg-card absolute top-0.5 transition-transform ${checked ? 'left-5' : 'left-0.5'
-                    }`} />
-            </button>
-        </div>
-    )
 
     return (
         <div className="min-h-screen bg-background text-foreground p-4 pb-10">
