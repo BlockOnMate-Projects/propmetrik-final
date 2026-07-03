@@ -109,7 +109,8 @@ router.get('/targets/leaderboard', asyncHandler(async (req: Request, res: Respon
 }));
 
 router.get('/targets/:id', asyncHandler(async (req: Request, res: Response) => {
-    const target = await targetService.getById(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const target = await targetService.getById(req.params.id, organizationId);
     if (!target) {
         return res.status(404).json({ error: 'Target not found' });
     }
@@ -117,7 +118,8 @@ router.get('/targets/:id', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 router.patch('/targets/:id', validate(updateTargetBody), asyncHandler(async (req: Request, res: Response) => {
-    const target = await targetService.update(req.params.id, req.body);
+    const organizationId = await getOrganizationId(req);
+    const target = await targetService.update(req.params.id, req.body, organizationId);
     if (!target) {
         return res.status(404).json({ error: 'Target not found' });
     }
@@ -125,7 +127,8 @@ router.patch('/targets/:id', validate(updateTargetBody), asyncHandler(async (req
 }));
 
 router.delete('/targets/:id', asyncHandler(async (req: Request, res: Response) => {
-    const deleted = await targetService.delete(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const deleted = await targetService.delete(req.params.id, organizationId);
     if (!deleted) {
         return res.status(404).json({ error: 'Target not found' });
     }
@@ -133,25 +136,37 @@ router.delete('/targets/:id', asyncHandler(async (req: Request, res: Response) =
 }));
 
 router.post('/targets/:id/refresh', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    // Verify the target belongs to the caller's org before refreshing
+    const owned = await targetService.getById(req.params.id, organizationId);
+    if (!owned) {
+        return res.status(404).json({ error: 'Target not found' });
+    }
     await targetService.updateProgress(req.params.id);
-    const target = await targetService.getById(req.params.id);
+    const target = await targetService.getById(req.params.id, organizationId);
     res.json({ target });
 }));
 
 router.get('/targets/:id/checkpoints', asyncHandler(async (req: Request, res: Response) => {
-    const checkpoints = await targetService.getCheckpoints(req.params.id);
+    const organizationId = await getOrganizationId(req);
+    const checkpoints = await targetService.getCheckpoints(req.params.id, organizationId);
     res.json({ checkpoints });
 }));
 
 router.post('/targets/:id/checkpoints', validate(createTargetCheckpointBody), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const { checkpoint_number, expected_value, actual_value, notes } = req.body;
     const checkpoint = await targetService.createCheckpoint(
         req.params.id,
         checkpoint_number,
         expected_value,
         actual_value,
+        organizationId,
         notes
     );
+    if (!checkpoint) {
+        return res.status(404).json({ error: 'Target not found' });
+    }
     res.status(201).json({ checkpoint });
 }));
 
@@ -166,8 +181,9 @@ router.get('/achievements/badges', asyncHandler(async (req: Request, res: Respon
 }));
 
 router.get('/agents/:agentId/achievements', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const limit = parseInt(req.query.limit as string) || 50;
-    const achievements = await targetService.getAgentAchievements(req.params.agentId, limit);
+    const achievements = await targetService.getAgentAchievements(req.params.agentId, organizationId, limit);
     res.json({ achievements });
 }));
 
@@ -177,8 +193,9 @@ router.get('/agents/:agentId/targets', asyncHandler(async (req: Request, res: Re
 }));
 
 router.get('/agents/:agentId/streak', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const streakType = (req.query.type as string) || 'deal_close';
-    const streak = await targetService.getStreak(req.params.agentId, streakType);
+    const streak = await targetService.getStreak(req.params.agentId, streakType, organizationId);
     res.json({ streak: streak || { current_streak: 0, longest_streak: 0 } });
 }));
 

@@ -18,7 +18,7 @@ export default function TenantPortalHome() {
   useEffect(() => {
     // Fetch real properties from the backend for testing links
     // Uses the main frontend API proxy
-    fetch('/api/v1/pm/properties?limit=5')
+    fetch('/api/pm/properties?limit=5')
       .then(res => res.json())
       .then(data => {
         setProperties(Array.isArray(data) ? data : []);

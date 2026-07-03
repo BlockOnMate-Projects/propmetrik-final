@@ -7,6 +7,7 @@
 
 import { pool } from '../../src/database';
 import { logger } from '../../src/utils/logger';
+import { notify, resolveStaffUser } from '../notifications/notify';
 
 // Types
 export interface CalendarEvent {
@@ -541,8 +542,33 @@ class CalendarService {
       );
       
       await client.query('COMMIT');
-      
+
       logger.info('Viewing booked', { bookingId: newBooking.id, propertyId: booking.propertyId });
+
+      // Notify the assigned agent of the scheduled viewing (post-commit; non-fatal —
+      // must stay wrapped so a notify failure never triggers the outer ROLLBACK path).
+      try {
+        const recipient = await resolveStaffUser(booking.agentId);
+        if (recipient) {
+          const when = new Date(newBooking.scheduled_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+          await notify({
+            recipients: recipient,
+            category: 'crm',
+            type: 'viewing.scheduled',
+            title: 'Property viewing scheduled',
+            body: `A property viewing is scheduled for ${when}${booking.contactName ? ` with ${booking.contactName}` : ''}.`,
+            priority: 'normal',
+            organizationId: booking.organizationId,
+            sourceType: 'viewing',
+            sourceId: newBooking.id,
+            sourceUrl: booking.dealId ? `/dashboard/deals/${booking.dealId}` : '/dashboard/deals',
+            channels: { inApp: true, email: true },
+          });
+        }
+      } catch (notifyErr: any) {
+        logger.warn('Failed to notify agent of viewing booking', { bookingId: newBooking.id, error: notifyErr?.message });
+      }
+
       return this.mapRowToBooking({ ...newBooking, calendar_event_id: calendarResult.rows[0].id });
       
     } catch (error) {
@@ -612,12 +638,12 @@ class CalendarService {
   ): Promise<ViewingBooking[]> {
     let query = `
       SELECT vb.*,
-             p.address as property_address,
+             COALESCE(p.address_street, p.address_city) as property_address,
              c.first_name || ' ' || c.last_name as contact_full_name,
              u.first_name || ' ' || u.last_name as agent_name
       FROM viewing_bookings vb
       LEFT JOIN crm_properties p ON vb.property_id = p.id
-      LEFT JOIN crm_contacts c ON vb.contact_id = c.id
+      LEFT JOIN contacts c ON vb.contact_id = c.id
       LEFT JOIN users u ON vb.agent_id = u.id
       WHERE vb.organization_id = $1
     `;
@@ -674,8 +700,8 @@ class CalendarService {
     // Get task details
     const taskResult = await pool.query(
       `SELECT t.*, d.id as deal_id, d.title as deal_title
-       FROM crm_tasks t
-       LEFT JOIN crm_deals d ON t.deal_id = d.id
+       FROM tasks t
+       LEFT JOIN deals d ON t.deal_id = d.id
        WHERE t.id = $1`,
       [taskId]
     );

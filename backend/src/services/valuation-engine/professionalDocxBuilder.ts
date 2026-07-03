@@ -33,6 +33,7 @@ import {
   ImageRun,
 } from 'docx';
 import { ReportSectionData } from './docGenerationService';
+import { hexNoHash, readableOn, shade } from './brandingService';
 import { logger } from '../../utils/logger';
 import { htmlToDocxElements } from './htmlToDocx';
 
@@ -60,7 +61,49 @@ const COLORS = {
   danger: 'DC2626',       // red-600
   coverBg: '18181B',      // dark cover background
   coverCardBg: '27272A',  // card on cover
+  // Contrast-safe text colors for brand-colored backgrounds (default = dark theme)
+  onPrimary: 'FFFFFF',      // text on the primary/cover/header background
+  onPrimaryMuted: 'D4D4D8', // muted text on the primary background
+  onAccent: '18181B',       // text on the accent background
 };
+
+// ─── Full-palette theming ────────────────────────────────────────────────────
+// The report is themed to the org's brand colors. COLORS above is the default
+// (PROPMETRIK dark + amber). PALETTE is the ACTIVE palette for the current
+// build — set once at the top of buildProfessionalDocx() from the org branding.
+//
+// Why a module-level mutable is safe here: buildProfessionalDocx builds the
+// ENTIRE document synchronously (every buildX/helper returns synchronously and
+// reads PALETTE, baking color STRINGS into the docx elements) and only awaits at
+// the very end (Packer.toBuffer). So a concurrent build that reassigns PALETTE
+// during that final await cannot affect an already-built document.
+let PALETTE = { ...COLORS };
+
+/**
+ * Build the active palette from org branding, deriving shades + contrast-safe text.
+ * Color math (readableOn/shade) is shared with the report viewer via brandingService;
+ * those return "#RRGGBB", so we hexNoHash() them for OOXML (which wants no leading '#').
+ */
+function paletteFor(branding: ReportSectionData['branding']): typeof COLORS {
+  // No custom brand colors → exact default palette (PROPMETRIK look unchanged).
+  if (!branding?.primaryColor && !branding?.accentColor) return { ...COLORS };
+  const primary = branding?.primaryColor ? hexNoHash(branding.primaryColor) : COLORS.primary;
+  const accent = branding?.accentColor ? hexNoHash(branding.accentColor) : COLORS.accent;
+  const onPrimary = hexNoHash(readableOn(primary));
+  return {
+    ...COLORS,
+    primary,
+    primaryLight: hexNoHash(shade(primary, 0.12)),
+    accent,
+    accentDark: hexNoHash(shade(accent, -0.15)),
+    tableHeader: hexNoHash(shade(primary, 0.08)),
+    coverBg: primary,
+    coverCardBg: hexNoHash(shade(primary, 0.10)),
+    onPrimary,
+    onPrimaryMuted: onPrimary === 'FFFFFF' ? 'D4D4D8' : '52525B',
+    onAccent: hexNoHash(readableOn(accent)),
+  };
+}
 
 // No-border shorthand
 const NO_BORDERS = {
@@ -86,11 +129,11 @@ function heading1(text: string): Paragraph {
         bold: true,
         size: 28, // 14pt
         font: 'Calibri',
-        color: COLORS.textDark,
+        color: PALETTE.textDark,
       }),
     ],
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: 6, color: COLORS.accent },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: PALETTE.accent },
     },
   });
 }
@@ -107,7 +150,7 @@ function heading2(text: string): Paragraph {
         bold: true,
         size: 24, // 12pt
         font: 'Calibri',
-        color: COLORS.textDark,
+        color: PALETTE.textDark,
       }),
     ],
   });
@@ -125,7 +168,7 @@ function heading3(text: string): Paragraph {
         bold: true,
         size: 22, // 11pt
         font: 'Calibri',
-        color: COLORS.textMedium,
+        color: PALETTE.textMedium,
       }),
     ],
   });
@@ -151,7 +194,7 @@ function bodyText(text: string, options?: {
         font: 'Calibri',
         bold: options?.bold,
         italics: options?.italic,
-        color: COLORS.textDark,
+        color: PALETTE.textDark,
       }),
     ],
   });
@@ -181,7 +224,7 @@ function tableCell(text: string, opts?: {
             bold: opts?.bold,
             size: 20,
             font: 'Calibri',
-            color: opts?.shading === COLORS.tableHeader ? COLORS.white : COLORS.textDark,
+            color: opts?.shading === PALETTE.tableHeader ? PALETTE.onPrimary : PALETTE.textDark,
           }),
         ],
       }),
@@ -203,7 +246,7 @@ function headerCell(text: string, opts?: {
 }): TableCell {
   return tableCell(text, {
     bold: true,
-    shading: COLORS.tableHeader,
+    shading: PALETTE.tableHeader,
     width: opts?.width,
     alignment: opts?.alignment,
     span: opts?.span,
@@ -218,8 +261,8 @@ function keyValueTable(rows: Array<[string, string]>, labelWidth = 40): Table {
     rows: rows.map((row, index) =>
       new TableRow({
         children: [
-          tableCell(row[0], { bold: true, width: labelWidth, shading: index % 2 === 0 ? COLORS.tableStripe : undefined }),
-          tableCell(row[1], { width: 100 - labelWidth, shading: index % 2 === 0 ? COLORS.tableStripe : undefined }),
+          tableCell(row[0], { bold: true, width: labelWidth, shading: index % 2 === 0 ? PALETTE.tableStripe : undefined }),
+          tableCell(row[1], { width: 100 - labelWidth, shading: index % 2 === 0 ? PALETTE.tableStripe : undefined }),
         ],
       })
     ),
@@ -238,7 +281,7 @@ function coverCardCell(label: string, value: string, width: number): TableCell {
             text: label,
             size: 14,
             font: 'Calibri',
-            color: COLORS.textLight,
+            color: PALETTE.textLight,
             bold: true,
           }),
         ],
@@ -251,7 +294,7 @@ function coverCardCell(label: string, value: string, width: number): TableCell {
             text: value,
             size: 36,
             font: 'Calibri',
-            color: COLORS.white,
+            color: PALETTE.onPrimary,
             bold: true,
           }),
         ],
@@ -259,7 +302,7 @@ function coverCardCell(label: string, value: string, width: number): TableCell {
     ],
     verticalAlign: VerticalAlign.CENTER,
     width: { size: width, type: WidthType.PERCENTAGE },
-    shading: { type: ShadingType.SOLID, color: COLORS.primaryLight, fill: COLORS.primaryLight },
+    shading: { type: ShadingType.SOLID, color: PALETTE.primaryLight, fill: PALETTE.primaryLight },
     borders: {
       top: { style: BorderStyle.SINGLE, size: 1, color: '3F3F46' },
       bottom: { style: BorderStyle.SINGLE, size: 1, color: '3F3F46' },
@@ -280,6 +323,26 @@ function coverCardCell(label: string, value: string, width: number): TableCell {
  * Uses a full-page table with dark shading, amber accents,
  * PROPMETRIK branding, stats panel
  */
+// Build a cover/header logo ImageRun from resolved branding bytes (PNG/JPEG only).
+// Returns null when there's no logo — callers fall back to the firm-name text.
+function brandLogoRun(branding: ReportSectionData['branding'], maxW: number, maxH: number): ImageRun | null {
+  const buf = branding?.logoBuffer;
+  if (!buf || buf.length < 24) return null;
+  let w = maxW;
+  let h = maxH;
+  if (buf[0] === 0x89 && buf[1] === 0x50) { // PNG → read real dimensions to preserve aspect ratio
+    const pw = buf.readUInt32BE(16);
+    const ph = buf.readUInt32BE(20);
+    if (pw > 0 && ph > 0) { const r = Math.min(maxW / pw, maxH / ph); w = Math.round(pw * r); h = Math.round(ph * r); }
+  }
+  const type = (branding?.logoMime || '').includes('png') ? 'png' : 'jpg';
+  try {
+    return new ImageRun({ data: buf, transformation: { width: w, height: h }, type: type as any });
+  } catch {
+    return null;
+  }
+}
+
 function buildCoverPage(data: ReportSectionData): FileChild[] {
   const cover = data.cover;
   const property = data.property;
@@ -299,6 +362,13 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
   const rawTitle = property?.name || propertyAddress || 'PROPERTY VALUATION';
   const cleanTitle = rawTitle.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
 
+  // Firm branding for the cover (logo / name / tagline / credentials) — falls back to PROPMETRIK.
+  const bName = data.branding?.name || 'PROPMETRIK';
+  const bTagline = data.branding?.tagline || 'REAL ESTATE INTELLIGENCE';
+  const bAccent = data.branding?.accentColor ? hexNoHash(data.branding.accentColor) : PALETTE.accent;
+  const bCredential = data.branding?.credentialLine || null;
+  const bLogoRun = brandLogoRun(data.branding, 200, 52);
+
   // Short market value for stats card
   const numericMarketValue = valuation?.final_value
     ? `GH₵ ${Number(valuation.final_value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
@@ -315,47 +385,45 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
         children: [
           new TableCell({
             width: { size: 60, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+            shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
             borders: NO_BORDERS,
             margins: { top: 200, bottom: 0, left: 200, right: 0 },
             verticalAlign: VerticalAlign.CENTER,
             children: [
-              new Paragraph({
-                spacing: { after: 0 },
-                children: [
-                  new TextRun({
-                    text: '■',
-                    size: 32,
-                    font: 'Calibri',
-                    color: COLORS.accent,
+              bLogoRun
+                ? new Paragraph({ spacing: { after: 0 }, children: [bLogoRun] })
+                : new Paragraph({
+                    spacing: { after: 0 },
+                    children: [
+                      new TextRun({ text: '■', size: 32, font: 'Calibri', color: bAccent }),
+                      new TextRun({ text: `  ${bName}`, size: 26, font: 'Calibri', color: PALETTE.onPrimary, bold: true }),
+                    ],
                   }),
-                  new TextRun({
-                    text: '  PROPMETRIK',
-                    size: 26,
-                    font: 'Calibri',
-                    color: COLORS.white,
-                    bold: true,
-                  }),
-                ],
-              }),
               new Paragraph({
                 spacing: { before: 20, after: 0 },
-                indent: { left: 460 },
+                indent: { left: bLogoRun ? 0 : 460 },
                 children: [
                   new TextRun({
-                    text: 'REAL ESTATE INTELLIGENCE',
+                    text: bTagline,
                     size: 12,
                     font: 'Calibri',
-                    color: COLORS.textLight,
+                    color: PALETTE.textLight,
                     characterSpacing: 120,
                   }),
                 ],
               }),
+              ...(bCredential ? [new Paragraph({
+                spacing: { before: 30, after: 0 },
+                indent: { left: bLogoRun ? 0 : 460 },
+                children: [
+                  new TextRun({ text: bCredential, size: 11, font: 'Calibri', color: PALETTE.textLight }),
+                ],
+              })] : []),
             ],
           }),
           new TableCell({
             width: { size: 40, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+            shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
             borders: NO_BORDERS,
             margins: { top: 200, bottom: 0, left: 0, right: 200 },
             verticalAlign: VerticalAlign.CENTER,
@@ -368,7 +436,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: 'DOCUMENT DATE',
                     size: 12,
                     font: 'Calibri',
-                    color: COLORS.textLight,
+                    color: PALETTE.textLight,
                     characterSpacing: 60,
                   }),
                 ],
@@ -381,7 +449,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: reportDate,
                     size: 20,
                     font: 'Calibri',
-                    color: COLORS.white,
+                    color: PALETTE.onPrimary,
                     bold: true,
                   }),
                 ],
@@ -397,7 +465,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
         children: [
           new TableCell({
             columnSpan: 2,
-            shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+            shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
             borders: NO_BORDERS,
             margins: { top: 400, bottom: 200, left: 200, right: 200 },
             verticalAlign: VerticalAlign.CENTER,
@@ -407,14 +475,14 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                 spacing: { after: 40 },
                 indent: { left: 400 },
                 border: {
-                  left: { style: BorderStyle.SINGLE, size: 18, color: COLORS.accent, space: 8 },
+                  left: { style: BorderStyle.SINGLE, size: 18, color: PALETTE.accent, space: 8 },
                 },
                 children: [
                   new TextRun({
                     text: 'VALUATION REPORT',
                     size: 16,
                     font: 'Calibri',
-                    color: COLORS.accent,
+                    color: PALETTE.accent,
                     bold: true,
                     characterSpacing: 120,
                   }),
@@ -425,14 +493,14 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                 spacing: { before: 40, after: 20 },
                 indent: { left: 400 },
                 border: {
-                  left: { style: BorderStyle.SINGLE, size: 18, color: COLORS.accent, space: 8 },
+                  left: { style: BorderStyle.SINGLE, size: 18, color: PALETTE.accent, space: 8 },
                 },
                 children: [
                   new TextRun({
                     text: cleanTitle.toUpperCase(),
                     size: 56,
                     font: 'Calibri',
-                    color: COLORS.white,
+                    color: PALETTE.onPrimary,
                     bold: true,
                   }),
                 ],
@@ -442,14 +510,14 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                 spacing: { before: 20, after: 10 },
                 indent: { left: 400 },
                 border: {
-                  left: { style: BorderStyle.SINGLE, size: 18, color: COLORS.accent, space: 8 },
+                  left: { style: BorderStyle.SINGLE, size: 18, color: PALETTE.accent, space: 8 },
                 },
                 children: [
                   new TextRun({
                     text: propertyAddress,
                     size: 22,
                     font: 'Calibri',
-                    color: COLORS.borderDark,
+                    color: PALETTE.borderDark,
                   }),
                 ],
               }),
@@ -458,14 +526,14 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                 spacing: { before: 10, after: 0 },
                 indent: { left: 400 },
                 border: {
-                  left: { style: BorderStyle.SINGLE, size: 18, color: COLORS.accent, space: 8 },
+                  left: { style: BorderStyle.SINGLE, size: 18, color: PALETTE.accent, space: 8 },
                 },
                 children: [
                   new TextRun({
                     text: reportDate,
                     size: 20,
                     font: 'Calibri',
-                    color: COLORS.accent,
+                    color: PALETTE.accent,
                     bold: true,
                   }),
                 ],
@@ -481,7 +549,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
         children: [
           new TableCell({
             columnSpan: 2,
-            shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+            shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
             borders: NO_BORDERS,
             margins: { top: 100, bottom: 100, left: 200, right: 200 },
             verticalAlign: VerticalAlign.CENTER,
@@ -496,14 +564,14 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                       coverCardCell('MARKET VALUE', numericMarketValue, 34),
                       new TableCell({
                         width: { size: 1, type: WidthType.PERCENTAGE },
-                        shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+                        shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
                         borders: NO_BORDERS,
                         children: [new Paragraph({ children: [] })],
                       }),
                       coverCardCell('BUILDING AREA', buildingArea, 32),
                       new TableCell({
                         width: { size: 1, type: WidthType.PERCENTAGE },
-                        shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+                        shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
                         borders: NO_BORDERS,
                         children: [new Paragraph({ children: [] })],
                       }),
@@ -523,7 +591,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
         children: [
           new TableCell({
             width: { size: 60, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+            shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
             borders: NO_BORDERS,
             margins: { top: 200, bottom: 200, left: 300, right: 0 },
             verticalAlign: VerticalAlign.BOTTOM,
@@ -535,7 +603,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: 'PREPARED FOR',
                     size: 12,
                     font: 'Calibri',
-                    color: COLORS.textLight,
+                    color: PALETTE.textLight,
                     characterSpacing: 100,
                   }),
                 ],
@@ -547,7 +615,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: cover.prepared_for?.name || cover.requested_by?.name || '',
                     size: 22,
                     font: 'Calibri',
-                    color: COLORS.white,
+                    color: PALETTE.onPrimary,
                     bold: true,
                   }),
                 ],
@@ -559,7 +627,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: 'CERTIFIED BY',
                     size: 12,
                     font: 'Calibri',
-                    color: COLORS.textLight,
+                    color: PALETTE.textLight,
                     characterSpacing: 100,
                   }),
                 ],
@@ -571,7 +639,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: `Surv. ${cover.certified_by?.name || ''}`,
                     size: 22,
                     font: 'Calibri',
-                    color: COLORS.white,
+                    color: PALETTE.onPrimary,
                     bold: true,
                   }),
                 ],
@@ -583,7 +651,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: cover.certified_by?.qualifications || '',
                     size: 16,
                     font: 'Calibri',
-                    color: COLORS.borderDark,
+                    color: PALETTE.borderDark,
                     italics: true,
                   }),
                 ],
@@ -595,7 +663,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: cover.certified_by?.license_number ? `License No: ${cover.certified_by.license_number}` : '',
                     size: 16,
                     font: 'Calibri',
-                    color: COLORS.borderDark,
+                    color: PALETTE.borderDark,
                   }),
                 ],
               }),
@@ -603,7 +671,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
           }),
           new TableCell({
             width: { size: 40, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.SOLID, color: COLORS.coverBg, fill: COLORS.coverBg },
+            shading: { type: ShadingType.SOLID, color: PALETTE.coverBg, fill: PALETTE.coverBg },
             borders: NO_BORDERS,
             margins: { top: 200, bottom: 200, left: 0, right: 300 },
             verticalAlign: VerticalAlign.BOTTOM,
@@ -616,7 +684,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: 'GENERATED VIA PROPMETRIK',
                     size: 12,
                     font: 'Calibri',
-                    color: COLORS.textLight,
+                    color: PALETTE.textLight,
                     characterSpacing: 60,
                   }),
                 ],
@@ -629,7 +697,7 @@ function buildCoverPage(data: ReportSectionData): FileChild[] {
                     text: 'Professional Valuation Services',
                     size: 14,
                     font: 'Calibri',
-                    color: COLORS.borderDark,
+                    color: PALETTE.borderDark,
                   }),
                 ],
               }),
@@ -676,13 +744,13 @@ function buildManualTableOfContents(): FileChild[] {
           bold: true,
           size: 24,
           font: 'Calibri',
-          color: COLORS.accent,
+          color: PALETTE.accent,
         }),
         new TextRun({
           text: `    ${section.title}`,
           size: 24,
           font: 'Calibri',
-          color: COLORS.textDark,
+          color: PALETTE.textDark,
         }),
       ],
     }));
@@ -724,7 +792,7 @@ function buildTransmittalLetter(data: ReportSectionData): FileChild[] {
           font: 'Calibri',
           bold: true,
           underline: {},
-          color: COLORS.textDark,
+          color: PALETTE.textDark,
         }),
       ],
     }));
@@ -900,8 +968,8 @@ function buildPropertyRiskAssessment(data: ReportSectionData): FileChild[] {
   ];
 
   if (risk?.overall_risk_level) {
-    const riskColor = risk.overall_risk_level === 'Low' ? COLORS.success :
-                      risk.overall_risk_level === 'Medium' ? COLORS.warning : COLORS.danger;
+    const riskColor = risk.overall_risk_level === 'Low' ? PALETTE.success :
+                      risk.overall_risk_level === 'Medium' ? PALETTE.warning : PALETTE.danger;
     paragraphs.push(new Paragraph({
       spacing: { after: 200 },
       children: [
@@ -922,21 +990,21 @@ function buildPropertyRiskAssessment(data: ReportSectionData): FileChild[] {
         ],
       }),
       ...risk.items.map((item: any, index: number) => {
-        const ratingColor = item.rating === 'Low' ? COLORS.success :
-                           item.rating === 'Medium' ? COLORS.warning : COLORS.danger;
+        const ratingColor = item.rating === 'Low' ? PALETTE.success :
+                           item.rating === 'Medium' ? PALETTE.warning : PALETTE.danger;
         return new TableRow({
           children: [
             tableCell(item.factor || item.name || `Risk ${index + 1}`, {
               bold: true,
               width: 30,
-              shading: index % 2 === 0 ? COLORS.tableStripe : undefined,
+              shading: index % 2 === 0 ? PALETTE.tableStripe : undefined,
             }),
             new TableCell({
               width: { size: 15, type: WidthType.PERCENTAGE },
               verticalAlign: VerticalAlign.CENTER,
               margins: { top: 40, bottom: 40, left: 80, right: 80 },
               shading: index % 2 === 0
-                ? { type: ShadingType.SOLID, color: COLORS.tableStripe, fill: COLORS.tableStripe }
+                ? { type: ShadingType.SOLID, color: PALETTE.tableStripe, fill: PALETTE.tableStripe }
                 : undefined,
               children: [new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -951,7 +1019,7 @@ function buildPropertyRiskAssessment(data: ReportSectionData): FileChild[] {
             }),
             tableCell(item.description || item.comment || '', {
               width: 55,
-              shading: index % 2 === 0 ? COLORS.tableStripe : undefined,
+              shading: index % 2 === 0 ? PALETTE.tableStripe : undefined,
             }),
           ],
         });
@@ -1160,21 +1228,21 @@ function buildPropertyDescription(data: ReportSectionData): FileChild[] {
           children: [
             tableCell(fp.floor_label || `Floor ${fp.floor_number}`, {
               width: 20,
-              shading: rowIndex % 2 === 0 ? COLORS.tableStripe : undefined,
+              shading: rowIndex % 2 === 0 ? PALETTE.tableStripe : undefined,
             }),
             tableCell(room.name || room.room_type || 'Room', {
               width: 30,
-              shading: rowIndex % 2 === 0 ? COLORS.tableStripe : undefined,
+              shading: rowIndex % 2 === 0 ? PALETTE.tableStripe : undefined,
             }),
             tableCell(`${width} × ${length}`, {
               width: 25,
               alignment: AlignmentType.CENTER,
-              shading: rowIndex % 2 === 0 ? COLORS.tableStripe : undefined,
+              shading: rowIndex % 2 === 0 ? PALETTE.tableStripe : undefined,
             }),
             tableCell(area.toFixed(2), {
               width: 25,
               alignment: AlignmentType.CENTER,
-              shading: rowIndex % 2 === 0 ? COLORS.tableStripe : undefined,
+              shading: rowIndex % 2 === 0 ? PALETTE.tableStripe : undefined,
             }),
           ],
         }));
@@ -1185,8 +1253,8 @@ function buildPropertyDescription(data: ReportSectionData): FileChild[] {
     // Total row
     accommodationRows.push(new TableRow({
       children: [
-        tableCell('TOTAL', { bold: true, span: 3, shading: COLORS.tableHeader }),
-        tableCell(totalArea.toFixed(2), { bold: true, shading: COLORS.tableHeader, alignment: AlignmentType.CENTER }),
+        tableCell('TOTAL', { bold: true, span: 3, shading: PALETTE.tableHeader }),
+        tableCell(totalArea.toFixed(2), { bold: true, shading: PALETTE.tableHeader, alignment: AlignmentType.CENTER }),
       ],
     }));
 
@@ -1243,22 +1311,22 @@ function buildValuationProcess(data: ReportSectionData): FileChild[] {
           tableCell(m.name || 'Unknown', {
             bold: true,
             width: 30,
-            shading: index % 2 === 0 ? COLORS.tableStripe : undefined,
+            shading: index % 2 === 0 ? PALETTE.tableStripe : undefined,
           }),
           tableCell(formattedValue, {
             width: 25,
             alignment: AlignmentType.CENTER,
-            shading: index % 2 === 0 ? COLORS.tableStripe : undefined,
+            shading: index % 2 === 0 ? PALETTE.tableStripe : undefined,
           }),
           tableCell(m.weight ? `${Math.round(m.weight * 100)}%` : 'N/A', {
             width: 20,
             alignment: AlignmentType.CENTER,
-            shading: index % 2 === 0 ? COLORS.tableStripe : undefined,
+            shading: index % 2 === 0 ? PALETTE.tableStripe : undefined,
           }),
           tableCell(m.confidence ? `${Math.round(m.confidence * 100)}%` : 'N/A', {
             width: 25,
             alignment: AlignmentType.CENTER,
-            shading: index % 2 === 0 ? COLORS.tableStripe : undefined,
+            shading: index % 2 === 0 ? PALETTE.tableStripe : undefined,
           }),
         ],
       }));
@@ -1361,12 +1429,12 @@ function buildCertification(data: ReportSectionData): FileChild[] {
       }),
       new TableRow({
         children: [
-          tableCell('FORCED SALE VALUE', { bold: true, width: 40, shading: COLORS.tableStripe }),
+          tableCell('FORCED SALE VALUE', { bold: true, width: 40, shading: PALETTE.tableStripe }),
           tableCell(data.transmittal?.values?.forced_sale_value?.ghs_formatted || 'N/A', {
-            width: 30, alignment: AlignmentType.CENTER, shading: COLORS.tableStripe,
+            width: 30, alignment: AlignmentType.CENTER, shading: PALETTE.tableStripe,
           }),
           tableCell(data.transmittal?.values?.forced_sale_value?.usd_formatted || 'N/A', {
-            width: 30, alignment: AlignmentType.CENTER, shading: COLORS.tableStripe,
+            width: 30, alignment: AlignmentType.CENTER, shading: PALETTE.tableStripe,
           }),
         ],
       }),
@@ -1491,8 +1559,8 @@ function buildLimitingConditions(data: ReportSectionData): FileChild[] {
         spacing: { after: 120, line: 276 },
         indent: { left: 360, hanging: 360 },
         children: [
-          new TextRun({ text: `${index + 1}. `, bold: true, size: 22, font: 'Calibri', color: COLORS.textDark }),
-          new TextRun({ text: condition, size: 22, font: 'Calibri', color: COLORS.textDark }),
+          new TextRun({ text: `${index + 1}. `, bold: true, size: 22, font: 'Calibri', color: PALETTE.textDark }),
+          new TextRun({ text: condition, size: 22, font: 'Calibri', color: PALETTE.textDark }),
         ],
       }));
     });
@@ -1565,8 +1633,8 @@ function buildAppendices(data: ReportSectionData): FileChild[] {
     });
     accRows.push(new TableRow({
       children: [
-        tableCell('TOTAL GROSS FLOOR AREA', { bold: true, span: 2, shading: COLORS.tableHeader }),
-        tableCell(`${accTotal.toFixed(2)} sqm`, { bold: true, shading: COLORS.tableHeader, alignment: AlignmentType.CENTER }),
+        tableCell('TOTAL GROSS FLOOR AREA', { bold: true, span: 2, shading: PALETTE.tableHeader }),
+        tableCell(`${accTotal.toFixed(2)} sqm`, { bold: true, shading: PALETTE.tableHeader, alignment: AlignmentType.CENTER }),
       ],
     }));
     paragraphs.push(new Table({
@@ -1668,7 +1736,7 @@ function buildAppendices(data: ReportSectionData): FileChild[] {
   const caption = (text: string): Paragraph => new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after: 140 },
-    children: [new TextRun({ text, italics: true, size: 18, font: 'Calibri', color: COLORS.textLight })],
+    children: [new TextRun({ text, italics: true, size: 18, font: 'Calibri', color: PALETTE.textLight })],
   });
 
   // Appendix C: Satellite / Location Map
@@ -1747,6 +1815,10 @@ function joinSectionsWithPageBreaks(sections: FileChild[][]): FileChild[] {
 export async function buildProfessionalDocx(data: ReportSectionData): Promise<Buffer> {
   logger.info('Building professional DOCX report');
 
+  // Theme the whole document to the org's brand colors (falls back to PROPMETRIK).
+  // Set ONCE here; every synchronous buildX/helper below reads it before the only await.
+  PALETTE = paletteFor(data.branding);
+
   // Helper: get saved TipTap HTML for a section, convert to DOCX elements
   const editorMap = new Map<string, string>();
   if (data.editorSections && data.editorSections.length > 0) {
@@ -1803,11 +1875,11 @@ export async function buildProfessionalDocx(data: ReportSectionData): Promise<Bu
       new Paragraph({
         alignment: AlignmentType.RIGHT,
         children: [
-          new TextRun({ text: 'PROPMETRIK', bold: true, size: 16, font: 'Calibri', color: COLORS.textLight }),
-          new TextRun({ text: '  |  VALUATION REPORT', size: 16, font: 'Calibri', color: COLORS.textLight }),
+          new TextRun({ text: data.branding?.name || 'PROPMETRIK', bold: true, size: 16, font: 'Calibri', color: PALETTE.textLight }),
+          new TextRun({ text: '  |  VALUATION REPORT', size: 16, font: 'Calibri', color: PALETTE.textLight }),
         ],
         border: {
-          bottom: { style: BorderStyle.SINGLE, size: 2, color: COLORS.accent },
+          bottom: { style: BorderStyle.SINGLE, size: 2, color: data.branding?.accentColor ? hexNoHash(data.branding.accentColor) : PALETTE.accent },
         },
       }),
     ],
@@ -1819,15 +1891,15 @@ export async function buildProfessionalDocx(data: ReportSectionData): Promise<Bu
       new Paragraph({
         alignment: AlignmentType.RIGHT,
         border: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: COLORS.border },
+          top: { style: BorderStyle.SINGLE, size: 1, color: PALETTE.border },
         },
         spacing: { before: 100 },
         children: [
-          new TextRun({ text: 'CONFIDENTIAL', size: 14, font: 'Calibri', color: COLORS.textLight, characterSpacing: 100 }),
-          new TextRun({ text: '    |    Page ', size: 14, font: 'Calibri', color: COLORS.textLight }),
-          new TextRun({ children: [PageNumber.CURRENT], size: 14, font: 'Calibri', color: COLORS.textLight }),
-          new TextRun({ text: ' of ', size: 14, font: 'Calibri', color: COLORS.textLight }),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 14, font: 'Calibri', color: COLORS.textLight }),
+          new TextRun({ text: 'CONFIDENTIAL', size: 14, font: 'Calibri', color: PALETTE.textLight, characterSpacing: 100 }),
+          new TextRun({ text: '    |    Page ', size: 14, font: 'Calibri', color: PALETTE.textLight }),
+          new TextRun({ children: [PageNumber.CURRENT], size: 14, font: 'Calibri', color: PALETTE.textLight }),
+          new TextRun({ text: ' of ', size: 14, font: 'Calibri', color: PALETTE.textLight }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 14, font: 'Calibri', color: PALETTE.textLight }),
         ],
       }),
     ],
@@ -1840,19 +1912,19 @@ export async function buildProfessionalDocx(data: ReportSectionData): Promise<Bu
     styles: {
       default: {
         document: {
-          run: { font: 'Calibri', size: 22, color: COLORS.textDark },
+          run: { font: 'Calibri', size: 22, color: PALETTE.textDark },
           paragraph: { spacing: { line: 276 } },
         },
         heading1: {
-          run: { font: 'Calibri', size: 28, bold: true, color: COLORS.textDark },
+          run: { font: 'Calibri', size: 28, bold: true, color: PALETTE.textDark },
           paragraph: { spacing: { before: 400, after: 200 } },
         },
         heading2: {
-          run: { font: 'Calibri', size: 24, bold: true, color: COLORS.textDark },
+          run: { font: 'Calibri', size: 24, bold: true, color: PALETTE.textDark },
           paragraph: { spacing: { before: 300, after: 150 } },
         },
         heading3: {
-          run: { font: 'Calibri', size: 22, bold: true, color: COLORS.textMedium },
+          run: { font: 'Calibri', size: 22, bold: true, color: PALETTE.textMedium },
           paragraph: { spacing: { before: 200, after: 100 } },
         },
       },

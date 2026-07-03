@@ -78,7 +78,7 @@ import { Tenant, Tenancy, FinancialRecord, WorkOrder, PropertyDocumentType, Vaul
 import { format, differenceInDays, addYears } from 'date-fns'
 import { Zap, Droplets, Flame, Wifi, Trash, Shield, Plus } from 'lucide-react'
 
-const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || 'http://localhost:4000'
+const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || ''
 
 /** Resolve a stored fileUrl/storage key to a working download URL through the backend */
 function resolveFileUrl(fileUrl?: string): string | undefined {

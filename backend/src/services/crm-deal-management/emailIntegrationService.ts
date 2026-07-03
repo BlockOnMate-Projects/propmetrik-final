@@ -465,7 +465,7 @@ class EmailIntegrationService {
             try {
                 // Find matching contact by email address
                 const contactMatch = await pool.query(
-                    `SELECT id FROM crm_contacts
+                    `SELECT id FROM contacts
                      WHERE organization_id = $1 AND deleted_at IS NULL
                        AND (email ILIKE $2 OR email ILIKE ANY($3::text[]))
                      LIMIT 1`,
@@ -539,9 +539,9 @@ class EmailIntegrationService {
         // Log as deal activity if linked
         if (email.deal_id) {
             await pool.query(
-                `INSERT INTO deal_activities (organization_id, deal_id, activity_type, title, description, performed_by, contact_id)
-                 VALUES ($1, $2, 'email', $3, $4, $5, $6)`,
-                [organizationId, email.deal_id, `Email: ${email.subject}`, `Sent to ${email.to.join(', ')}`, userId, email.contact_id || null]
+                `INSERT INTO deal_activities (deal_id, activity_type, subject, description, user_id, contact_id)
+                 VALUES ($1, 'email', $2, $3, $4, $5)`,
+                [email.deal_id, `Email: ${email.subject}`, `Sent to ${email.to.join(', ')}`, userId, email.contact_id || null]
             );
         }
 
@@ -582,7 +582,7 @@ class EmailIntegrationService {
             pool.query(
                 `SELECT e.*, c.first_name || ' ' || c.last_name as contact_name
                  FROM crm_emails e
-                 LEFT JOIN crm_contacts c ON c.id = e.contact_id
+                 LEFT JOIN contacts c ON c.id = e.contact_id
                  WHERE ${where}
                  ORDER BY e.email_date DESC
                  LIMIT ${limit} OFFSET ${offset}`,

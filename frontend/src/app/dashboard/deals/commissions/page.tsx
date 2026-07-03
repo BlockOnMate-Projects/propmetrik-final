@@ -739,6 +739,27 @@ export default function CommissionsPage() {
         return r.status === statusFilter;
     });
 
+    const exportCsv = () => {
+        const rows = filteredRecords;
+        if (rows.length === 0) { toast.error('No records to export'); return; }
+        const headers = ['Agent', 'Deal', 'Property', 'Deal Value', 'Rate', 'Gross Commission', 'Agent Share', 'Status', 'Close Date'];
+        const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const lines = rows.map(r => [
+            r.agent_name, r.deal_name, r.property_address || '',
+            r.deal_value, r.commission_rate, r.gross_commission, r.agent_share,
+            r.status, r.deal_close_date,
+        ].map(esc).join(','));
+        const csv = [headers.map(esc).join(','), ...lines].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `commissions-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success(`Exported ${rows.length} records`);
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -776,6 +797,14 @@ export default function CommissionsPage() {
                     >
                         <FileSpreadsheet className="h-4 w-4 mr-2" />
                         Generate Statements
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportCsv}
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export CSV
                     </Button>
                     <Button
                         size="sm"

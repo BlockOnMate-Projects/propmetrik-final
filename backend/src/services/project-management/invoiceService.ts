@@ -18,6 +18,7 @@ import { feeEngine } from '../../../shared-services/payments/feeEngine';
 import { notificationService } from '../../../shared-services/notifications/unified';
 import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 import { generateInvoicePdf } from '../../utils/invoicePdfGenerator';
+import { resolveReportBranding } from '../valuation-engine/brandingService';
 
 // ============================================================================
 // TYPES
@@ -922,14 +923,9 @@ class InvoiceService {
     // ── Send email notification ─────────────────────────────────
     if (clientEmail) {
       try {
-        let organizationName = sendData?.vendorCompany || 'PROPMETRIK';
-        try {
-          const orgResult = await pool.query(
-            `SELECT name FROM organizations WHERE id = $1`,
-            [sentInvoice.organizationId]
-          );
-          if (orgResult.rows[0]?.name) organizationName = orgResult.rows[0].name;
-        } catch { /* fallback to default */ }
+        // Resolve the org's saved branding (logo/name/colors) for the invoice PDF — falls back to PROPMETRIK
+        const branding = await resolveReportBranding(sentInvoice.organizationId, { withLogo: true });
+        const organizationName = sendData?.vendorCompany || branding.name;
 
         const dueDate = sentInvoice.dueDate
           ? new Date(sentInvoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -971,7 +967,7 @@ class InvoiceService {
         // Platform fee row (if applicable)
         const platformFeeRow = displayPlatformFee > 0
           ? `<tr>
-              <td colspan="2" style="padding: 8px 12px; font-size: 13px; color: #64748b;">PROPMETRIK Fee (0.25%)</td>
+              <td colspan="2" style="padding: 8px 12px; font-size: 13px; color: #64748b;">Platform Fee (0.25%)</td>
               <td style="padding: 8px 12px; text-align: right; font-size: 13px; color: #64748b;">${ccy} ${fmtAmt(displayPlatformFee)}</td>
             </tr>`
           : '';
@@ -1006,6 +1002,12 @@ class InvoiceService {
             projectName: sendData?.projectName,
             notes: sentInvoice.notes || undefined,
             paymentLink: paymentLink || undefined,
+            brandName: organizationName,
+            brandLogo: branding.logoBuffer,
+            brandLogoMime: branding.logoMime,
+            brandAccent: branding.accentColor,
+            brandPrimary: branding.primaryColor,
+            brandFooter: branding.addressLines[0] ? `${branding.name} · ${branding.addressLines[0]}` : branding.name,
           });
           logger.info('Invoice PDF generated', { invoiceId: id, size: invoicePdfBuffer.length });
         } catch (pdfErr: any) {
@@ -1017,9 +1019,10 @@ class InvoiceService {
           subject: `Invoice ${sentInvoice.invoiceNumber} from ${organizationName}${sendData?.projectName ? ` — ${sendData.projectName}` : ''}`,
           html: `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1e293b;">
-              <div style="background: #09090b; padding: 28px 32px; border-radius: 12px 12px 0 0; text-align: center;">
-                <h1 style="margin: 0; font-size: 20px; color: #fbbf24; letter-spacing: 3px; font-weight: 800;">PROPMETRIK</h1>
-                <p style="margin: 4px 0 0; font-size: 12px; color: #94a3b8; letter-spacing: 1px;">PROJECT MANAGEMENT</p>
+              <div style="background: ${branding.primaryColor}; padding: 28px 32px; border-radius: 12px 12px 0 0; text-align: center;">
+                ${branding.logoUrl ? `<img src="${branding.logoUrl}" alt="${organizationName}" style="max-height: 42px; max-width: 210px; margin: 0 auto 8px; display: block;" />` : ''}
+                <h1 style="margin: 0; font-size: 20px; color: ${branding.accentColor}; letter-spacing: 3px; font-weight: 800;">${organizationName.toUpperCase()}</h1>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #94a3b8; letter-spacing: 1px;">${branding.credentialLine || 'PROJECT MANAGEMENT'}</p>
               </div>
               <div style="background: #ffffff; padding: 32px; border: 1px solid #e2e8f0; border-top: none;">
                 <p style="margin: 0 0 8px; font-size: 15px; color: #0f172a;">Dear <strong>${clientName}</strong>,</p>
@@ -1051,7 +1054,7 @@ class InvoiceService {
                 ${paymentSection}
               </div>
               <div style="background: #f8fafc; padding: 20px 32px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-                <p style="margin: 0; font-size: 12px; color: #94a3b8;">Powered by PROPMETRIK &bull; Secure payments via Paystack</p>
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">${organizationName} &bull; Powered by PROPMETRIK &bull; Secure payments via Paystack</p>
               </div>
             </div>
           `,

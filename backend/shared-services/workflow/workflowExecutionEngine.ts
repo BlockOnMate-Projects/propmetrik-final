@@ -210,7 +210,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
         logger.info({ entityId, field, value }, 'Workflow updated deal field');
       } else if (entityType === 'contact') {
         await pool.query(`
-          UPDATE crm_contacts SET ${field} = $1, updated_at = NOW() WHERE id = $2
+          UPDATE contacts SET ${field} = $1, updated_at = NOW() WHERE id = $2
         `, [value, entityId]);
         logger.info({ entityId, field, value }, 'Workflow updated contact field');
       }
@@ -256,7 +256,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
           const leastBusy = await pool.query(`
             SELECT u.id, COUNT(d.id) as deal_count
             FROM users u
-            LEFT JOIN crm_deals d ON u.id = d.agent_id AND d.status = 'open'
+            LEFT JOIN deals d ON u.id = d.assigned_agent AND d.deal_status = 'active'
             WHERE u.organization_id = $1 AND u.role IN ('agent', 'admin') AND u.status = 'active'
             GROUP BY u.id
             ORDER BY deal_count ASC
@@ -282,10 +282,10 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
       
       // Assign to deal
       if (execution.entity_type === 'deal') {
-        await (dealService as any).updateDeal(execution.entity_id, execution.organization_id, { agent_id: agentId });
+        await (dealService as any).updateDeal(execution.entity_id, execution.organization_id, { assigned_agent: agentId });
       } else if (execution.entity_type === 'contact') {
         await pool.query(`
-          UPDATE crm_contacts SET owner_id = $1, updated_at = NOW() WHERE id = $2
+          UPDATE contacts SET assigned_to = $1, updated_at = NOW() WHERE id = $2
         `, [agentId, execution.entity_id]);
       }
       
@@ -341,14 +341,14 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
       
       if (execution.entity_type === 'deal') {
         await pool.query(`
-          UPDATE crm_deals 
+          UPDATE deals
           SET tags = array_append(COALESCE(tags, ARRAY[]::TEXT[]), $1),
               updated_at = NOW()
           WHERE id = $2 AND NOT ($1 = ANY(COALESCE(tags, ARRAY[]::TEXT[])))
         `, [tag, execution.entity_id]);
       } else if (execution.entity_type === 'contact') {
         await pool.query(`
-          UPDATE crm_contacts 
+          UPDATE contacts
           SET tags = array_append(COALESCE(tags, ARRAY[]::TEXT[]), $1),
               updated_at = NOW()
           WHERE id = $2 AND NOT ($1 = ANY(COALESCE(tags, ARRAY[]::TEXT[])))
@@ -371,13 +371,13 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
       
       if (execution.entity_type === 'deal') {
         await pool.query(`
-          UPDATE crm_deals 
+          UPDATE deals
           SET tags = array_remove(tags, $1), updated_at = NOW()
           WHERE id = $2
         `, [tag, execution.entity_id]);
       } else if (execution.entity_type === 'contact') {
         await pool.query(`
-          UPDATE crm_contacts 
+          UPDATE contacts
           SET tags = array_remove(tags, $1), updated_at = NOW()
           WHERE id = $2
         `, [tag, execution.entity_id]);
@@ -740,10 +740,10 @@ class WorkflowExecutionEngine {
         context.entity = deal;
         
         // Load contact if available
-        if (deal.contact_id) {
+        if (deal.primary_contact_id) {
           const contactResult = await pool.query(
-            'SELECT * FROM crm_contacts WHERE id = $1',
-            [deal.contact_id]
+            'SELECT * FROM contacts WHERE id = $1',
+            [deal.primary_contact_id]
           );
           if (contactResult.rows.length > 0) {
             context.contact = contactResult.rows[0];
@@ -752,7 +752,7 @@ class WorkflowExecutionEngine {
       }
     } else if (event.entity_type === 'contact') {
       const contactResult = await pool.query(
-        'SELECT * FROM crm_contacts WHERE id = $1',
+        'SELECT * FROM contacts WHERE id = $1',
         [event.entity_id]
       );
       if (contactResult.rows.length > 0) {
@@ -761,7 +761,7 @@ class WorkflowExecutionEngine {
       }
     } else if (event.entity_type === 'activity') {
       const activityResult = await pool.query(
-        'SELECT * FROM crm_activities WHERE id = $1',
+        'SELECT * FROM deal_activities WHERE id = $1',
         [event.entity_id]
       );
       if (activityResult.rows.length > 0) {

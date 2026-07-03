@@ -8,7 +8,13 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+
+// pg NUMERIC / API money comes back as strings or may be absent — coerce safely.
+const n = (v: unknown): number => {
+    const x = typeof v === 'string' ? parseFloat(v) : (v as number);
+    return Number.isFinite(x) ? x : 0;
+};
 import {
     TrendingUp, TrendingDown, DollarSign, Target,
     BarChart3, ArrowUpRight, ArrowDownRight, Minus,
@@ -17,6 +23,14 @@ import {
 import { analyticsApi, dealsApi, pipelinesApi } from '@/lib/crm-api';
 
 // ─── Types ──────────────────────────────────────────
+
+// Raw shape from GET /crm/analytics/revenue-forecast → by_stage[]
+interface StageValue {
+    stage_name: string;
+    value: number | string;
+    probability: number | string;
+    deal_count?: number | string;
+}
 
 interface ForecastRow {
     stage_name: string;
@@ -44,7 +58,7 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
         current_month: number;
         next_month: number;
         quarter: number;
-        by_stage: ForecastRow[];
+        by_stage: StageValue[];
     } | null>(null);
     const [trend, setTrend] = useState<{
         data: Array<{ period: string; period_label: string; won_value: number; new_pipeline: number; won_count: number }>;
@@ -78,10 +92,17 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
     // Compute weighted projections from forecast data
     const stageRows = useMemo<ForecastRow[]>(() => {
         if (!forecast?.by_stage) return [];
-        return forecast.by_stage.map(s => ({
-            ...s,
-            weighted_value: s.total_value * (s.probability / 100),
-        })).sort((a, b) => b.weighted_value - a.weighted_value);
+        return forecast.by_stage.map(s => {
+            const total_value = n(s.value);
+            const probability = n(s.probability);
+            return {
+                stage_name: s.stage_name,
+                deal_count: n(s.deal_count),
+                total_value,
+                probability,
+                weighted_value: total_value * (probability / 100),
+            };
+        }).sort((a, b) => b.weighted_value - a.weighted_value);
     }, [forecast]);
 
     const totalWeighted = useMemo(() =>
@@ -184,21 +205,21 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <KPICard
                     label="Weighted Forecast"
-                    value={`$${forecastValue.toLocaleString()}`}
+                    value={formatCurrency(forecastValue)}
                     sub={`${timeframe} projection`}
                     icon={<DollarSign className="w-4 h-4" />}
                     accent="primary"
                 />
                 <KPICard
                     label="Total Pipeline"
-                    value={`$${totalPipeline.toLocaleString()}`}
-                    sub={`${totalDeals} active deals`}
+                    value={formatCurrency(totalPipeline)}
+                    sub={`${stageRows.length} stage${stageRows.length !== 1 ? 's' : ''}`}
                     icon={<Target className="w-4 h-4" />}
                     accent="info"
                 />
                 <KPICard
                     label="Monthly Avg"
-                    value={`$${monthlyAvg.toLocaleString()}`}
+                    value={formatCurrency(monthlyAvg)}
                     sub={momChange !== 0 ? (
                         <span className={cn('flex items-center gap-0.5', momChange > 0 ? 'text-success' : 'text-destructive')}>
                             {momChange > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -210,8 +231,8 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
                 />
                 <KPICard
                     label="Avg Probability"
-                    value={totalDeals > 0 ? `${Math.round(stageRows.reduce((s, r) => s + r.probability * r.deal_count, 0) / totalDeals)}%` : '0%'}
-                    sub="Weighted avg"
+                    value={totalPipeline > 0 ? `${Math.round(stageRows.reduce((s, r) => s + r.probability * r.total_value, 0) / totalPipeline)}%` : '0%'}
+                    sub="Value-weighted"
                     icon={<Layers className="w-4 h-4" />}
                     accent="warning"
                 />
@@ -225,7 +246,7 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
                             {s.icon}
                             <span className="text-xs font-medium">{s.label}</span>
                         </div>
-                        <p className="text-lg font-bold">${s.value.toLocaleString()}</p>
+                        <p className="text-lg font-bold">{formatCurrency(s.value)}</p>
                     </div>
                 ))}
             </div>
@@ -241,12 +262,12 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
                                     <div
                                         className="flex-1 bg-primary/20 rounded-t"
                                         style={{ height: `${(d.pipeline / maxTrend) * 100}%` }}
-                                        title={`Pipeline: $${d.pipeline.toLocaleString()}`}
+                                        title={`Pipeline: ${formatCurrency(d.pipeline)}`}
                                     />
                                     <div
                                         className="flex-1 bg-success rounded-t"
                                         style={{ height: `${(d.won / maxTrend) * 100}%` }}
-                                        title={`Won: $${d.won.toLocaleString()}`}
+                                        title={`Won: ${formatCurrency(d.won)}`}
                                     />
                                 </div>
                                 <span className="text-[10px] text-muted-foreground">{d.label}</span>
@@ -275,7 +296,7 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
                             <div key={row.stage_name} className="px-4 py-3 flex items-center gap-4">
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{row.stage_name}</p>
-                                    <p className="text-xs text-muted-foreground">{row.deal_count} deal{row.deal_count !== 1 ? 's' : ''}</p>
+                                    <p className="text-xs text-muted-foreground">{row.probability}% close probability</p>
                                 </div>
                                 <div className="w-24">
                                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -287,15 +308,15 @@ export function RevenueForecaster({ className }: RevenueForecasterProps) {
                                     <p className="text-[10px] text-muted-foreground mt-0.5 text-right">{row.probability}%</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-sm font-medium">${row.weighted_value.toLocaleString()}</p>
-                                    <p className="text-[10px] text-muted-foreground">of ${row.total_value.toLocaleString()}</p>
+                                    <p className="text-sm font-medium">{formatCurrency(row.weighted_value)}</p>
+                                    <p className="text-[10px] text-muted-foreground">of {formatCurrency(row.total_value)}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
                     <div className="px-4 py-3 border-t border-border bg-muted/30 flex items-center justify-between">
                         <span className="text-sm font-medium">Total Weighted</span>
-                        <span className="text-sm font-bold text-primary">${totalWeighted.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-primary">{formatCurrency(totalWeighted)}</span>
                     </div>
                 </div>
             )}

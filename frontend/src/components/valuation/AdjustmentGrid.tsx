@@ -12,7 +12,7 @@
  * Per valuation.md Step 6.1: Sales Comparison Approach specification
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -30,7 +30,11 @@ import { getTenureRiskAdjustment, TENURE_TYPES } from '@/types/comprehensiveProp
 
 // =====================================================
 // GHANA-SPECIFIC NEIGHBORHOOD PREMIUMS
-// Loaded from database, but cached here for fast access
+// The authoritative source is the `neighborhood_premiums` DB table, fetched at runtime
+// via loadNeighborhoodPremiums() (GET /api/valuations/neighborhood-premiums). The map
+// below is a byte-for-byte fallback mirror of that table's seed, used only until the
+// fetch resolves or if it fails — so the grid never hard-breaks. Edit values in the DB,
+// not here.
 // =====================================================
 
 export const NEIGHBORHOOD_PREMIUMS: Record<string, number> = {
@@ -85,14 +89,42 @@ export const NEIGHBORHOOD_PREMIUMS: Record<string, number> = {
   'pokuase': 0.85,
 };
 
+// Runtime override populated from the DB. Null until loadNeighborhoodPremiums() resolves;
+// while null, getNeighborhoodPremium falls back to the seed mirror above.
+let _dbPremiums: Record<string, number> | null = null;
+
 /**
- * Get neighborhood premium factor
- * Returns 1.0 (neutral) if not found
+ * Fetch the authoritative neighborhood premiums from the DB and cache them in-module.
+ * Best-effort: on failure we keep using the seed mirror (identical values) so the
+ * sales-comparison grid keeps working. Returns true if the DB map was loaded.
+ */
+export const loadNeighborhoodPremiums = async (): Promise<boolean> => {
+  try {
+    const { authedFetch } = await import('@/lib/authed-fetch');
+    const res = await authedFetch('/api/valuations/neighborhood-premiums');
+    if (!res.ok) return false;
+    const json = await res.json();
+    const premiums = json?.data?.premiums;
+    if (premiums && typeof premiums === 'object' && Object.keys(premiums).length > 0) {
+      _dbPremiums = premiums as Record<string, number>;
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Get neighborhood premium factor.
+ * Prefers the DB-sourced map (single source of truth); falls back to the seed mirror.
+ * Returns 1.0 (neutral) if not found in either.
  */
 export const getNeighborhoodPremium = (neighborhood: string): number => {
   if (!neighborhood) return 1.0;
-  const normalized = neighborhood.toLowerCase().trim();
-  return NEIGHBORHOOD_PREMIUMS[normalized] ?? 1.0;
+  const normalized = neighborhood.toLowerCase().trim().replace(/\s+/g, '_');
+  const source = _dbPremiums ?? NEIGHBORHOOD_PREMIUMS;
+  return source[normalized] ?? source[neighborhood.toLowerCase().trim()] ?? 1.0;
 };
 
 /**
@@ -755,7 +787,18 @@ export function AdjustmentGrid({
   className,
 }: AdjustmentGridProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  
+
+  // Load authoritative neighborhood premiums from the DB on mount; bump a version so the
+  // adjustment totals recompute with DB-sourced factors (falls back to the seed mirror).
+  const [premiumsVersion, setPremiumsVersion] = useState(0);
+  useEffect(() => {
+    let active = true;
+    loadNeighborhoodPremiums().then((loaded) => {
+      if (active && loaded) setPremiumsVersion((v) => v + 1);
+    });
+    return () => { active = false; };
+  }, []);
+
   const toggleCategory = (categoryId: string) => {
     setCollapsedCategories(prev => {
       const next = new Set(prev);
@@ -776,7 +819,7 @@ export function AdjustmentGrid({
       const adjustedPricePerSqm = comp.gfa ? adjustedPrice / comp.gfa : 0;
       return { totalAdj, adjustedPrice, adjustedPricePerSqm };
     });
-  }, [comparables]);
+  }, [comparables, premiumsVersion]);
   
   const columnCount = 2 + comparables.length * 2; // Element + Subject + (Value + Adj) per comp
   

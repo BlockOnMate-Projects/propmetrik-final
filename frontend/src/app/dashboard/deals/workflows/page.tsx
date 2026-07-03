@@ -103,7 +103,7 @@ export default function WorkflowsPage() {
 
   const fetchWorkflows = async () => {
     try {
-      const response = await authedFetch(`/api/v1/workflows?status=${statusFilter}`);
+      const response = await authedFetch(`/api/workflows?status=${statusFilter}`);
       const data = await response.json();
       if (data.success) {
         setWorkflows(data.data);
@@ -117,7 +117,7 @@ export default function WorkflowsPage() {
 
   const fetchStats = async () => {
     try {
-      const response = await authedFetch('/api/v1/workflows/stats');
+      const response = await authedFetch('/api/workflows/stats');
       const data = await response.json();
       if (data.success) {
         setStats(data.data);
@@ -129,7 +129,7 @@ export default function WorkflowsPage() {
 
   const fetchTemplates = async () => {
     try {
-      const response = await authedFetch('/api/v1/workflows/templates');
+      const response = await authedFetch('/api/workflows/templates');
       const data = await response.json();
       if (data.success) {
         setTemplates(data.data);
@@ -142,7 +142,7 @@ export default function WorkflowsPage() {
   const toggleWorkflow = async (workflow: Workflow) => {
     try {
       const endpoint = workflow.is_active ? 'deactivate' : 'activate';
-      const response = await authedFetch(`/api/v1/workflows/${workflow.id}/${endpoint}`, {
+      const response = await authedFetch(`/api/workflows/${workflow.id}/${endpoint}`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -156,7 +156,7 @@ export default function WorkflowsPage() {
 
   const createFromTemplate = async (templateId: string) => {
     try {
-      const response = await authedFetch('/api/v1/workflows/from-template', {
+      const response = await authedFetch('/api/workflows/from-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template_id: templateId })
@@ -175,7 +175,7 @@ export default function WorkflowsPage() {
     if (!confirm('Are you sure you want to delete this workflow?')) return;
     
     try {
-      const response = await authedFetch(`/api/v1/workflows/${workflowId}`, {
+      const response = await authedFetch(`/api/workflows/${workflowId}`, {
         method: 'DELETE'
       });
       if (response.ok) {

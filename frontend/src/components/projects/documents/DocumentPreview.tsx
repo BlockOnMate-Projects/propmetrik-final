@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatFileSize} from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -88,14 +88,6 @@ function getFileIcon(category: string) {
 }
 
 // Format file size
-function formatFileSize(bytes: number | undefined): string {
-  if (!bytes || bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
 export function DocumentPreview({
   projectId,
   document,

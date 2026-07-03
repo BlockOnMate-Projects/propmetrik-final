@@ -456,7 +456,7 @@ export default function MarketDataPage() {
     
     setIsCalculating(true)
     try {
-      // Note: Next.js rewrites /api/* to /api/v1/*, so we use /api/ (not /api/v1/)
+      // Note: Next.js rewrites /api/* to /api/*, so we use /api/ (not /api/)
       const response = await fetch(`/api/valuations/${valuation.id}/run-python`, {
         method: 'POST',
         headers: {
@@ -553,7 +553,7 @@ export default function MarketDataPage() {
   // Handle contribution submission
   const handleContributionSubmit = async (data: Record<string, unknown>) => {
     try {
-      const response = await fetch('/api/v1/contributions/submit', {
+      const response = await fetch('/api/contributions/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -119,9 +119,12 @@ async function routeESignCompletion(event: CompletionEvent): Promise<void> {
       break;
     }
     case 'crm': {
-      const { dealService } = await import('../services/crm-deal-management/dealService');
       if (sourceContext.entityType === 'deal') {
+        const { dealService } = await import('../services/crm-deal-management/dealService');
         await dealService.handleEsignCompletion(event);
+      } else if (sourceContext.entityType === 'signature_envelope') {
+        const { signatureService } = await import('../services/crm-deal-management/signatureService');
+        await signatureService.handleEsignCompletion(event);
       }
       logger.info('CRM e-sign completion processed', {
         entityType: sourceContext.entityType,

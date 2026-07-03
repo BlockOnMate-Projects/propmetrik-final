@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatFileSize } from '@/lib/utils';
 import PortalShell, { usePortal } from '@/components/tenant/PortalShell';
 import {
   getDocuments,
@@ -45,12 +46,6 @@ const CATEGORY_OPTIONS = [
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'other', label: 'Other' },
 ];
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function DocumentsContent() {
   const { activeTenancy } = usePortal();

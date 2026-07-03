@@ -56,7 +56,7 @@ export default function ESignDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/v1/esign/envelopes?limit=10');
+        const response = await fetch('/api/esign/envelopes?limit=10');
         const data = await response.json();
         setEnvelopes(data.envelopes || []);
         

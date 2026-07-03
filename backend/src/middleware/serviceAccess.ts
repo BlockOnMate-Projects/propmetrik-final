@@ -100,96 +100,119 @@ async function resolveUserType(req: Request): Promise<string> {
  * If the customer has a subscription, `req.currentServiceTier` is set
  * so downstream `requireTier()` can check feature-level gating.
  */
+// ── Per-role, per-service access map ──────────────────────────────
+// Internal org roles bypass subscription checks ONLY for services their role is
+// authorized to use. Must mirror frontend RBAC config. Module-scoped so both
+// requireServiceAccess and requireAnyServiceAccess share one source of truth.
+const ROLE_SERVICE_ACCESS: Record<string, string[]> = {
+  // admin / firm_principal: full platform access
+  admin:              ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+  firm_principal:     ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+  // manager: broad access across services
+  manager:            ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+  // project_manager: projects + related services only
+  project_manager:    ['projects', 'analytics', 'property_management', 'construction', 'budget'],
+  // finance_manager: valuations (finance tab) only
+  finance_manager:    ['valuations'],
+  // agent: CRM deal management only
+  agent:              ['crm'],
+  // senior_valuer / valuer: valuations only
+  senior_valuer:      ['valuations'],
+  valuer:             ['valuations'],
+  // compliance_officer: valuations only
+  compliance_officer: ['valuations'],
+  // probationer / inspector: valuations (limited)
+  probationer:        ['valuations'],
+  inspector:          ['valuations'],
+  // analyst: valuations + analytics
+  analyst:            ['valuations', 'analytics'],
+};
+
+/**
+ * Core access check for a single service. Returns true if the request may use it
+ * (super_admin, role-map grant, staff, shared service, or an active subscription).
+ * Side effect: on a customer subscription hit, attaches tier + service role to req.
+ */
+async function passesServiceAccess(req: Request, serviceKey: string): Promise<boolean> {
+  const realmRoles = [...(req.user!.realmRoles || []), ...(req.user!.clientRoles || [])];
+  if (realmRoles.includes('super_admin')) return true;
+
+  for (const role of realmRoles) {
+    const allowedServices = ROLE_SERVICE_ACCESS[role];
+    if (allowedServices && allowedServices.includes(serviceKey)) return true;
+  }
+
+  const userType = await resolveUserType(req);
+  if (userType === 'staff') return true;
+
+  // Shared services (e-sign, messaging, notifications) don't require subscription.
+  try {
+    const { pool } = await import('../database');
+    const svcResult = await pool.query(
+      'SELECT category FROM platform_services WHERE service_key = $1',
+      [serviceKey],
+    );
+    if (svcResult.rows.length > 0 && svcResult.rows[0].category === 'shared') return true;
+  } catch {
+    // Non-fatal — fall through to subscription check
+  }
+
+  const userId = req.user!.id || req.user!.sub;
+  const { keys, tier, roles } = await getUserSubscriptions(userId);
+  if (keys.has(serviceKey)) {
+    (req as any).currentServiceTier = tier.get(serviceKey) || 'starter';
+    (req as any).customerServiceRole = roles.get(serviceKey) || 'service_admin';
+    return true;
+  }
+  return false;
+}
+
 export function requireServiceAccess(serviceKey: string) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
+    if (await passesServiceAccess(req, serviceKey)) return next();
 
-    // super_admin bypasses everything
-    const realmRoles = [...(req.user.realmRoles || []), ...(req.user.clientRoles || [])];
-    if (realmRoles.includes('super_admin')) {
-      return next();
-    }
-
-    // ── Per-role, per-service access map ──────────────────────────────
-    // Internal org roles bypass subscription checks ONLY for services
-    // their role is authorized to use. Must mirror frontend RBAC config.
-    const ROLE_SERVICE_ACCESS: Record<string, string[]> = {
-      // admin / firm_principal: full platform access
-      admin:              ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
-      firm_principal:     ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
-      // manager: broad access across services
-      manager:            ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
-      // project_manager: projects + related services only
-      project_manager:    ['projects', 'analytics', 'property_management', 'construction', 'budget'],
-      // finance_manager: valuations (finance tab) only
-      finance_manager:    ['valuations'],
-      // agent: CRM deal management only
-      agent:              ['crm'],
-      // senior_valuer / valuer: valuations only
-      senior_valuer:      ['valuations'],
-      valuer:             ['valuations'],
-      // compliance_officer: valuations only
-      compliance_officer: ['valuations'],
-      // probationer / inspector: valuations (limited)
-      probationer:        ['valuations'],
-      inspector:          ['valuations'],
-      // analyst: valuations + analytics
-      analyst:            ['valuations', 'analytics'],
-    };
-
-    for (const role of realmRoles) {
-      const allowedServices = ROLE_SERVICE_ACCESS[role];
-      if (allowedServices && allowedServices.includes(serviceKey)) {
-        return next();
-      }
-    }
-
-    const userType = await resolveUserType(req);
-
-    // Staff always have access to all services
-    if (userType === 'staff') {
-      return next();
-    }
-
-    // Shared services (e-sign, messaging, notifications) don't require subscription
-    try {
-      const { pool } = await import('../database');
-      const svcResult = await pool.query(
-        'SELECT category FROM platform_services WHERE service_key = $1',
-        [serviceKey],
-      );
-      if (svcResult.rows.length > 0 && svcResult.rows[0].category === 'shared') {
-        return next();
-      }
-    } catch {
-      // Non-fatal — fall through to subscription check
-    }
-
-    // Customer: check subscription
     const userId = req.user.id || req.user.sub;
-    const { keys, tier, roles } = await getUserSubscriptions(userId);
-
-    if (keys.has(serviceKey)) {
-      // Attach service tier to request for downstream requireTier()
-      (req as any).currentServiceTier = tier.get(serviceKey) || 'starter';
-      (req as any).customerServiceRole = roles.get(serviceKey) || 'service_admin';
-      return next();
-    }
-
     logger.info('Service access denied — no active subscription', {
       userId,
-      userType,
       serviceKey,
       path: req.originalUrl,
     });
-
     res.status(403).json({
       error: 'Service access denied',
       message: `Your account does not have an active subscription to this service`,
       serviceKey,
+    });
+  };
+}
+
+/**
+ * Like requireServiceAccess, but grants access if the user may use ANY of the
+ * given services. For features shared across services (e.g. the workflow engine
+ * used by both Projects and CRM) so a customer subscribed to either can reach it.
+ */
+export function requireAnyServiceAccess(serviceKeys: string[]) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    for (const key of serviceKeys) {
+      if (await passesServiceAccess(req, key)) return next();
+    }
+    const userId = req.user.id || req.user.sub;
+    logger.info('Service access denied — no active subscription to any of the required services', {
+      userId,
+      serviceKeys,
+      path: req.originalUrl,
+    });
+    res.status(403).json({
+      error: 'Service access denied',
+      message: `Your account does not have an active subscription to any of: ${serviceKeys.join(', ')}`,
+      serviceKeys,
     });
   };
 }

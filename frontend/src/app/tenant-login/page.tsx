@@ -66,7 +66,9 @@ export default function TenantLoginPage() {
     }
   };
 
-  // Sends the tenant to Keycloak's hosted set/forgot-password page.
+  // Emails a set-password link via the app's own 3-tier mailer (Keycloak SMTP is not
+  // configured, so its hosted reset flow can never deliver). The link lands on
+  // /tenant/set-password, where the tenant chooses a new password.
   const handleResetPassword = async () => {
     if (!email.trim()) {
       setError('Enter your email first, then click “Set / forgot password”.');
@@ -76,18 +78,20 @@ export default function TenantLoginPage() {
     setError('');
     setNotice('');
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const redirectUri = `${window.location.origin}/tenant-login`;
-      const query = new URLSearchParams({ redirectUri, loginHint: email.trim() });
-      const res = await fetch(`${apiUrl}/api/v1/tenant-portal/auth/keycloak/reset-password-url?${query.toString()}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiUrl}/api/tenant-portal/auth/request-password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
       const data = await res.json();
-      if (res.ok && data.success && data.url) {
-        window.location.href = data.url;
+      if (res.ok && data.success) {
+        setNotice(data.message || 'If an account exists for that email, a link to set your password has been sent. Check your inbox.');
       } else {
-        setError(data.error || 'Could not start password setup. Contact your property manager.');
+        setError(data.error || 'Could not send the password link. Contact your property manager.');
       }
     } catch {
-      setError('Could not start password setup. Contact your property manager.');
+      setError('Could not send the password link. Contact your property manager.');
     } finally {
       setResetLoading(false);
     }

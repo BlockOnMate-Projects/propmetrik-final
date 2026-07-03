@@ -107,7 +107,7 @@ export default function WorkflowEditorPage() {
 
   const fetchWorkflow = async () => {
     try {
-      const response = await authedFetch(`/api/v1/workflows/${workflowId}`);
+      const response = await authedFetch(`/api/workflows/${workflowId}`);
       const data = await response.json();
       if (data.success) {
         setWorkflow(data.data);
@@ -123,7 +123,7 @@ export default function WorkflowEditorPage() {
   const saveWorkflow = async () => {
     setSaving(true);
     try {
-      const url = isNew ? '/api/v1/workflows' : `/api/v1/workflows/${workflowId}`;
+      const url = isNew ? '/api/workflows' : `/api/workflows/${workflowId}`;
       const method = isNew ? 'POST' : 'PUT';
       
       const response = await authedFetch(url, {
@@ -159,7 +159,7 @@ export default function WorkflowEditorPage() {
     
     try {
       const endpoint = workflow.is_active ? 'deactivate' : 'activate';
-      const response = await authedFetch(`/api/v1/workflows/${workflowId}/${endpoint}`, {
+      const response = await authedFetch(`/api/workflows/${workflowId}/${endpoint}`, {
         method: 'POST'
       });
       if (response.ok) {

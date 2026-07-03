@@ -73,7 +73,7 @@ export default function WorkflowHistoryPage() {
 
   const fetchWorkflow = async () => {
     try {
-      const response = await authedFetch(`/api/v1/workflows/${workflowId}`);
+      const response = await authedFetch(`/api/workflows/${workflowId}`);
       const data = await response.json();
       if (data.success) {
         setWorkflow(data.data);
@@ -93,7 +93,7 @@ export default function WorkflowHistoryPage() {
         params.set('status', statusFilter);
       }
       
-      const response = await authedFetch(`/api/v1/workflows/${workflowId}/executions?${params}`);
+      const response = await authedFetch(`/api/workflows/${workflowId}/executions?${params}`);
       const data = await response.json();
       if (data.success) {
         setExecutions(data.data);
@@ -107,7 +107,7 @@ export default function WorkflowHistoryPage() {
 
   const cancelExecution = async (executionId: string) => {
     try {
-      const response = await authedFetch(`/api/v1/workflows/executions/${executionId}/cancel`, {
+      const response = await authedFetch(`/api/workflows/executions/${executionId}/cancel`, {
         method: 'POST'
       });
       if (response.ok) {

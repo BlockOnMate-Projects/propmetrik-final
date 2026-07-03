@@ -275,7 +275,7 @@ const RESOURCE_TABLE_MAP: Record<string, { table: string; ownerCol: string; assi
   milestone:          { table: 'milestones',        ownerCol: 'created_by',  assignedCol: 'assigned_to' },
   crm_contact:        { table: 'contacts',          ownerCol: 'created_by',  assignedCol: 'assigned_to' },
   crm_deal:           { table: 'deals',             ownerCol: 'created_by',  assignedCol: 'assigned_to' },
-  crm_activity:       { table: 'crm_activities',    ownerCol: 'created_by',  assignedCol: 'assigned_to' },
+  crm_activity:       { table: 'deal_activities',    ownerCol: 'user_id' },
   valuation_invoice:  { table: 'invoices',          ownerCol: 'created_by' },
   pm_property:        { table: 'properties',        ownerCol: 'created_by' },
   pm_work_order:      { table: 'work_orders',       ownerCol: 'created_by',  assignedCol: 'assigned_to' },
@@ -435,8 +435,96 @@ export function requireResourcePermission(
 }
 
 /**
+ * Reusable policy decision for CRM's central dispatcher.
+ *
+ * Returns a decision object instead of driving next()/res — so the CRM index
+ * can map (method + path) → (resource, action) and run ONE check per request
+ * covering every route (default-deny for anything unmapped that mutates).
+ * Uses the exact same engine as authorize(): getUserDbInfo, the two policy
+ * caches, checkOwnership, checkCustomerSubscription, and audit logging.
+ */
+export async function decideCrmAccess(
+  req: Request,
+  resourceType: string,
+  action: string,
+  resourceId?: string,
+): Promise<
+  | { ok: true; orgId: string | null; role: string }
+  | { ok: false; status: number; message: string; role: string }
+> {
+  if (!req.user) return { ok: false, status: 401, message: 'Authentication required', role: 'anonymous' };
+
+  const { role: userRole, organizationId: userOrgId } = await getUserDbInfo(req);
+
+  // super_admin bypass
+  if (userRole === 'super_admin') {
+    if (userOrgId) (req as any).authorizedOrgId = userOrgId;
+    return { ok: true, orgId: userOrgId, role: userRole };
+  }
+
+  const userType = (req.user as any).userType || 'staff';
+
+  // ── Customer (per-service role) path ──
+  if (userType === 'customer') {
+    const { hasAccess, serviceRole } = await checkCustomerSubscription(req.user.id, 'crm');
+    if (!hasAccess) {
+      await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'denied', 'no_crm_subscription');
+      return { ok: false, status: 403, message: 'A CRM subscription is required', role: `customer:${serviceRole}` };
+    }
+    (req as any).customerServiceRole = serviceRole;
+
+    if (serviceRole === 'service_admin') {
+      if (userOrgId) (req as any).authorizedOrgId = userOrgId;
+      await logAuthDecision(req, resourceType, action, 'customer:service_admin', 'allowed', 'service_admin_bypass');
+      return { ok: true, orgId: userOrgId, role: 'customer:service_admin' };
+    }
+
+    const customerPolicies = await loadCustomerPolicies();
+    const policy = customerPolicies.get(`crm:${resourceType}:${action}`);
+    if (!policy || !policy.allowed_roles.includes(serviceRole)) {
+      await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'denied', policy ? 'role_not_allowed' : 'no_customer_policy');
+      return { ok: false, status: 403, message: `Insufficient role: ${action} on ${resourceType}`, role: `customer:${serviceRole}` };
+    }
+    if (policy.require_ownership) {
+      const rid = resourceId ?? req.params.id;
+      if (rid && !(await checkOwnership(req.user.id, resourceType, rid))) {
+        await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'denied', 'not_owner');
+        return { ok: false, status: 403, message: 'You may only modify records you own', role: `customer:${serviceRole}` };
+      }
+    }
+    if (userOrgId) (req as any).authorizedOrgId = userOrgId;
+    await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'allowed', 'customer_policy_match');
+    return { ok: true, orgId: userOrgId, role: `customer:${serviceRole}` };
+  }
+
+  // ── Staff (platform role) path ──
+  const policies = await loadPolicies();
+  const applicable = policies.get(`${resourceType}:${action}`);
+  if (!applicable || applicable.length === 0) {
+    // No staff policy — allow in dev, deny in prod (matches authorize()).
+    if (process.env.NODE_ENV === 'development') return { ok: true, orgId: userOrgId, role: userRole };
+    return { ok: false, status: 403, message: `No authorization policy for ${resourceType}:${action}`, role: userRole };
+  }
+  const matched = applicable.find((p) => p.allowed_roles.includes(userRole));
+  if (!matched) {
+    await logAuthDecision(req, resourceType, action, userRole, 'denied', 'role_not_allowed');
+    return { ok: false, status: 403, message: `Insufficient permissions: ${action} on ${resourceType}`, role: userRole };
+  }
+  if (matched.require_ownership) {
+    const rid = resourceId ?? req.params.id;
+    if (rid && !(await checkOwnership(req.user.id, resourceType, rid))) {
+      await logAuthDecision(req, resourceType, action, userRole, 'denied', 'not_owner');
+      return { ok: false, status: 403, message: 'You must own this record to modify it', role: userRole };
+    }
+  }
+  if (userOrgId) (req as any).authorizedOrgId = userOrgId;
+  await logAuthDecision(req, resourceType, action, userRole, 'allowed');
+  return { ok: true, orgId: userOrgId, role: userRole };
+}
+
+/**
  * Authorization middleware factory.
- * 
+ *
  * @param resourceType - The resource type (valuation, finance, client, team, etc.)
  * @param action - The action (read, write, delete, manage, sign, approve)
  * @param options - Additional options

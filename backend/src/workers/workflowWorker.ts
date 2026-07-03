@@ -215,10 +215,10 @@ async function checkOverdueTasks(): Promise<void> {
   const result = await pool.query(`
     SELECT t.id, t.organization_id, t.deal_id, t.contact_id, t.assigned_to,
            t.title, t.due_date
-    FROM crm_tasks t
-    LEFT JOIN workflow_entity_runs wer ON wer.entity_type = 'task' 
+    FROM tasks t
+    LEFT JOIN workflow_entity_runs wer ON wer.entity_type = 'task'
       AND wer.entity_id = t.id AND wer.trigger_type = 'task_overdue'
-    WHERE t.status IN ('pending', 'in_progress')
+    WHERE t.task_status IN ('pending', 'in_progress')
       AND t.due_date < NOW()
       AND wer.id IS NULL
     ORDER BY t.due_date
@@ -263,15 +263,15 @@ async function checkStaleDeals(): Promise<void> {
     
     // Find deals that have been stale
     let query = `
-      SELECT d.id, d.organization_id, d.title, d.stage_id, d.agent_id,
-             d.updated_at, d.contact_id
-      FROM crm_deals d
-      LEFT JOIN workflow_entity_runs wer ON wer.entity_type = 'deal' 
-        AND wer.entity_id = d.id 
+      SELECT d.id, d.organization_id, d.title, d.stage_id, d.assigned_agent AS agent_id,
+             d.updated_at, d.primary_contact_id AS contact_id
+      FROM deals d
+      LEFT JOIN workflow_entity_runs wer ON wer.entity_type = 'deal'
+        AND wer.entity_id = d.id
         AND wer.workflow_id = $1
         AND wer.created_at > NOW() - INTERVAL '24 hours'
       WHERE d.organization_id = $2
-        AND d.status = 'open'
+        AND d.deal_status = 'active'
         AND d.updated_at < NOW() - INTERVAL '${staleDays} days'
         AND wer.id IS NULL
     `;

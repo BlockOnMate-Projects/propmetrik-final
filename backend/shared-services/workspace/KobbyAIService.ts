@@ -28,7 +28,13 @@ import { aiService } from '../../src/services/ai/aiService';
 // TYPES
 // ============================================================================
 
-export type EntityType = 'project' | 'valuation' | 'deal' | 'property' | 'platform';
+// NOTE: 'crm' is a context-only scope, NOT a real workspace entity. When the
+// Workspace panel is opened inside the deals/CRM section, the Kobby tab sends
+// kobby queries with entityType='crm' (entityId = organizationId) so answers are
+// scoped to pipeline/deal/contact/agent intelligence. The chat + members still
+// live on the org's 'platform' workspace — see WorkspaceWebSocketServer, which
+// persists/broadcasts to the connection's workspace, not to the query's entity.
+export type EntityType = 'project' | 'valuation' | 'deal' | 'property' | 'platform' | 'crm';
 
 export interface KobbyContext {
     entityType: EntityType;
@@ -194,31 +200,32 @@ async function fetchValuationContext(valuationId: string): Promise<Record<string
 async function fetchDealContext(dealId: string): Promise<Record<string, any>> {
     try {
         const result = await pool.query(
-            `SELECT d.name, d.status, d.stage, d.value, d.currency, d.created_at,
-              d.expected_close_date, d.probability, d.notes,
-              c.first_name, c.last_name, c.email, c.phone
-       FROM crm_deals d
-       LEFT JOIN crm_contacts c ON c.id = d.contact_id
-       WHERE d.id = $1`,
+            `SELECT d.title, d.deal_status, ds.stage_name, d.deal_value, d.currency, d.created_at,
+              d.estimated_close_date, d.close_probability, d.notes,
+              c.first_name, c.last_name, c.email, c.primary_phone
+       FROM deals d
+       LEFT JOIN deal_stages ds ON ds.id = d.stage_id
+       LEFT JOIN contacts c ON c.id = d.primary_contact_id
+       WHERE d.id = $1 AND d.deleted_at IS NULL`,
             [dealId]
         );
 
         const deal = result.rows[0] || {};
         return {
             deal: {
-                name: deal.name,
-                status: deal.status,
-                stage: deal.stage,
-                value: deal.value ? `${deal.currency || 'GHS'} ${parseFloat(deal.value).toLocaleString()}` : 'N/A',
-                probability: deal.probability ? `${deal.probability}%` : 'N/A',
-                expectedClose: deal.expected_close_date,
+                name: deal.title,
+                status: deal.deal_status,
+                stage: deal.stage_name,
+                value: deal.deal_value ? `${deal.currency || 'GHS'} ${parseFloat(deal.deal_value).toLocaleString()}` : 'N/A',
+                probability: deal.close_probability != null ? `${deal.close_probability}%` : 'N/A',
+                expectedClose: deal.estimated_close_date,
                 daysSinceCreated: deal.created_at
                     ? Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000)
                     : null,
                 notes: deal.notes,
                 contact: `${deal.first_name || ''} ${deal.last_name || ''}`.trim() || 'Unknown',
                 contactEmail: deal.email,
-                contactPhone: deal.phone,
+                contactPhone: deal.primary_phone,
             },
         };
     } catch (err) {
@@ -295,6 +302,108 @@ async function fetchPropertyContext(propertyId: string): Promise<Record<string, 
     } catch (err) {
         logger.warn('KobbyAI: Could not fetch property context', { error: (err as Error).message });
         return { error: 'Property data temporarily unavailable' };
+    }
+}
+
+// ============================================================================
+// CRM PIPELINE CONTEXT (org-wide sales intelligence)
+// ============================================================================
+
+/**
+ * Build org-wide CRM pipeline context — deals, pipeline stages, contacts, top
+ * agents. Mirrors the aggregate queries behind the /crm/ai/ask endpoint so the
+ * Workspace Kobby tab gives the same CRM-scoped intelligence the standalone CRM
+ * assistant popup used to. `organizationId` is passed in as the entity id.
+ */
+async function fetchCrmContext(organizationId: string): Promise<Record<string, any>> {
+    try {
+        const [deals, stages, contacts, agents] = await Promise.allSettled([
+            pool.query(
+                `SELECT deal_status, deal_type, COUNT(*) as count,
+                        SUM(deal_value) as total_value,
+                        AVG(deal_value) as avg_value,
+                        AVG(days_in_pipeline) as avg_days
+                 FROM deals
+                 WHERE organization_id = $1 AND deleted_at IS NULL
+                 GROUP BY deal_status, deal_type`,
+                [organizationId]
+            ),
+            pool.query(
+                // deal_stages has no probability column — the forecast probability lives
+                // on the deal (close_probability), so average it per stage.
+                `SELECT ps.stage_name, AVG(d.close_probability) as probability,
+                        COUNT(d.id) as deal_count, SUM(d.deal_value) as total_value
+                 FROM deal_stages ps
+                 LEFT JOIN deals d ON d.stage_id = ps.id AND d.deal_status = 'active' AND d.deleted_at IS NULL
+                 JOIN deal_pipelines p ON p.id = ps.pipeline_id AND p.organization_id = $1 AND p.deleted_at IS NULL
+                 WHERE ps.is_active = true
+                 GROUP BY ps.stage_name, ps.stage_order
+                 ORDER BY ps.stage_order`,
+                [organizationId]
+            ),
+            pool.query(
+                `SELECT lead_status, COUNT(*) as count
+                 FROM contacts
+                 WHERE organization_id = $1 AND deleted_at IS NULL
+                 GROUP BY lead_status`,
+                [organizationId]
+            ),
+            pool.query(
+                `SELECT u.first_name || ' ' || u.last_name as name,
+                        COUNT(d.id) FILTER (WHERE d.deal_status = 'active') as active_deals,
+                        COUNT(d.id) FILTER (WHERE d.deal_status = 'won') as won_deals,
+                        SUM(d.deal_value) FILTER (WHERE d.deal_status = 'won') as won_value
+                 FROM users u
+                 JOIN deals d ON d.assigned_agent = u.id AND d.organization_id = $1 AND d.deleted_at IS NULL
+                 GROUP BY u.id, u.first_name, u.last_name
+                 ORDER BY won_value DESC NULLS LAST
+                 LIMIT 10`,
+                [organizationId]
+            ),
+        ]);
+
+        const dealStats = deals.status === 'fulfilled' ? deals.value.rows : [];
+        const stageData = stages.status === 'fulfilled' ? stages.value.rows : [];
+        const contactStats = contacts.status === 'fulfilled' ? contacts.value.rows : [];
+        const agentStats = agents.status === 'fulfilled' ? agents.value.rows : [];
+
+        const totalPipeline = stageData.reduce((s: number, r: any) => s + parseFloat(r.total_value || 0), 0);
+        const totalDeals = dealStats.reduce((s: number, r: any) => s + parseInt(r.count, 10), 0);
+        const totalContacts = contactStats.reduce((s: number, r: any) => s + parseInt(r.count, 10), 0);
+
+        return {
+            crm: {
+                totalDeals,
+                pipelineValue: `GHS ${totalPipeline.toLocaleString()}`,
+                totalContacts,
+                dealBreakdown: dealStats.map((d: any) => ({
+                    status: d.deal_status,
+                    type: d.deal_type,
+                    count: parseInt(d.count, 10),
+                    totalValue: `GHS ${parseFloat(d.total_value || 0).toLocaleString()}`,
+                    avgDaysInPipeline: Math.round(parseFloat(d.avg_days || 0)),
+                })),
+                pipelineStages: stageData.map((s: any) => ({
+                    stage: s.stage_name,
+                    probability: s.probability != null ? `${Math.round(parseFloat(s.probability))}%` : 'n/a',
+                    deals: parseInt(s.deal_count, 10),
+                    value: `GHS ${parseFloat(s.total_value || 0).toLocaleString()}`,
+                })),
+                contactsByStatus: contactStats.map((c: any) => ({
+                    status: c.lead_status,
+                    count: parseInt(c.count, 10),
+                })),
+                topAgents: agentStats.map((a: any) => ({
+                    name: a.name,
+                    wonDeals: parseInt(a.won_deals, 10) || 0,
+                    wonValue: `GHS ${parseFloat(a.won_value || 0).toLocaleString()}`,
+                    activeDeals: parseInt(a.active_deals, 10) || 0,
+                })),
+            },
+        };
+    } catch (err) {
+        logger.warn('KobbyAI: Could not fetch CRM context', { error: (err as Error).message });
+        return { error: 'CRM data temporarily unavailable' };
     }
 }
 
@@ -439,10 +548,14 @@ function buildSystemPrompt(ctx: KobbyContext): string {
         .map((m) => `[${m.time}] ${m.sender}: ${m.content}`)
         .join('\n');
 
-    // Entity-specific section (only when focused on a specific entity, not platform-wide)
-    const entitySection = ctx.entityType !== 'platform'
-        ? `\nCURRENT ENTITY FOCUS (${ctx.entityType}: "${ctx.entityName}"):\n${JSON.stringify(ctx.entityData, null, 2)}`
-        : '';
+    // Entity-specific section (only when focused on a specific entity, not platform-wide).
+    // 'crm' gets a dedicated sales-intelligence label rather than "entity focus".
+    const entitySection =
+        ctx.entityType === 'crm'
+            ? `\nCRM PIPELINE INTELLIGENCE (live sales data — deals, pipeline stages, contacts, agents):\n${JSON.stringify(ctx.entityData, null, 2)}`
+            : ctx.entityType !== 'platform'
+                ? `\nCURRENT ENTITY FOCUS (${ctx.entityType}: "${ctx.entityName}"):\n${JSON.stringify(ctx.entityData, null, 2)}`
+                : '';
 
     // Platform-wide data (always included)
     const platformSection = ctx.platformData
@@ -554,6 +667,7 @@ class KobbyAIServiceImpl {
             case 'valuation': return fetchValuationContext(entityId);
             case 'deal': return fetchDealContext(entityId);
             case 'property': return fetchPropertyContext(entityId);
+            case 'crm': return fetchCrmContext(entityId); // entityId = organizationId
             case 'platform': return { platform: { id: entityId, type: 'platform-wide' } };
         }
     }
@@ -564,6 +678,7 @@ class KobbyAIServiceImpl {
             case 'valuation': return data?.valuation?.location || '';
             case 'deal': return data?.deal?.name || '';
             case 'property': return data?.property?.address || '';
+            case 'crm': return 'CRM Pipeline';
             case 'platform': return 'Platform';
         }
     }

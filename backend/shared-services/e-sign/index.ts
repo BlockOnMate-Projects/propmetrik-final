@@ -7,9 +7,6 @@
  * @module shared-services/e-sign
  */
 
-// Core signing workflow
-export { SigningService, signingService } from './signingService';
-
 // PDF signing and embedding
 export { PdfSigningService, pdfSigningService } from './pdfSigningService';
 
@@ -21,12 +18,6 @@ export { ConsentService, consentService } from './consentService';
 
 // Magic link generation for external signers
 export { MagicLinkService, magicLinkService } from './magicLinkService';
-
-// Key management for cryptographic signatures
-export { KeyManagementService, keyManagementService } from './keyManagementService';
-
-// Timestamp service for RFC 3161 compliance
-export { TimestampService, timestampService } from './timestampService';
 
 // Signature ID generation for unique identifiers
 export { SignatureIdService, signatureIdService } from './signatureIdService';

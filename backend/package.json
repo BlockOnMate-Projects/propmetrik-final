@@ -7,6 +7,8 @@
     "dev": "bash dev.sh",
     "dev:tsx": "tsx watch --clear-screen=false src/index.ts",
     "dev:legacy": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "check:schema": "node scripts/check-crm-tables.mjs",
+    "prebuild": "node scripts/check-crm-tables.mjs",
     "build": "tsc",
     "start": "node dist/index.js",
     "clean": "rm -rf dist node_modules",

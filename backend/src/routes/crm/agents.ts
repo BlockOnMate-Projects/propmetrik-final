@@ -104,10 +104,20 @@ router.get('/agents/:id/contacts', asyncHandler(async (req: Request, res: Respon
 
 // Calculate deal probability based on agent performance and stage
 router.get('/probability/calculate', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
     const { agent_id, stage_id } = req.query;
-    
+
     if (!agent_id || !stage_id) {
         return res.status(400).json({ error: 'agent_id and stage_id are required' });
+    }
+
+    // Verify the agent belongs to the caller's org (prevents cross-org data leak)
+    const ownership = await db.query(
+        `SELECT 1 FROM agents WHERE id = $1 AND organization_id = $2`,
+        [agent_id, organizationId]
+    );
+    if (ownership.rowCount === 0) {
+        return res.status(404).json({ error: 'Agent not found' });
     }
 
     const result = await db.query(

@@ -15,6 +15,7 @@
 
 import { query } from '../../database';
 import { logger } from '../../utils/logger';
+import { resolveReportBranding } from './brandingService';
 import { valuationReportService } from './valuationReportService';
 import { economicDataService } from '../data-hub/economicDataService';
 
@@ -319,6 +320,9 @@ class ReportDataService {
     const valuation = await this.getValuationData(report.valuation_id);
     const valuer = await this.getActiveValuer(valuation?.valuer_id);
 
+    // Firm logo from the valuer org's saved branding (used by cover renderers)
+    const branding = await resolveReportBranding((valuation as any)?.valuer_organization_id, { context: 'valuation', withLogo: false });
+
     const propertyLocation = this.formatPropertyLocation(property);
 
     return {
@@ -346,7 +350,7 @@ class ReportDataService {
         address: valuer?.contact_address || null,
       },
       date: this.formatDate(report.effective_date || new Date()),
-      company_logo_url: null, // TODO: Add company logo support
+      company_logo_url: branding.logoUrl,
     };
   }
 

@@ -4,7 +4,7 @@
  * Documents all CRM endpoints grouped by tag:
  *   - Contacts, Deals, Companies, Agents, Pipelines
  *   - Tasks, Notes, Documents, Signatures
- *   - AI Assistant, Email Integration
+ *   - Email Integration
  *   - Property Matching, Stacking Plans
  *   - Analytics, Commissions, Payments
  *
@@ -20,7 +20,6 @@ export function getCrmOpenAPISpec(): Record<string, any> {
             { name: 'CRM Companies', description: 'Company management' },
             { name: 'CRM Properties', description: 'CRM property listings' },
             { name: 'CRM Tasks', description: 'Task management for deals and contacts' },
-            { name: 'CRM AI', description: 'Kobby AI CRM intelligence assistant' },
             { name: 'CRM Email', description: 'Gmail/Outlook email integration' },
             { name: 'CRM Property Match', description: 'Auto-match contacts ↔ properties' },
             { name: 'CRM Stacking Plans', description: 'Building floor/unit visualization' },
@@ -89,61 +88,8 @@ export function getCrmOpenAPISpec(): Record<string, any> {
                 post: { tags: ['CRM Properties'], summary: 'Create CRM property', security: [{ bearerAuth: [], organizationId: [] }], responses: { 201: { description: 'Created property' } } },
             },
 
-            // ═══════════════════════════════════════════════
-            // AI ASSISTANT
-            // ═══════════════════════════════════════════════
-            '/api/v1/crm/ai/ask': {
-                post: {
-                    tags: ['CRM AI'],
-                    summary: 'Ask Kobby AI a CRM question',
-                    description: 'Natural language query about pipeline, deals, contacts, agents, or performance. Powered by Google Gemini with rule-based fallback.',
-                    security: [{ bearerAuth: [], organizationId: [] }],
-                    requestBody: {
-                        required: true,
-                        content: {
-                            'application/json': {
-                                schema: {
-                                    type: 'object',
-                                    required: ['query'],
-                                    properties: {
-                                        query: { type: 'string', description: 'Natural language query', example: "What's my total pipeline value?" },
-                                        entity_type: { type: 'string', enum: ['deal', 'contact'], description: 'Optional entity context' },
-                                        entity_id: { type: 'string', format: 'uuid' },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    responses: {
-                        200: {
-                            description: 'AI response',
-                            content: {
-                                'application/json': {
-                                    schema: {
-                                        type: 'object',
-                                        properties: {
-                                            answer: { type: 'string' },
-                                            confidence: { type: 'number' },
-                                            sources: { type: 'array', items: { type: 'string' } },
-                                            suggestions: { type: 'array', items: { type: 'string' } },
-                                            data_points: { type: 'array', items: { type: 'object', properties: { metric: { type: 'string' }, value: { type: 'string' } } } },
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            '/api/v1/crm/ai/suggestions': {
-                get: { tags: ['CRM AI'], summary: 'Get AI suggestion prompts', security: [{ bearerAuth: [], organizationId: [] }], responses: { 200: { description: 'Categorized suggestion prompts' } } },
-            },
-            '/api/v1/crm/ai/next-actions/{dealId}': {
-                get: { tags: ['CRM AI'], summary: 'Get next best actions for a deal', security: [{ bearerAuth: [], organizationId: [] }], parameters: [{ name: 'dealId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { 200: { description: 'Prioritized action list' } } },
-            },
-            '/api/v1/crm/ai/deal-score/{dealId}': {
-                get: { tags: ['CRM AI'], summary: 'Get AI-enhanced deal score', description: 'Multi-factor scoring: stage probability, agent win rate, engagement, time factor, document completeness', security: [{ bearerAuth: [], organizationId: [] }], parameters: [{ name: 'dealId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], responses: { 200: { description: 'Deal score with factor breakdown' } } },
-            },
+            // AI ASSISTANT: the /crm/ai/* endpoints were removed. CRM intelligence now
+            // lives in the Workspace Kobby AI ('crm' scope) — see KobbyAIService.
 
             // ═══════════════════════════════════════════════
             // EMAIL INTEGRATION

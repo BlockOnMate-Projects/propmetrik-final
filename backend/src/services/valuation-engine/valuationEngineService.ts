@@ -82,15 +82,10 @@ const METHOD_APPLICABILITY: Record<string, ValuationMethod[]> = {
   default: ['sales_comparison', 'cost_approach'],
 };
 
-// Method weights by property type and purpose
-const DEFAULT_METHOD_WEIGHTS: Record<ValuationMethod, number> = {
-  sales_comparison: 0.40,
-  cost_approach: 0.25,
-  income_approach: 0.25,
-  residual_method: 0.10,
-  profits_method: 0.00,
-  drc_method: 0.00,
-};
+// NOTE: method reconciliation weights are owned solely by the Python engine's
+// reconcile endpoint (app/methods/multi_method.py weight_profiles). The former
+// DEFAULT_METHOD_WEIGHTS table here was dead (never read) and a divergent third
+// copy — removed so there is one source of truth.
 
 // =====================================================
 // VALUATION SERVICE

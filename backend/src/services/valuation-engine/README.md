@@ -52,9 +52,11 @@ valuation-engine/
     │   ├── schemas/            # Pydantic schemas
     │   ├── services/           # Business logic services
     │   └── utils/              # Utility functions
-    ├── requirements.txt        # Python dependencies
-    └── simple_start.py         # Standalone startup script
+    └── requirements.txt        # Python dependencies
 ```
+
+> The single entrypoint is `app.main:app` (see `Dockerfile` CMD) — it mounts every
+> `app/methods/*` router. There is no separate/mock server.
 
 ## Python Service Endpoints
 
@@ -84,8 +86,6 @@ valuation-engine/
 ```bash
 cd python
 pip install -r requirements.txt
-python simple_start.py
-# or
 uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 

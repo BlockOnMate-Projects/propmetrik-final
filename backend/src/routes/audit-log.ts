@@ -15,6 +15,9 @@ router.get('/audit-log', async (req: Request, res: Response, next: NextFunction)
   try {
     const orgId = getAuthOrgId(req);
     const { user_id, action, resource_type, resource_id, date_from, date_to, search, page = '1', limit = '100' } = req.query;
+    // Clamp pagination: bad/huge values (e.g. limit=10000000) must not dump the whole table.
+    const safeLimit = Math.min(Math.max(parseInt(limit as string, 10) || 100, 1), 500);
+    const safePage = Math.max(parseInt(page as string, 10) || 1, 1);
     let query = `SELECT * FROM audit_log WHERE organization_id = $1`;
     const params: any[] = [orgId];
     let idx = 2;
@@ -27,11 +30,11 @@ router.get('/audit-log', async (req: Request, res: Response, next: NextFunction)
     if (search) { query += ` AND (user_email ILIKE $${idx} OR user_name ILIKE $${idx} OR resource_name ILIKE $${idx} OR request_path ILIKE $${idx})`; params.push(`%${search}%`); idx++; }
     const countResult = await pool.query(`SELECT COUNT(*) FROM (${query}) t`, params);
     const total = parseInt(countResult.rows[0].count, 10);
-    const offset = (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10);
+    const offset = (safePage - 1) * safeLimit;
     query += ` ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx++}`;
-    params.push(parseInt(limit as string, 10), offset);
+    params.push(safeLimit, offset);
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows, total, page: parseInt(page as string, 10), limit: parseInt(limit as string, 10) });
+    res.json({ success: true, data: result.rows, total, page: safePage, limit: safeLimit });
   } catch (error) { next(error); }
 });
 
@@ -40,7 +43,9 @@ router.get('/audit-log/stats', async (req: Request, res: Response, next: NextFun
   try {
     const orgId = getAuthOrgId(req);
     const { days = '30' } = req.query;
-    const since = `NOW() - INTERVAL '${parseInt(days as string, 10)} days'`;
+    // Guard against days=abc → INTERVAL 'NaN days' (SQL error); clamp to a sane window.
+    const safeDays = Math.min(Math.max(parseInt(days as string, 10) || 30, 1), 365);
+    const since = `NOW() - INTERVAL '${safeDays} days'`;
     const [byAction, byResource, byUser, timeline] = await Promise.all([
       pool.query(`SELECT action, COUNT(*) as count FROM audit_log WHERE organization_id = $1 AND created_at > ${since} GROUP BY action ORDER BY count DESC`, [orgId]),
       pool.query(`SELECT resource_type, COUNT(*) as count FROM audit_log WHERE organization_id = $1 AND created_at > ${since} GROUP BY resource_type ORDER BY count DESC`, [orgId]),

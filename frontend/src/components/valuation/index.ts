@@ -13,6 +13,7 @@ export type {
   PropertyMeasurements,
 } from './KonvaFloorPlanBuilder';
 
+// Data Contribution Workflow (consumed by valuations/[id]/market page)
 export {
   GapAnalysisAlert,
   ContributionDialog,
@@ -49,10 +50,6 @@ export type {
   ListingAdjustmentConfig,
 } from './ListingAdjustmentPanel';
 
-// Cost Approach Components
-export { ConstructionCostPanel } from './ConstructionCostPanel';
-export type { ConstructionCostData } from './ConstructionCostPanel';
-
 // Editable Construction Cost Panel (with inline editing)
 export { EditableConstructionCostPanel } from './EditableConstructionCostPanel';
 export type { 
@@ -60,14 +57,6 @@ export type {
   MaterialIndex,
   LaborCost,
 } from './EditableConstructionCostPanel';
-
-// Land Value Panel (multi-method reconciliation)
-export { LandValuePanel } from './LandValuePanel';
-export type {
-  LandValueMethodDetail,
-  LandComparableSummary,
-  LandValueResult,
-} from './LandValuePanel';
 
 // Labor Costs Panel
 export { LaborCostsPanel } from './LaborCostsPanel';
@@ -95,13 +84,6 @@ export type {
 export { DepreciationPanelWithOverrides } from './DepreciationPanelWithOverrides';
 export type { DepreciationOverrideState } from './DepreciationPanelWithOverrides';
 
-// Rental Market Analysis Panel (Income Approach Phase 5.2)
-export { RentalMarketPanel } from './RentalMarketPanel';
-export type { 
-  RentalMarketPanelProps,
-  RentEstimateOutput,
-} from './RentalMarketPanel';
-
 // Rental Adjustment Grid (Income Approach Phase 5.3)
 export { RentalAdjustmentGrid, RENTAL_ADJUSTMENT_CATEGORIES } from './RentalAdjustmentGrid';
 export type {
@@ -110,13 +92,6 @@ export type {
   RentalAdjustmentGridProps,
 } from './RentalAdjustmentGrid';
 
-// Floor Plan Design Intent Components (Phase 3)
-export { AssumptionReview } from './AssumptionReview';
-export type {
-  SurfacedAssumption,
-  AssumptionOverride,
-  AssumptionReviewProps,
-} from './AssumptionReview';
 
 export { LayoutAlternatives } from './LayoutAlternatives';
 export type {

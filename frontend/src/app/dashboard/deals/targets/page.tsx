@@ -226,16 +226,16 @@ function CircularProgress({ percentage, size = 64 }: { percentage: number; size?
 function TargetCard({ target }: { target: SalesTarget }) {
     const typeLabels: Record<string, string> = {
         revenue: 'Revenue',
-        deals: 'Deals',
-        listings: 'Listings',
-        viewings: 'Viewings',
+        deal_count: 'Deals',
+        activities: 'Activities',
+        conversion_rate: 'Conversion',
     };
 
     const typeIcons: Record<string, React.ReactNode> = {
         revenue: <DollarSign className="h-4 w-4" />,
-        deals: <Trophy className="h-4 w-4" />,
-        listings: <BarChart3 className="h-4 w-4" />,
-        viewings: <Users className="h-4 w-4" />,
+        deal_count: <Trophy className="h-4 w-4" />,
+        activities: <BarChart3 className="h-4 w-4" />,
+        conversion_rate: <Percent className="h-4 w-4" />,
     };
 
     return (
@@ -382,6 +382,7 @@ function CreateTargetDialog({
     onCreated: () => void;
 }) {
     const [loading, setLoading] = useState(false);
+    const [agents, setAgents] = useState<Array<{ id: string; name: string }>>([]);
     const [formData, setFormData] = useState({
         agent_id: '',
         target_type: 'revenue',
@@ -389,9 +390,44 @@ function CreateTargetDialog({
         target_value: '',
     });
 
+    // Load agents for the picker when the dialog opens.
+    useEffect(() => {
+        if (!open) return;
+        (async () => {
+            try {
+                const res = await authedFetch(`${API_BASE}/api/crm/agents?limit=200`, { credentials: 'include' });
+                if (!res.ok) return;
+                const d = await res.json();
+                const list = (d.data || d.agents || []).map((a: any) => ({
+                    id: a.id,
+                    name: a.display_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email || 'Agent',
+                }));
+                setAgents(list);
+            } catch { /* non-fatal */ }
+        })();
+    }, [open]);
+
     const handleSubmit = async () => {
-        if (!formData.target_value) return;
+        if (!formData.agent_id) { toast.error('Select an agent'); return; }
+        if (!formData.target_value) { toast.error('Enter a target value'); return; }
         setLoading(true);
+
+        // Derive the period window from the chosen period (current month/quarter/year).
+        const now = new Date();
+        let start: Date, end: Date;
+        if (formData.period === 'monthly') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        } else if (formData.period === 'quarterly') {
+            const q = Math.floor(now.getMonth() / 3);
+            start = new Date(now.getFullYear(), q * 3, 1);
+            end = new Date(now.getFullYear(), q * 3 + 3, 0);
+        } else {
+            start = new Date(now.getFullYear(), 0, 1);
+            end = new Date(now.getFullYear(), 11, 31);
+        }
+        const iso = (d: Date) => d.toISOString().slice(0, 10);
+        const typeLabel = ({ revenue: 'Revenue', deal_count: 'Deals', activities: 'Activities' } as Record<string, string>)[formData.target_type] || formData.target_type;
 
         try {
             const response = await authedFetch(`${API_BASE}/api/crm/targets`, {
@@ -399,8 +435,13 @@ function CreateTargetDialog({
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    ...formData,
+                    agent_id: formData.agent_id,
+                    target_type: formData.target_type,
+                    target_period: formData.period,
                     target_value: parseFloat(formData.target_value),
+                    period_start: iso(start),
+                    period_end: iso(end),
+                    target_name: `${formData.period} ${typeLabel} target`,
                 }),
             });
 
@@ -430,12 +471,20 @@ function CreateTargetDialog({
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label>Agent ID</Label>
-                        <Input
-                            placeholder="Enter agent ID"
+                        <Label>Agent</Label>
+                        <Select
                             value={formData.agent_id}
-                            onChange={(e) => setFormData({ ...formData, agent_id: e.target.value })}
-                        />
+                            onValueChange={(v) => setFormData({ ...formData, agent_id: v })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select an agent" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {agents.map((a) => (
+                                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -450,9 +499,8 @@ function CreateTargetDialog({
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="revenue">Revenue</SelectItem>
-                                    <SelectItem value="deals">Deals</SelectItem>
-                                    <SelectItem value="listings">Listings</SelectItem>
-                                    <SelectItem value="viewings">Viewings</SelectItem>
+                                    <SelectItem value="deal_count">Deal count</SelectItem>
+                                    <SelectItem value="activities">Activities</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -526,7 +574,21 @@ export default function TargetsPage() {
 
             if (targetsRes.ok) {
                 const data = await targetsRes.json();
-                setTargets(data.targets || []);
+                // The API returns achieved_value / achievement_percentage / target_period /
+                // period_start|end / pacing_status; the UI reads current_value /
+                // progress_percentage / period / start_date|end_date / status. Normalize.
+                const num = (v: unknown) => { const x = typeof v === 'string' ? parseFloat(v) : (v as number); return Number.isFinite(x) ? x : 0; };
+                const raw = data.targets || data.data || [];
+                setTargets(raw.map((t: any) => ({
+                    ...t,
+                    period: t.target_period ?? t.period,
+                    start_date: t.period_start ?? t.start_date,
+                    end_date: t.period_end ?? t.end_date,
+                    current_value: num(t.achieved_value ?? t.current_value),
+                    progress_percentage: num(t.achievement_percentage ?? t.progress_percentage),
+                    target_value: num(t.target_value),
+                    status: t.pacing_status ?? t.status,
+                })));
                 setStats(data.stats || null);
             }
             if (leaderboardRes.ok) {
@@ -691,9 +753,8 @@ export default function TargetsPage() {
                                 <SelectContent>
                                     <SelectItem value="all">All Types</SelectItem>
                                     <SelectItem value="revenue">Revenue</SelectItem>
-                                    <SelectItem value="deals">Deals</SelectItem>
-                                    <SelectItem value="listings">Listings</SelectItem>
-                                    <SelectItem value="viewings">Viewings</SelectItem>
+                                    <SelectItem value="deal_count">Deal count</SelectItem>
+                                    <SelectItem value="activities">Activities</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

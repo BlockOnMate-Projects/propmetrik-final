@@ -687,9 +687,26 @@ router.post('/google', async (req: Request, res: Response) => {
  * Invalidate user session
  */
 router.post('/logout', async (req: Request, res: Response) => {
-  // In a stateless JWT setup, logout is handled client-side
-  // For additional security, you could maintain a token blacklist in Redis
-  
+  // Revoke the presented token by adding its jti to the Redis blacklist that the
+  // authenticate middleware already checks (auth.ts isTokenBlacklisted). Best-effort:
+  // a decode failure or missing jti/exp just falls through to a successful response.
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const decoded = jwt.decode(token) as { jti?: string; exp?: number } | null;
+      if (decoded?.jti && decoded.exp) {
+        const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+        if (ttl > 0) {
+          const { blacklistToken } = await import('../middleware/auth');
+          await blacklistToken(decoded.jti, ttl);
+        }
+      }
+    }
+  } catch (error) {
+    logger.warn('Logout token blacklist failed (non-fatal)', { error });
+  }
+
   res.json({
     success: true,
     message: 'Logged out successfully',

@@ -250,20 +250,29 @@ router.post(
         });
       }
 
-      // Upload to MinIO
+      // Upload to MinIO — retry on transient object-storage/network failures so a brief
+      // blip (s3 behind Cloudflare) doesn't abort a legal report-approval flow.
       const bucket = buckets.documents || 'propmetrik-documents';
       const storageKey = `signatures/valuers/${req.params.id}/${Date.now()}.png`;
 
-      await uploadFile(
-        bucket,
-        storageKey,
-        signatureBuffer,
-        contentType,
-        {
-          'valuer-id': req.params.id,
-          'uploaded-at': new Date().toISOString(),
+      let uploadErr: any = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await uploadFile(bucket, storageKey, signatureBuffer, contentType, {
+            'valuer-id': req.params.id,
+            'uploaded-at': new Date().toISOString(),
+          });
+          uploadErr = null;
+          break;
+        } catch (e: any) {
+          uploadErr = e;
+          logger.warn('Valuer signature upload attempt failed', {
+            valuerId: req.params.id, attempt, error: e?.message,
+          });
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 250 * attempt));
         }
-      );
+      }
+      if (uploadErr) throw uploadErr;
 
       // Update valuer record
       const updated = await approvalService.updateValuerSignature(
@@ -278,8 +287,17 @@ router.post(
         });
       }
 
-      // Get signed URL for response
-      const signatureUrl = await getPresignedDownloadUrl(bucket, storageKey, 3600);
+      // The signature is now saved (object + DB). The presigned URL below is only for the
+      // response convenience — a failure here must NOT report the save as failed, or the
+      // approval flow aborts on a successful save. Best-effort.
+      let signatureUrl: string | null = null;
+      try {
+        signatureUrl = await getPresignedDownloadUrl(bucket, storageKey, 3600);
+      } catch (presignErr: any) {
+        logger.warn('Presign of saved valuer signature failed (non-fatal)', {
+          valuerId: req.params.id, storageKey, error: presignErr?.message,
+        });
+      }
 
       logger.info('Valuer signature uploaded', {
         valuerId: req.params.id,

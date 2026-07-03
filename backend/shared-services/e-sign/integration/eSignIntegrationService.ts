@@ -12,6 +12,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../../src/utils/logger';
 import { pool } from '../../../src/database';
+import { config } from '../../../src/config';
 import {
   CreateEnvelopeInput,
   EnvelopeResult,
@@ -31,7 +32,10 @@ import {
 
 const ESIGN_INTERNAL_API_KEY = process.env.ESIGN_INTERNAL_API_KEY || '';
 const ESIGN_WEBHOOK_SECRET = process.env.ESIGN_WEBHOOK_SECRET || '';
-const ESIGN_BASE_URL = process.env.ESIGN_MAGIC_LINK_BASE_URL || 'http://localhost:3000/sign';
+// Base for external signing links. Falls back to the central, env-aware config
+// (prod → https://propmetrik.com) — NEVER a hardcoded localhost, which would ship
+// unreachable signing links to real signers in production.
+const ESIGN_BASE_URL = process.env.ESIGN_MAGIC_LINK_BASE_URL || `${config.app.frontendUrl}/sign`;
 
 // =============================================================================
 // SERVICE IMPLEMENTATION
@@ -271,6 +275,26 @@ class ESignIntegrationService implements IESignIntegrationService {
       'system',
       reason
     );
+  }
+
+  /**
+   * Resend signing notifications for an existing envelope.
+   * Looks up the owning org (business callers don't carry it) and delegates to the
+   * core EnvelopeService — the same engine used for the initial send.
+   */
+  async resendEnvelope(envelopeId: string, reason?: string): Promise<void> {
+    logger.info('Resending envelope notifications', { envelopeId, reason });
+
+    const result = await pool.query(
+      `SELECT organization_id FROM esign_envelopes WHERE id = $1`,
+      [envelopeId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error('Envelope not found');
+    }
+
+    await this.envelopeService.resendEnvelope(envelopeId, result.rows[0].organization_id, 'system');
   }
 
   /**

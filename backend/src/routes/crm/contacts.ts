@@ -71,6 +71,68 @@ router.get('/contacts/duplicates', asyncHandler(async (req: Request, res: Respon
     res.json({ groups, total: groups.length });
 }));
 
+/**
+ * GET /contacts/export — Stream all matching contacts as CSV.
+ * Mirrors the /contacts list filters (+ agent auto-scoping) so the export respects the
+ * same visibility rules. Columns round-trip with POST /contacts/import. Capped at 10k rows.
+ */
+router.get('/contacts/export', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+    const agentId = await getAgentIdForUser(req);
+
+    const baseFilters = {
+        contact_type: req.query.type as ContactType | undefined,
+        lead_status: req.query.status as LeadStatus | undefined,
+        assigned_to: agentId || (req.query.assignedTo as string | undefined),
+        region: req.query.region as string | undefined,
+        search: req.query.search as string | undefined,
+        tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
+        lead_score_min: req.query.minLeadScore ? parseInt(req.query.minLeadScore as string) : undefined,
+        lead_score_max: req.query.maxLeadScore ? parseInt(req.query.maxLeadScore as string) : undefined,
+        sort_by: req.query.sortBy as string || 'created_at',
+        sort_order: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+    };
+
+    // Round-trip columns (import accepts the same field names).
+    const COLUMNS = [
+        'first_name', 'last_name', 'email', 'primary_phone', 'whatsapp_number',
+        'contact_type', 'lead_status', 'lead_source', 'lead_score', 'occupation',
+        'employer', 'region', 'city', 'digital_address', 'budget_min', 'budget_max',
+        'tags', 'assigned_to', 'created_at',
+    ];
+
+    const csvCell = (v: unknown): string => {
+        if (v === null || v === undefined) return '';
+        let s = Array.isArray(v) ? v.join(';') : String(v);
+        if (/[",\n\r]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
+        return s;
+    };
+
+    // Paginate through all matches (cap 10k rows / 100 pages) reusing service scoping.
+    const PAGE = 100;
+    const MAX_PAGES = 100;
+    const rows: any[] = [];
+    for (let page = 1; page <= MAX_PAGES; page++) {
+        const result = await contactService.listContacts(organizationId, { ...baseFilters, page, limit: PAGE });
+        const batch = result.data || [];
+        rows.push(...batch);
+        const totalPages = result.pagination?.total_pages ?? 1;
+        if (page >= totalPages || batch.length < PAGE) break;
+    }
+
+    const header = COLUMNS.join(',');
+    const body = rows.map((r) => COLUMNS.map((c) => csvCell(r[c])).join(',')).join('\n');
+    const csv = `${header}\n${body}`;
+
+    const stamp = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="contacts_${stamp}.csv"`);
+    res.send(csv);
+}));
+
 router.post('/contacts', validate(createContactBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);

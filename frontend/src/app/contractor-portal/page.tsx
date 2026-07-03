@@ -440,7 +440,7 @@ export default function ContractorPortalPage() {
   const handleCompletePunchItem = async (itemId: string) => {
     try {
       // In production, this would call the API
-      await fetch(`/api/v1/projects/punch-lists/${itemId}/complete`, {
+      await fetch(`/api/projects/punch-lists/${itemId}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

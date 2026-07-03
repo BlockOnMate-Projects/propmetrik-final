@@ -30,7 +30,9 @@ async function fetchWorkspaceApi<T>(path: string, options?: RequestInit): Promis
     return res.json();
 }
 
-export type EntityType = 'project' | 'valuation' | 'deal' | 'property' | 'platform';
+// 'crm' is a Kobby context scope used in the deals section, not a standalone
+// workspace — the panel's chat/members stay on the org 'platform' workspace.
+export type EntityType = 'project' | 'valuation' | 'deal' | 'property' | 'platform' | 'crm';
 export type MemberRole = 'admin' | 'member' | 'viewer';
 export type SenderType = 'user' | 'system' | 'kobby_ai';
 export type ConversationType = 'channel' | 'dm' | 'group';

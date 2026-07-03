@@ -45,7 +45,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { VaultDocument, VaultSummary } from '@/types/property-management'
 
-const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || 'http://localhost:4000'
+const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || ''
 
 /** Resolve a fileUrl to a full download URL through the backend */
 function resolveFileUrl(fileUrl?: string): string | undefined {

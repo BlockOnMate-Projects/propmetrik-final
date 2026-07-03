@@ -17,7 +17,7 @@ import { auditMutations } from './middleware/auditMutations';
 import { requireIngestionAuth } from './middleware/ingestionAuth';
 import { authenticate, optionalAuth, requireAdmin } from './middleware/auth';
 import { requirePMAccess } from './middleware/pmAuth';
-import { requireServiceAccess } from './middleware/serviceAccess';
+import { requireServiceAccess, requireAnyServiceAccess } from './middleware/serviceAccess';
 import { apiAccess } from './middleware/analyticsApiAccess';
 import { initSentry, installSentryErrorHandler, flushSentry } from './config/sentry';
 import valuationClientsRouter from './routes/valuation-clients';
@@ -525,8 +525,10 @@ app.use('/api/v1/messaging', authenticate, messagingRoutes);
 app.use('/api/messaging', authenticate, messagingRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/projects', authenticate, requirePMAccess, requireServiceAccess('projects'), projectRoutes);
 app.use('/api/projects', authenticate, requirePMAccess, requireServiceAccess('projects'), projectRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/workflows', authenticate, requirePMAccess, requireServiceAccess('projects'), workflowRoutes);
-app.use('/api/workflows', authenticate, requirePMAccess, requireServiceAccess('projects'), workflowRoutes);  // Also mount for frontend compatibility
+// The workflow engine is shared by Projects AND CRM — allow a customer subscribed
+// to either. (Was projects-only, which 403'd CRM-only orgs on /dashboard/deals/workflows.)
+app.use('/api/v1/workflows', authenticate, requireAnyServiceAccess(['projects', 'crm']), workflowRoutes);
+app.use('/api/workflows', authenticate, requireAnyServiceAccess(['projects', 'crm']), workflowRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/realtime', authenticate, requirePMAccess, requireServiceAccess('projects'), realtimeRoutes);
 app.use('/api/realtime', authenticate, requirePMAccess, requireServiceAccess('projects'), realtimeRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/calendar', authenticate, requirePMAccess, requireServiceAccess('projects'), calendarRoutes);

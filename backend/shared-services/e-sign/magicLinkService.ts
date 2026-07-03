@@ -7,11 +7,14 @@ import { createHash, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../../src/database';
 import { logger } from '../../src/utils/logger';
+import { config } from '../../src/config';
 import { SigningRequestSignee } from './types';
 
 // Magic link configuration
 const MAGIC_LINK_EXPIRY_DAYS = 7;
-const MAGIC_LINK_BASE_URL = process.env.ESIGN_MAGIC_LINK_BASE_URL || 'http://localhost:3000/sign';
+// Base for external signing links. Falls back to the central, env-aware config
+// (prod → https://propmetrik.com) — never a hardcoded localhost.
+const MAGIC_LINK_BASE_URL = process.env.ESIGN_MAGIC_LINK_BASE_URL || `${config.app.frontendUrl}/sign`;
 const OTP_EXPIRY_MINUTES = 10;
 
 // In-memory OTP store (in production, use Redis)

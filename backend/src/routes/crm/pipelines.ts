@@ -10,6 +10,7 @@ import { getOrganizationId, getUserId, asyncHandler } from './helpers';
 import { pipelineService } from '../../services/crm-deal-management';
 import db from '../../database';
 import { DealType } from '../../services/crm-deal-management/types';
+import { getGhsRateMap, ghsValueSql } from '../../services/property-management/utils/currencyFx';
 import { validate } from '../../middleware/validation';
 import { createPipelineBody } from '../../middleware/schemas/crm.schemas';
 
@@ -80,11 +81,14 @@ router.get('/pipelines/:id/metrics', asyncHandler(async (req: Request, res: Resp
     const pipeline = await pipelineService.getPipelineById(pipelineId, organizationId);
     if (!pipeline) return res.status(404).json({ error: 'Pipeline not found' });
 
+    const fx = await getGhsRateMap();
+    const valD = ghsValueSql('d.deal_value', 'd.currency', fx);
+    const valBare = ghsValueSql('deal_value', 'currency', fx);
     const [stageMetrics, totals, avgDays] = await Promise.all([
         db.query(
             `SELECT ds.id AS stage_id, ds.stage_name, ds.stage_order,
                     COUNT(d.id)::int AS deal_count,
-                    COALESCE(SUM(d.deal_value), 0)::numeric AS total_value
+                    COALESCE(SUM(${valD}), 0)::numeric AS total_value
              FROM deal_stages ds
              LEFT JOIN deals d ON d.stage_id = ds.id AND d.deal_status = 'active'
              WHERE ds.pipeline_id = $1
@@ -97,8 +101,8 @@ router.get('/pipelines/:id/metrics', asyncHandler(async (req: Request, res: Resp
                     COUNT(*) FILTER (WHERE deal_status = 'active')::int AS active_deals,
                     COUNT(*) FILTER (WHERE deal_status = 'won')::int AS won_deals,
                     COUNT(*) FILTER (WHERE deal_status = 'lost')::int AS lost_deals,
-                    COALESCE(SUM(deal_value) FILTER (WHERE deal_status = 'active'), 0)::numeric AS pipeline_value,
-                    COALESCE(SUM(deal_value) FILTER (WHERE deal_status = 'won'), 0)::numeric AS won_value
+                    COALESCE(SUM(${valBare}) FILTER (WHERE deal_status = 'active'), 0)::numeric AS pipeline_value,
+                    COALESCE(SUM(${valBare}) FILTER (WHERE deal_status = 'won'), 0)::numeric AS won_value
              FROM deals WHERE pipeline_id = $1 AND organization_id = $2`,
             [pipelineId, organizationId]
         ),

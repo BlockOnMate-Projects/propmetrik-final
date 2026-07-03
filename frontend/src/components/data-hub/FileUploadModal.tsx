@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Upload, X, FileText, FileSpreadsheet, File as FileIcon, CheckCircle, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatFileSize} from '@/lib/utils'
 import { authedFetch } from '@/lib/authed-fetch'
 
 interface FileUploadModalProps {
@@ -219,12 +219,6 @@ export function FileUploadModal({
         if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) return <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         if (ext.endsWith('.pdf')) return <FileIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
         return <FileIcon className="h-5 w-5 text-muted-foreground" />
-    }
-
-    const formatFileSize = (bytes: number) => {
-        if (bytes < 1024) return bytes + ' B'
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
     }
 
     return (

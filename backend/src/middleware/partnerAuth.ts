@@ -53,7 +53,10 @@ interface KeycloakJwtPayload {
 
 // JWKS client for token verification
 const jwksClientInstance = jwksClient({
-  jwksUri: `${config.keycloak.realm}/protocol/openid_connect/certs`,
+  // Full Keycloak certs URL. Was `${realm}/protocol/openid_connect/certs` — the realm
+  // NAME used as a URL base + an underscore in `openid_connect` — so every partner
+  // (/ingestion) OAuth2 token failed JWKS verification. Mirror auth.ts's correct URL.
+  jwksUri: `${config.keycloak.url}/realms/${config.keycloak.realm}/protocol/openid-connect/certs`,
   cache: true,
   cacheMaxAge: 1000 * 60 * 60, // 1 hour
   rateLimit: true,
