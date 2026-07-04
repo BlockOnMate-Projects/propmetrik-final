@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { humanize } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import { useI18n } from '@/providers/i18n-provider'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     Settings,

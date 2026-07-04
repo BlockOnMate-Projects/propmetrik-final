@@ -1,0 +1,32 @@
+name: Dead Code Check (knip)
+
+# Prevents regressions from the dead-code cleanup: fails the build if a new
+# unused file or unused dependency is introduced in backend/ or frontend/.
+# Unused exports/types are intentionally NOT gated (they're a known baseline —
+# see knip.json "rules"). Config: knip.json at repo root.
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  knip:
+    name: Unused files & dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run knip (fails on new unused files/dependencies)
+        run: npm run knip
