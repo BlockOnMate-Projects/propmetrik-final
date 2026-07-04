@@ -59,8 +59,6 @@ function SettingsContent() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [revokingSession, setRevokingSession] = useState<string | null>(null);
 
-  const [language, setLanguage] = useState('en');
-
   useEffect(() => {
     loadTwoFAStatus();
     loadSessions();
@@ -328,12 +326,6 @@ function SettingsContent() {
         </h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium text-gray-900">Language</p><p className="text-xs text-muted-foreground">Choose your preferred language</p></div>
-            <select value={language} onChange={e => setLanguage(e.target.value)} className="px-3 py-1.5 border border-border rounded-lg text-sm focus:ring-2 focus:ring-cyan-500">
-              <option value="en">English</option><option value="tw">Twi</option><option value="ga">Ga</option><option value="ee">Ewe</option>
-            </select>
-          </div>
-          <div className="flex items-center justify-between border-t border-gray-50 pt-4">
             <div><p className="text-sm font-medium text-gray-900">Currency Display</p><p className="text-xs text-muted-foreground">How payments are shown</p></div>
             <span className="text-sm font-medium text-muted-foreground">GHS (₵)</span>
           </div>

@@ -9,7 +9,6 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { PWAProvider, OfflineIndicator } from '@/components/pwa'
 import { RealtimeProvider } from '@/lib/realtime-provider'
 import { SessionProvider } from 'next-auth/react'
-import { I18nProvider } from '@/providers/i18n-provider'
 import { initSentryClient } from '@/lib/sentry'
 
 // Initialise Sentry as early as possible (client-side only)
@@ -74,7 +73,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <StableSessionProvider>
       <QueryClientProvider client={queryClient}>
-        <I18nProvider>
         {/* Interim default 'dark' during the theming migration; flip to 'system' once the page sweep is complete. */}
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TooltipProvider>
@@ -93,7 +91,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <ThemedToaster />
           </TooltipProvider>
         </ThemeProvider>
-        </I18nProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </StableSessionProvider>

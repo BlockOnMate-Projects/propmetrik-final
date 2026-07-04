@@ -19,6 +19,7 @@
     "build:frontend": "turbo run build --filter=@propmetrik/frontend",
     "build:backend": "turbo run build --filter=@propmetrik/backend",
     "lint": "turbo run lint",
+    "knip": "knip",
     "test": "turbo run test",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
@@ -26,8 +27,10 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "dotenv": "^17.3.1",
+    "knip": "^5.88.1",
     "prettier": "^3.3.3",
-    "turbo": "^2.3.0"
+    "turbo": "^2.3.0",
+    "typescript": "^5.9.3"
   },
   "packageManager": "npm@10.0.0",
   "engines": {

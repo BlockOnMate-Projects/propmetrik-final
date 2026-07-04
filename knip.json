@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": ["blockchain/**", "docs/**", "tests/**"],
+  "workspaces": {
+    ".": {
+      "ignoreDependencies": ["react", "react-dom", "viem", "pdfjs-dist", "@tanstack/react-query"]
+    },
+    "backend": {
+      "entry": [
+        "scripts/**/*.{ts,js}",
+        "src/scripts/**/*.ts",
+        "tests/**/*.{ts,js}"
+      ],
+      "project": ["src/**/*.ts", "shared-services/**/*.ts"],
+      "ignoreDependencies": ["ts-node", "ts-node-dev", "tsx", "prettier", "node-pg-migrate", "pino-pretty", "@types/cheerio"],
+      "ignoreBinaries": ["redocly"]
+    },
+    "frontend": {
+      "entry": ["e2e/**/*.ts", "e2e/playwright.config.ts"],
+      "ignoreDependencies": ["caniuse-lite", "@walletconnect/modal", "pdfjs-dist", "@types/react-signature-canvas"]
+    },
+    "packages/*": {
+      "entry": ["src/**/*.{ts,tsx}", "index.{ts,tsx}"],
+      "ignoreDependencies": ["@react-oauth/google", "@types/react-router-dom", "@radix-ui/react-toast", "@radix-ui/react-collapsible"]
+    }
+  },
+  "rules": {
+    "files": "error",
+    "dependencies": "error",
+    "unlisted": "warn",
+    "unresolved": "warn",
+    "binaries": "warn",
+    "exports": "off",
+    "nsExports": "off",
+    "types": "off",
+    "nsTypes": "off",
+    "enumMembers": "off",
+    "classMembers": "off",
+    "duplicates": "off"
+  }
+}

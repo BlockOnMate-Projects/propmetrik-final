@@ -573,7 +573,7 @@ All migrations must be **idempotent** (`IF NOT EXISTS`), append-only, `npm run m
 - **Campaign segmentation + A/B + open/click analytics.**
 
 ### Phase 4 — Enterprise hardening (ongoing)
-- **i18n** (i18next; Twi/Fante where relevant).
+- ~~**i18n** (i18next; Twi/Fante where relevant).~~ **DESCOPED & DELETED 2026-07-04** — product decision: no translation capability. The inert in-house `I18nProvider`, `messages/en.json`+`fr.json` catalogs, all wiring, and the dead tenant "preferred language" selector were removed to reduce the codebase. (Agent "languages spoken" profile field is business data, retained.) See risk R7 (now closed as won't-do).
 - **Observability** — **activate Sentry (set `SENTRY_DSN`; already integrated — do this in Phase 1)**; add Prometheus/OpenTelemetry.
 - **Backup/DR** codified + tested restores.
 - Platform-wide **feature flags**; timezone enforcement; explicit **file versioning**.
