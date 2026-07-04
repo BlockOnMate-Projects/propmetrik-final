@@ -11,6 +11,7 @@ import { logger } from '../utils/logger';
 import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { createCalendarEventSchema, updateCalendarEventSchema } from '../middleware/pmProjectValidation';
+import { calendarSyncService } from '../services/integrations/calendarSyncService';
 
 const router = Router();
 
@@ -400,7 +401,7 @@ router.post('/viewings', requirePMWrite, async (req: Request, res: Response) => 
     };
     
     const booking = await calendarService.bookViewing(bookingData);
-    
+
     // Broadcast real-time event
     await realtimeEmitter.broadcast({
       type: RealtimeEventType.VIEWING_BOOKED,
@@ -410,7 +411,27 @@ router.post('/viewings', requirePMWrite, async (req: Request, res: Response) => 
       organizationId,
       userId,
     });
-    
+
+    // Best-effort: mirror the viewing onto the agent's connected calendar (Google/Outlook).
+    // No-op if the agent hasn't connected one; never blocks or fails the booking.
+    try {
+      const start = new Date(booking.scheduledAt);
+      const end = new Date(start.getTime() + (booking.durationMinutes || 30) * 60000);
+      await calendarSyncService.autoPush(booking.agentId, {
+        title: `Property Viewing${booking.contactName ? ` — ${booking.contactName}` : ''}`,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        description: [
+          booking.contactName && `Contact: ${booking.contactName}`,
+          booking.contactPhone && `Phone: ${booking.contactPhone}`,
+          booking.notes,
+        ].filter(Boolean).join('\n') || undefined,
+        attendees: booking.contactEmail ? [booking.contactEmail] : undefined,
+      });
+    } catch (syncErr) {
+      logger.warn('Viewing calendar auto-push failed (non-blocking)', { error: (syncErr as Error).message });
+    }
+
     res.status(201).json({ success: true, data: booking });
   } catch (error) {
     logger.error('Failed to book viewing', { error: (error as Error).message });

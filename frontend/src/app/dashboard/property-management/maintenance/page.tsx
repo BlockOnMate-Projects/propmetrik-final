@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { propertyManagementApi, type PMWorkOrderStats } from '@/lib/property-management-api'
@@ -170,11 +171,11 @@ export default function MaintenancePage() {
 
             {/* Tabs / Filter Nav */}
             <div className="flex items-center space-x-2">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
-                    <TabsList className="bg-card border border-border">
-                        <TabsTrigger value="all" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">All</TabsTrigger>
-                        <TabsTrigger value="active" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">Active</TabsTrigger>
-                        <TabsTrigger value="completed" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">Completed</TabsTrigger>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+                    <TabsList className={subTabsListClass}>
+                        <TabsTrigger value="all" className={subTabsTriggerClass}>All</TabsTrigger>
+                        <TabsTrigger value="active" className={subTabsTriggerClass}>Active</TabsTrigger>
+                        <TabsTrigger value="completed" className={subTabsTriggerClass}>Completed</TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>

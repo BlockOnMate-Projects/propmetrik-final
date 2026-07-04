@@ -10,9 +10,14 @@
  * @module services/crm-deal-management/emailIntegrationService
  */
 
+import crypto from 'crypto';
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { getFile } from '../../database/minio';
 import axios from 'axios';
+
+/** Resolved attachment ready to embed in a provider message. */
+interface LoadedAttachment { name: string; mimeType: string; data: Buffer }
 
 // =====================================================
 // TYPES
@@ -39,6 +44,15 @@ export interface EmailThread {
     message_id: string; // RFC Message-ID header
 }
 
+/** An attachment referenced either by a MinIO object (preferred) or inline base64. */
+export interface EmailAttachment {
+    name: string;
+    mimeType: string;
+    bucket?: string;
+    key?: string;
+    contentBase64?: string;
+}
+
 export interface EmailSendRequest {
     to: string[];
     cc?: string[];
@@ -48,7 +62,16 @@ export interface EmailSendRequest {
     body_text?: string;
     deal_id?: string;
     contact_id?: string;
-    in_reply_to?: string; // Message-ID to reply to
+    // Polymorphic linkage so the shared inbox can attach a sent email to any service entity
+    // (deal/contact/tenant/property/tenancy/contractor/vendor/…), not just CRM deals/contacts.
+    entity_type?: string;
+    entity_id?: string;
+    attachments?: EmailAttachment[];
+    // Threading: `in_reply_to` (RFC Message-ID) + `thread_id` (Gmail threadId) thread a Gmail reply;
+    // `reply_to_provider_id` (Graph message id) threads an Outlook reply via createReply.
+    in_reply_to?: string;
+    thread_id?: string;
+    reply_to_provider_id?: string;
     template_id?: string;
 }
 
@@ -93,6 +116,8 @@ async function ensureEmailsTable(): Promise<void> {
             email_date TIMESTAMPTZ NOT NULL,
             deal_id UUID,
             contact_id UUID,
+            entity_type VARCHAR(50),
+            entity_id UUID,
             is_tracked BOOLEAN DEFAULT false,
             open_count INTEGER DEFAULT 0,
             click_count INTEGER DEFAULT 0,
@@ -101,10 +126,14 @@ async function ensureEmailsTable(): Promise<void> {
             created_at TIMESTAMPTZ DEFAULT NOW(),
             UNIQUE(organization_id, provider_message_id)
         );
+        -- Self-heal existing tables (email store is service-created; formal mig 279 mirrors this).
+        ALTER TABLE crm_emails ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50);
+        ALTER TABLE crm_emails ADD COLUMN IF NOT EXISTS entity_id UUID;
         CREATE INDEX IF NOT EXISTS idx_crm_emails_org ON crm_emails(organization_id);
         CREATE INDEX IF NOT EXISTS idx_crm_emails_user ON crm_emails(user_id);
         CREATE INDEX IF NOT EXISTS idx_crm_emails_deal ON crm_emails(deal_id) WHERE deal_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_crm_emails_contact ON crm_emails(contact_id) WHERE contact_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_crm_emails_entity ON crm_emails(entity_type, entity_id) WHERE entity_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS idx_crm_emails_thread ON crm_emails(thread_id);
         CREATE INDEX IF NOT EXISTS idx_crm_emails_date ON crm_emails(email_date DESC);
     `);
@@ -161,8 +190,10 @@ async function refreshGmailToken(userId: string, tokens: OAuthTokens): Promise<s
         return tokens.access_token;
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    // Accept both env-name conventions so a token minted by the marketplace connector
+    // (which resolves AUTH_GOOGLE_ID|GOOGLE_CLIENT_ID) refreshes with the same client here.
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_GOOGLE_SECRET;
     if (!clientId || !clientSecret) throw new Error('Google OAuth not configured');
 
     const resp = await axios.post(GOOGLE_TOKEN_URL, new URLSearchParams({
@@ -237,20 +268,35 @@ async function gmailGetMessage(accessToken: string, messageId: string): Promise<
     };
 }
 
-async function gmailSendMessage(accessToken: string, email: EmailSendRequest): Promise<string> {
-    const to = email.to.join(', ');
-    const cc = email.cc?.join(', ') || '';
+async function gmailSendMessage(accessToken: string, email: EmailSendRequest, attachments: LoadedAttachment[] = []): Promise<string> {
+    const headers: string[] = [`To: ${email.to.join(', ')}`];
+    if (email.cc?.length) headers.push(`Cc: ${email.cc.join(', ')}`);
+    headers.push(`Subject: ${email.subject}`);
+    headers.push('MIME-Version: 1.0');
+    // Thread the reply so it nests under the original in the recipient's client.
+    if (email.in_reply_to) { headers.push(`In-Reply-To: ${email.in_reply_to}`); headers.push(`References: ${email.in_reply_to}`); }
 
-    let raw = `To: ${to}\r\n`;
-    if (cc) raw += `Cc: ${cc}\r\n`;
-    raw += `Subject: ${email.subject}\r\n`;
-    raw += `Content-Type: text/html; charset=UTF-8\r\n`;
-    if (email.in_reply_to) raw += `In-Reply-To: ${email.in_reply_to}\r\nReferences: ${email.in_reply_to}\r\n`;
-    raw += `\r\n${email.body_html}`;
+    let raw: string;
+    if (attachments.length) {
+        const boundary = 'pm_' + crypto.randomBytes(12).toString('hex');
+        headers.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+        let body = `--${boundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${email.body_html}\r\n`;
+        for (const a of attachments) {
+            const b64 = a.data.toString('base64').replace(/(.{76})/g, '$1\r\n'); // RFC-2045 line wrap
+            body += `--${boundary}\r\nContent-Type: ${a.mimeType}; name="${a.name}"\r\n`
+                + `Content-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="${a.name}"\r\n\r\n${b64}\r\n`;
+        }
+        body += `--${boundary}--`;
+        raw = `${headers.join('\r\n')}\r\n\r\n${body}`;
+    } else {
+        headers.push('Content-Type: text/html; charset=UTF-8');
+        raw = `${headers.join('\r\n')}\r\n\r\n${email.body_html}`;
+    }
 
-    const encodedRaw = Buffer.from(raw).toString('base64url');
+    const payload: any = { raw: Buffer.from(raw).toString('base64url') };
+    if (email.thread_id) payload.threadId = email.thread_id; // keeps the reply in the same Gmail thread
 
-    const resp = await axios.post(`${GMAIL_API}/messages/send`, { raw: encodedRaw }, {
+    const resp = await axios.post(`${GMAIL_API}/messages/send`, payload, {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     });
     return resp.data.id;
@@ -268,8 +314,9 @@ async function refreshOutlookToken(userId: string, tokens: OAuthTokens): Promise
         return tokens.access_token;
     }
 
-    const clientId = process.env.MS_CLIENT_ID;
-    const clientSecret = process.env.MS_CLIENT_SECRET;
+    // Accept both env-name conventions (connector resolves MS_GRAPH_CLIENT_ID|MS_CLIENT_ID).
+    const clientId = process.env.MS_CLIENT_ID || process.env.MS_GRAPH_CLIENT_ID;
+    const clientSecret = process.env.MS_CLIENT_SECRET || process.env.MS_GRAPH_CLIENT_SECRET;
     if (!clientId || !clientSecret) throw new Error('Microsoft OAuth not configured');
 
     const resp = await axios.post(MS_TOKEN_URL, new URLSearchParams({
@@ -313,20 +360,121 @@ async function outlookFetchMessages(accessToken: string, top = 20, skip = 0): Pr
     }));
 }
 
-async function outlookSendMessage(accessToken: string, email: EmailSendRequest): Promise<string> {
+async function outlookSendMessage(accessToken: string, email: EmailSendRequest, attachments: LoadedAttachment[] = []): Promise<string> {
+    const H = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+    const graphAttachments = attachments.map(a => ({
+        '@odata.type': '#microsoft.graph.fileAttachment',
+        name: a.name, contentType: a.mimeType, contentBytes: a.data.toString('base64'),
+    }));
+    const toRecipients = email.to.map(addr => ({ emailAddress: { address: addr } }));
+    const ccRecipients = email.cc?.length ? email.cc.map(addr => ({ emailAddress: { address: addr } })) : undefined;
+
+    // Threaded reply: createReply gives a draft that already carries conversationId + In-Reply-To/
+    // References, then we overwrite body/recipients, add attachments, and send it.
+    if (email.reply_to_provider_id) {
+        try {
+            const draft = await axios.post(`${MS_GRAPH}/messages/${email.reply_to_provider_id}/createReply`, {}, { headers: H });
+            const draftId = draft.data.id;
+            await axios.patch(`${MS_GRAPH}/messages/${draftId}`, {
+                body: { contentType: 'HTML', content: email.body_html },
+                toRecipients, ...(ccRecipients ? { ccRecipients } : {}),
+            }, { headers: H });
+            for (const ga of graphAttachments) {
+                await axios.post(`${MS_GRAPH}/messages/${draftId}/attachments`, ga, { headers: H });
+            }
+            await axios.post(`${MS_GRAPH}/messages/${draftId}/send`, {}, { headers: H });
+            return draftId;
+        } catch (e: any) {
+            // If the original can't be found (e.g. cross-account), fall through to a plain send.
+            logger.warn('Outlook threaded reply failed, sending as new message', { error: e?.response?.data?.error?.message || e?.message });
+        }
+    }
+
     const message: any = {
         subject: email.subject,
         body: { contentType: 'HTML', content: email.body_html },
-        toRecipients: email.to.map(addr => ({ emailAddress: { address: addr } })),
+        toRecipients,
     };
-    if (email.cc?.length) {
-        message.ccRecipients = email.cc.map(addr => ({ emailAddress: { address: addr } }));
-    }
+    if (ccRecipients) message.ccRecipients = ccRecipients;
+    if (graphAttachments.length) message.attachments = graphAttachments;
 
-    const resp = await axios.post(`${MS_GRAPH}/sendMail`, { message, saveToSentItems: true }, {
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    });
+    const resp = await axios.post(`${MS_GRAPH}/sendMail`, { message, saveToSentItems: true }, { headers: H });
     return resp.status === 202 ? 'sent' : 'sent';
+}
+
+/**
+ * Resolve which entity an email belongs to by matching from/to addresses across the services
+ * that use the shared inbox: CRM contacts, then PM tenants, then vendors/contractors. Each lookup
+ * is defensive — a missing table/column must never break the sync loop. Returns the polymorphic
+ * {entity_type, entity_id} plus contact_id (kept for the legacy column + the contact-name join).
+ */
+async function resolveEmailEntity(
+    organizationId: string, fromAddress: string, toAddresses: string[]
+): Promise<{ entity_type: string | null; entity_id: string | null; contact_id: string | null }> {
+    const addrs = [fromAddress, ...(toAddresses || [])].filter(Boolean);
+    try {
+        const r = await pool.query(
+            `SELECT id FROM contacts
+              WHERE organization_id = $1 AND deleted_at IS NULL
+                AND (email ILIKE $2 OR email ILIKE ANY($3::text[]))
+              LIMIT 1`,
+            [organizationId, fromAddress, toAddresses]
+        );
+        if (r.rows[0]) return { entity_type: 'contact', entity_id: r.rows[0].id, contact_id: r.rows[0].id };
+    } catch { /* contacts lookup unavailable — skip */ }
+    try {
+        const r = await pool.query(
+            `SELECT id FROM tenants WHERE organization_id = $1 AND email ILIKE ANY($2::text[]) LIMIT 1`,
+            [organizationId, addrs]
+        );
+        if (r.rows[0]) return { entity_type: 'tenant', entity_id: r.rows[0].id, contact_id: null };
+    } catch { /* tenants lookup unavailable — skip */ }
+    try {
+        const r = await pool.query(
+            `SELECT id FROM vendors WHERE organization_id = $1 AND email ILIKE ANY($2::text[]) LIMIT 1`,
+            [organizationId, addrs]
+        );
+        if (r.rows[0]) return { entity_type: 'vendor', entity_id: r.rows[0].id, contact_id: null };
+    } catch { /* vendors lookup unavailable — skip */ }
+    return { entity_type: null, entity_id: null, contact_id: null };
+}
+
+/**
+ * Turn a raw provider API error into an actionable message. The most common failure is a 403
+ * "insufficient scopes" — the mailbox permission wasn't granted at consent time (e.g. the user
+ * unchecked it, or the OAuth consent screen doesn't have the scope). Tell them to reconnect.
+ */
+function providerApiError(err: any, provider: EmailProvider): Error {
+    const status = err?.response?.status;
+    const detail = err?.response?.data?.error?.message // Gmail
+        || err?.response?.data?.error?.message?.value  // Graph (odata)
+        || err?.response?.data?.error_description
+        || err?.message || '';
+    if (status === 403 || /insufficient|scope|permission/i.test(String(detail))) {
+        const label = provider === 'gmail' ? 'Gmail' : 'Outlook';
+        return new Error(
+            `${label} did not grant mailbox access — the email permission wasn't approved. ` +
+            `Disconnect ${label} on the Integrations page and reconnect, keeping the “read/compose/send email” permission checked on the consent screen.`,
+        );
+    }
+    return new Error(detail || `Failed to reach ${provider}`);
+}
+
+/** Resolve attachment refs to in-memory buffers (from MinIO, or inline base64). */
+async function loadAttachments(atts?: EmailAttachment[]): Promise<LoadedAttachment[]> {
+    if (!atts?.length) return [];
+    const out: LoadedAttachment[] = [];
+    for (const a of atts) {
+        try {
+            let data: Buffer | null = null;
+            if (a.bucket && a.key) { const f = await getFile(a.bucket, a.key); data = Buffer.from(f.body); }
+            else if (a.contentBase64) data = Buffer.from(a.contentBase64, 'base64');
+            if (data) out.push({ name: a.name || 'attachment', mimeType: a.mimeType || 'application/octet-stream', data });
+        } catch (e: any) {
+            logger.warn('Failed to load email attachment', { key: a.key, error: e?.message });
+        }
+    }
+    return out;
 }
 
 // =====================================================
@@ -399,6 +547,22 @@ class EmailIntegrationService {
     }
 
     /**
+     * Which email provider (if any) this user has connected. Used to send campaign/workflow email
+     * FROM the agent's own mailbox (Gmail/Outlook) instead of the platform system address.
+     * Maps the stored keys (google_email/microsoft_email) back to the EmailProvider.
+     */
+    async getConnectedEmailProvider(userId: string): Promise<EmailProvider | null> {
+        const r = await pool.query(
+            `SELECT provider FROM user_integrations
+              WHERE user_id = $1 AND provider IN ('google_email','microsoft_email')
+              ORDER BY updated_at DESC LIMIT 1`,
+            [userId]
+        );
+        const p = r.rows[0]?.provider;
+        return p === 'google_email' ? 'gmail' : p === 'microsoft_email' ? 'outlook' : null;
+    }
+
+    /**
      * Check connection status for a given provider
      */
     async getConnectionStatus(userId: string, provider: EmailProvider): Promise<{ connected: boolean; needsReauth?: boolean; email?: string }> {
@@ -431,7 +595,7 @@ class EmailIntegrationService {
 
     /**
      * Sync recent emails from provider and store in crm_emails table.
-     * Auto-links to contacts by matching email addresses.
+     * Auto-links to a matching CRM contact / PM tenant / vendor by email address.
      */
     async syncEmails(userId: string, organizationId: string, provider: EmailProvider, maxResults = 50): Promise<EmailSyncResult> {
         await ensureTable();
@@ -440,47 +604,45 @@ class EmailIntegrationService {
 
         let emails: EmailThread[] = [];
 
-        if (provider === 'gmail') {
-            const accessToken = await refreshGmailToken(userId, tokens);
-            const list = await gmailFetchMessages(accessToken, maxResults);
-            const messageIds = (list.messages || []).map((m: any) => m.id);
+        try {
+            if (provider === 'gmail') {
+                const accessToken = await refreshGmailToken(userId, tokens);
+                const list = await gmailFetchMessages(accessToken, maxResults);
+                const messageIds = (list.messages || []).map((m: any) => m.id);
 
-            // Fetch full messages in batches
-            for (const mid of messageIds.slice(0, maxResults)) {
-                try {
-                    const email = await gmailGetMessage(accessToken, mid);
-                    emails.push(email);
-                } catch (err) {
-                    logger.warn('Failed to fetch Gmail message', { messageId: mid, error: (err as Error).message });
+                // Fetch full messages in batches
+                for (const mid of messageIds.slice(0, maxResults)) {
+                    try {
+                        const email = await gmailGetMessage(accessToken, mid);
+                        emails.push(email);
+                    } catch (err) {
+                        logger.warn('Failed to fetch Gmail message', { messageId: mid, error: (err as Error).message });
+                    }
                 }
+            } else if (provider === 'outlook') {
+                const accessToken = await refreshOutlookToken(userId, tokens);
+                emails = await outlookFetchMessages(accessToken, maxResults);
             }
-        } else if (provider === 'outlook') {
-            const accessToken = await refreshOutlookToken(userId, tokens);
-            emails = await outlookFetchMessages(accessToken, maxResults);
+        } catch (err: any) {
+            // Surface scope/permission failures as an actionable "reconnect" message (not a raw 500).
+            throw providerApiError(err, provider);
         }
 
         // Store in DB + auto-link contacts
         let newCount = 0;
         for (const email of emails) {
             try {
-                // Find matching contact by email address
-                const contactMatch = await pool.query(
-                    `SELECT id FROM contacts
-                     WHERE organization_id = $1 AND deleted_at IS NULL
-                       AND (email ILIKE $2 OR email ILIKE ANY($3::text[]))
-                     LIMIT 1`,
-                    [organizationId, email.from_address, email.to_addresses]
-                );
-                const contactId = contactMatch.rows[0]?.id || null;
+                // Auto-link to whichever entity (contact/tenant/vendor) the addresses match.
+                const link = await resolveEmailEntity(organizationId, email.from_address, email.to_addresses);
 
                 const result = await pool.query(
                     `INSERT INTO crm_emails
                      (organization_id, user_id, provider, provider_message_id, thread_id, message_id,
                       subject, snippet, from_address, from_name, to_addresses, cc_addresses,
                       body_text, body_html, is_read, has_attachments, labels, direction,
-                      email_date, contact_id)
+                      email_date, contact_id, entity_type, entity_id)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                             $15, $16, $17, $18, $19, $20)
+                             $15, $16, $17, $18, $19, $20, $21, $22)
                      ON CONFLICT (organization_id, provider_message_id) DO NOTHING
                      RETURNING id`,
                     [
@@ -490,7 +652,7 @@ class EmailIntegrationService {
                         email.body_text, email.body_html, email.is_read, email.has_attachments,
                         JSON.stringify(email.labels || []),
                         email.labels?.includes('SENT') ? 'outbound' : 'inbound',
-                        email.date, contactId,
+                        email.date, link.contact_id, link.entity_type, link.entity_id,
                     ]
                 );
                 if (result.rows.length > 0) newCount++;
@@ -512,36 +674,44 @@ class EmailIntegrationService {
         if (!tokens) throw new Error(`${provider} not connected`);
 
         let providerId: string;
+        const attachments = await loadAttachments(email.attachments);
 
         if (provider === 'gmail') {
             const accessToken = await refreshGmailToken(userId, tokens);
-            providerId = await gmailSendMessage(accessToken, email);
+            providerId = await gmailSendMessage(accessToken, email, attachments);
         } else {
             const accessToken = await refreshOutlookToken(userId, tokens);
-            providerId = await outlookSendMessage(accessToken, email);
+            providerId = await outlookSendMessage(accessToken, email, attachments);
         }
+
+        // Resolve polymorphic link (falling back to the legacy deal/contact columns).
+        const entityType = email.entity_type || (email.deal_id ? 'deal' : email.contact_id ? 'contact' : null);
+        const entityId = email.entity_id || email.deal_id || email.contact_id || null;
+        const dealId = email.deal_id || (email.entity_type === 'deal' ? email.entity_id : null) || null;
+        const contactId = email.contact_id || (email.entity_type === 'contact' ? email.entity_id : null) || null;
 
         // Store sent email
         await pool.query(
             `INSERT INTO crm_emails
              (organization_id, user_id, provider, provider_message_id, subject, from_address, from_name,
-              to_addresses, cc_addresses, body_text, body_html, direction, email_date, deal_id, contact_id, is_read)
-             VALUES ($1, $2, $3, $4, $5, 'me', '', $6, $7, $8, $9, 'outbound', NOW(), $10, $11, true)
+              to_addresses, cc_addresses, body_text, body_html, direction, email_date, deal_id, contact_id,
+              entity_type, entity_id, is_read)
+             VALUES ($1, $2, $3, $4, $5, 'me', '', $6, $7, $8, $9, 'outbound', NOW(), $10, $11, $12, $13, true)
              ON CONFLICT DO NOTHING`,
             [
                 organizationId, userId, provider, providerId, email.subject,
                 JSON.stringify(email.to), JSON.stringify(email.cc || []),
                 email.body_text || '', email.body_html,
-                email.deal_id || null, email.contact_id || null,
+                dealId, contactId, entityType, entityId,
             ]
         );
 
-        // Log as deal activity if linked
-        if (email.deal_id) {
+        // Log as deal activity if linked to a deal
+        if (dealId) {
             await pool.query(
                 `INSERT INTO deal_activities (deal_id, activity_type, subject, description, user_id, contact_id)
                  VALUES ($1, 'email', $2, $3, $4, $5)`,
-                [email.deal_id, `Email: ${email.subject}`, `Sent to ${email.to.join(', ')}`, userId, email.contact_id || null]
+                [dealId, `Email: ${email.subject}`, `Sent to ${email.to.join(', ')}`, userId, contactId]
             );
         }
 
@@ -551,9 +721,12 @@ class EmailIntegrationService {
     /**
      * Get synced emails for a deal or contact timeline
      */
-    async getEmails(organizationId: string, filters: {
+    async getEmails(organizationId: string, userId: string, filters: {
         deal_id?: string;
         contact_id?: string;
+        entity_type?: string;
+        entity_id?: string;
+        provider?: string;
         search?: string;
         direction?: 'inbound' | 'outbound';
         limit?: number;
@@ -561,12 +734,17 @@ class EmailIntegrationService {
     }): Promise<{ emails: any[]; total: number }> {
         await ensureTable();
 
-        const conditions: string[] = ['e.organization_id = $1'];
-        const params: any[] = [organizationId];
-        let idx = 2;
+        // Synced mailboxes are per-user (BYO): a user only ever sees emails they synced/sent.
+        // Scoping by BOTH organization_id AND user_id prevents one teammate reading another's inbox.
+        const conditions: string[] = ['e.organization_id = $1', 'e.user_id = $2'];
+        const params: any[] = [organizationId, userId];
+        let idx = 3;
 
+        if (filters.provider) { conditions.push(`e.provider = $${idx++}`); params.push(filters.provider); }
         if (filters.deal_id) { conditions.push(`e.deal_id = $${idx++}`); params.push(filters.deal_id); }
         if (filters.contact_id) { conditions.push(`e.contact_id = $${idx++}`); params.push(filters.contact_id); }
+        if (filters.entity_type) { conditions.push(`e.entity_type = $${idx++}`); params.push(filters.entity_type); }
+        if (filters.entity_id) { conditions.push(`e.entity_id = $${idx++}`); params.push(filters.entity_id); }
         if (filters.direction) { conditions.push(`e.direction = $${idx++}`); params.push(filters.direction); }
         if (filters.search) {
             conditions.push(`(e.subject ILIKE $${idx} OR e.from_address ILIKE $${idx} OR e.snippet ILIKE $${idx})`);
@@ -580,7 +758,7 @@ class EmailIntegrationService {
 
         const [emails, countResult] = await Promise.all([
             pool.query(
-                `SELECT e.*, c.first_name || ' ' || c.last_name as contact_name
+                `SELECT e.*, e.email_date AS received_at, c.first_name || ' ' || c.last_name as contact_name
                  FROM crm_emails e
                  LEFT JOIN contacts c ON c.id = e.contact_id
                  WHERE ${where}
@@ -598,12 +776,27 @@ class EmailIntegrationService {
     }
 
     /**
-     * Link email to a deal
+     * Link email to a deal (legacy CRM helper — kept for the existing /link-deal route).
      */
-    async linkEmailToDeal(emailId: string, organizationId: string, dealId: string): Promise<void> {
+    async linkEmailToDeal(emailId: string, organizationId: string, userId: string, dealId: string): Promise<void> {
+        await this.linkEmailToEntity(emailId, organizationId, userId, 'deal', dealId);
+    }
+
+    /**
+     * Link an email to any service entity (deal/contact/tenant/property/contractor/vendor/…).
+     * Writes the polymorphic columns, and mirrors to the legacy deal_id/contact_id columns when
+     * the entity is a CRM deal/contact so existing CRM queries keep working. Scoped to the owning
+     * user so a teammate cannot re-link an email that isn't theirs.
+     */
+    async linkEmailToEntity(emailId: string, organizationId: string, userId: string, entityType: string, entityId: string): Promise<void> {
         await pool.query(
-            `UPDATE crm_emails SET deal_id = $1 WHERE id = $2 AND organization_id = $3`,
-            [dealId, emailId, organizationId]
+            `UPDATE crm_emails
+                SET entity_type = $1,
+                    entity_id = $2,
+                    deal_id = CASE WHEN $1 = 'deal' THEN $2::uuid ELSE deal_id END,
+                    contact_id = CASE WHEN $1 = 'contact' THEN $2::uuid ELSE contact_id END
+              WHERE id = $3 AND organization_id = $4 AND user_id = $5`,
+            [entityType, entityId, emailId, organizationId, userId]
         );
     }
 

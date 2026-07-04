@@ -7,6 +7,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { pool } from '../database';
 import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { getCatalog, type ServiceKey } from '../services/integrations/integrationCatalog';
 
 const router = Router();
 registerPMParamValidation(router);
@@ -204,25 +205,12 @@ router.delete('/api-keys/:id', requirePMWrite, async (req: Request, res: Respons
   } catch (error) { next(error); }
 });
 
-// Marketplace catalog
-router.get('/marketplace/catalog', async (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    data: [
-      { type: 'quickbooks', name: 'QuickBooks Online', category: 'Accounting', description: 'Sync financial data with QuickBooks', icon: '📊' },
-      { type: 'xero', name: 'Xero', category: 'Accounting', description: 'Connect Xero accounting platform', icon: '💰' },
-      { type: 'sage', name: 'Sage 300', category: 'Accounting', description: 'Enterprise accounting integration', icon: '🏛️' },
-      { type: 'procore', name: 'Procore', category: 'Project Management', description: 'Sync projects and tasks with Procore', icon: '🏗️' },
-      { type: 'autodesk', name: 'Autodesk BIM 360', category: 'Design', description: 'Import models and drawings from BIM 360', icon: '📐' },
-      { type: 'docusign', name: 'DocuSign', category: 'E-Signature', description: 'Send contracts for electronic signature', icon: '✍️' },
-      { type: 'zapier', name: 'Zapier', category: 'Automation', description: 'Connect to 5000+ apps via Zapier', icon: '⚡' },
-      { type: 'webhook', name: 'Custom Webhook', category: 'Developer', description: 'Send events to a custom webhook URL', icon: '🔗' },
-      { type: 'custom_api', name: 'Custom API', category: 'Developer', description: 'Build custom integrations with our API', icon: '🛠️' },
-      { type: 'slack', name: 'Slack', category: 'Communication', description: 'Get notifications in Slack channels', icon: '💬' },
-      { type: 'ms_teams', name: 'Microsoft Teams', category: 'Communication', description: 'Get notifications in Teams channels', icon: '👥' },
-      { type: 'google_drive', name: 'Google Drive', category: 'Storage', description: 'Sync documents with Google Drive', icon: '📁' },
-    ],
-  });
+// Marketplace catalog — single source of truth from integrationCatalog (reflects §8A BYO/Platform).
+// Optional ?service=pm|crm|valuation|projects scopes the list to a service's Integrations tab.
+router.get('/marketplace/catalog', async (req: Request, res: Response) => {
+  const service = req.query.service as ServiceKey | undefined;
+  const valid: ServiceKey[] = ['pm', 'crm', 'valuation', 'projects'];
+  res.json({ success: true, data: getCatalog(valid.includes(service as ServiceKey) ? service : undefined) });
 });
 
 export default router;

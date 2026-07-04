@@ -21,6 +21,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import {
     Table,
     TableBody,
@@ -32,7 +34,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { propertyManagementApi } from '@/lib/property-management-api'
-import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
 
 interface AgedReceivable {
     tenantId: string;
@@ -158,9 +159,6 @@ export default function ReportsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Enterprise Navigation */}
-            <EnterpriseNav />
-
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
@@ -201,24 +199,24 @@ export default function ReportsPage() {
 
             {/* Report Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-card border border-border w-full justify-start overflow-x-auto">
-                    <TabsTrigger value="aged-receivables" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                <TabsList className={cn(subTabsListClass, 'w-full overflow-x-auto')}>
+                    <TabsTrigger value="aged-receivables" className={subTabsTriggerClass}>
                         <DollarSign className="mr-2 h-3 w-3" />
                         Aged Receivables
                     </TabsTrigger>
-                    <TabsTrigger value="vacancy" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="vacancy" className={subTabsTriggerClass}>
                         <Building2 className="mr-2 h-3 w-3" />
                         Vacancy
                     </TabsTrigger>
-                    <TabsTrigger value="performance" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="performance" className={subTabsTriggerClass}>
                         <TrendingUp className="mr-2 h-3 w-3" />
                         Performance
                     </TabsTrigger>
-                    <TabsTrigger value="turnover" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="turnover" className={subTabsTriggerClass}>
                         <Users className="mr-2 h-3 w-3" />
                         Tenant Turnover
                     </TabsTrigger>
-                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="maintenance" className={subTabsTriggerClass}>
                         <Wrench className="mr-2 h-3 w-3" />
                         Maintenance
                     </TabsTrigger>

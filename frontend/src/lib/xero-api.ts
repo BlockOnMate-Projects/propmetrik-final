@@ -39,7 +39,9 @@ export async function syncXeroCosts(): Promise<XeroSyncResult> {
   return json.data as XeroSyncResult;
 }
 
-/** Start Xero OAuth2 flow (redirects the browser) */
+/** Start Xero OAuth2 flow (redirects the browser).
+ *  Use the bare `/api/...` path — the Next proxy rewrites it to backend `/api/v1/...`.
+ *  (`/api/v1/xero/auth` would double-prefix to `/api/v1/v1/...` and 404.) */
 export function startXeroOAuth(): void {
-  window.location.href = '/api/v1/xero/auth';
+  window.location.href = '/api/xero/auth';
 }

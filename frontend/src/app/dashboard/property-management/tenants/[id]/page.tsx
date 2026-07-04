@@ -36,6 +36,8 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -761,20 +763,20 @@ export default function TenantDetailsPage() {
                 {/* Main Content Tabs */}
                 <div className="md:col-span-8 md:order-1">
                     <Tabs defaultValue="tenancies" className="w-full">
-                        <TabsList className="grid grid-cols-3 sm:grid-cols-5 bg-card border border-border w-full h-auto p-1">
-                            <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
+                        <TabsList className={cn(subTabsListClass, 'w-full overflow-x-auto')}>
+                            <TabsTrigger value="tenancies" className={subTabsTriggerClass}>
                                 Tenancies
                             </TabsTrigger>
-                            <TabsTrigger value="utilities" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
+                            <TabsTrigger value="utilities" className={subTabsTriggerClass}>
                                 Utilities
                             </TabsTrigger>
-                            <TabsTrigger value="payments" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
+                            <TabsTrigger value="payments" className={subTabsTriggerClass}>
                                 Payments
                             </TabsTrigger>
-                            <TabsTrigger value="maintenance" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
+                            <TabsTrigger value="maintenance" className={subTabsTriggerClass}>
                                 Maintenance
                             </TabsTrigger>
-                            <TabsTrigger value="documents" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-foreground text-muted-foreground font-mono text-xs">
+                            <TabsTrigger value="documents" className={subTabsTriggerClass}>
                                 Documents
                             </TabsTrigger>
                         </TabsList>
@@ -1407,7 +1409,7 @@ export default function TenantDetailsPage() {
                             <CardContent className="space-y-2">
                                 <Button
                                     variant="outline"
-                                    onClick={() => router.push(`/dashboard/property-management/messages?tenantId=${tenantId}`)}
+                                    onClick={() => router.push(`/dashboard/property-management/communications?tab=chat&tenantId=${tenantId}`)}
                                     className="w-full justify-start border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                 >
                                     <MessageSquare className="h-3 w-3 mr-2" />

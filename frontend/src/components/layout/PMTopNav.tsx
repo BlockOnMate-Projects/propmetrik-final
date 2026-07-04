@@ -7,21 +7,23 @@ import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { canAccessServiceSubTab, canCustomerAccessSubTab } from '@/lib/rbac'
 
+// Top-level Management tabs. Enquiries, Inspections and Vendors are NOT top-level anymore —
+// they live under their parent section's sub-nav (see PMSectionNav):
+//   PROPERTIES  → Listings · Enquiries
+//   MAINTENANCE → Work Orders · Inspections · Vendors
+// `match` keeps a parent tab highlighted while one of its child pages is active.
 const navigation = [
     { name: 'OVERVIEW', href: '/dashboard/property-management', exact: true, key: '1', subTabKey: 'propmgmt-overview' },
-    { name: 'PROPERTIES', href: '/dashboard/property-management/properties', key: '2', subTabKey: 'propmgmt-properties' },
-    { name: 'ENQUIRIES', href: '/dashboard/property-management/enquiries', key: 'E', subTabKey: 'propmgmt-properties' },
-    { name: 'MESSAGES', href: '/dashboard/property-management/messages', key: '3', subTabKey: 'propmgmt-messages' },
-    { name: 'PORTFOLIOS', href: '/dashboard/property-management/portfolios', key: '4', subTabKey: 'propmgmt-portfolios' },
+    { name: 'PROPERTIES', href: '/dashboard/property-management/properties', key: '2', subTabKey: 'propmgmt-properties', match: ['/dashboard/property-management/enquiries'] },
+    { name: 'COMMUNICATIONS', href: '/dashboard/property-management/communications', key: '3', subTabKey: 'propmgmt-communications' },
+    { name: 'PORTFOLIOS', href: '/dashboard/property-management/portfolios', key: '4', subTabKey: 'propmgmt-portfolios', match: ['/dashboard/property-management/reports', '/dashboard/property-management/audit', '/dashboard/property-management/bulk-operations'] },
     { name: 'APPLICATIONS', href: '/dashboard/property-management/applications', key: '5', subTabKey: 'propmgmt-applications' },
     { name: 'TENANTS', href: '/dashboard/property-management/tenants', key: '6', subTabKey: 'propmgmt-tenants' },
-    { name: 'MAINTENANCE', href: '/dashboard/property-management/maintenance', key: '7', subTabKey: 'propmgmt-maintenance' },
-    { name: 'INSPECTIONS', href: '/dashboard/property-management/inspections', key: 'I', subTabKey: 'propmgmt-inspections' },
+    { name: 'MAINTENANCE', href: '/dashboard/property-management/maintenance', key: '7', subTabKey: 'propmgmt-maintenance', match: ['/dashboard/property-management/inspections', '/dashboard/property-management/vendors'] },
     { name: 'DOCUMENTS', href: '/dashboard/property-management/documents', key: '8', subTabKey: 'propmgmt-documents' },
-    { name: 'VENDORS', href: '/dashboard/property-management/vendors', key: '9', subTabKey: 'propmgmt-vendors' },
     { name: 'FINANCIALS', href: '/dashboard/property-management/financials', key: '10', subTabKey: 'propmgmt-financials' },
-    { name: 'CALENDAR', href: '/dashboard/calendar?service=property-management', key: '0', subTabKey: 'propmgmt-calendar' },
     { name: 'TEAM', href: '/dashboard/property-management/team', key: 'T', subTabKey: 'propmgmt-team' },
+    { name: 'INTEGRATIONS', href: '/dashboard/property-management/integrations', key: 'N', subTabKey: 'propmgmt-integrations' },
 ]
 
 export function PMTopNav() {
@@ -45,10 +47,10 @@ export function PMTopNav() {
         <div className="w-full bg-background border-b border-border">
             <div className="flex items-center h-10 px-4 gap-1 overflow-x-auto">
                 {visibleNavItems.map((item) => {
-                    // Check for active state
+                    // Active when on the tab's own route or any of its child routes (match).
                     const isActive = item.exact
                         ? pathname === item.href
-                        : pathname.startsWith(item.href)
+                        : pathname.startsWith(item.href) || ((item as any).match?.some((m: string) => pathname.startsWith(m)) ?? false)
 
                     return (
                         <Link

@@ -9,6 +9,7 @@
 
 import { logger } from '../../../utils/logger';
 import db from '../../../database';
+import * as twilioService from '../../integrations/twilioService';
 
 // Notification Types
 export enum NotificationType {
@@ -220,7 +221,7 @@ export class NotificationService {
             switch (payload.channel) {
                 case NotificationChannel.SMS:
                     if (contact.phone) {
-                        messageId = await this.sendSMS(contact.phone, renderedMessage);
+                        messageId = await this.sendSMS(payload.organizationId, contact.phone, renderedMessage);
                     }
                     break;
                 case NotificationChannel.EMAIL:
@@ -381,17 +382,20 @@ export class NotificationService {
     /**
      * Send SMS (integrate with Twilio or local provider)
      */
-    private async sendSMS(phone: string, message: string): Promise<string> {
-        // TODO: Integrate with Twilio or Hubtel for Ghana
-        logger.info('SMS notification', { phone, message: message.substring(0, 50) });
-        
-        // Placeholder - in production, integrate with SMS provider
-        const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-        if (twilioSid) {
-            // Twilio integration would go here
+    private async sendSMS(organizationId: string, phone: string, message: string): Promise<string> {
+        // Pure BYO: sends on the ORG's own connected Twilio account. If the org hasn't connected
+        // Twilio, there's no platform fallback — we skip SMS (email/in-app remain the delivery path)
+        // rather than sending from a platform number.
+        try {
+            return await twilioService.sendSms(organizationId, phone, message);
+        } catch (err) {
+            if (err instanceof twilioService.TwilioNotConnectedError) {
+                logger.info('SMS skipped — organization has not connected Twilio', { organizationId, phone: phone.slice(-4) });
+                return '';
+            }
+            logger.error('SMS send failed', { organizationId, error: (err as Error).message });
+            throw err;
         }
-        
-        return `SMS-${Date.now()}`;
     }
 
     /**

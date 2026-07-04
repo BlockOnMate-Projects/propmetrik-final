@@ -27,7 +27,6 @@ import {
     Property
 } from '@/types/property-management'
 import { QRCodeSVG } from 'qrcode.react'
-import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
 
 export default function PortfolioBrochurePage() {
     const router = useRouter();
@@ -151,9 +150,6 @@ export default function PortfolioBrochurePage() {
         <div className="min-h-screen bg-background text-muted-foreground font-sans print:bg-card print:text-foreground">
             {/* Action Bar - Hidden on Print */}
             <div className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border print:hidden">
-                <div className="px-4 py-3 border-b border-border">
-                    <EnterpriseNav />
-                </div>
                 <div className="max-w-6xl mx-auto p-4">
                     <div className="flex items-center justify-between">
                         <div>

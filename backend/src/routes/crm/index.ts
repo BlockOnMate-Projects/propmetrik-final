@@ -35,6 +35,7 @@ import globalSearchRoutes from './global-search';
 import dripCampaignRoutes from './drip-campaigns';
 import territoryRoutes from './territories';
 import segmentRoutes from './segments';
+import inspectionRoutes from './inspections';
 import notificationRoutes from './notifications';
 
 const router = Router();
@@ -77,6 +78,7 @@ const CRM_RESOURCE_MAP: Array<{ prefix: string; resource: string }> = [
     { prefix: '/agents',         resource: 'crm_agent' },
     { prefix: '/team',           resource: 'crm_agent' },
     { prefix: '/territories',    resource: 'crm_agent' },
+    { prefix: '/inspections',    resource: 'crm_deal' },
     { prefix: '/drip-campaigns', resource: 'crm_campaign' },
     { prefix: '/segments',       resource: 'crm_campaign' },
     { prefix: '/emails',         resource: 'crm_campaign' },
@@ -173,6 +175,7 @@ router.use('/', globalSearchRoutes);
 router.use('/', dripCampaignRoutes);
 router.use('/', territoryRoutes);
 router.use('/', segmentRoutes);
+router.use('/', inspectionRoutes);
 router.use('/', notificationRoutes);
 
 // =====================================================

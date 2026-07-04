@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ShareToTikTok } from '@/components/integrations/ShareToTikTok'
+import { ShareToMeta } from '@/components/integrations/ShareToMeta'
 import {
     Building2,
     MapPin,
@@ -35,6 +37,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import {
     Dialog,
     DialogContent,
@@ -390,6 +394,8 @@ export default function PropertyDetailPage() {
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">
+                    <ShareToTikTok propertyId={propertyId} defaultCaption={property.title} />
+                    <ShareToMeta propertyId={propertyId} defaultCaption={property.title} />
                     <Dialog open={isApplicationLinkDialogOpen} onOpenChange={setIsApplicationLinkDialogOpen}>
                         <DialogTrigger asChild>
                             <Button
@@ -662,34 +668,34 @@ export default function PropertyDetailPage() {
 
             {/* Detailed Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="bg-card border border-border p-1 font-mono text-xs uppercase overflow-x-auto overflow-y-hidden h-auto">
-                    <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                <TabsList className={cn(subTabsListClass, 'overflow-x-auto')}>
+                    <TabsTrigger value="overview" className={subTabsTriggerClass}>
                         <Building2 className="h-3 w-3 mr-2 hidden md:block" />
                         Attribute Matrix
                     </TabsTrigger>
                     {units.length > 0 && (
-                        <TabsTrigger value="units" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                        <TabsTrigger value="units" className={subTabsTriggerClass}>
                             <Building2 className="h-3 w-3 mr-2 hidden md:block" />
                             Units ({units.length})
                         </TabsTrigger>
                     )}
-                    <TabsTrigger value="financials" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                    <TabsTrigger value="financials" className={subTabsTriggerClass}>
                         <Activity className="h-3 w-3 mr-2 hidden md:block" />
                         Financial Intel
                     </TabsTrigger>
-                    <TabsTrigger value="tenants" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                    <TabsTrigger value="tenants" className={subTabsTriggerClass}>
                         <Users className="h-3 w-3 mr-2 hidden md:block" />
                         Personnel
                     </TabsTrigger>
-                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                    <TabsTrigger value="maintenance" className={subTabsTriggerClass}>
                         <Wrench className="h-3 w-3 mr-2 hidden md:block" />
                         Asset Integrity
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                    <TabsTrigger value="documents" className={subTabsTriggerClass}>
                         <FileText className="h-3 w-3 mr-2 hidden md:block" />
                         Archives
                     </TabsTrigger>
-                    <TabsTrigger value="assets" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                    <TabsTrigger value="assets" className={subTabsTriggerClass}>
                         <Camera className="h-3 w-3 mr-2 hidden md:block" />
                         Assets
                     </TabsTrigger>

@@ -23,6 +23,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import {
     Table,
     TableBody,
@@ -53,7 +55,6 @@ import {
 } from '@/components/ui/dialog'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { Property } from '@/types/property-management'
-import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
 
 interface BulkOperationResult {
     success: boolean;
@@ -309,9 +310,6 @@ export default function BulkOperationsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Enterprise Navigation */}
-            <EnterpriseNav />
-
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
@@ -364,20 +362,20 @@ export default function BulkOperationsPage() {
 
             {/* Operation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-card border border-border w-full justify-start">
-                    <TabsTrigger value="rent-increase" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                <TabsList className={cn(subTabsListClass, 'w-full')}>
+                    <TabsTrigger value="rent-increase" className={subTabsTriggerClass}>
                         <DollarSign className="mr-2 h-3 w-3" />
                         Rent Increase
                     </TabsTrigger>
-                    <TabsTrigger value="work-orders" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="work-orders" className={subTabsTriggerClass}>
                         <Wrench className="mr-2 h-3 w-3" />
                         Work Orders
                     </TabsTrigger>
-                    <TabsTrigger value="export" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="export" className={subTabsTriggerClass}>
                         <Download className="mr-2 h-3 w-3" />
                         Export
                     </TabsTrigger>
-                    <TabsTrigger value="import" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsTrigger value="import" className={subTabsTriggerClass}>
                         <Upload className="mr-2 h-3 w-3" />
                         Import
                     </TabsTrigger>

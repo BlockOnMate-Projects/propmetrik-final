@@ -115,6 +115,14 @@ const projectsNavGroups: NavGroup[] = [
         ],
     },
     {
+        label: 'COMMUNICATIONS',
+        icon: MessageSquare,
+        featureKey: 'pm-communications',
+        items: [
+            { href: '/dashboard/projects/communications', label: 'Communications', icon: MessageSquare },
+        ],
+    },
+    {
         label: 'UNITS',
         icon: Layers,
         featureKey: 'pm-units',

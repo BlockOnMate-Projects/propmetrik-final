@@ -276,23 +276,23 @@ export default function FinancialsPage() {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex items-center gap-6 border-b border-border">
+            <div className="flex items-center gap-1 h-9">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`pb-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+                    className={`rounded-sm px-3 py-1 font-mono text-[11px] font-medium uppercase transition-all ${
                         activeTab === 'overview'
-                            ? 'text-foreground border-b-2 border-amber-500'
-                            : 'text-muted-foreground hover:text-muted-foreground'
+                            ? 'bg-amber-500/15 text-amber-500 font-bold'
+                            : 'text-muted-foreground hover:text-amber-500 hover:bg-amber-950/20'
                     }`}
                 >
                     Overview
                 </button>
                 <button
                     onClick={() => setActiveTab('payment-settings')}
-                    className={`pb-2 font-mono text-xs uppercase tracking-wider transition-colors flex items-center gap-2 ${
+                    className={`flex items-center gap-1.5 rounded-sm px-3 py-1 font-mono text-[11px] font-medium uppercase transition-all ${
                         activeTab === 'payment-settings'
-                            ? 'text-foreground border-b-2 border-amber-500'
-                            : 'text-muted-foreground hover:text-muted-foreground'
+                            ? 'bg-amber-500/15 text-amber-500 font-bold'
+                            : 'text-muted-foreground hover:text-amber-500 hover:bg-amber-950/20'
                     }`}
                 >
                     <CreditCard className="h-3 w-3" />
