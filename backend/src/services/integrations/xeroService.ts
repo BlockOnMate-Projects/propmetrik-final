@@ -197,6 +197,16 @@ export async function getOrCreateXeroContact(
   return data.Contacts[0].ContactID;
 }
 
+// ─── Connection Test ────────────────────────────────────────────────────────────
+
+/** Live connection test — refreshes the token if needed and reads the Xero organisation name. */
+export async function testXeroConnection(orgId: string): Promise<{ organisationName: string }> {
+  const { token, tenantId } = await getValidToken(orgId);
+  const data = await xeroGet('/Organisation', token, tenantId);
+  const org = data?.Organisations?.[0];
+  return { organisationName: org?.Name || 'Connected' };
+}
+
 // ─── Cost Sync ────────────────────────────────────────────────────────────────
 
 export interface CostRecord {
@@ -274,12 +284,17 @@ export async function syncCostToXero(
 // ─── Bulk Sync ─────────────────────────────────────────────────────────────────
 
 export async function syncAllApprovedCosts(orgId: string): Promise<{ synced: number; errors: string[] }> {
+  // Real project_costs schema: amount = actual_costs (fallback revised/original budget); vendor
+  // name comes from the linked vendors row (contractor_id); there is no currency column → GHS.
   const costs = await pool.query(
-    `SELECT id, description, category, original_budget, actual_cost, vendor_name, invoice_number,
-            COALESCE(currency, 'GHS') as currency, xero_contact_id
-     FROM project_costs
-     WHERE organization_id = $1 AND status = 'approved' AND xero_synced_at IS NULL
-     ORDER BY created_at ASC
+    `SELECT pc.id, pc.description, pc.category, pc.original_budget,
+            COALESCE(pc.actual_costs, pc.revised_budget, pc.original_budget) as actual_cost,
+            COALESCE(v.business_name, 'Unknown Vendor') as vendor_name,
+            pc.invoice_number, 'GHS' as currency, pc.xero_contact_id
+     FROM project_costs pc
+     LEFT JOIN vendors v ON v.id = pc.contractor_id
+     WHERE pc.organization_id = $1 AND pc.status = 'approved' AND pc.xero_synced_at IS NULL
+     ORDER BY pc.created_at ASC
      LIMIT 50`,
     [orgId],
   );

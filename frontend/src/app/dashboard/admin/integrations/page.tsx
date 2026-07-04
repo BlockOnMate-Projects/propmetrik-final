@@ -113,6 +113,7 @@ const INTEGRATIONS: Integration[] = [
   { id: 'google-calendar',   name: 'Google Calendar',     description: 'Calendar synchronization for inspection scheduling', provider: 'Google Cloud', category: 'Documents', status: 'connected', configuredVia: 'OAuth 2.0', details: 'Event sync, availability checks' },
 
   // ── Verification ──
+  { id: 'identity-kyc',      name: 'Identity Verification', description: 'Ghana Card / passport KYC verification for tenants, buyers & agents', provider: 'Didit', category: 'Verification', status: 'disconnected', configuredVia: 'Environment (DIDIT_API_KEY)', details: 'Document + liveness KYC — platform-managed (not yet configured)' },
   { id: 'tin-gra',           name: 'TIN Verification',    description: 'Ghana Revenue Authority tax ID verification', provider: 'GRA', category: 'Verification', status: 'connected', configuredVia: 'API', details: 'Tax Identification Number lookup' },
   { id: 'ssnit',             name: 'SSNIT Verification',  description: 'Social Security & National Insurance Trust verification', provider: 'SSNIT', category: 'Verification', status: 'connected', configuredVia: 'API', details: 'SSN & employer verification' },
 ]

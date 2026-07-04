@@ -107,9 +107,22 @@ const nextConfig = {
       // pdfjs-dist fallbacks
       config.resolve.fallback = { ...config.resolve.fallback, fs: false, http: false, https: false };
     }
-    // Stub out the porto connector (optional wagmi dependency)
+    // Stub out optional @wagmi/connectors peer deps we never use. The `wagmi/connectors`
+    // barrel statically re-exports every connector (coinbase, metaMask, safe, baseAccount,
+    // porto, walletConnect…), so webpack tries to resolve their optional SDKs even though
+    // src/lib/tenant/web3.ts only uses `injected` (+ `walletConnect` when a projectId is set).
+    // Aliasing the unused ones to `false` lets the production build resolve them to empty.
     config.resolve.alias['porto'] = false;
     config.resolve.alias['porto/internal'] = false;
+    config.resolve.alias['@base-org/account'] = false;
+    config.resolve.alias['@coinbase/wallet-sdk'] = false;
+    config.resolve.alias['@metamask/sdk'] = false;
+    config.resolve.alias['@safe-global/safe-apps-sdk'] = false;
+    config.resolve.alias['@safe-global/safe-apps-provider'] = false;
+    // WalletConnect is only instantiated when NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID is set.
+    // Stubbed so the build passes with the dep absent; to enable WalletConnect, install
+    // @walletconnect/ethereum-provider and delete this alias.
+    config.resolve.alias['@walletconnect/ethereum-provider'] = false;
     return config;
   },
 };

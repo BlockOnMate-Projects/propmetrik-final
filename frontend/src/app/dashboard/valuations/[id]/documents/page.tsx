@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { authedFetch } from '@/lib/authed-fetch'
+import { saveToCloud } from '@/lib/integrations-api'
 import {
   ArrowLeft, ArrowRight, Upload, Trash2, Image as ImageIcon, FileText, MapPin, Loader2, RefreshCw,
-  Download, FileType, CheckCircle2,
+  Download, FileType, CheckCircle2, Cloud,
 } from 'lucide-react'
 
 interface DocRow {
@@ -37,6 +38,8 @@ export default function DocumentsPhotosPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [dlBusy, setDlBusy] = useState<string | null>(null)
+  const [cloudBusy, setCloudBusy] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -77,6 +80,26 @@ export default function DocumentsPhotosPage() {
       setError(e?.message || 'Download failed')
     } finally {
       setDlBusy(null)
+    }
+  }
+
+  const saveReportToCloud = async (reportId: string, kind: 'pdf' | 'docx') => {
+    setCloudBusy(`${reportId}:${kind}`)
+    setError(null)
+    setNotice(null)
+    try {
+      const path = kind === 'pdf' ? `/api/reports/${reportId}/download/pdf` : `/api/reports/${reportId}/download`
+      const res = await authedFetch(path)
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j.download_url) throw new Error(j.message || j.error || 'Report unavailable')
+      const r = await saveToCloud({ sourceUrl: j.download_url, name: `Valuation Report.${kind}` })
+      setNotice(`Saved to ${r.provider === 'onedrive' ? 'OneDrive' : 'Google Drive'}${r.url ? ` — ${r.url}` : ''}`)
+    } catch (e: any) {
+      setError(e?.code === 'not_connected' || /not.?connected/i.test(e?.message || '')
+        ? 'Connect Google Drive or OneDrive on the Integrations page first.'
+        : (e?.message || 'Save to cloud failed'))
+    } finally {
+      setCloudBusy(null)
     }
   }
 
@@ -169,6 +192,9 @@ export default function DocumentsPhotosPage() {
       {error && (
         <div className="mb-4 border border-red-500/40 bg-red-500/5 px-3 py-2 font-mono text-[11px] text-red-600 dark:text-red-400">{error}</div>
       )}
+      {notice && (
+        <div className="mb-4 border border-green-500/40 bg-green-500/5 px-3 py-2 font-mono text-[11px] text-green-600 dark:text-green-400 break-all">{notice}</div>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground font-mono text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
@@ -210,6 +236,14 @@ export default function DocumentsPhotosPage() {
                         className="flex items-center gap-1.5 px-2.5 py-1 border border-border text-muted-foreground hover:bg-muted font-mono text-[10px] uppercase tracking-wider"
                       >
                         {dlBusy === `${r.id}:docx` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileType className="h-3.5 w-3.5" />} DOCX
+                      </button>
+                      <button
+                        onClick={() => saveReportToCloud(r.id, finalized ? 'pdf' : 'docx')}
+                        disabled={cloudBusy === `${r.id}:pdf` || cloudBusy === `${r.id}:docx`}
+                        title="Save to your connected Google Drive / OneDrive"
+                        className="flex items-center gap-1.5 px-2.5 py-1 border border-sky-500/40 text-sky-600 dark:text-sky-300 hover:bg-sky-500/10 font-mono text-[10px] uppercase tracking-wider"
+                      >
+                        {cloudBusy === `${r.id}:pdf` || cloudBusy === `${r.id}:docx` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5" />} Drive
                       </button>
                     </div>
                   )

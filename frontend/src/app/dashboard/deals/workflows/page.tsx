@@ -1,5 +1,6 @@
 'use client';
 
+import { ConnectEmailBanner } from '@/components/communications/ConnectEmailBanner';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -202,6 +203,7 @@ export default function WorkflowsPage() {
 
   return (
     <div className="space-y-6">
+      <ConnectEmailBanner noun="Workflow emails" />
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div>

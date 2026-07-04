@@ -19,17 +19,28 @@
  * @module routes/crm/emails
  */
 
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
 import { emailIntegrationService, EmailProvider } from '../../services/crm-deal-management/emailIntegrationService';
+import { getAuthUserId, getAuthOrgId } from '../../middleware/pmAuth';
+import { uploadFile, buckets } from '../../database/minio';
 import { logger } from '../../utils/logger';
 
 const router = Router();
 
+// In-memory multipart for email attachments (buffered → streamed to MinIO). 25 MB cap keeps us
+// under Gmail's 35 MB raw-send limit once base64-inflated.
+const attachmentUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
+
+// Use the standard auth resolvers — the org lives on req.user.organizationId (NOT req.organizationId,
+// which is why the list/sync endpoints previously 401'd with "Organization required"). These return
+// '' when absent, so the existing `if (!organizationId)` guards still hold.
 function getUserId(req: Request): string {
-    return (req as any).user?.id || (req as any).userId;
+    try { return getAuthUserId(req); } catch { return ''; }
 }
 function getOrganizationId(req: Request): string {
-    return (req as any).organizationId || req.headers['x-organization-id'] as string;
+    try { return getAuthOrgId(req); } catch { return ''; }
 }
 
 const VALID_PROVIDERS: EmailProvider[] = ['gmail', 'outlook'];
@@ -167,11 +178,15 @@ router.post('/emails/sync', async (req: Request, res: Response) => {
 router.get('/emails', async (req: Request, res: Response) => {
     try {
         const organizationId = getOrganizationId(req);
-        if (!organizationId) return res.status(401).json({ error: 'Organization required' });
+        const userId = getUserId(req);
+        if (!organizationId || !userId) return res.status(401).json({ error: 'Authentication required' });
 
-        const result = await emailIntegrationService.getEmails(organizationId, {
+        const result = await emailIntegrationService.getEmails(organizationId, userId, {
             deal_id: req.query.deal_id as string,
             contact_id: req.query.contact_id as string,
+            entity_type: req.query.entity_type as string,
+            entity_id: req.query.entity_id as string,
+            provider: req.query.provider as string,
             search: req.query.search as string,
             direction: req.query.direction as 'inbound' | 'outbound',
             limit: parseInt(req.query.limit as string) || 50,
@@ -197,7 +212,8 @@ router.post('/emails/send', async (req: Request, res: Response) => {
         const organizationId = getOrganizationId(req);
         if (!userId || !organizationId) return res.status(401).json({ error: 'Authentication required' });
 
-        const { provider, to, cc, bcc, subject, body_html, body_text, deal_id, contact_id, in_reply_to } = req.body;
+        const { provider, to, cc, bcc, subject, body_html, body_text, deal_id, contact_id, entity_type, entity_id,
+                in_reply_to, thread_id, reply_to_provider_id, attachments } = req.body;
 
         if (!to || !Array.isArray(to) || to.length === 0) {
             return res.status(400).json({ error: 'At least one recipient (to) required' });
@@ -208,13 +224,38 @@ router.post('/emails/send', async (req: Request, res: Response) => {
         const emailProvider = (provider || 'gmail') as EmailProvider;
 
         const result = await emailIntegrationService.sendEmail(userId, organizationId, emailProvider, {
-            to, cc, bcc, subject, body_html, body_text, deal_id, contact_id, in_reply_to,
+            to, cc, bcc, subject, body_html, body_text, deal_id, contact_id, entity_type, entity_id,
+            in_reply_to, thread_id, reply_to_provider_id, attachments,
         });
 
         res.json(result);
     } catch (error: any) {
         logger.error('Email send error', { error: error.message });
         res.status(500).json({ error: error.message || 'Failed to send email' });
+    }
+});
+
+// ── Attachment upload ────────────────────────────────
+
+/**
+ * POST /emails/attachments  (multipart, field "file")
+ * Stores a compose attachment in MinIO and returns a reference the /send call embeds.
+ */
+router.post('/emails/attachments', attachmentUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+        const userId = getUserId(req);
+        if (!userId) return res.status(401).json({ error: 'Authentication required' });
+        const file = (req as any).file as { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined;
+        if (!file) return res.status(400).json({ error: 'file is required' });
+
+        const safeName = file.originalname.replace(/[^\w.\-]+/g, '_').slice(0, 120);
+        const key = `email-attachments/${userId}/${crypto.randomUUID()}-${safeName}`;
+        await uploadFile(buckets.documents, key, file.buffer, file.mimetype || 'application/octet-stream', { uploadedBy: userId });
+
+        res.json({ bucket: buckets.documents, key, name: file.originalname, mimeType: file.mimetype || 'application/octet-stream', size: file.size });
+    } catch (error: any) {
+        logger.error('Email attachment upload error', { error: error.message });
+        res.status(500).json({ error: error.message || 'Failed to upload attachment' });
     }
 });
 
@@ -227,15 +268,37 @@ router.post('/emails/send', async (req: Request, res: Response) => {
 router.post('/emails/:id/link-deal', async (req: Request, res: Response) => {
     try {
         const organizationId = getOrganizationId(req);
-        if (!organizationId) return res.status(401).json({ error: 'Organization required' });
+        const userId = getUserId(req);
+        if (!organizationId || !userId) return res.status(401).json({ error: 'Authentication required' });
 
         const { deal_id } = req.body;
         if (!deal_id) return res.status(400).json({ error: 'deal_id required' });
 
-        await emailIntegrationService.linkEmailToDeal(req.params.id, organizationId, deal_id);
+        await emailIntegrationService.linkEmailToDeal(req.params.id, organizationId, userId, deal_id);
         res.json({ success: true });
     } catch (error: any) {
         logger.error('Email link error', { error: error.message });
+        res.status(500).json({ error: 'Failed to link email' });
+    }
+});
+
+/**
+ * POST /emails/:id/link
+ * Link a synced email to any service entity (deal/contact/tenant/property/contractor/vendor/…).
+ */
+router.post('/emails/:id/link', async (req: Request, res: Response) => {
+    try {
+        const organizationId = getOrganizationId(req);
+        const userId = getUserId(req);
+        if (!organizationId || !userId) return res.status(401).json({ error: 'Authentication required' });
+
+        const { entity_type, entity_id } = req.body;
+        if (!entity_type || !entity_id) return res.status(400).json({ error: 'entity_type and entity_id required' });
+
+        await emailIntegrationService.linkEmailToEntity(req.params.id, organizationId, userId, entity_type, entity_id);
+        res.json({ success: true });
+    } catch (error: any) {
+        logger.error('Email link-entity error', { error: error.message });
         res.status(500).json({ error: 'Failed to link email' });
     }
 });

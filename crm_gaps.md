@@ -25,6 +25,8 @@
 
 **Recommended posture:** three-quarters of the roadmap is **integration, not construction.** Phase 1 wires existing services into the CRM (0 new services). Phase 2 completes half-built features (drip execution engine, MoMo payouts, KYC verification). Phase 3 builds the true green-field items (social syndication, offers/reservations). Phase 4 is enterprise hardening (i18n, DR, observability).
 
+**Integration model (decided 2026-07-03 — see §8A):** external integrations follow a **two-model** policy. **BYO (Bring-Your-Own, per-org)** for anything that is the *client's own identity/account* — social pages, accounting (Xero/QuickBooks), their email/calendar/number — connected via a generalized OAuth flow, tokens in the `integrations`/`user_integrations` tables (the framework EXISTS; only Xero uses it today). **Platform-owned** for money movement, KYC, maps, and LLMs. §8A is the authoritative matrix of **all 22 integrations** with model, provider API, auth type, live-status, and gap — build the BYO set on one shared connector, not one-off.
+
 **Overall reuse posture:** of ~70 audited CRM capabilities, **~46% are ✅ reuse-directly, ~26% 🟡 extend, ~9% 🟠 refactor, ~19% 🔴 build-new.**
 
 ---
@@ -361,7 +363,7 @@ Source: `ARCHITECTURE.md`, direct inspection.
 
 **7.5 Event-driven CRM.** Extend the existing `EventBus`/`workflowEventEmitter` with CRM events (`deal.stage_changed`, `deal.won`, `contact.created`, `viewing.scheduled`) and let the workflow engine + notifications subscribe. This replaces bespoke trigger code.
 
-**7.6 One integrations table, many providers.** The `integrations` + `user_integrations` OAuth framework (Xero pattern) should back every new external provider (Outlook, Drive, Meta, Didit) — token rotation and `integration_logs` come free.
+**7.6 One integrations table, many providers — with an explicit BYO vs Platform policy (see §8A).** The `integrations` (per-org) + `user_integrations` (per-user) OAuth framework (Xero pattern) backs every **BYO** provider (their own social pages, accounting, email, calendar, storage) — token rotation and `integration_logs` come free. **Platform-owned** providers (payments, KYC, maps, LLMs) stay in `config/index.ts` and never touch that framework. §8A is the authoritative matrix of every integration and its model; build the BYO ones together (one generalized connector), not one-off.
 
 **7.7 Payments: separate money-in from money-out.** Inbound is solid. Build a dedicated **disbursement service** (`payoutService`) for MoMo/bank/crypto payouts, reused by commission payouts, refunds, and deposit releases.
 
@@ -380,6 +382,68 @@ Source: `ARCHITECTURE.md`, direct inspection.
 | `crmWorkflowBridge` | Connect CRM workflow schema → `workflowExecutionEngine` | workflow engine | M |
 | `crmEmailDraftService` | AI-drafted follow-ups/offers | aiService | M |
 | `voiceService` (optional) | Click-to-call, call logging | Twilio Voice | L |
+
+---
+
+## 8A. Integration Provider Matrix — BYO vs Platform  *(ADDED 2026-07-03 — authoritative integration scope)*
+
+> **Decision (2026-07-03):** Integrations follow a **two-model** policy, not one-size-fits-all.
+> **BYO (Bring-Your-Own, per-org)** for anything that represents the *client's own identity or
+> accounts* (social pages, accounting books, their email domain/number). **Platform-owned** for
+> money movement, compliance, and commodity infra (payments, KYC, maps, LLMs). A few are **Hybrid**
+> (platform default, BYO optional). This is the missing decision behind §7.6 — now explicit.
+>
+> **BYO framework already exists — finish it, don't invent it.** Per-org tokens live in the
+> **`integrations`** table (`organization_id`, `auth_type`, `api_key_hash`, `oauth_access_token/
+> refresh_token/oauth_expires_at`, `webhook_url/secret`, `events_subscribed`, `last_error`,
+> `last_sync_at`); per-**user** OAuth lives in **`user_integrations`** (Gmail/Google Calendar use it).
+> **Only Xero currently uses BYO — every other live integration is Platform-owned.** The build is:
+> (1) generalize the **Xero OAuth connect/callback flow** into a provider-agnostic connector,
+> (2) one thin **adapter class per provider** (`connect()/refresh()/sync()/post()`),
+> (3) **Connect-account cards** in the same **Integrations tab** as *Connect Website* (PM + CRM),
+> (4) token refresh + `integration_logs`. Outbound from PropMetrik (our public listings/leads API)
+> uses **`org_api_keys`** (`pmk_` keys) — see the Connect Website spec (`docs/integrations/connect-website-spec.md`).
+
+**Model legend:** 🏢 Platform-owned · 👤 BYO (per-org / per-user) · ⚖️ Hybrid (platform default, BYO optional)
+**Auth:** OAuth2 = client authorizes (store refresh token) · Key = API key/secret · Gov = government API
+
+| # | Integration | Category | Model | Provider API | Auth | Live today? | Gap / effort |
+|---|---|---|---|---|---|---|---|
+| 1 | WhatsApp Business | Messaging | ⚖️ | Meta WhatsApp Cloud API | Key | ✅ Platform | BYO number optional · S |
+| 2 | SMS | Messaging | ⚖️ | Twilio | Key | ✅ Platform | BYO sender-ID optional · S |
+| 3 | Email (transactional) | Messaging | 🏢 | MS Graph / AWS SES / Google | Key/OAuth | ✅ Platform | — |
+| 4 | Voice / click-to-call | Messaging | ⚖️ | Twilio Voice | Key | 🔴 | Build · L |
+| 5 | Agent email inbox sync | Email | 👤 user | Gmail API / MS Graph | OAuth2 | 🟡 Gmail live, Outlook partial | Outlook parity · S–M |
+| 6 | Calendar | Calendar | 👤 user | Google Calendar / MS Graph | OAuth2 | 🟡 Google live | Outlook calendar · M |
+| 7 | Facebook Pages + Instagram | Social | 👤 org | Meta Graph API | OAuth2 | 🔴 | Build syndication · XL |
+| 8 | TikTok | Social | 👤 org | TikTok Content Posting API | OAuth2 | 🔴 | Build · XL |
+| 9 | LinkedIn | Social | 👤 org | LinkedIn Marketing API | OAuth2 | 🔴 | Build · L |
+| 10 | X (Twitter) | Social | 👤 org | X API v2 | OAuth2 | 🔴 | Build · M |
+| 11 | Paystack (card + MoMo **inbound**) | Payments | 🏢 per-org subaccount | Paystack | Key | ✅ Platform | — (subaccount split live) |
+| 12 | Crypto **inbound** | Payments | 🏢 | NOWPayments | Key | ✅ Platform | — |
+| 13 | **Outbound payouts** (MoMo/bank) | Payments | 🏢 | MTN MoMo · Telecel · AirtelTigo · Paystack Transfers | Key | 🔴 | Build disbursement rail · XL (R2 maker-checker) |
+| 14 | Crypto payouts | Payments | 🏢 | NOWPayments payout | Key | 🟡 wallet-setup only | Build disbursement · L |
+| 15 | Xero (accounting) | Accounting | 👤 org | Xero API | OAuth2 | ✅ **BYO (reference impl)** | Reuse its flow for all BYO |
+| 16 | QuickBooks Online | Accounting | 👤 org | Intuit QuickBooks API | OAuth2 | 🔴 | Build on Xero pattern · M |
+| 17 | Identity / KYC | Identity | 🏢 | Didit or Smile ID | Key | 🔴 | Build verify · L (R3 compliance) |
+| 18 | Ghana Card / TIN verify | Identity | 🏢 | NIA / GRA | Gov | 🔴 | Build (contract-gated) · L |
+| 19 | Maps / geocoding / places | Maps | 🏢 | Google Maps/Places + Mapbox | Key | ✅ Platform | — |
+| 20 | Cloud storage (client Drive) | Storage | 👤 user | Google Drive / OneDrive | OAuth2 | 🔴 env only | Build on OAuth framework · M |
+| 21 | LLM / AI | AI | 🏢 | Gemini · DeepSeek · Claude | Key | ✅ Platform | — |
+| 22 | **Client website listings + leads** | Publishing | 👤 org (issues/consumes `pmk_` keys) | PropMetrik public API | `pmk_` key | 🟡 ~70% (see Connect Website spec) | Org-scope feed + widget · M |
+
+**Reading the matrix:** the *green-field* build (🔴) is concentrated in **Social (7–10)**, **outbound payouts (13–14)**, **KYC (17–18)**, **QuickBooks (16)**, **Voice (4)**, and **client storage (20)** — everything else is reuse/extend. **BYO items (👤) all share ONE framework** (generalized Xero OAuth + `integrations` table + Connect-account cards), so they are cheaper together than apart. **Platform items (🏢) never touch that framework** — they stay in `config/index.ts` with platform credentials.
+
+**Where each provider's credentials/config live:**
+- 🏢 Platform → `backend/src/config/index.ts` env (one account, all orgs).
+- 👤 BYO org → `integrations` row per org (OAuth tokens / hashed API key), refreshed by the connector.
+- 👤 BYO user → `user_integrations` row per user (Gmail/Calendar pattern).
+- Outbound (our API to their site) → `org_api_keys` (`pmk_` keys), Connect Website spec.
+
+**New work this adds to §8 / §10 / §11:**
+- **Service:** `integrationConnectorService` (provider-agnostic OAuth connect/callback/refresh + adapter registry) — built on the existing Xero flow; backs items 5–10, 15–16, 20.
+- **API:** `GET/POST /integrations/:provider/connect|callback|disconnect`, `GET /integrations` (org's connected providers), per-provider `POST /integrations/:provider/sync|post`.
+- **DB:** none new for BYO (reuse `integrations` + `user_integrations` + `integration_logs`); add `provider` enum values as providers are onboarded. Platform payout/KYC still need their own tables per §11.
 
 ---
 

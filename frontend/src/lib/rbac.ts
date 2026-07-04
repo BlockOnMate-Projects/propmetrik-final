@@ -283,6 +283,7 @@ export const featureGates: Record<string, FeatureGate> = {
   'pm-procurement':    { minTier: 'professional',  label: 'Procurement',         description: 'Bid management, contracts, contractors' },
   'pm-financials':     { minTier: 'professional',  label: 'Project Financials',  description: 'Costs, budget, invoicing, timesheets, reports' },
   'pm-documents':      { minTier: 'starter',       label: 'Project Documents',   description: 'Files, meetings, and closeout' },
+  'pm-communications': { minTier: 'starter',       label: 'Communications',      description: 'Mail and calendar' },
   'pm-units':          { minTier: 'professional',  label: 'Units Management',    description: 'Unit tracking and sales management' },
   'pm-analytics':      { minTier: 'enterprise',    label: 'Project Analytics',   description: 'Analytics, audit log, and integrations' },
   'pm-settings':       { minTier: 'professional',  label: 'Project Settings',    description: 'Project configuration and settings' },
@@ -343,6 +344,11 @@ const FALLBACK_valuationTabAccess: Record<string, UserRole[]> = {
   settings: [
     'super_admin', 'firm_principal', 'admin',
   ],
+
+  // Integrations — connect org-level accounts (accounting, storage, etc.); admin-level like settings
+  integrations: [
+    'super_admin', 'firm_principal', 'admin',
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -361,6 +367,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'pm-procurement':   ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager'],
     'pm-financials':    ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager'],
     'pm-documents':     ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager', 'inspector', 'viewer'],
+    'pm-communications': ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager', 'inspector', 'viewer'],
     'pm-units':         ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'agent'],
     'pm-analytics':     ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'pm-settings':      ['super_admin', 'firm_principal', 'admin'],
@@ -378,6 +385,8 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'crm-documents':    ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
     'crm-financials':   ['super_admin', 'firm_principal', 'admin', 'manager', 'finance_manager'],
     'crm-messaging':    ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-inbox':        ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-communications': ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
     'crm-calendar':     ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
     'crm-analytics':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'crm-workflows':    ['super_admin', 'firm_principal', 'admin', 'manager'],
@@ -387,6 +396,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'crm-targets':      ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
     'crm-drip-campaigns': ['super_admin', 'firm_principal', 'admin', 'manager'],
     'crm-team':          ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'crm-integrations':  ['super_admin', 'firm_principal', 'admin', 'manager'],
   },
 
   // ── Property Management ────────────────────────────────────
@@ -394,6 +404,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'propmgmt-overview':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
     'propmgmt-properties':    ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
     'propmgmt-messages':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-communications': ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
     'propmgmt-portfolios':    ['super_admin', 'firm_principal', 'admin', 'manager'],
     'propmgmt-applications':  ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
     'propmgmt-tenants':       ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
@@ -403,6 +414,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'propmgmt-financials':    ['super_admin', 'firm_principal', 'admin', 'manager', 'finance_manager'],
     'propmgmt-calendar':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
     'propmgmt-team':          ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'propmgmt-integrations':  ['super_admin', 'firm_principal', 'admin', 'manager'],
   },
 
   // ── Analytics ──────────────────────────────────────────────
@@ -654,6 +666,7 @@ const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServi
     'crm-documents':       ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
     'crm-financials':      ['service_admin', 'sales_manager'],
     'crm-messaging':       ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-inbox':           ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
     'crm-calendar':        ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
     'crm-analytics':       ['service_admin', 'sales_manager'],
     'crm-workflows':       ['service_admin', 'sales_manager'],
@@ -662,6 +675,7 @@ const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServi
     'crm-targets':         ['service_admin', 'sales_manager', 'sales_agent'],
     'crm-drip-campaigns':  ['service_admin', 'sales_manager'],
     'crm-team':            ['service_admin'],
+    'crm-integrations':    ['service_admin'],
   },
 
   // ── Project Management ───────────────────────────────────
@@ -671,6 +685,7 @@ const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServi
     'pm-procurement':   ['service_admin', 'project_manager', 'quantity_surveyor'],
     'pm-financials':    ['service_admin', 'project_manager', 'quantity_surveyor'],
     'pm-documents':     ['service_admin', 'project_manager', 'site_supervisor', 'quantity_surveyor', 'viewer'],
+    'pm-communications': ['service_admin', 'project_manager', 'site_supervisor', 'quantity_surveyor', 'viewer'],
     'pm-units':         ['service_admin', 'project_manager', 'viewer'],
     'pm-analytics':     ['service_admin', 'project_manager'],
     'pm-settings':      ['service_admin'],
@@ -682,6 +697,7 @@ const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServi
     'propmgmt-overview':      ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
     'propmgmt-properties':    ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
     'propmgmt-messages':      ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'viewer'],
+    'propmgmt-communications': ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'viewer'],
     'propmgmt-portfolios':    ['service_admin', 'property_manager', 'accounts_officer'],
     'propmgmt-applications':  ['service_admin', 'property_manager', 'leasing_agent', 'viewer'],
     'propmgmt-tenants':       ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
@@ -691,6 +707,7 @@ const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServi
     'propmgmt-financials':    ['service_admin', 'accounts_officer'],
     'propmgmt-calendar':      ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'viewer'],
     'propmgmt-team':          ['service_admin'],
+    'propmgmt-integrations':  ['service_admin'],
   },
 
   // ── Analytics ────────────────────────────────────────────

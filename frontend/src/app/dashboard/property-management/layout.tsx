@@ -1,4 +1,5 @@
 import { PMTopNav } from '@/components/layout/PMTopNav'
+import { PMSectionNav } from '@/components/layout/PMSectionNav'
 
 export default function PropertyManagementLayout({
     children,
@@ -8,6 +9,7 @@ export default function PropertyManagementLayout({
     return (
         <div className="flex flex-col min-h-[calc(100vh-8rem)] bg-background text-foreground">
             <PMTopNav />
+            <PMSectionNav />
             <main className="flex-1 overflow-y-auto p-6 bg-background">
                 {children}
             </main>

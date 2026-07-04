@@ -23,8 +23,10 @@ import {
   X,
   Target,
   Mail,
+  Inbox,
   Percent,
   Map as MapIcon,
+  Plug,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,8 +50,7 @@ const crmNavItems = [
   { href: '/dashboard/deals/tasks', label: 'Tasks', icon: CheckSquare, subTabKey: 'crm-tasks' },
   { href: '/dashboard/deals/documents', label: 'Documents', icon: FileText, subTabKey: 'crm-documents' },
   { href: '/dashboard/deals/financials', label: 'Financials', icon: DollarSign, subTabKey: 'crm-financials' },
-  { href: '/dashboard/deals/messaging', label: 'Messaging', icon: MessageSquare, subTabKey: 'crm-messaging' },
-  { href: '/dashboard/calendar?service=deals', label: 'Calendar', icon: Calendar, subTabKey: 'crm-calendar' },
+  { href: '/dashboard/deals/communications', label: 'Communications', icon: MessageSquare, subTabKey: 'crm-communications' },
   { href: '/dashboard/deals/analytics', label: 'Analytics', icon: BarChart3, subTabKey: 'crm-analytics' },
   { href: '/dashboard/deals/workflows', label: 'Workflows', icon: Workflow, subTabKey: 'crm-workflows' },
   { href: '/dashboard/deals/pipelines', label: 'Pipelines', icon: Settings, subTabKey: 'crm-pipelines' },
@@ -57,6 +58,7 @@ const crmNavItems = [
   { href: '/dashboard/deals/targets', label: 'Targets', icon: Target, subTabKey: 'crm-targets' },
   { href: '/dashboard/deals/drip-campaigns', label: 'Drip Campaigns', icon: Mail, subTabKey: 'crm-drip-campaigns' },
   { href: '/dashboard/deals/team', label: 'Team', icon: UserCircle, subTabKey: 'crm-team' },
+  { href: '/dashboard/deals/integrations', label: 'Integrations', icon: Plug, subTabKey: 'crm-integrations' },
 ]
 
 export function CrmSidebar() {

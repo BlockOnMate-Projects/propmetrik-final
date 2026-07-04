@@ -43,7 +43,6 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { propertyManagementApi } from '@/lib/property-management-api'
-import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
 
 interface AuditLog {
     id: string;
@@ -180,9 +179,6 @@ export default function AuditTrailPage() {
 
     return (
         <div className="space-y-6">
-            {/* Enterprise Navigation */}
-            <EnterpriseNav />
-
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>

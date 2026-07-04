@@ -15,6 +15,8 @@ export interface InspectionInput {
     propertyId?: string | null;
     unitId?: string | null;
     tenancyId?: string | null;
+    dealId?: string | null;
+    contactId?: string | null;
     inspectionType?: string;
     scheduledFor?: string | null;
     inspectorId?: string | null;
@@ -31,11 +33,12 @@ export interface InspectionItemInput {
 }
 
 class InspectionService {
-    async list(orgId: string, filters: { propertyId?: string; status?: string; type?: string } = {}): Promise<any[]> {
+    async list(orgId: string, filters: { propertyId?: string; dealId?: string; status?: string; type?: string } = {}): Promise<any[]> {
         const clauses: string[] = ['i.organization_id = $1', 'i.deleted_at IS NULL'];
         const params: any[] = [orgId];
         const add = (v: any, f: (n: number) => string) => { params.push(v); clauses.push(f(params.length)); };
         if (filters.propertyId) add(filters.propertyId, (n) => `i.property_id = $${n}`);
+        if (filters.dealId) add(filters.dealId, (n) => `i.deal_id = $${n}`);
         if (filters.status) add(filters.status, (n) => `i.status = $${n}`);
         if (filters.type) add(filters.type, (n) => `i.inspection_type = $${n}`);
 
@@ -73,9 +76,10 @@ class InspectionService {
     async create(orgId: string, input: InspectionInput, userId?: string): Promise<any> {
         const res = await pool.query(
             `INSERT INTO property_inspections
-                (organization_id, property_id, unit_id, tenancy_id, inspection_type, scheduled_for, inspector_id, summary, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+                (organization_id, property_id, unit_id, tenancy_id, deal_id, contact_id, inspection_type, scheduled_for, inspector_id, summary, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
             [orgId, input.propertyId || null, input.unitId || null, input.tenancyId || null,
+             input.dealId || null, input.contactId || null,
              input.inspectionType || 'routine', input.scheduledFor || null, input.inspectorId || userId || null,
              input.summary || null, userId || null]
         );

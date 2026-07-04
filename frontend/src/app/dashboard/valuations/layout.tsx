@@ -15,6 +15,7 @@ import {
     Receipt,
     Building2,
     FolderOpen,
+    Plug,
 } from 'lucide-react'
 
 const valuationsNavItems = [
@@ -27,6 +28,7 @@ const valuationsNavItems = [
     // Central document vault — reports + photos + title docs across all valuations.
     // Gated by the 'documents' valuation tab (registered in the RBAC config + fallback).
     { href: '/dashboard/valuations/documents', label: 'DOCUMENTS', icon: FolderOpen, tabKey: 'documents' },
+    { href: '/dashboard/valuations/integrations', label: 'INTEGRATIONS', icon: Plug, tabKey: 'integrations' },
     { href: '/dashboard/valuations/settings', label: 'SETTINGS', icon: Settings, tabKey: 'settings' },
 ]
 

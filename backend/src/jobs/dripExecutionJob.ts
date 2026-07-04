@@ -3,8 +3,9 @@
  *
  * Completes the half-built drip feature: the schema (migration 219), CRUD routes,
  * and enrollment existed, but nothing ever *sent* a step. This node-cron job polls
- * for enrollments whose current step is due and delivers it by email via notify(),
- * then advances the enrollment.
+ * for enrollments whose current step is due and delivers it from the campaign OWNER's
+ * connected mailbox (Gmail/Outlook via emailIntegrationService) — never the platform
+ * address — then advances the enrollment.
  *
  * Enterprise properties:
  *  - Idempotent: crm_drip_step_sends (migration 271) is a send ledger keyed
@@ -26,11 +27,11 @@
  */
 
 import cron from 'node-cron';
-import { notify } from '../../shared-services/notifications/in-mail';
 import { logger } from '../utils/logger';
 import db, { transaction } from '../database';
 import { documentGenerationService } from '../services/crm-deal-management/documentGenerationService';
 import { injectTracking } from '../services/crm-deal-management/campaignTracking';
+import { emailIntegrationService } from '../services/crm-deal-management/emailIntegrationService';
 
 export interface DripExecutionResult {
     processed: number;   // due steps examined this run
@@ -119,6 +120,7 @@ export class DripExecutionJob {
                     c.first_name,
                     c.last_name,
                     ca.organization_id,
+                    ca.created_by             AS owner_user_id,
                     COALESCE(sl.attempts, 0)  AS prior_attempts
                FROM crm_drip_enrollments e
                JOIN crm_drip_campaigns ca    ON ca.id = e.campaign_id
@@ -132,6 +134,13 @@ export class DripExecutionJob {
                 AND c.email IS NOT NULL AND c.email <> ''
                 AND (sl.id IS NULL OR (sl.status = 'failed' AND sl.attempts < $1))
                 AND COALESCE(e.last_step_at, e.enrolled_at) + (st.delay_days::text || ' days')::interval <= NOW()
+                -- Only send once the campaign OWNER has connected their own mailbox (no platform fallback).
+                -- Campaigns whose owner hasn't connected simply wait here (no attempts burned) and resume automatically.
+                AND EXISTS (
+                    SELECT 1 FROM user_integrations ui
+                     WHERE ui.user_id = ca.created_by
+                       AND ui.provider IN ('google_email','microsoft_email')
+                )
               ORDER BY e.enrolled_at ASC
               LIMIT $2`,
             [MAX_ATTEMPTS, MAX_STEPS_PER_RUN]
@@ -197,22 +206,16 @@ export class DripExecutionJob {
             // Inject the open pixel + rewrite links through the signed click tracker (mig 275).
             const trackedHtml = injectTracking(body, sendId);
 
-            await notify({
-                recipients: {
-                    audience: 'staff',
-                    userId: row.contact_id,
-                    email: row.email,
-                    name: `${row.first_name || ''} ${row.last_name || ''}`.trim() || null,
-                },
-                category: 'crm',
-                type: 'drip_step.sent',
-                title: subject,
-                body: body || subject,
-                organizationId: row.organization_id,
-                sourceType: 'drip_enrollment',
-                sourceId: row.enrollment_id,
-                channels: { email: true },   // external lead → email only (no in-app inbox)
-                email: { subject, html: trackedHtml },
+            // Send FROM the campaign owner's own connected mailbox (Gmail/Outlook) — not the platform
+            // system address. The EXISTS gate above guarantees a provider exists; this is belt-and-braces.
+            const provider = await emailIntegrationService.getConnectedEmailProvider(row.owner_user_id);
+            if (!provider) throw new Error('Campaign owner has no connected email account (connect Gmail/Outlook in Communications)');
+            await emailIntegrationService.sendEmail(row.owner_user_id, row.organization_id, provider, {
+                to: [row.email],
+                subject,
+                body_html: trackedHtml,
+                entity_type: 'contact',
+                entity_id: row.contact_id,
             });
 
             // Mark sent + advance the enrollment in one transaction so progress is never

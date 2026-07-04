@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { VaultDocument, VaultSummary } from '@/types/property-management'
 
@@ -207,17 +208,17 @@ export default function DocumentVaultPage() {
             {/* Tabs + Search */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-                    <TabsList className="bg-card border border-border">
-                        <TabsTrigger value="all" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                    <TabsList className={subTabsListClass}>
+                        <TabsTrigger value="all" className={subTabsTriggerClass}>
                             All Files
                         </TabsTrigger>
-                        <TabsTrigger value="legal" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                        <TabsTrigger value="legal" className={subTabsTriggerClass}>
                             Legal
                         </TabsTrigger>
-                        <TabsTrigger value="financial" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                        <TabsTrigger value="financial" className={subTabsTriggerClass}>
                             Financial
                         </TabsTrigger>
-                        <TabsTrigger value="tenant" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+                        <TabsTrigger value="tenant" className={subTabsTriggerClass}>
                             Tenant
                         </TabsTrigger>
                     </TabsList>

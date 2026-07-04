@@ -56,7 +56,6 @@ import {
 } from 'recharts'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
 
 const COLORS = ['#d97706', '#0ea5e9', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
 
@@ -193,9 +192,6 @@ export default function PortfoliosPage() {
 
     return (
         <div className="space-y-6 pb-12">
-            {/* Enterprise Navigation */}
-            <EnterpriseNav />
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ConnectEmailBanner } from '@/components/communications/ConnectEmailBanner';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Mail,
@@ -201,6 +202,7 @@ export default function DripCampaignsPage() {
   if (selectedCampaignId && selectedCampaign) {
     return (
       <div className="p-6 space-y-6">
+        <ConnectEmailBanner noun="Drip campaigns" />
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -638,6 +640,7 @@ export default function DripCampaignsPage() {
   // Campaign list view
   return (
     <div className="p-6 space-y-6">
+      <ConnectEmailBanner noun="Drip campaigns" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-zinc-100 font-mono flex items-center gap-2">

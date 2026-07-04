@@ -23,6 +23,7 @@ import {
     Archive,
     PenTool,
     Calendar,
+    Mail,
     Send,
     Clock,
     CheckCircle2,
@@ -55,6 +56,7 @@ import { GenerateDocumentDialog } from '@/components/deals/GenerateDocumentDialo
 import { DocumentChecklist } from '@/components/deals/DocumentChecklist'
 import { InlineEdit } from '@/components/crm/InlineEdit'
 import { UnifiedTimeline } from '@/components/crm/UnifiedTimeline'
+import DealInspections from '@/components/crm/DealInspections'
 import crmApi from '@/lib/crm-api'
 import { calendarApi, type CalendarEvent } from '@/lib/realtime-api'
 
@@ -135,6 +137,16 @@ export default function DealDetailPage() {
             const end = new Date()
             end.setFullYear(end.getFullYear() + 1)
             return calendarApi.getEvents(start, end, { dealId })
+        },
+        enabled: !!dealId,
+    })
+
+    // ---------- Emails logged against this deal ----------
+    const { data: dealEmails = [] } = useQuery({
+        queryKey: ['deal-emails', dealId],
+        queryFn: async () => {
+            const res = await crmApi.emails.list({ entity_type: 'deal', entity_id: dealId, limit: 20 })
+            return res.emails || []
         },
         enabled: !!dealId,
     })
@@ -466,6 +478,9 @@ export default function DealDetailPage() {
                         )}
                     </Panel>
 
+                    {/* ─── Inspections (deal due-diligence, shared engine) ─── */}
+                    <DealInspections dealId={dealId} />
+
                     {/* ─── Unified Timeline ─── */}
                     <Panel title="TIMELINE">
                         <UnifiedTimeline
@@ -672,6 +687,41 @@ export default function DealDetailPage() {
                             </div>
                         ) : (
                             <p className="text-xs text-muted-foreground">No calendar events linked to this deal</p>
+                        )}
+                    </Panel>
+
+                    {/* Emails Panel */}
+                    <Panel
+                        title="EMAILS"
+                        action={
+                            <Link href="/dashboard/deals/communications?tab=mail" className="text-[10px] text-primary hover:underline">
+                                Open inbox
+                            </Link>
+                        }
+                    >
+                        {dealEmails.length > 0 ? (
+                            <div className="space-y-2">
+                                {dealEmails.slice(0, 5).map((em) => (
+                                    <div key={em.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/30 border border-border">
+                                        <Mail className={cn('h-4 w-4 flex-shrink-0 mt-0.5', em.direction === 'outbound' ? 'text-blue-500' : 'text-green-500')} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs text-foreground truncate">{em.subject || '(no subject)'}</p>
+                                            <p className="text-[10px] text-muted-foreground truncate">
+                                                {em.direction === 'outbound' ? 'To ' : 'From '}
+                                                {em.direction === 'outbound' ? (em.to_addresses?.[0] || '') : em.from_address}
+                                            </p>
+                                            <p className="text-[9px] text-muted-foreground">
+                                                {new Date(em.received_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {dealEmails.length > 5 && (
+                                    <p className="text-[10px] text-muted-foreground text-center">+{dealEmails.length - 5} more emails</p>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">No emails logged against this deal yet. Sync or link one from the inbox.</p>
                         )}
                     </Panel>
                 </div>

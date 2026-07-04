@@ -2,7 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { ThemeProvider } from 'next-themes'
+import { ThemeProvider, useTheme } from 'next-themes'
+import { Toaster } from 'sonner'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { PWAProvider, OfflineIndicator } from '@/components/pwa'
@@ -26,6 +27,19 @@ if (typeof window !== 'undefined') {
  *
  * Fix: Cache the last known good session and serve it during transient failures.
  */
+/** App-wide toast host. Follows next-themes so notifications match the active theme. */
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+  return (
+    <Toaster
+      theme={(resolvedTheme as 'light' | 'dark') || 'dark'}
+      richColors
+      closeButton
+      position="top-right"
+    />
+  )
+}
+
 function StableSessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider
@@ -76,6 +90,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   <OfflineIndicator />
                 </PWAProvider>
               )}
+            <ThemedToaster />
           </TooltipProvider>
         </ThemeProvider>
         </I18nProvider>

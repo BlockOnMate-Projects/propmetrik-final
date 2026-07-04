@@ -28,6 +28,7 @@ import { taskService } from '../../src/services/crm-deal-management/taskService'
 import { noteService } from '../../src/services/crm-deal-management/noteService';
 import { activityService } from '../../src/services/crm-deal-management/activityService';
 import { dealService } from '../../src/services/crm-deal-management/dealService';
+import { emailIntegrationService } from '../../src/services/crm-deal-management/emailIntegrationService';
 
 // =====================================================
 // ACTION HANDLERS
@@ -105,32 +106,42 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
         recipientEmail = context.deal.agent_email;
       } else if (config.to === 'assigned_agent' && context.assigned_agent?.email) {
         recipientEmail = context.assigned_agent.email;
-      } else if (config.to?.includes('@')) {
+      } else if (typeof config.to === 'string' && config.to.includes('@')) {
         recipientEmail = config.to;
       }
-      
       if (!recipientEmail) {
         return { success: false, error: 'No valid recipient email found' };
       }
-      
-      // In production, integrate with email service
-      // For now, log the email action
-      logger.info({
-        executionId: execution.id,
-        to: recipientEmail,
-        subject: config.subject,
-        template: config.template
-      }, 'Workflow would send email');
-      
-      // TODO: Integrate with actual email service
-      // await emailService.send({
-      //   to: recipientEmail,
-      //   subject: config.subject,
-      //   template: config.template,
-      //   variables: config.variables
-      // });
-      
-      return { success: true, result: { sent_to: recipientEmail } };
+
+      // Sender = the agent's OWN connected mailbox (deal agent → assigned agent → workflow creator).
+      // We never send from the platform address, so replies come back to the agent.
+      let senderUserId: string | undefined =
+        context.deal?.agent_id || context.deal?.assigned_to || context.assigned_agent?.id || context.assigned_agent?.user_id;
+      if (!senderUserId) {
+        const w = await pool.query('SELECT created_by FROM workflows WHERE id = $1', [execution.workflow_id]);
+        senderUserId = w.rows[0]?.created_by || undefined;
+      }
+      if (!senderUserId) {
+        return { success: false, error: 'No sending agent could be resolved for this workflow' };
+      }
+
+      const provider = await emailIntegrationService.getConnectedEmailProvider(senderUserId);
+      if (!provider) {
+        return { success: false, error: 'Sending agent has no connected email — connect Gmail or Outlook in Communications' };
+      }
+
+      const subject = config.subject || 'Message';
+      const html = config.body || config.html || config.body_html || config.message || '';
+      const link = context.deal?.id
+        ? { entity_type: 'deal', entity_id: context.deal.id as string }
+        : (context.contact?.id ? { entity_type: 'contact', entity_id: context.contact.id as string } : {});
+
+      const result = await emailIntegrationService.sendEmail(senderUserId, execution.organization_id, provider, {
+        to: [recipientEmail], subject, body_html: html, ...link,
+      });
+
+      logger.info({ executionId: execution.id, to: recipientEmail, subject, provider, senderUserId }, 'Workflow email sent from agent mailbox');
+      return { success: true, result: { sent_to: recipientEmail, provider, provider_id: result.provider_id } };
     } catch (error: any) {
       return { success: false, error: error.message };
     }

@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { calendarApi, ViewingSlot, ViewingBooking } from '@/lib/realtime-api';
+import { AddToCalendarButton } from '@/components/integrations/CloudActions';
 
 interface ViewingSchedulerProps {
   propertyId: string;
@@ -134,12 +135,33 @@ export function ViewingScheduler({
             Agent: {selectedSlot.agentName}
           </p>
         )}
-        <button
-          onClick={onCancel}
-          className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700"
-        >
-          Done
-        </button>
+        <div className="flex items-center justify-center gap-3">
+          {selectedSlot && (
+            <AddToCalendarButton
+              event={{
+                title: `Property Viewing${propertyAddress ? ` — ${propertyAddress}` : ''}`,
+                start: selectedSlot.startTime.toISOString(),
+                end: selectedSlot.endTime.toISOString(),
+                location: propertyAddress,
+                description: [
+                  contactName && `Viewing with ${contactName}`,
+                  contactPhone && `Phone: ${contactPhone}`,
+                  selectedSlot.agentName && `Agent: ${selectedSlot.agentName}`,
+                  notes,
+                ].filter(Boolean).join('\n') || undefined,
+                attendees: contactEmail ? [contactEmail] : undefined,
+              }}
+              variant="outline"
+              size="default"
+            />
+          )}
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700"
+          >
+            Done
+          </button>
+        </div>
       </div>
     );
   }

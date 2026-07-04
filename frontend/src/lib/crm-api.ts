@@ -4,6 +4,7 @@
  */
 
 import { fetchApi } from './api';
+import { authedFetch } from './authed-fetch';
 import {
     Contact,
     Company,
@@ -1057,6 +1058,7 @@ export interface EmailConnectionStatus {
     connected: boolean;
     email?: string;
     expires_at?: string;
+    needsReauth?: boolean; // connected but the mailbox scope is missing/expired → reconnect
 }
 
 export interface CrmEmail {
@@ -1074,8 +1076,15 @@ export interface CrmEmail {
     received_at: string;
     deal_id?: string;
     contact_id?: string;
+    entity_type?: string;
+    entity_id?: string;
+    provider_message_id?: string; // provider's message id (Gmail id / Graph id) — for threaded replies
+    is_read?: boolean;
+    has_attachments?: boolean;
     open_count: number;
 }
+
+export interface EmailAttachmentRef { bucket: string; key: string; name: string; mimeType: string; size: number; }
 
 export const emailsApi = {
     /** Get the OAuth URL for connecting an email provider */
@@ -1094,24 +1103,45 @@ export const emailsApi = {
             body: JSON.stringify({ provider, maxResults }),
         }),
 
-    /** Fetch synced emails */
-    list: (filters?: { deal_id?: string; contact_id?: string; search?: string; direction?: string; limit?: number; offset?: number }) =>
+    /** Fetch synced emails (filter by legacy deal/contact OR the polymorphic entity_type+entity_id) */
+    list: (filters?: { deal_id?: string; contact_id?: string; entity_type?: string; entity_id?: string; provider?: string; search?: string; direction?: string; limit?: number; offset?: number }) =>
         fetchApi<{ emails: CrmEmail[]; total: number }>(`${CRM_BASE}/emails${filters ? '?' + new URLSearchParams(Object.entries(filters).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)])).toString() : ''}`),
 
-    /** Send email via connected provider */
-    send: (data: { provider: 'gmail' | 'outlook'; to: string[]; cc?: string[]; subject: string; body_html: string; deal_id?: string; contact_id?: string }) =>
+    /** Send email via connected provider (optionally attach to any service entity, with attachments + threading) */
+    send: (data: {
+        provider: 'gmail' | 'outlook'; to: string[]; cc?: string[]; subject: string; body_html: string;
+        deal_id?: string; contact_id?: string; entity_type?: string; entity_id?: string;
+        attachments?: EmailAttachmentRef[]; in_reply_to?: string; thread_id?: string; reply_to_provider_id?: string;
+    }) =>
         fetchApi<{ id: string; message_id: string }>(`${CRM_BASE}/emails/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         }),
 
-    /** Link email to a deal */
+    /** Upload a compose attachment (multipart) → returns a MinIO reference the send call embeds. */
+    uploadAttachment: async (file: File): Promise<EmailAttachmentRef> => {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await authedFetch('/api/crm/emails/attachments', { method: 'POST', body: form });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || 'Attachment upload failed');
+        return res.json();
+    },
+
+    /** Link email to a deal (legacy CRM helper) */
     linkToDeal: (emailId: string, dealId: string) =>
         fetchApi<{ success: boolean }>(`${CRM_BASE}/emails/${emailId}/link-deal`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ deal_id: dealId }),
+        }),
+
+    /** Link email to any service entity (deal/contact/tenant/property/contractor/vendor/…) */
+    linkToEntity: (emailId: string, entityType: string, entityId: string) =>
+        fetchApi<{ success: boolean }>(`${CRM_BASE}/emails/${emailId}/link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entity_type: entityType, entity_id: entityId }),
         }),
 
     /** Disconnect a provider */
@@ -1345,6 +1375,32 @@ export const territoriesApi = {
         ),
 };
 
+// =====================================================
+// DEAL INSPECTIONS API (CRM surface over the shared inspection engine)
+// =====================================================
+
+import type { PropertyInspection, InspectionItem } from './property-management-api';
+export type { PropertyInspection, InspectionItem } from './property-management-api';
+
+export const dealInspectionsApi = {
+    getForDeal: (dealId: string) => fetchApi<PropertyInspection[]>(`${CRM_BASE}/deals/${dealId}/inspections`),
+    create: (dealId: string, data: { inspectionType?: string; scheduledFor?: string; summary?: string; propertyId?: string }) =>
+        fetchApi<PropertyInspection>(`${CRM_BASE}/deals/${dealId}/inspections`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    getById: (id: string) => fetchApi<PropertyInspection>(`${CRM_BASE}/inspections/${id}`),
+    addItem: (id: string, data: { area: string; item: string; condition?: string; notes?: string }) =>
+        fetchApi<InspectionItem>(`${CRM_BASE}/inspections/${id}/items`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    deleteItem: (itemId: string) => fetchApi<void>(`${CRM_BASE}/inspections/items/${itemId}`, { method: 'DELETE' }),
+    complete: (id: string, data: { overallCondition?: string; summary?: string }) =>
+        fetchApi<PropertyInspection>(`${CRM_BASE}/inspections/${id}/complete`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+        }),
+    remove: (id: string) => fetchApi<void>(`${CRM_BASE}/inspections/${id}`, { method: 'DELETE' }),
+};
+
 // COMBINED CRM API EXPORT
 // =====================================================
 
@@ -1364,6 +1420,7 @@ export const crmApi = {
     dripCampaigns: dripCampaignsApi,
     territories: territoriesApi,
     segments: segmentsApi,
+    dealInspections: dealInspectionsApi,
 };
 
 export default crmApi;

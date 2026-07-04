@@ -101,6 +101,7 @@ import closeoutRoutes from './routes/closeout';
 import auditLogRoutes from './routes/audit-log';
 import customFieldRoutes from './routes/custom-fields';
 import appIntegrationRoutes from './routes/app-integrations';
+import orgIntegrationsRoutes, { integrationsPublicRouter } from './routes/orgIntegrations';
 import xeroRoutes, { xeroPublicRouter } from './routes/xero';
 import transmittalRoutes from './routes/transmittals';
 import transmittalService from './services/project-management/transmittalService';
@@ -690,6 +691,14 @@ app.use('/api', authenticate, requirePMAccess, requireServiceAccess('projects'),
 // App Marketplace & Integration Framework Routes
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('projects'), appIntegrationRoutes);
 app.use('/api', authenticate, requirePMAccess, requireServiceAccess('projects'), appIntegrationRoutes);
+
+// Shared Integrations Hub (org-wide — reachable from every service's Integrations tab).
+// Public OAuth callback FIRST (no auth — providers redirect here without our Bearer token).
+app.use('/api/v1/org-integrations', integrationsPublicRouter);
+app.use('/api/org-integrations', integrationsPublicRouter);
+// Authenticated catalog/connections/connect/disconnect (org-wide, NOT service-gated).
+app.use('/api/v1/org-integrations', authenticate, requirePMAccess, orgIntegrationsRoutes);
+app.use('/api/org-integrations', authenticate, requirePMAccess, orgIntegrationsRoutes);
 
 // Xero OAuth2 + Cost Sync Routes
 // Public callback — no auth (Xero redirects back without our Bearer token)
