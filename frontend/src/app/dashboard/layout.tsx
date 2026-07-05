@@ -23,12 +23,14 @@ export default function DashboardLayout({
     setMounted(true)
   }, [])
 
-  // Pre-fetch RBAC config when session is available
+  // Pre-fetch RBAC config when session is available — but NOT for tenant-portal
+  // users. Tenants carry a tenant session token with no staff RBAC access, so the
+  // /rbac/config call 401s (harmless but console noise). Staff/platform roles only.
   useEffect(() => {
-    if (session?.accessToken) {
+    if (session?.accessToken && session.user?.role !== 'tenant') {
       prefetchRbacConfig(session.accessToken);
     }
-  }, [session?.accessToken])
+  }, [session?.accessToken, session?.user?.role])
 
   // Redirect users who haven't completed onboarding (e.g. new Google OAuth signups)
   useEffect(() => {

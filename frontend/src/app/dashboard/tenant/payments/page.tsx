@@ -13,11 +13,15 @@ import {
   calculateFee,
   getUtilityCharges,
   disputeUtilityCharge,
+  getAutopayStatus,
+  enableAutopay,
+  disableAutopay,
   PaymentSummary,
   RentSchedule,
   PaymentHistory,
   UtilityCharge,
   FeeBreakdown,
+  AutopayStatus,
 } from '@/lib/tenant/api';
 import dynamic from 'next/dynamic';
 
@@ -48,6 +52,8 @@ import {
   Wallet,
 } from 'lucide-react';
 
+const ordinal = (n: number) => (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+
 function PaymentsContent() {
   const { profile, activeTenancy } = usePortal();
   const { addToast } = useToast();
@@ -72,10 +78,69 @@ function PaymentsContent() {
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeLoading, setDisputeLoading] = useState(false);
 
-  const [autoPayEnabled, setAutoPayEnabled] = useState(false);
-  const [autoPayDay, setAutoPayDay] = useState('5');
-  const [autoPayMethod, setAutoPayMethod] = useState('mtn');
-  const [autoPayPhone, setAutoPayPhone] = useState('');
+  // Auto-Pay (standing rent mandate) — real backend state
+  const [autopay, setAutopay] = useState<AutopayStatus | null>(null);
+  const [autopayLoading, setAutopayLoading] = useState(false);
+  const [autoPayDay, setAutoPayDay] = useState(5);
+
+  const loadAutopay = async () => {
+    if (!activeTenancy) return;
+    try {
+      const s = await getAutopayStatus(activeTenancy.id);
+      setAutopay(s);
+      if (s.chargeDay) setAutoPayDay(s.chargeDay);
+    } catch { /* non-fatal */ }
+  };
+
+  useEffect(() => {
+    if (activeTenancy) loadAutopay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTenancy?.id]);
+
+  const handleAutopayToggle = async () => {
+    if (!activeTenancy) return;
+    const currentlyOn = autopay?.status === 'active' || autopay?.status === 'pending';
+    setAutopayLoading(true);
+    try {
+      if (currentlyOn) {
+        const s = await disableAutopay(activeTenancy.id);
+        setAutopay(s);
+        addToast('info', 'Auto-Pay Disabled', 'Automatic rent payments have been turned off.');
+      } else {
+        const s = await enableAutopay(activeTenancy.id, autoPayDay);
+        setAutopay(s);
+        addToast('success', 'Auto-Pay Enabled', s.ready
+          ? 'Your saved card will be charged automatically each month.'
+          : 'Pay your rent once with a card to activate Auto-Pay.');
+      }
+    } catch (e: any) {
+      addToast('error', 'Auto-Pay', e.message || 'Could not update Auto-Pay.');
+    } finally {
+      setAutopayLoading(false);
+    }
+  };
+
+  const handleAutopayDayChange = async (day: number) => {
+    setAutoPayDay(day);
+    if (!activeTenancy || !(autopay?.status === 'active' || autopay?.status === 'pending')) return;
+    try {
+      const s = await enableAutopay(activeTenancy.id, day);
+      setAutopay(s);
+      addToast('success', 'Auto-Pay Updated', `Rent will be collected on the ${day}${ordinal(day)} of each month.`);
+    } catch (e: any) {
+      addToast('error', 'Auto-Pay', e.message || 'Could not update the charge day.');
+    }
+  };
+
+  // Open the payment modal preselected to CARD (the method that captures a reusable
+  // authorization to activate Auto-Pay).
+  const startCardAuthorization = () => {
+    const outstanding = summary?.totalOutstanding || activeTenancy?.rentAmount || 0;
+    setPaymentMethod('card');
+    setPaymentAmount(String(outstanding || ''));
+    setPaymentStep('form');
+    setShowPaymentModal(true);
+  };
 
   const [feeBreakdown, setFeeBreakdown] = useState<FeeBreakdown | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
@@ -101,6 +166,8 @@ function PaymentsContent() {
     if (paymentStatus === 'success' && !paymentToastShown.current) {
       paymentToastShown.current = true;
       addToast('success', 'Payment Successful', 'Your rent payment has been confirmed and recorded.');
+      // A card payment may have just activated Auto-Pay (mandate captured server-side).
+      loadAutopay();
     }
     Promise.all([
       getPaymentSummary(activeTenancy.id).catch(() => null),
@@ -407,78 +474,93 @@ function PaymentsContent() {
         </div>
       )}
 
-      {activeTab === 'autopay' && (
+      {activeTab === 'autopay' && (() => {
+        const apStatus = autopay?.status || 'none';
+        const apOn = apStatus === 'active' || apStatus === 'pending';
+        return (
         <div className="max-w-lg mx-auto space-y-6">
           <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="font-semibold text-gray-900">Auto-Pay</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">Never miss a rent payment</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Automatically pay rent from a saved card</p>
               </div>
               <button
-                onClick={() => {
-                  setAutoPayEnabled(!autoPayEnabled);
-                  if (!autoPayEnabled) addToast('success', 'Auto-Pay Enabled', 'Your rent will be paid automatically.');
-                  else addToast('info', 'Auto-Pay Disabled', 'Auto-pay has been turned off.');
-                }}
-                className={`relative w-14 h-7 rounded-full transition-colors ${autoPayEnabled ? 'bg-cyan-500' : 'bg-gray-300'}`}
+                disabled={autopayLoading}
+                onClick={handleAutopayToggle}
+                className={`relative w-14 h-7 rounded-full transition-colors disabled:opacity-50 ${apOn ? 'bg-cyan-500' : 'bg-gray-300'}`}
               >
-                <div className={`absolute top-0.5 w-6 h-6 bg-card rounded-full shadow-sm transition-transform ${autoPayEnabled ? 'translate-x-7' : 'translate-x-0.5'}`} />
+                <div className={`absolute top-0.5 w-6 h-6 bg-card rounded-full shadow-sm transition-transform ${apOn ? 'translate-x-7' : 'translate-x-0.5'}`} />
               </button>
             </div>
 
-            {autoPayEnabled && (
+            {apOn && (
               <div className="space-y-4 animate-slide-down">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Method</label>
-                  <select value={autoPayMethod} onChange={e => setAutoPayMethod(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                    <option value="mtn">MTN Mobile Money</option>
-                    <option value="vodafone">Vodafone Cash</option>
-                    <option value="airteltigo">AirtelTigo Money</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 bg-muted border border-r-0 border-border rounded-l-xl text-sm text-muted-foreground">+233</span>
-                    <input type="tel" value={autoPayPhone} onChange={e => setAutoPayPhone(e.target.value)} placeholder="24 123 4567"
-                      className="flex-1 px-4 py-2.5 border border-border rounded-r-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Payment Day</label>
-                  <select value={autoPayDay} onChange={e => setAutoPayDay(e.target.value)}
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Charge Day</label>
+                  <select value={autoPayDay} onChange={e => handleAutopayDayChange(Number(e.target.value))}
                     className="w-full px-4 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                     {[1, 5, 10, 15, 20, 25, 28].map(day => (
-                      <option key={day} value={day}>{day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of every month</option>
+                      <option key={day} value={day}>{day}{ordinal(day)} of every month</option>
                     ))}
                   </select>
                 </div>
-                <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-100">
-                  <p className="text-sm text-cyan-800">
-                    <strong>Summary:</strong> {currency} {activeTenancy?.rentAmount.toLocaleString()} will be deducted from your{' '}
-                    {autoPayMethod === 'mtn' ? 'MTN MoMo' : autoPayMethod === 'vodafone' ? 'Vodafone Cash' : 'AirtelTigo'}{' '}
-                    on the {autoPayDay}th of each month.
-                  </p>
-                </div>
-                <button onClick={() => addToast('success', 'Auto-Pay Updated', 'Your auto-pay settings have been saved.')}
-                  className="w-full py-2.5 bg-cyan-600 text-foreground rounded-xl font-medium hover:bg-cyan-700 transition-colors">
-                  Save Auto-Pay Settings
-                </button>
+
+                {apStatus === 'active' && autopay?.ready ? (
+                  <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-semibold text-green-800">Auto-Pay is active</span>
+                    </div>
+                    <p className="text-sm text-green-800">
+                      Your outstanding rent will be charged to your saved card on the {autoPayDay}{ordinal(autoPayDay)} of each month.
+                    </p>
+                    {autopay.card && (
+                      <p className="text-xs text-green-700 mt-2 flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5" />
+                        {autopay.card.bank || 'Card'} •••• {autopay.card.last4}{autopay.card.exp ? ` · exp ${autopay.card.exp}` : ''}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-semibold text-amber-800">One more step</span>
+                    </div>
+                    <p className="text-sm text-amber-800">
+                      Auto-Pay activates once you pay your rent <strong>by card</strong> — we securely save that card for future
+                      months. (Mobile-money wallets can&apos;t be charged automatically.)
+                    </p>
+                    <button onClick={startCardAuthorization}
+                      className="mt-3 w-full py-2.5 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2">
+                      <CreditCard className="w-4 h-4" /> Pay by card to activate
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            {!autoPayEnabled && (
+            {!apOn && (
               <div className="text-center py-6">
                 <RefreshCw className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">Enable auto-pay to never miss a payment</p>
-                <p className="text-xs text-muted-foreground mt-1">You&apos;ll be reminded 3 days before each deduction</p>
+                {apStatus === 'paused' ? (
+                  <>
+                    <p className="text-sm font-medium text-red-600">Auto-Pay was paused</p>
+                    <p className="text-xs text-muted-foreground mt-1">{autopay?.lastError || 'A recent charge failed.'} Turn it back on to resume.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">Turn on Auto-Pay to never miss a rent payment</p>
+                    <p className="text-xs text-muted-foreground mt-1">Charged securely to a saved card — cancel anytime.</p>
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
