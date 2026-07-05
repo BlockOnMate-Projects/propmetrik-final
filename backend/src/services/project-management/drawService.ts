@@ -18,6 +18,7 @@ import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { generateDrawRequestPdf } from '../../utils/pmDocumentPdfGenerators';
+import { resolveReportBranding } from '../valuation-engine/brandingService';
 import { changeOrderSignatureSlots } from '../../utils/changeOrderPdfGenerator';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 import { notify, resolveOrgStaff, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
@@ -873,6 +874,8 @@ class DrawService extends BaseService {
     }
 
     const labels = signerLabels && signerLabels.length ? signerLabels : ['Authorised Signatory'];
+    // Resolve the org's PROJECT-MANAGEMENT branding (logo/name/colors) — falls back to PROPMETRIK
+    const branding = await resolveReportBranding(draw.organization_id, { service: 'project_management', withLogo: true });
     return generateDrawRequestPdf({
       draw_number: draw.draw_number,
       project_name: project?.name,
@@ -887,6 +890,12 @@ class DrawService extends BaseService {
       submitted_date: draw.submitted_date,
       created_at: draw.created_at,
       signerLabels: labels,
+      brandName: branding.name,
+      brandTagline: branding.tagline,
+      brandLogo: branding.logoBuffer,
+      brandAccent: branding.accentColor,
+      brandPrimary: branding.primaryColor,
+      brandFooter: branding.addressLines[0] ? `${branding.name} · ${branding.addressLines[0]}` : branding.name,
     });
   }
 

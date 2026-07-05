@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import {
   Table,
   TableBody,
@@ -450,12 +451,12 @@ function ChangeOrdersContent() {
 
       {/* Tabs and Table */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted border-border">
-          <TabsTrigger value="all">All ({changeOrders.length})</TabsTrigger>
-          <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
-          <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
-          <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
-          <TabsTrigger value="cost-adds">Cost Adds</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="all" className={subTabsTriggerClass}>All ({changeOrders.length})</TabsTrigger>
+          <TabsTrigger value="awaiting-me" className={subTabsTriggerClass}>Awaiting Me</TabsTrigger>
+          <TabsTrigger value="pending" className={subTabsTriggerClass}>Pending ({pendingCount})</TabsTrigger>
+          <TabsTrigger value="approved" className={subTabsTriggerClass}>Approved ({approvedCount})</TabsTrigger>
+          <TabsTrigger value="cost-adds" className={subTabsTriggerClass}>Cost Adds</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">

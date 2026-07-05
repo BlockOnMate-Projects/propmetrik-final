@@ -1,7 +1,8 @@
 /**
  * Portfolio-Level Financial Report (PDF)
  *
- * Produces a professional, PROPMETRIK-branded portfolio financial report as a PDF:
+ * Produces a professional, company-branded portfolio financial report as a PDF
+ * (per-org logo/name/palette via resolveReportBranding; PROPMETRIK fallback):
  * executive KPIs, cash-flow trend, portfolio composition, per-property performance,
  * receivables aging and lease health — with inline SVG charts (no client JS, so they
  * render deterministically in headless Chromium).
@@ -15,11 +16,25 @@ import db from '../../../database';
 import { PortfolioService } from '../portfolios/portfolioService';
 import { advancedFinancialService } from '../financial-reporting/advancedFinancialService';
 import { reportingService } from './reportingService';
+import { resolveReportBranding } from '../../valuation-engine/brandingService';
 
 const portfolioService = new PortfolioService();
 
-// ── Brand palette ─────────────────────────────────────────────────────────────
-const BRAND = {
+// ── Brand palette (defaults; overridden per-org by resolved branding) ──────────
+// `gold`/`ink`/`net` are re-pointed to the org's accent/primary in gatherData so
+// the cover, section rules, KPI accents and charts all reflect company branding.
+interface BrandPalette {
+    gold: string;
+    ink: string;
+    slate: string;
+    muted: string;
+    border: string;
+    lightBg: string;
+    income: string;
+    expense: string;
+    net: string;
+}
+const DEFAULT_BRAND: BrandPalette = {
     gold: '#D4A843',
     ink: '#0B0B0F',
     slate: '#334155',
@@ -30,7 +45,12 @@ const BRAND = {
     expense: '#dc2626',
     net: '#D4A843',
 };
-const SERIES_COLORS = ['#D4A843', '#6366F1', '#22D3EE', '#F472B6', '#A3E635', '#FB923C', '#818CF8', '#34D399'];
+const DEFAULT_SERIES_COLORS = ['#D4A843', '#6366F1', '#22D3EE', '#F472B6', '#A3E635', '#FB923C', '#818CF8', '#34D399'];
+
+// Module-level render palette — set at the start of each generation so the pure
+// SVG-builder helpers (kept synchronous for readability) read the active brand.
+let BRAND: BrandPalette = { ...DEFAULT_BRAND };
+let SERIES_COLORS: string[] = [...DEFAULT_SERIES_COLORS];
 
 // ── Formatting helpers ──────────────────────────────────────────────────────────
 const ghs = (n: number | null | undefined): string =>
@@ -185,7 +205,7 @@ function resolvePeriod(period?: string): { startDate: string; endDate: string; l
 async function gatherData(organizationId: string, period?: string) {
     const { startDate, endDate, label: periodLabel } = resolvePeriod(period);
 
-    const [orgRes, overview, summary, leases, receivables, building] = await Promise.all([
+    const [orgRes, overview, summary, leases, receivables, building, branding] = await Promise.all([
         db.query('SELECT name FROM organizations WHERE id = $1', [organizationId]).catch(() => null),
         portfolioService.getOverview(organizationId).catch(() => null),
         advancedFinancialService.getPortfolioFinancialSummary(organizationId).catch(() => null),
@@ -193,10 +213,35 @@ async function gatherData(organizationId: string, period?: string) {
         reportingService.getAgedReceivablesReport(organizationId).catch(() => null),
         // Building-level (active-only) performance + reconciled cash-flow + composition.
         reportingService.getBuildingPerformanceReport(organizationId, startDate, endDate).catch(() => null),
+        // Company branding (logo bytes + palette) — falls back to PROPMETRIK defaults.
+        resolveReportBranding(organizationId, { service: 'property_management', withLogo: true }).catch(() => null),
     ]);
 
+    // Re-point the module render palette to the org's brand (primary→ink, accent→gold/net).
+    if (branding) {
+        BRAND = {
+            ...DEFAULT_BRAND,
+            ink: branding.primaryColor || DEFAULT_BRAND.ink,
+            gold: branding.accentColor || DEFAULT_BRAND.gold,
+            net: branding.accentColor || DEFAULT_BRAND.net,
+        };
+        // Lead the series with the org accent so the donut/first bar match the brand.
+        SERIES_COLORS = [branding.accentColor || DEFAULT_SERIES_COLORS[0], ...DEFAULT_SERIES_COLORS.slice(1)];
+    } else {
+        BRAND = { ...DEFAULT_BRAND };
+        SERIES_COLORS = [...DEFAULT_SERIES_COLORS];
+    }
+
+    // Embed the logo as a data URI so headless Chromium renders it without network access.
+    const logoDataUri = branding?.logoBuffer && branding.logoMime
+        ? `data:${branding.logoMime};base64,${branding.logoBuffer.toString('base64')}`
+        : null;
+
     const orgName = orgRes?.rows?.[0]?.name || 'Your Portfolio';
-    return { orgName, periodLabel, overview, summary, leases, receivables, building };
+    const brandName = branding?.name || 'PROPMETRIK';
+    const isDefaultBrand = !branding || branding.name === 'PROPMETRIK';
+    const contactLine = branding?.contactLine || null;
+    return { orgName, periodLabel, overview, summary, leases, receivables, building, brandName, isDefaultBrand, logoDataUri, contactLine };
 }
 
 // ── HTML template ────────────────────────────────────────────────────────────────
@@ -334,14 +379,16 @@ function buildHtml(d: Awaited<ReturnType<typeof gatherData>>): string {
 
   <!-- COVER -->
   <section class="cover">
-    <div class="wordmark">PROP<span class="gold">METRIK</span></div>
+    <div class="wordmark">${d.logoDataUri
+        ? `<img src="${d.logoDataUri}" alt="${esc(d.brandName)}" style="max-height:40px;max-width:240px;display:block" />`
+        : (d.isDefaultBrand ? `PROP<span class="gold">METRIK</span>` : esc(d.brandName))}</div>
     <div class="title">Portfolio<br/>Financial Report</div>
     <div class="subtitle">Property management performance, cash flow &amp; receivables</div>
     <div class="badge">Confidential</div>
     <div class="prepared">Prepared for <b>${esc(d.orgName)}</b><br/>Reporting period — ${esc(d.periodLabel)}</div>
     <div class="meta">
       <span>Generated ${generatedOn}</span>
-      <span>PROPMETRIK Property &amp; Asset Analytics${fx?.rates?.USD ? ` · USD ${Number(fx.rates.USD).toFixed(2)}` : ''}</span>
+      <span>${esc(d.brandName)} Property &amp; Asset Analytics${fx?.rates?.USD ? ` · USD ${Number(fx.rates.USD).toFixed(2)}` : ''}</span>
     </div>
   </section>
 
@@ -426,10 +473,10 @@ function buildHtml(d: Awaited<ReturnType<typeof gatherData>>): string {
       </div>
 
       <p class="disclaimer">
-        This report is generated by PROPMETRIK for the internal use of ${esc(d.orgName)} and is strictly confidential.
+        This report is generated by ${esc(d.brandName)} for the internal use of ${esc(d.orgName)} and is strictly confidential.
         Figures are derived from recorded transactions, leases and live market FX rates as at the generation date and are
-        provided for informational purposes only; they do not constitute financial, investment or valuation advice.
-        © ${new Date().getFullYear()} PROPMETRIK. All rights reserved.
+        provided for informational purposes only; they do not constitute financial, investment or valuation advice.${d.contactLine ? ` ${esc(d.contactLine)}.` : ''}
+        © ${new Date().getFullYear()} ${esc(d.brandName)}. All rights reserved.
       </p>
     </div>
   </section>
@@ -439,7 +486,13 @@ function buildHtml(d: Awaited<ReturnType<typeof gatherData>>): string {
 
 // ── Puppeteer render ──────────────────────────────────────────────────────────────
 
-async function renderHtmlToPdf(html: string): Promise<Buffer> {
+async function renderHtmlToPdf(
+    html: string,
+    footerBrand: { brandName: string; isDefaultBrand: boolean; ink: string; gold: string }
+): Promise<Buffer> {
+    const footerWordmark = footerBrand.isDefaultBrand
+        ? `PROP<span style="color:${footerBrand.gold};">METRIK</span>`
+        : escHtml(footerBrand.brandName);
     let browser;
     try {
         browser = await puppeteer.launch({
@@ -455,7 +508,7 @@ async function renderHtmlToPdf(html: string): Promise<Buffer> {
             displayHeaderFooter: true,
             headerTemplate: '<div></div>',
             footerTemplate: `<div style="width:100%;font-family:'Helvetica Neue',Arial,sans-serif;font-size:7pt;color:#9ca3af;display:flex;justify-content:space-between;align-items:center;padding:0 16mm;">
-        <span style="letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:#0B0B0F;">PROP<span style="color:#D4A843;">METRIK</span></span>
+        <span style="letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:${footerBrand.ink};">${footerWordmark}</span>
         <span>Portfolio Financial Report · Confidential</span>
         <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
       </div>`,
@@ -466,6 +519,11 @@ async function renderHtmlToPdf(html: string): Promise<Buffer> {
     }
 }
 
+/** Minimal HTML escape for the puppeteer footer template (reuses the report esc rules). */
+function escHtml(s: any): string {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── Public entrypoint ──────────────────────────────────────────────────────────────
 
 export async function generatePortfolioFinancialReportPdf(
@@ -474,5 +532,10 @@ export async function generatePortfolioFinancialReportPdf(
 ): Promise<Buffer> {
     const data = await gatherData(organizationId, options.period);
     const html = buildHtml(data);
-    return renderHtmlToPdf(html);
+    return renderHtmlToPdf(html, {
+        brandName: data.brandName,
+        isDefaultBrand: data.isDefaultBrand,
+        ink: BRAND.ink,
+        gold: BRAND.gold,
+    });
 }

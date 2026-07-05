@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   LayoutDashboard,
   Users,
@@ -25,6 +26,8 @@ import {
   Rocket,
   Heart,
   Zap,
+  ShieldCheck,
+  Flag,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -57,6 +60,14 @@ const navigation: NavItem[] = [
     children: [
       { name: 'Organizations', href: '/dashboard/admin/organizations', icon: Building2 },
       { name: 'Users', href: '/dashboard/admin/users', icon: Users },
+    ],
+  },
+  {
+    name: 'TRUST & SAFETY',
+    icon: ShieldCheck,
+    children: [
+      { name: 'KYB Review', href: '/dashboard/admin/kyb-review', icon: ShieldCheck },
+      { name: 'Listing Moderation', href: '/dashboard/admin/listing-reports', icon: Flag },
     ],
   },
   {
@@ -108,6 +119,17 @@ const navigation: NavItem[] = [
 export function AdminTopNav() {
   const pathname = usePathname()
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null)
+  const [pendingKyb, setPendingKyb] = useState(0)
+
+  // Pending KYB submissions awaiting review — shown as a badge on "KYB Review".
+  useEffect(() => {
+    let alive = true
+    authedFetch('/api/admin/organizations/verifications')
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((d) => { if (alive) setPendingKyb(Array.isArray(d?.data) ? d.data.length : 0) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   // Determine which parent group is active based on current route
   const activeGroup = (() => {
@@ -208,6 +230,9 @@ export function AdminTopNav() {
               >
                 <ChildIcon className={cn('w-3 h-3', isChildActive ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')} />
                 {child.name}
+                {child.href === '/dashboard/admin/kyb-review' && pendingKyb > 0 && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold">{pendingKyb}</span>
+                )}
               </Link>
             )
           })}

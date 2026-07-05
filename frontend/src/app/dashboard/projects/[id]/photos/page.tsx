@@ -53,7 +53,6 @@ import { useToast } from '@/hooks/use-toast';
 import ProjectSubnav from '@/components/dashboard/projects/ProjectSubnav';
 import { authedFetch } from '@/lib/authed-fetch';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const fetch = authedFetch;
 
 type PhotoCategory = 
@@ -145,7 +144,7 @@ export default function ProjectPhotosPage() {
   // Fetch project
   const fetchProject = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects/${projectId}`);
+      const response = await fetch(`/api/projects/${projectId}`);
       const result = await response.json();
       if (result.success) {
         setProject(result.data);
@@ -169,7 +168,7 @@ export default function ProjectPhotosPage() {
       }
       params.append('pageSize', '100');
 
-      const response = await fetch(`${API_BASE}/api/photos?${params}`);
+      const response = await fetch(`/api/photos?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -201,7 +200,7 @@ export default function ProjectPhotosPage() {
   const handleApprove = async (photo: Photo) => {
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/photos/${photo.id}/approve`, {
+      const response = await fetch(`/api/photos/${photo.id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -224,7 +223,7 @@ export default function ProjectPhotosPage() {
   const handleReject = async (photo: Photo) => {
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/photos/${photo.id}/reject`, {
+      const response = await fetch(`/api/photos/${photo.id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: 'Rejected by PM' }),
@@ -250,7 +249,7 @@ export default function ProjectPhotosPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/photos/${selectedPhoto.id}`, {
+      const response = await fetch(`/api/photos/${selectedPhoto.id}`, {
         method: 'DELETE',
       });
 

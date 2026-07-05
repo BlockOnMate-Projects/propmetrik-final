@@ -115,7 +115,6 @@ interface Achievement {
     badge_icon?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Helper functions
 function formatCurrency(amount: number): string {
@@ -395,7 +394,7 @@ function CreateTargetDialog({
         if (!open) return;
         (async () => {
             try {
-                const res = await authedFetch(`${API_BASE}/api/crm/agents?limit=200`, { credentials: 'include' });
+                const res = await authedFetch(`/api/crm/agents?limit=200`, { credentials: 'include' });
                 if (!res.ok) return;
                 const d = await res.json();
                 const list = (d.data || d.agents || []).map((a: any) => ({
@@ -430,7 +429,7 @@ function CreateTargetDialog({
         const typeLabel = ({ revenue: 'Revenue', deal_count: 'Deals', activities: 'Activities' } as Record<string, string>)[formData.target_type] || formData.target_type;
 
         try {
-            const response = await authedFetch(`${API_BASE}/api/crm/targets`, {
+            const response = await authedFetch(`/api/crm/targets`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -567,9 +566,9 @@ export default function TargetsPage() {
     const fetchData = useCallback(async () => {
         try {
             const [targetsRes, leaderboardRes, achievementsRes] = await Promise.all([
-                authedFetch(`${API_BASE}/api/crm/targets?limit=100`, { credentials: 'include' }),
-                authedFetch(`${API_BASE}/api/crm/targets/leaderboard`, { credentials: 'include' }),
-                authedFetch(`${API_BASE}/api/crm/targets/achievements?limit=50`, { credentials: 'include' }),
+                authedFetch(`/api/crm/targets?limit=100`, { credentials: 'include' }),
+                authedFetch(`/api/crm/targets/leaderboard`, { credentials: 'include' }),
+                authedFetch(`/api/crm/targets/achievements?limit=50`, { credentials: 'include' }),
             ]);
 
             if (targetsRes.ok) {

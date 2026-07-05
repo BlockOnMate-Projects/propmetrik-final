@@ -84,6 +84,19 @@ interface ReportSection {
   order: number
 }
 
+// Firm branding for the report letterhead (falls back to PROPMETRIK on the backend).
+interface ReportBrand {
+  name: string
+  tagline: string
+  initial: string
+  logo_url: string
+  primary_color: string
+  accent_color: string
+  on_primary: string
+  on_accent: string
+  credential: string
+}
+
 interface ReportEditorProps {
   reportId: string
   valuationId: string
@@ -597,6 +610,70 @@ function WordCount({ content }: { content: string }) {
 }
 
 // ============================================================================
+// REPORT LETTERHEAD - Firm branding banner shown above the report pages
+// ============================================================================
+
+function ReportLetterhead({ brand, pageWidth }: { brand: ReportBrand; pageWidth: number }) {
+  const primary = brand.primary_color || '#18181B'
+  const onPrimary = brand.on_primary || '#FFFFFF'
+  const accent = brand.accent_color || '#F59E0B'
+
+  return (
+    <div
+      className="letterhead mb-6"
+      style={{
+        width: `${pageWidth}px`,
+        background: primary,
+        color: onPrimary,
+        borderBottom: `4px solid ${accent}`,
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
+      }}
+    >
+      <div className="flex items-center gap-4 px-8 py-5">
+        {brand.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brand.logo_url}
+            alt={brand.name}
+            style={{ height: 48, width: 'auto', maxWidth: 160, objectFit: 'contain' }}
+          />
+        ) : (
+          <div
+            className="flex items-center justify-center font-bold"
+            style={{
+              height: 48,
+              width: 48,
+              borderRadius: 6,
+              background: accent,
+              color: brand.on_accent || '#18181B',
+              fontSize: 22,
+            }}
+          >
+            {brand.initial || 'P'}
+          </div>
+        )}
+        <div className="min-w-0">
+          <div className="font-bold leading-tight" style={{ fontSize: 20, color: onPrimary }}>
+            {brand.name}
+          </div>
+          {brand.tagline && (
+            <div
+              className="uppercase"
+              style={{ fontSize: 10, letterSpacing: '2px', opacity: 0.75, marginTop: 2 }}
+            >
+              {brand.tagline}
+            </div>
+          )}
+          {brand.credential && (
+            <div style={{ fontSize: 10, opacity: 0.65, marginTop: 4 }}>{brand.credential}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
 // PAGED CONTENT COMPONENT - Handles content overflow across multiple pages
 // ============================================================================
 
@@ -728,6 +805,7 @@ export function ReportEditor({
   const [loading, setLoading] = useState(true)
   const [regenerating, setRegenerating] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [brand, setBrand] = useState<ReportBrand | null>(null)
 
   // View settings
   const [zoom, setZoom] = useState(100)
@@ -885,6 +963,7 @@ export function ReportEditor({
       if (response.ok) {
         const data = await response.json()
         console.log('Report content loaded:', data.sections?.length, 'sections')
+        if (data.brand) setBrand(data.brand as ReportBrand)
         if (data.sections && data.sections.length > 0) {
           setSections(data.sections)
           if (!data.sections.find((s: ReportSection) => s.id === activeSection)) {
@@ -1655,6 +1734,7 @@ export function ReportEditor({
               className="paged-container flex flex-col items-center"
               style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
             >
+              {brand && <ReportLetterhead brand={brand} pageWidth={pageSize.width} />}
               {sections.sort((a, b) => a.order - b.order).map((section, index) => (
                 <PagedSection
                   key={section.id}

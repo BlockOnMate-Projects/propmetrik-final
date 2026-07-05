@@ -95,6 +95,7 @@ import type {
 import { formatCurrency, formatCurrencyCompact } from '@/lib/utils'
 import { authedFetch } from '@/lib/authed-fetch'
 import { PhaseHierarchy } from '@/components/projects/PhaseHierarchy'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 
 // =====================================================
 // STATUS CONFIGURATIONS
@@ -1136,17 +1137,14 @@ export default function ProjectDetailPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="border-b border-border">
-          <TabsList className="bg-transparent p-0 h-auto gap-0 w-full justify-start">
+          <TabsList className={cn(subTabsListClass, 'w-full')}>
             {visibleTabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className={cn(
-                  "font-mono text-xs px-4 py-2 rounded-none border-b-2 data-[state=active]:border-amber-500 data-[state=active]:text-amber-500",
-                  "data-[state=inactive]:border-transparent data-[state=inactive]:text-muted-foreground"
-                )}
+                className={cn(subTabsTriggerClass, 'flex items-center gap-1.5')}
               >
-                <tab.icon className="h-3 w-3 mr-1.5" />
+                <tab.icon className="h-3 w-3" />
                 {tab.label}
               </TabsTrigger>
             ))}

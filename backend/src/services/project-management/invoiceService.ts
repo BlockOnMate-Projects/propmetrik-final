@@ -794,7 +794,7 @@ class InvoiceService {
           platformFeePesewas = feeCalc.serviceFeeSubunits;
           platformFeeAmount = feeCalc.serviceFee;
 
-          const frontendUrl = process.env.FRONTEND_URL || 'https://propmetrik.com';
+          const frontendUrl = config.app.frontendUrl;
           const response = await paystackService.initializeWithSubaccount(
             {
               email: clientEmail,
@@ -923,8 +923,8 @@ class InvoiceService {
     // ── Send email notification ─────────────────────────────────
     if (clientEmail) {
       try {
-        // Resolve the org's saved branding (logo/name/colors) for the invoice PDF — falls back to PROPMETRIK
-        const branding = await resolveReportBranding(sentInvoice.organizationId, { withLogo: true });
+        // Resolve the org's PROJECT-MANAGEMENT branding (logo/name/colors) for the invoice PDF — falls back to PROPMETRIK
+        const branding = await resolveReportBranding(sentInvoice.organizationId, { service: 'project_management', withLogo: true });
         const organizationName = sendData?.vendorCompany || branding.name;
 
         const dueDate = sentInvoice.dueDate
@@ -941,7 +941,7 @@ class InvoiceService {
 
         // Always link to the payment page — it handles inline Paystack checkout
         // even when server-side Paystack init failed (e.g. amount over test limits)
-        const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
+        const paymentPageUrl = `${config.app.frontendUrl}/payment/invoice?id=${sentInvoice.id}`;
         const paymentSection = `
             <div style="text-align: center; margin: 32px 0;">
               <a href="${paymentPageUrl}"

@@ -15,12 +15,17 @@ import {
     Loader2,
     User,
     Shield,
+    ShieldCheck,
     Palette,
     Globe,
     Columns,
     PenLine,
 } from 'lucide-react'
 import { EsignSettingsManager } from '@/components/projects/EsignSettingsManager'
+import { CompanyBrandingSettings } from '@/components/settings/CompanyBrandingSettings'
+import { CompanyVerificationPanel } from '@/components/settings/CompanyVerificationPanel'
+import { IntegrationsHub } from '@/components/integrations/IntegrationsHub'
+import { Plug } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 
 const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -208,13 +214,16 @@ export default function ProjectSettingsPage() {
             </div>
 
             <Tabs defaultValue="general">
-                <TabsList className="bg-muted border border-border">
-                    <TabsTrigger value="general" className="font-mono text-xs"><Settings className="h-3 w-3 mr-1" />General</TabsTrigger>
-                    <TabsTrigger value="notifications" className="font-mono text-xs"><Bell className="h-3 w-3 mr-1" />Notifications</TabsTrigger>
-                    <TabsTrigger value="security" className="font-mono text-xs"><Shield className="h-3 w-3 mr-1" />Security</TabsTrigger>
-                    <TabsTrigger value="display" className="font-mono text-xs"><Palette className="h-3 w-3 mr-1" />Display</TabsTrigger>
-                    <TabsTrigger value="custom-fields" className="font-mono text-xs"><Columns className="h-3 w-3 mr-1" />Custom Fields</TabsTrigger>
-                    <TabsTrigger value="esign" className="font-mono text-xs"><PenLine className="h-3 w-3 mr-1" />E-Signature</TabsTrigger>
+                <TabsList className={subTabsListClass}>
+                    <TabsTrigger value="general" className={subTabsTriggerClass}><Settings className="h-3 w-3 mr-1" />General</TabsTrigger>
+                    <TabsTrigger value="notifications" className={subTabsTriggerClass}><Bell className="h-3 w-3 mr-1" />Notifications</TabsTrigger>
+                    <TabsTrigger value="security" className={subTabsTriggerClass}><Shield className="h-3 w-3 mr-1" />Security</TabsTrigger>
+                    <TabsTrigger value="display" className={subTabsTriggerClass}><Palette className="h-3 w-3 mr-1" />Display</TabsTrigger>
+                    <TabsTrigger value="custom-fields" className={subTabsTriggerClass}><Columns className="h-3 w-3 mr-1" />Custom Fields</TabsTrigger>
+                    <TabsTrigger value="esign" className={subTabsTriggerClass}><PenLine className="h-3 w-3 mr-1" />E-Signature</TabsTrigger>
+                    <TabsTrigger value="branding" className={subTabsTriggerClass}><Palette className="h-3 w-3 mr-1" />Company Branding</TabsTrigger>
+                    <TabsTrigger value="verification" className={subTabsTriggerClass}><ShieldCheck className="h-3 w-3 mr-1" />Verification</TabsTrigger>
+                    <TabsTrigger value="integrations" className={subTabsTriggerClass}><Plug className="h-3 w-3 mr-1" />Integrations</TabsTrigger>
                 </TabsList>
 
                 {/* General Tab */}
@@ -426,6 +435,18 @@ export default function ProjectSettingsPage() {
                 {/* E-Signature Tab */}
                 <TabsContent value="esign" className="space-y-6 mt-6">
                     <EsignSettingsManager />
+                </TabsContent>
+
+                <TabsContent value="branding" className="space-y-6 mt-6">
+                    <CompanyBrandingSettings service="project_management" />
+                </TabsContent>
+
+                <TabsContent value="verification" className="space-y-6 mt-6">
+                    <CompanyVerificationPanel />
+                </TabsContent>
+
+                <TabsContent value="integrations" className="space-y-6 mt-6">
+                    <IntegrationsHub service="projects" title="Integrations" />
                 </TabsContent>
             </Tabs>
         </div>

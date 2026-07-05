@@ -16,6 +16,9 @@ import { version as pkgVersion } from '../../package.json';
 import { feeEngine } from '../../shared-services/payments/feeEngine';
 import { cryptoPaymentService, exchangeRateService, loadCryptoConfig, nowPaymentsService } from '../../shared-services/payments/crypto';
 import { aiService } from '../services/ai/aiService';
+import * as kyb from '../services/organization/kybService';
+import * as moderation from '../services/marketplace/listingModerationService';
+import { getPresignedDownloadUrl, buckets } from '../database/minio';
 
 const router = Router();
 
@@ -79,7 +82,8 @@ router.get('/organizations', asyncHandler(async (req: Request, res: Response) =>
                       ORDER BY s.current_period_end DESC LIMIT 1),
                     'free'
                 ) AS subscription_tier,
-                o.created_at, o.is_active
+                o.created_at, o.is_active, o.is_verified, o.verified_at, o.is_platform_org,
+                (SELECT k.status FROM kyb_submissions k WHERE k.organization_id = o.id ORDER BY k.created_at DESC LIMIT 1) AS kyb_status
          FROM organizations o
          WHERE $1 = '' OR o.name ILIKE $2 OR o.slug ILIKE $2 OR o.address_city ILIKE $2
          ORDER BY o.created_at DESC
@@ -561,6 +565,121 @@ router.post('/organizations/:id/set-free', asyncHandler(async (req: Request, res
         client.release();
     }
     res.json({ data: { id, tier: 'free', subscriptions_cancelled: cancelled, users_downgraded: downgraded } });
+}));
+
+// ============================================================================
+// KYB VERIFICATION — marketplace trust review queue (Gate A)
+// ============================================================================
+
+/** GET /organizations/verifications — pending KYB review queue (docs presigned for viewing). */
+router.get('/organizations/verifications', asyncHandler(async (_req: Request, res: Response) => {
+    const rows = await kyb.listPendingKyb();
+    const bucket = buckets.documents || 'propmetrik-documents';
+    const data = await Promise.all(rows.map(async (row: any) => {
+        const docs = Array.isArray(row.documents) ? row.documents : [];
+        const documents = await Promise.all(docs.map(async (d: any) => {
+            let url: string | null = null;
+            if (d?.key) {
+                try { url = await getPresignedDownloadUrl(bucket, d.key, 3600); } catch { url = null; }
+            }
+            return { ...d, url };
+        }));
+        return { ...row, documents };
+    }));
+    res.json({ data });
+}));
+
+/**
+ * GET /organizations/:id/kyb — full KYB detail for a single org (ANY status), docs presigned.
+ * Lets an admin inspect what an org submitted from the Organizations list — including orgs
+ * that were verified directly (returns latest_submission: null → "not submitted" in the UI).
+ */
+router.get('/organizations/:id/kyb', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const detail = await kyb.getVerificationStatus(id);
+    if (!detail.organization) { res.status(404).json({ error: 'Organization not found' }); return; }
+    const bucket = buckets.documents || 'propmetrik-documents';
+    let submission = detail.latest_submission;
+    if (submission && Array.isArray(submission.documents)) {
+        const documents = await Promise.all(submission.documents.map(async (d: any) => {
+            let url: string | null = null;
+            if (d?.key) { try { url = await getPresignedDownloadUrl(bucket, d.key, 3600); } catch { url = null; } }
+            return { ...d, url };
+        }));
+        submission = { ...submission, documents };
+    }
+    res.json({ data: { ...detail, latest_submission: submission } });
+}));
+
+/** POST /organizations/:id/verify — approve KYB → org verified (unlocks marketplace). */
+router.post('/organizations/:id/verify', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const org = await pool.query('SELECT id FROM organizations WHERE id=$1', [id]);
+    if (!org.rowCount) { res.status(404).json({ error: 'Organization not found' }); return; }
+    try {
+        await kyb.approveOrg(id, getAuthUserId(req), (req.body?.notes as string) || undefined, req.body?.force === true);
+        res.json({ data: { id, is_verified: true } });
+    } catch (e: any) {
+        // Gate B: principal not yet KYC-verified → 409 so the admin can override.
+        if (e?.code === 'PRINCIPAL_KYC_REQUIRED') { res.status(409).json({ error: e.message, code: e.code }); return; }
+        throw e;
+    }
+}));
+
+/** POST /organizations/:id/reject — reject the pending KYB submission. */
+router.post('/organizations/:id/reject', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const org = await pool.query('SELECT id FROM organizations WHERE id=$1', [id]);
+    if (!org.rowCount) { res.status(404).json({ error: 'Organization not found' }); return; }
+    await kyb.rejectOrg(id, getAuthUserId(req), (req.body?.notes as string) || undefined);
+    res.json({ data: { id, is_verified: false } });
+}));
+
+/** POST /organizations/:id/suspend — suspend an org (removes its listings from the marketplace). */
+router.post('/organizations/:id/suspend', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const org = await pool.query('SELECT id FROM organizations WHERE id=$1', [id]);
+    if (!org.rowCount) { res.status(404).json({ error: 'Organization not found' }); return; }
+    await kyb.suspendOrg(id, getAuthUserId(req), (req.body?.notes as string) || undefined);
+    res.json({ data: { id, is_active: false } });
+}));
+
+/** POST /organizations/:id/unsuspend — reinstate a suspended org. */
+router.post('/organizations/:id/unsuspend', asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const org = await pool.query('SELECT id FROM organizations WHERE id=$1', [id]);
+    if (!org.rowCount) { res.status(404).json({ error: 'Organization not found' }); return; }
+    await kyb.unsuspendOrg(id, getAuthUserId(req));
+    res.json({ data: { id, is_active: true } });
+}));
+
+// ============================================================================
+// LISTING MODERATION — community abuse reports + suspend/reinstate (Gate E)
+// ============================================================================
+
+/** GET /listing-reports — moderation queue (listings with open reports or suspended). */
+router.get('/listing-reports', asyncHandler(async (_req: Request, res: Response) => {
+    res.json({ data: await moderation.listModerationQueue() });
+}));
+
+/** GET /listing-reports/:source/:id — individual reports for a listing. */
+router.get('/listing-reports/:source/:id', asyncHandler(async (req: Request, res: Response) => {
+    const source = req.params.source === 'crm' ? 'crm' : 'pm';
+    res.json({ data: await moderation.listReportsForListing(source, req.params.id) });
+}));
+
+/** POST /listings/:source/:id/suspend — hide a reported listing from the marketplace. */
+router.post('/listings/:source/:id/suspend', asyncHandler(async (req: Request, res: Response) => {
+    const source = req.params.source === 'crm' ? 'crm' : 'pm';
+    await moderation.suspendListing(source, req.params.id, getAuthUserId(req), (req.body?.reason as string) || undefined);
+    res.json({ data: { source, id: req.params.id, status: 'suspended' } });
+}));
+
+/** POST /listings/:source/:id/reinstate — restore a listing + dismiss its reports. */
+router.post('/listings/:source/:id/reinstate', asyncHandler(async (req: Request, res: Response) => {
+    const source = req.params.source === 'crm' ? 'crm' : 'pm';
+    await moderation.reinstateListing(source, req.params.id, getAuthUserId(req));
+    res.json({ data: { source, id: req.params.id, status: 'active' } });
 }));
 
 // ============================================================================

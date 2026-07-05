@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const ITEM_STATUS: Record<string, string> = { not_started: 'bg-zinc-500/20 text-muted-foreground', in_progress: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', completed: 'bg-green-500/20 text-green-600 dark:text-green-400', na: 'bg-zinc-500/20 text-muted-foreground' };
@@ -119,10 +120,10 @@ export default function CloseoutPage() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="checklist" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">CHECKLIST ({items?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="warranties" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">WARRANTIES ({warranties?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="claims" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">CLAIMS</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="checklist" className={subTabsTriggerClass}>CHECKLIST ({items?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="warranties" className={subTabsTriggerClass}>WARRANTIES ({warranties?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="claims" className={subTabsTriggerClass}>CLAIMS</TabsTrigger>
         </TabsList>
 
         <TabsContent value="checklist" className="mt-4 space-y-2">

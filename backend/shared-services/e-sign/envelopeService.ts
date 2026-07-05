@@ -224,9 +224,10 @@ export class EnvelopeService {
         if (!row.email || !row.access_token) return false;
 
         // Resolve the public frontend URL from central config so signing links in emails are
-        // reachable by external signers. FRONTEND_URL is an explicit override; otherwise use the
-        // env-aware config (prod → https://propmetrik.com), which never falls back to localhost.
-        const frontendUrl = process.env.FRONTEND_URL || config.app.frontendUrl;
+        // reachable by external signers. config.app.frontendUrl honors an explicit FRONTEND_URL
+        // override BUT rejects a localhost value in production (prod → https://propmetrik.com) —
+        // a stale FRONTEND_URL=localhost was previously poisoning real signing emails.
+        const frontendUrl = config.app.frontendUrl;
         const signingUrl = `${frontendUrl}/sign/${row.access_token}`;
         const docName = row.envelope_name || 'a document';
         const greeting = row.name ? `Hi ${row.name},` : 'Hello,';

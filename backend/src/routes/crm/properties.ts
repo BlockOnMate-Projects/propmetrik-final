@@ -24,7 +24,54 @@ const upload = multer({
     }
 });
 
+// Marketing/walkthrough video for a CRM property (shown on the public Marketplace).
+const videoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 150 * 1024 * 1024 }, // 150MB
+    fileFilter: (_req, file, cb) => {
+        if (['video/mp4', 'video/webm', 'video/quicktime'].includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Invalid video type: ${file.mimetype}. Only MP4, WebM, MOV are allowed.`));
+        }
+    }
+});
+
 const router = Router();
+
+// POST /properties/:id/video — upload/replace a CRM property's marketing video
+router.post('/properties/:id/video', videoUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Video file is required' });
+
+    const owned = await db.query(`SELECT id FROM crm_properties WHERE id = $1 AND organization_id = $2`, [req.params.id, organizationId]);
+    if (owned.rows.length === 0) return res.status(404).json({ error: 'Property not found' });
+
+    const bucket = buckets.media || 'propmetrik-media';
+    const safeName = (file.originalname || 'video').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const objectKey = `crm/${organizationId}/properties/${req.params.id}/video/${Date.now()}_${safeName}`;
+    await uploadFile(bucket, objectKey, file.buffer, file.mimetype, { propertyId: req.params.id, mediaType: 'property_video' });
+
+    const objectRef = `s3://${bucket}/${objectKey}`;
+    await db.query(`UPDATE crm_properties SET video_url = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`, [objectRef, req.params.id, organizationId]);
+
+    const video_url = await getPresignedDownloadUrl(bucket, objectKey);
+    res.status(201).json({ video_url });
+}));
+
+// DELETE /properties/:id/video — remove a CRM property's marketing video
+router.delete('/properties/:id/video', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+    await db.query(`UPDATE crm_properties SET video_url = NULL, updated_at = NOW() WHERE id = $1 AND organization_id = $2`, [req.params.id, organizationId]);
+    res.json({ success: true });
+}));
 
 // GET /properties — List CRM properties with filters, deals, and stats
 router.get('/properties', asyncHandler(async (req: Request, res: Response) => {
@@ -230,6 +277,7 @@ router.get('/properties/:id', asyncHandler(async (req: Request, res: Response) =
             p.images,
             p.documents,
             p.virtual_tour_url,
+            p.video_url,
             p.active_deal_id,
             p.total_deals,
             p.created_at,
@@ -255,8 +303,19 @@ router.get('/properties/:id', asyncHandler(async (req: Request, res: Response) =
         LIMIT 10
     `, [organizationId, id]);
 
+    // Resolve an s3:// video ref to a ready-to-play (presigned) URL for the edit-page preview.
+    const row = result.rows[0];
+    if (row.video_url && String(row.video_url).startsWith('s3://')) {
+        const ref = String(row.video_url).slice('s3://'.length);
+        const slash = ref.indexOf('/');
+        if (slash > 0) {
+            try { row.video_url = await getPresignedDownloadUrl(ref.slice(0, slash), ref.slice(slash + 1)); }
+            catch { row.video_url = null; }
+        }
+    }
+
     res.json({
-        ...result.rows[0],
+        ...row,
         deals: dealsResult.rows
     });
 }));

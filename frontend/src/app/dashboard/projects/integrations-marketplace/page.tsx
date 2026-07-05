@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 
 const STATUS_COLORS: Record<string, string> = { active: 'bg-green-500/20 text-green-600 dark:text-green-400', inactive: 'bg-zinc-500/20 text-muted-foreground', error: 'bg-red-500/20 text-red-600 dark:text-red-400', pending: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' };
 
@@ -167,10 +168,10 @@ export default function IntegrationsPage() {
       )}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="marketplace" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">MARKETPLACE ({CATALOG.length})</TabsTrigger>
-          <TabsTrigger value="connected" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">CONNECTED ({integrations?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="api-keys" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">API KEYS ({apiKeys?.data?.length || 0})</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="marketplace" className={subTabsTriggerClass}>MARKETPLACE ({CATALOG.length})</TabsTrigger>
+          <TabsTrigger value="connected" className={subTabsTriggerClass}>CONNECTED ({integrations?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="api-keys" className={subTabsTriggerClass}>API KEYS ({apiKeys?.data?.length || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketplace" className="mt-4">

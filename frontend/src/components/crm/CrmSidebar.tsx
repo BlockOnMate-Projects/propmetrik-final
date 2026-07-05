@@ -58,7 +58,7 @@ const crmNavItems = [
   { href: '/dashboard/deals/targets', label: 'Targets', icon: Target, subTabKey: 'crm-targets' },
   { href: '/dashboard/deals/drip-campaigns', label: 'Drip Campaigns', icon: Mail, subTabKey: 'crm-drip-campaigns' },
   { href: '/dashboard/deals/team', label: 'Team', icon: UserCircle, subTabKey: 'crm-team' },
-  { href: '/dashboard/deals/integrations', label: 'Integrations', icon: Plug, subTabKey: 'crm-integrations' },
+  { href: '/dashboard/deals/settings', label: 'Settings', icon: Settings, subTabKey: 'crm-settings' },
 ]
 
 export function CrmSidebar() {

@@ -26,6 +26,10 @@ export interface TenantContact {
   email?: string;
   unitNumber?: string;
   propertyAddress?: string;
+  /** Owning organization — used to resolve the branded WhatsApp sign-off. */
+  organizationId?: string;
+  /** Pre-resolved sign-off name; overrides organizationId lookup when set. */
+  orgName?: string;
 }
 
 export interface RentReminderData {
@@ -81,11 +85,38 @@ export interface EmergencyAlertData {
 // ============================================================================
 
 export class TenantWhatsAppService {
+  /** Short-lived per-org sign-off cache to avoid re-resolving branding per message. */
+  private signOffCache = new Map<string, string>();
+
   /**
    * Check if WhatsApp notifications are enabled
    */
   isEnabled(): boolean {
     return whatsappService.isEnabled();
+  }
+
+  /**
+   * Resolve the WhatsApp sign-off line for a tenant. Uses the tenant's pre-set
+   * orgName, then the org's Property Management branding name, and finally falls
+   * back to "PROPMETRIK Property Management" when nothing is known.
+   */
+  private async resolveSignOff(tenant: TenantContact): Promise<string> {
+    if (tenant.orgName && tenant.orgName.trim()) return tenant.orgName.trim();
+    const orgId = tenant.organizationId;
+    if (!orgId) return 'PROPMETRIK Property Management';
+    const cached = this.signOffCache.get(orgId);
+    if (cached) return cached;
+    try {
+      const { resolveReportBranding } = await import('../../valuation-engine/brandingService');
+      const b = await resolveReportBranding(orgId, { service: 'property_management', withLogo: false });
+      // resolveReportBranding returns the PROPMETRIK default name when unset.
+      const signOff = b.name && b.name !== 'PROPMETRIK' ? b.name : 'PROPMETRIK Property Management';
+      this.signOffCache.set(orgId, signOff);
+      return signOff;
+    } catch (err: any) {
+      logger.warn('WhatsApp sign-off branding resolve failed', { orgId, error: err?.message });
+      return 'PROPMETRIK Property Management';
+    }
   }
 
   // ==========================================================================
@@ -118,7 +149,7 @@ export class TenantWhatsAppService {
     
     message += `\nPlease ensure timely payment to avoid late fees.\n\n`;
     message += `Questions? Reply to this message or contact your property manager.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -150,7 +181,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nIf you're experiencing financial difficulties, please contact your property manager to discuss options.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -192,7 +223,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nThank you for being a valued tenant.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -225,7 +256,7 @@ export class TenantWhatsAppService {
     
     message += `\nOur team will review and assign a technician shortly. You'll receive updates on the progress.\n\n`;
     message += `For urgent issues, please call the emergency line.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -274,7 +305,7 @@ export class TenantWhatsAppService {
     
     message += `\n*Please ensure someone is available to provide access.*\n\n`;
     message += `If you need to reschedule, please reply to this message or contact your property manager.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -302,7 +333,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nWe'll notify you once the work is complete.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -331,7 +362,7 @@ export class TenantWhatsAppService {
     
     message += `\nIf you have any concerns about the work performed, please reply to this message within 48 hours.\n\n`;
     message += `Thank you for your patience!\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -373,7 +404,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nPlease contact your property manager to discuss renewal options or move-out arrangements.\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -414,7 +445,7 @@ export class TenantWhatsAppService {
     
     message += `\nA copy of your signed lease will be sent to your email.\n\n`;
     message += `Welcome to your new home! 🏡\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -459,7 +490,7 @@ export class TenantWhatsAppService {
     }
     
     message += `Please follow emergency procedures and stay safe!\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -477,7 +508,7 @@ export class TenantWhatsAppService {
     let message = `Hello ${tenant.fullName},\n\n`;
     message += `📢 *${subject}*\n\n`;
     message += `${content}\n\n`;
-    message += `PROPMETRIK Property Management`;
+    message += await this.resolveSignOff(tenant);
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -497,11 +528,11 @@ export class TenantWhatsAppService {
    */
   async sendBulkRentReminders(organizationId: string, dueDate: Date): Promise<{ sent: number; failed: number }> {
     const result = await pool.query(`
-      SELECT 
+      SELECT
         t.id as tenant_id, t.full_name, t.phone,
         ten.id as tenancy_id, ten.rent_amount, ten.rent_currency,
         u.unit_number,
-        p.address_street
+        p.address_street, p.organization_id
       FROM tenants t
       JOIN tenancies ten ON t.id = ten.tenant_id
       JOIN units u ON ten.unit_id = u.id
@@ -525,6 +556,7 @@ export class TenantWhatsAppService {
             phoneNumber: row.phone,
             unitNumber: row.unit_number,
             propertyAddress: row.address_street,
+            organizationId: row.organization_id,
           },
           rentAmount: Number(row.rent_amount),
           currency: row.rent_currency || 'GHS',
@@ -555,10 +587,10 @@ export class TenantWhatsAppService {
     alertData: Omit<EmergencyAlertData, 'tenant'>
   ): Promise<{ sent: number; failed: number }> {
     const result = await pool.query(`
-      SELECT 
+      SELECT
         t.id as tenant_id, t.full_name, t.phone,
         u.unit_number,
-        p.address_street
+        p.address_street, p.organization_id
       FROM tenants t
       JOIN tenancies ten ON t.id = ten.tenant_id
       JOIN units u ON ten.unit_id = u.id
@@ -581,6 +613,7 @@ export class TenantWhatsAppService {
             phoneNumber: row.phone,
             unitNumber: row.unit_number,
             propertyAddress: row.address_street,
+            organizationId: row.organization_id,
           },
         });
         sent++;
@@ -629,8 +662,8 @@ export class TenantWhatsAppService {
    */
   async getTenantContact(tenantId: string): Promise<TenantContact | null> {
     const result = await pool.query(`
-      SELECT 
-        t.id as tenant_id, t.full_name, t.phone, t.email,
+      SELECT
+        t.id as tenant_id, t.full_name, t.phone, t.email, t.organization_id,
         ten.id as tenancy_id,
         u.unit_number,
         p.address_street, p.address_city
@@ -652,6 +685,7 @@ export class TenantWhatsAppService {
       email: row.email,
       unitNumber: row.unit_number,
       propertyAddress: row.address_street ? `${row.address_street}, ${row.address_city}` : undefined,
+      organizationId: row.organization_id,
     };
   }
 }

@@ -1,7 +1,7 @@
 // PropertyCard Component - Display property in marketplace
 'use client';
 
-import { Heart, MapPin, Bed, Bath, Square, Car, Navigation, ImageIcon, Building2 } from 'lucide-react';
+import { Heart, MapPin, Bed, Bath, Square, Car, Navigation, ImageIcon, Building2, Video } from 'lucide-react';
 import { useState } from 'react';
 import { authedFetch } from '@/lib/authed-fetch';
 
@@ -83,6 +83,17 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
           <div className="absolute bottom-3 left-3 px-2 py-1 bg-background/70 text-foreground text-xs font-medium rounded-md backdrop-blur-sm flex items-center gap-1">
             <ImageIcon className="h-3 w-3" />
             {property.images.length}
+          </div>
+        )}
+
+        {/* Video Badge */}
+        {property.video_url && (
+          <div
+            aria-hidden="true"
+            className={`absolute bottom-3 ${property.images && property.images.length > 1 ? 'left-16' : 'left-3'} px-2 py-1 bg-background/70 text-foreground text-xs font-medium rounded-md backdrop-blur-sm flex items-center gap-1`}
+          >
+            <Video className="h-3 w-3" />
+            Video
           </div>
         )}
 

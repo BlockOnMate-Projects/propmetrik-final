@@ -4,6 +4,7 @@ import { cache } from '../../database/redis';
 import { opensearchClient, indices } from '../../database/opensearch';
 import { logger } from '../../utils/logger';
 import ghanaPostGeocodingService from './ghanaPostGeocodingService';
+import { getPresignedDownloadUrl } from '../../database/minio';
 
 export interface PropertyEnrichmentResponse {
   property: {
@@ -44,6 +45,8 @@ export interface PropertyEnrichmentResponse {
       last_updated: string;
     };
     images: string[];
+    video_url?: string | null;
+    virtual_tour_url?: string | null;
     location: {
       lat: number;
       lng: number;
@@ -117,6 +120,20 @@ export interface PropertyEnrichmentResponse {
 }
 
 export const propertyEnrichmentService = {
+  /** Resolve an s3:// media ref to a ready-to-play presigned URL; pass through http(s) URLs. */
+  async resolveMediaUrl(ref: string | null | undefined): Promise<string | null> {
+    if (!ref) return null;
+    if (ref.startsWith('s3://')) {
+      const without = ref.slice('s3://'.length);
+      const slash = without.indexOf('/');
+      if (slash < 0) return null;
+      const bucket = without.slice(0, slash);
+      const key = without.slice(slash + 1);
+      try { return await getPresignedDownloadUrl(bucket, key); } catch { return null; }
+    }
+    return ref;
+  },
+
   async getEnrichedProperty(id: string): Promise<PropertyEnrichmentResponse | null> {
     const start = Date.now();
     
@@ -131,7 +148,7 @@ export const propertyEnrichmentService = {
         region, property_type, property_sub_type, year_built, condition, status,
         amenities, features,
         data_quality_score, completeness_score, verification_status, data_source,
-        image_urls, primary_image_url,
+        image_urls, primary_image_url, video_url, virtual_tour_url,
         latitude, longitude, location_verified, location_accuracy,
         coordinates_source, geocoding_confidence,
         address_street, address_city, address_district, landmark, digital_address,
@@ -253,6 +270,8 @@ export const propertyEnrichmentService = {
         features: Array.isArray(property.features) ? property.features : [],
         data_quality: this.calculateDataQuality(property),
         images: Array.isArray(property.image_urls) ? property.image_urls : (property.primary_image_url ? [property.primary_image_url] : []),
+        video_url: await this.resolveMediaUrl(property.video_url),
+        virtual_tour_url: property.virtual_tour_url || null,
         location: {
           lat: lat,
           lng: lng,

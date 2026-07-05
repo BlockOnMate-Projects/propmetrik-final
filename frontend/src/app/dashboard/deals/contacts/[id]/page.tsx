@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cn, formatCurrency } from '@/lib/utils'
+import { VerifyIdentityButton } from '@/components/identity/VerifyIdentityButton'
 import {
     ArrowLeft,
     Loader2,
@@ -217,9 +218,10 @@ export default function ContactDetailPage() {
                                     {contact.title && `${contact.title} `}
                                     {contact.first_name} {contact.last_name}
                                 </h1>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <LeadStatusBadge status={contact.lead_status} />
                                     <ContactTypeBadge type={contact.contact_type} />
+                                    <VerifyIdentityButton subjectType="contact" subjectId={contactId} compact />
                                 </div>
                             </div>
                         </div>

@@ -226,10 +226,13 @@ export class NotificationService {
                     break;
                 case NotificationChannel.EMAIL:
                     if (contact.email) {
+                        // Wrap the bare template fragment in the org's branded shell
+                        // (logo/name header + contact footer); falls back to PROPMETRIK.
+                        const brandedHtml = await this.wrapBranded(renderedMessage, payload.organizationId);
                         messageId = await this.sendEmail(
                             contact.email,
                             this.renderTemplate(template.subject, payload.templateData),
-                            renderedMessage
+                            brandedHtml
                         );
                     }
                     break;
@@ -377,6 +380,44 @@ export class NotificationService {
      */
     private renderTemplate(template: string, data: Record<string, any>): string {
         return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
+    }
+
+    /**
+     * Wrap a bare notification HTML fragment in the organization's branded shell
+     * (logo/name header + address/contact footer). Best-effort: if branding can't
+     * be resolved (or no orgId), returns the fragment unchanged so email still sends.
+     */
+    private async wrapBranded(inner: string, organizationId?: string): Promise<string> {
+        if (!organizationId) return inner;
+        try {
+            const { resolveReportBranding } = await import('../../valuation-engine/brandingService');
+            const b = await resolveReportBranding(organizationId, {
+                service: 'property_management',
+                withLogo: false,
+            });
+            const logo = b.logoUrl
+                ? `<img src="${b.logoUrl}" alt="${b.name}" style="max-height:34px;max-width:180px;margin:0 auto 8px;display:block;" />`
+                : '';
+            const footerParts = [b.name, b.contactLine, ...(b.addressLines || [])].filter(Boolean);
+            return `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1e293b;">
+        <div style="background:${b.primaryColor};padding:20px 24px;border-radius:10px 10px 0 0;text-align:center;">
+            ${logo}
+            <span style="color:${b.onPrimary};font-size:17px;font-weight:700;letter-spacing:1px;">${b.name}</span>
+        </div>
+        <div style="background:#ffffff;padding:24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;">
+            ${inner}
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 12px;" />
+            <p style="font-size:12px;color:#94a3b8;margin:0;">${footerParts.join(' · ')}</p>
+        </div>
+    </div>`;
+        } catch (err: any) {
+            logger.warn('PM notification branding wrap failed, sending unbranded', {
+                organizationId,
+                error: err?.message,
+            });
+            return inner;
+        }
     }
 
     /**

@@ -80,6 +80,7 @@ export default function SigningPage() {
   const [signerInfo, setSignerInfo] = useState<SignerInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
   const [signed, setSigned] = useState(false);
   const [declined, setDeclined] = useState(false);
   const [signing, setSigning] = useState(false);
@@ -109,9 +110,19 @@ export default function SigningPage() {
   // ─── Load signer info ──────────────────────────────
 
   const loadSignerInfo = useCallback(async () => {
+    setError(null);
+    setCanRetry(false);
+    setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/esign/sign-envelope/${token}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("Invalid or expired signing link");
+      if (!response.ok) {
+        // A 5xx is a transient server problem (e.g. the API restarting) — retryable, NOT a bad link.
+        const serverError = response.status >= 500;
+        setCanRetry(serverError);
+        throw new Error(serverError
+          ? "We couldn't load this signing page just now. Please try again in a moment."
+          : "Invalid or expired signing link");
+      }
       const data = await response.json();
       setSignerInfo(data);
 
@@ -358,12 +369,19 @@ export default function SigningPage() {
       <div className="min-h-screen flex items-center justify-center bg-muted dark:bg-gray-950">
         <Card className="max-w-md">
           <CardHeader>
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <CardTitle className="text-center">Link Expired or Invalid</CardTitle>
+            <AlertTriangle className={`h-12 w-12 mx-auto mb-4 ${canRetry ? 'text-amber-500' : 'text-red-500'}`} />
+            <CardTitle className="text-center">{canRetry ? 'Something went wrong' : 'Link Expired or Invalid'}</CardTitle>
             <CardDescription className="text-center">{error}</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground">Please contact the sender for a new signing link.</p>
+            {canRetry ? (
+              <button onClick={() => loadSignerInfo()}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-700 transition-colors">
+                Try again
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Please contact the sender for a new signing link.</p>
+            )}
           </CardContent>
         </Card>
       </div>

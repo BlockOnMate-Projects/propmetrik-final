@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ShareToTikTok } from '@/components/integrations/ShareToTikTok'
 import { ShareToMeta } from '@/components/integrations/ShareToMeta'
+import { ListingMandatePanel } from '@/components/marketplace/ListingMandatePanel'
 import {
     Building2,
     MapPin,
@@ -69,6 +70,7 @@ import {
     SelectValue
 } from '@/components/ui/select'
 import { propertyManagementApi } from '@/lib/property-management-api'
+import { PropertyVideoUploader } from '@/components/PropertyVideoUploader'
 import { useExchangeRates } from '@/lib/use-exchange-rates'
 import {
     Property,
@@ -665,6 +667,9 @@ export default function PropertyDetailPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Listing authorization (Gate C) — required before the property appears on the public marketplace */}
+            <ListingMandatePanel source="pm" propertyId={propertyId} />
 
             {/* Detailed Tabs */}
             <Tabs defaultValue="overview" className="w-full">
@@ -1534,6 +1539,18 @@ export default function PropertyDetailPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
+
+                    {/* Marketing Video */}
+                    <Card className="bg-background border-border mb-6">
+                        <CardContent className="pt-6">
+                            <PropertyVideoUploader
+                                scope="pm"
+                                propertyId={propertyId}
+                                videoUrl={property.video_url}
+                                onChange={(url) => setProperty(prev => prev ? { ...prev, video_url: url } : prev)}
+                            />
+                        </CardContent>
+                    </Card>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
                         {assetPhotos.map((photo) => (

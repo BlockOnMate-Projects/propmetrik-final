@@ -16,6 +16,7 @@ import db from '../database';
 import { logger } from '../utils/logger';
 import { z } from 'zod';
 import { notificationService } from '../../shared-services/notifications/unified';
+import * as moderation from '../services/marketplace/listingModerationService';
 
 const router = Router();
 
@@ -58,6 +59,25 @@ router.get('/properties/:token/similar', marketplaceController.getSimilarPropert
  * @access  Public
  */
 router.get('/properties/:token/application-link', marketplaceController.getApplicationLink.bind(marketplaceController));
+
+/**
+ * @route   POST /api/v1/marketplace/properties/:token/report
+ * @desc    Publicly report a listing for abuse/fraud (Gate E). Auto-suspends on threshold.
+ * @access  Public
+ */
+router.post('/properties/:token/report', async (req: Request, res: Response) => {
+  try {
+    const { reason, details, reporter_email } = req.body || {};
+    if (!reason) { res.status(400).json({ error: 'A reason is required' }); return; }
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || undefined;
+    const result = await moderation.submitReport(req.params.token, { reason, details, reporter_email, reporter_ip: ip });
+    res.json({ data: result });
+  } catch (e: any) {
+    if (e?.name === 'ModerationError') { res.status(e.status || 400).json({ error: e.message }); return; }
+    logger.error('Listing report error', { error: e?.message });
+    res.status(500).json({ error: 'Failed to submit report' });
+  }
+});
 
 /**
  * @route   GET /api/v1/marketplace/autocomplete

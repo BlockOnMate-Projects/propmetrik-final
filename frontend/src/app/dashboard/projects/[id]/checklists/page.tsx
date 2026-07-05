@@ -62,7 +62,6 @@ import { useToast } from '@/hooks/use-toast';
 import ProjectSubnav from '@/components/dashboard/projects/ProjectSubnav';
 import { authedFetch } from '@/lib/authed-fetch';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const fetch = authedFetch;
 
 type ChecklistStatus = 'not_started' | 'in_progress' | 'completed' | 'failed';
@@ -146,7 +145,7 @@ export default function ProjectChecklistsPage() {
   // Fetch project
   const fetchProject = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects/${projectId}`);
+      const response = await fetch(`/api/projects/${projectId}`);
       const result = await response.json();
       if (result.success) {
         setProject(result.data);
@@ -167,7 +166,7 @@ export default function ProjectChecklistsPage() {
       }
       params.append('pageSize', '100');
 
-      const response = await fetch(`${API_BASE}/api/checklists/instances?${params}`);
+      const response = await fetch(`/api/checklists/instances?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -190,7 +189,7 @@ export default function ProjectChecklistsPage() {
   // Fetch templates
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/checklists/templates?pageSize=100`);
+      const response = await fetch(`/api/checklists/templates?pageSize=100`);
       const result = await response.json();
       
       if (result.success) {
@@ -228,7 +227,7 @@ export default function ProjectChecklistsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/checklists/instances`, {
+      const response = await fetch(`/api/checklists/instances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -262,7 +261,7 @@ export default function ProjectChecklistsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/checklists/instances/${selectedInstance.id}`, {
+      const response = await fetch(`/api/checklists/instances/${selectedInstance.id}`, {
         method: 'DELETE',
       });
 

@@ -154,7 +154,7 @@ export class KeycloakTenantOnboardingService {
             organizationName: tenant.organization_name || 'Your property manager',
             propertyTitle: tenant.property_title || 'your tenancy',
             propertyAddress: tenant.property_address || ''
-        });
+        }, organizationId);
 
         if (!emailResult.success) {
             logger.warn('Tenant portal invite email failed to send', {

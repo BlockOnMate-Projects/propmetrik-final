@@ -29,11 +29,31 @@ const fmtDate = (d?: Date | string | null) => {
 const humanize = (s?: string) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 const pct = (p: number, dim: number) => (p / 100) * dim;
 
-function header(doc: any, kicker: string, ref: string) {
-  doc.rect(0, 0, PAGE_W, 64).fill(C.dark);
-  doc.rect(0, 64, PAGE_W, 3).fill(C.amber);
-  doc.fontSize(15).fillColor(C.amber).font('Helvetica-Bold').text('PROPMETRIK', M, 16, { ...NB, width: CW / 2 });
-  doc.fontSize(8).fillColor(C.muted).font('Helvetica').text('PROJECT MANAGEMENT', M, 35, { ...NB, width: CW / 2 });
+/** Optional firm branding (all fall back to PROPMETRIK defaults). */
+export interface PmDocBranding {
+  brandName?: string;
+  brandTagline?: string;
+  brandLogo?: Buffer | null;
+  brandAccent?: string;   // "#RRGGBB"
+  brandPrimary?: string;  // "#RRGGBB"
+  brandFooter?: string;
+}
+
+function header(doc: any, kicker: string, ref: string, brand?: PmDocBranding) {
+  const brandName = brand?.brandName || 'PROPMETRIK';
+  const brandTagline = brand?.brandTagline || 'PROJECT MANAGEMENT';
+  const primary = brand?.brandPrimary || C.dark;
+  const accent = brand?.brandAccent || C.amber;
+  doc.rect(0, 0, PAGE_W, 64).fill(primary);
+  doc.rect(0, 64, PAGE_W, 3).fill(accent);
+  let logoShown = false;
+  if (brand?.brandLogo && brand.brandLogo.length > 24) {
+    try { doc.image(brand.brandLogo, M, 14, { fit: [140, 38] }); logoShown = true; } catch { /* fall back to name text */ }
+  }
+  if (!logoShown) {
+    doc.fontSize(15).fillColor(accent).font('Helvetica-Bold').text(brandName, M, 16, { ...NB, width: CW / 2 });
+    doc.fontSize(8).fillColor(C.muted).font('Helvetica').text(brandTagline, M, 35, { ...NB, width: CW / 2 });
+  }
   doc.fontSize(16).fillColor(C.white).font('Helvetica-Bold').text(kicker, PAGE_W - M - 240, 16, { ...NB, width: 240, align: 'right' });
   doc.fontSize(9).fillColor(C.muted).font('Helvetica').text(ref, PAGE_W - M - 240, 38, { ...NB, width: 240, align: 'right' });
 }
@@ -78,15 +98,16 @@ function signatureBlocks(doc: any, signerLabels: string[]) {
   }
 }
 
-function footer(doc: any, note: string) {
+function footer(doc: any, note: string, brand?: PmDocBranding) {
+  const footerText = brand?.brandFooter || 'PROPMETRIK Ghana Ltd.';
   doc.fontSize(6).fillColor(C.muted).font('Helvetica')
-    .text(`PROPMETRIK Ghana Ltd. · ${note}`, M, PAGE_H - 24, { ...NB, width: CW, align: 'center' });
+    .text(`${footerText} · ${note}`, M, PAGE_H - 24, { ...NB, width: CW, align: 'center' });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DRAW REQUEST
 // ─────────────────────────────────────────────────────────────────────────────
-export interface DrawRequestPdfData {
+export interface DrawRequestPdfData extends PmDocBranding {
   draw_number: string; project_name?: string; status?: string; currency: string;
   total_amount: number; approved_amount?: number; retention_percentage?: number;
   retention_held?: number; net_amount?: number; notes?: string;
@@ -103,7 +124,7 @@ export async function generateDrawRequestPdf(data: DrawRequestPdfData): Promise<
       doc.on('error', reject);
       const ccy = data.currency || 'GHS';
 
-      header(doc, 'DRAW REQUEST', data.draw_number);
+      header(doc, 'DRAW REQUEST', data.draw_number, data);
       let y = 84;
       doc.fontSize(13).fillColor(C.heading).font('Helvetica-Bold')
         .text(`Payment Draw — ${data.project_name || 'Project'}`, M, y, { width: CW });
@@ -127,7 +148,7 @@ export async function generateDrawRequestPdf(data: DrawRequestPdfData): Promise<
       ], ccy);
 
       signatureBlocks(doc, data.signerLabels);
-      footer(doc, 'This draw request is approved electronically.');
+      footer(doc, 'This draw request is approved electronically.', data);
       doc.end();
     } catch (err) { reject(err); }
   });
@@ -136,7 +157,7 @@ export async function generateDrawRequestPdf(data: DrawRequestPdfData): Promise<
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTRACTOR AGREEMENT
 // ─────────────────────────────────────────────────────────────────────────────
-export interface ContractorContractPdfData {
+export interface ContractorContractPdfData extends PmDocBranding {
   contractor_company: string; project_name?: string; trade?: string; currency: string;
   contract_value: number; scope_of_work?: string; start_date?: Date | string | null;
   end_date?: Date | string | null; created_at?: Date | string; signerLabels: string[];
@@ -152,7 +173,7 @@ export async function generateContractorContractPdf(data: ContractorContractPdfD
       doc.on('error', reject);
       const ccy = data.currency || 'GHS';
 
-      header(doc, 'CONTRACTOR AGREEMENT', data.contractor_company);
+      header(doc, 'CONTRACTOR AGREEMENT', data.contractor_company, data);
       let y = 84;
       doc.fontSize(13).fillColor(C.heading).font('Helvetica-Bold')
         .text(`Agreement — ${data.contractor_company}`, M, y, { width: CW });
@@ -177,7 +198,7 @@ export async function generateContractorContractPdf(data: ContractorContractPdfD
       y = amountRows(doc, y, [['Total Contract Value', data.contract_value, true]], ccy);
 
       signatureBlocks(doc, data.signerLabels);
-      footer(doc, 'This agreement is executed electronically and binding on both parties.');
+      footer(doc, 'This agreement is executed electronically and binding on both parties.', data);
       doc.end();
     } catch (err) { reject(err); }
   });

@@ -8,6 +8,7 @@ import { pool } from '../../database';
 import { logger } from '../../utils/logger';
 import config from '../../config';
 import { notify } from '../../../shared-services/notifications/notify';
+import { resolveReportBranding } from '../valuation-engine/brandingService';
 
 const JWT_SECRET = config.jwt.secret;
 const jwtVerifyExpiry = '3d';
@@ -22,6 +23,30 @@ export async function sendWelcomeEmail(opts: {
   const normalizedEmail = opts.email.toLowerCase().trim();
   const name = (opts.firstName || '').trim() || 'there';
   const appUrl = config.app?.frontendUrl || 'https://propmetrik.com';
+
+  // Resolve the org's branding (PM service) so the wordmark/CTA/footer reflect the
+  // company rather than a hardcoded PROPMETRIK. Falls back to PROPMETRIK defaults.
+  let brand: Awaited<ReturnType<typeof resolveReportBranding>> | null = null;
+  try {
+    brand = await resolveReportBranding(organizationId || null, {
+      service: 'property_management',
+      withLogo: false,
+    });
+  } catch (brandErr: any) {
+    logger.warn('Welcome email: branding resolve failed (using defaults)', { error: brandErr?.message });
+  }
+  const isDefaultBrand = !brand || brand.name === 'PROPMETRIK';
+  const brandName = brand?.name || 'PROPMETRIK';
+  const headerBg = brand?.primaryColor || '#0a0a0a';
+  const headerFg = brand?.onPrimary || '#ffffff';
+  const accent = brand?.accentColor || '#f59e0b';
+  const onAccent = brand?.onAccent || '#0a0a0a';
+  // Wordmark: branded orgs get their (logo or) name; unbranded keeps the PROP<b>METRIK</b> look.
+  const wordmark = isDefaultBrand
+    ? `<span style="color:${headerFg};font-size:18px;font-weight:bold;letter-spacing:1px">PROP<span style="color:${accent}">METRIK</span></span>`
+    : (brand?.logoUrl
+        ? `<img src="${brand.logoUrl}" alt="${brandName}" style="max-height:34px;max-width:200px;display:block" />`
+        : `<span style="color:${headerFg};font-size:18px;font-weight:bold;letter-spacing:1px">${brandName}</span>`);
 
   // Resolve the user's plan + verification status from the DB (no hardcoding).
   let plan: any = null;
@@ -75,7 +100,7 @@ export async function sendWelcomeEmail(opts: {
     : '';
   const featureRows = planFeatures.map((f) => `
                       <tr>
-                        <td valign="top" style="padding:5px 10px 5px 0;width:18px"><span style="color:#f59e0b;font-weight:bold;font-size:14px">&#10003;</span></td>
+                        <td valign="top" style="padding:5px 10px 5px 0;width:18px"><span style="color:${accent};font-weight:bold;font-size:14px">&#10003;</span></td>
                         <td style="padding:5px 0;color:#3f3f46;font-size:14px;line-height:20px">${f}</td>
                       </tr>`).join('');
 
@@ -84,12 +109,12 @@ export async function sendWelcomeEmail(opts: {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 0;font-family:Arial,Helvetica,sans-serif">
           <tr><td align="center">
             <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e4e4e7">
-              <tr><td style="background:#0a0a0a;padding:20px 32px">
-                <span style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:1px">PROP<span style="color:#f59e0b">METRIK</span></span>
+              <tr><td style="background:${headerBg};padding:20px 32px">
+                ${wordmark}
               </td></tr>
               <tr><td style="padding:32px 32px 8px">
                 <h1 style="margin:0;color:#0a0a0a;font-size:22px;line-height:28px">Welcome, ${name} 🎉</h1>
-                <p style="margin:12px 0 0;color:#52525b;font-size:15px;line-height:22px">Your account is ready. PROPMETRIK is the operating system for African real estate — valuations, property &amp; project management, CRM, and market data in one place.</p>
+                <p style="margin:12px 0 0;color:#52525b;font-size:15px;line-height:22px">Your account is ready. ${isDefaultBrand ? 'PROPMETRIK is' : `${brandName}, powered by PROPMETRIK, is`} the operating system for African real estate — valuations, property &amp; project management, CRM, and market data in one place.</p>
               </td></tr>
               ${verifyBlock}
               ${plan ? `<tr><td style="padding:20px 32px 8px">
@@ -110,7 +135,7 @@ export async function sendWelcomeEmail(opts: {
                 </table>
               </td></tr>` : ''}
               <tr><td style="padding:18px 32px 8px" align="center">
-                <a href="${appUrl}/dashboard" style="background:#f59e0b;color:#0a0a0a;text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:bold;font-size:15px;display:inline-block">Go to your dashboard &rarr;</a>
+                <a href="${appUrl}/dashboard" style="background:${accent};color:${onAccent};text-decoration:none;padding:13px 28px;border-radius:10px;font-weight:bold;font-size:15px;display:inline-block">Go to your dashboard &rarr;</a>
               </td></tr>
               <tr><td style="padding:14px 32px 28px" align="center">
                 <p style="margin:0;color:#71717a;font-size:13px;line-height:20px">New here? <a href="${appUrl}/dashboard/properties" style="color:#b45309;text-decoration:none">Add a property</a> &nbsp;·&nbsp; <a href="${appUrl}/dashboard/valuations" style="color:#b45309;text-decoration:none">Run a valuation</a> &nbsp;·&nbsp; <a href="${appUrl}/resources" style="color:#b45309;text-decoration:none">Browse guides</a></p>

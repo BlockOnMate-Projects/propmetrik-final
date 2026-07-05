@@ -1754,9 +1754,9 @@ router.get('/envelopes/:id', asyncHandler(async (req: Request, res: Response) =>
         return res.status(404).json({ error: 'Envelope not found' });
     }
 
-    // Build signing URLs for each signer from their access tokens. FRONTEND_URL is an explicit
-    // override; otherwise use env-aware central config (prod → https://propmetrik.com), never localhost.
-    const frontendUrl = process.env.FRONTEND_URL || config.app.frontendUrl;
+    // Build signing URLs for each signer. config.app.frontendUrl already honors an explicit
+    // FRONTEND_URL override AND rejects a localhost value in production (prod → https://propmetrik.com).
+    const frontendUrl = config.app.frontendUrl;
     if ((envelope as any).signers) {
         (envelope as any).signers = (envelope as any).signers.map((s: any) => ({
             ...s,

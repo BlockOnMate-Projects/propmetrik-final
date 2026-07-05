@@ -116,6 +116,12 @@ export async function notify(input: NotifyInput): Promise<NotifyResult> {
     return true;
   });
 
+  // Resolve org branding once per notify() (only needed for the synthesised
+  // fallback email — when a caller supplies email.html we skip it entirely).
+  const wantsEmail = !!channels.email && unique.some((r) => !!r.email);
+  const emailBranding =
+    wantsEmail && !input.email?.html ? await resolveEmailBranding(input.organizationId) : null;
+
   await Promise.all(
     unique.map(async (recipient) => {
       // ---- In-app inbox -----------------------------------------------------
@@ -174,7 +180,7 @@ export async function notify(input: NotifyInput): Promise<NotifyResult> {
         try {
           const html =
             input.email?.html ||
-            defaultEmailHtml(input.title, input.body, input.sourceUrl || input.tenantActionUrl);
+            defaultEmailHtml(input.title, input.body, input.sourceUrl || input.tenantActionUrl, emailBranding);
           const r = await emailService.send({
             to: recipient.email,
             subject: input.email?.subject || input.title,
@@ -214,16 +220,90 @@ export async function notify(input: NotifyInput): Promise<NotifyResult> {
   return result;
 }
 
-function defaultEmailHtml(title: string, body: string, url?: string): string {
+/**
+ * Minimal shape of the resolved branding object used by the fallback email.
+ * Kept structural (not an import) so notify.ts stays decoupled from the
+ * valuation-engine module and existing callers compile unchanged.
+ */
+export interface EmailBranding {
+  name: string;
+  primaryColor: string;
+  accentColor: string;
+  onPrimary?: string;
+  onAccent?: string;
+  logoUrl?: string | null;
+  contactLine?: string | null;
+}
+
+/**
+ * Best-effort resolve of an organization's Property Management branding for the
+ * synthesised fallback email. Returns null (→ PropMetrik defaults) when there's
+ * no orgId or resolution fails. Lazy-imported to avoid a load-time cycle.
+ */
+async function resolveEmailBranding(organizationId?: string): Promise<EmailBranding | null> {
+  if (!organizationId) return null;
+  try {
+    const { resolveReportBranding } = await import(
+      '../../src/services/valuation-engine/brandingService'
+    );
+    const b = await resolveReportBranding(organizationId, {
+      service: 'property_management',
+      withLogo: false,
+    });
+    return {
+      name: b.name,
+      primaryColor: b.primaryColor,
+      accentColor: b.accentColor,
+      onPrimary: b.onPrimary,
+      onAccent: b.onAccent,
+      logoUrl: b.logoUrl,
+      contactLine: b.contactLine,
+    };
+  } catch (err: any) {
+    logger.warn('notify(): branding resolve failed, using PropMetrik defaults', {
+      organizationId,
+      error: err?.message,
+    });
+    return null;
+  }
+}
+
+function defaultEmailHtml(title: string, body: string, url?: string, branding?: EmailBranding | null): string {
+  // Fall back to the legacy PropMetrik palette/footer when branding is absent.
+  const ctaBg = branding?.accentColor || '#f59e0b';
+  const ctaFg = branding?.onAccent || '#000';
+  const headerBg = branding?.primaryColor || null;
+  const headerFg = branding?.onPrimary || '#ffffff';
+  const orgName = branding?.name || 'PropMetrik';
+
   const cta = url
-    ? `<p style="margin:24px 0;"><a href="${url}" style="background:#f59e0b;color:#000;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">View Details</a></p>`
+    ? `<p style="margin:24px 0;"><a href="${url}" style="background:${ctaBg};color:${ctaFg};padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;">View Details</a></p>`
     : '';
+
+  // Branded header (logo + name) only when we have branding; otherwise keep the
+  // original headerless markup so nothing changes for un-branded orgs.
+  const header = branding
+    ? `<div style="background:${headerBg};padding:18px 20px;border-radius:8px 8px 0 0;text-align:center;">
+        ${branding.logoUrl ? `<img src="${branding.logoUrl}" alt="${orgName}" style="max-height:36px;max-width:180px;margin:0 auto 6px;display:block;" />` : ''}
+        <span style="color:${headerFg};font-size:16px;font-weight:800;letter-spacing:1px;">${orgName}</span>
+      </div>`
+    : '';
+
+  const footer = branding
+    ? `<p style="font-size:11px;color:#a1a1aa;margin:0;">${orgName}${branding.contactLine ? ` · ${branding.contactLine}` : ''} — sent automatically, please do not reply.</p>`
+    : `<p style="font-size:11px;color:#a1a1aa;margin:0;">PropMetrik — sent automatically, please do not reply.</p>`;
+
+  const bodyPadding = branding ? 'padding:20px;border:1px solid #e4e4e7;border-top:none;border-radius:0 0 8px 8px;' : '';
+
   return `<div style="font-family:system-ui,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#18181b;">
-    <h2 style="font-size:18px;margin:0 0 12px;">${title}</h2>
-    <p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0;">${body}</p>
-    ${cta}
-    <hr style="border:none;border-top:1px solid #e4e4e7;margin:28px 0 12px;" />
-    <p style="font-size:11px;color:#a1a1aa;margin:0;">PropMetrik — sent automatically, please do not reply.</p>
+    ${header}
+    <div style="${bodyPadding}">
+      <h2 style="font-size:18px;margin:0 0 12px;">${title}</h2>
+      <p style="font-size:14px;line-height:1.6;color:#3f3f46;margin:0;">${body}</p>
+      ${cta}
+      <hr style="border:none;border-top:1px solid #e4e4e7;margin:28px 0 12px;" />
+      ${footer}
+    </div>
   </div>`;
 }
 

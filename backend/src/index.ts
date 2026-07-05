@@ -78,6 +78,10 @@ import eSignRoutes from './routes/eSign';
 import valuationOrgRoutes from './routes/valuation-org';
 import valuationInvoiceRoutes from './routes/valuation-invoices';
 import enterpriseRoutes from './routes/enterprise';
+import brandingRoutes, { brandingPublicRouter } from './routes/branding';
+import organizationVerificationRoutes from './routes/organizationVerification';
+import identityVerificationRoutes from './routes/identityVerification';
+import listingMandateRoutes from './routes/listingMandate';
 import developerPortalRoutes from './routes/developerPortal';
 import subscriptionRoutes from './routes/subscription';
 import commercializationRoutes from './routes/commercialization';
@@ -170,7 +174,13 @@ app.use((req, res, next) => {
 });
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
+// Capture the raw request body so webhooks that HMAC-sign the exact bytes
+// (e.g. Didit KYC) can verify against them; re-serialising req.body would change
+// whitespace/key-order and break the signature. Side-effect only; parsing is unchanged.
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: any, _res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request ID
@@ -365,7 +375,7 @@ app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
     const ticker = payCurrency.toLowerCase();
 
     const reference = `PM-INV-CRYPTO-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    const frontendUrl = process.env.FRONTEND_URL || 'https://propmetrik.com';
+    const frontendUrl = config.app.frontendUrl;
 
     const npResult = await nowPaymentsService.createPayment({
       priceAmount: usdAmount,
@@ -654,6 +664,22 @@ app.use('/api/valuation-org', valuationOrgRoutes);  // Also mount for frontend c
 // Enterprise B2B — internally-authenticated (no app-level authenticate)
 app.use('/api/v1/enterprise', enterpriseRoutes);
 app.use('/api/enterprise', enterpriseRoutes);  // Also mount for frontend compatibility
+
+// Per-service Company Branding — public logo serve (no auth: logos appear on client
+// docs/emails) + self-protecting authed get/save/upload (router does its own authenticate).
+app.use('/api/v1', brandingPublicRouter);
+app.use('/api', brandingPublicRouter);
+app.use('/api/v1/branding', brandingRoutes);
+app.use('/api/branding', brandingRoutes);  // Also mount for frontend compatibility
+// Organization verification (KYB) — org-facing; admin review lives under /admin
+app.use('/api/v1/org-verification', authenticate, organizationVerificationRoutes);
+app.use('/api/org-verification', authenticate, organizationVerificationRoutes);  // Also mount for frontend compatibility
+// Identity verification (KYC) — user-facing; provider callback is /webhooks/didit (public)
+app.use('/api/v1/identity', authenticate, identityVerificationRoutes);
+app.use('/api/identity', authenticate, identityVerificationRoutes);  // Also mount for frontend compatibility
+// Listing mandates (Gate C) — agent-facing; owner signs via the e-sign magic link
+app.use('/api/v1/listing-mandate', authenticate, listingMandateRoutes);
+app.use('/api/listing-mandate', authenticate, listingMandateRoutes);  // Also mount for frontend compatibility
 
 // PM Transmittals — public token-based acknowledge + download from email links (no Bearer)
 app.get('/api/v1/transmittals/public/acknowledge/:token', async (req, res) => {

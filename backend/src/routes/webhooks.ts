@@ -20,6 +20,7 @@ import {
 } from '../../shared-services/payments/subscriptions/subscriptionBillingService';
 import { logger } from '../utils/logger';
 import { CompletionEvent, ESignSourceModule } from '../../shared-services/e-sign/integration/types';
+import * as identityVerificationService from '../services/identity/identityVerificationService';
 
 const router = Router();
 
@@ -440,6 +441,33 @@ router.post('/paystack', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Paystack webhook error', { error });
     res.status(200).send('OK');
+  }
+});
+
+// ============================================================================
+// Didit Identity Verification (KYC) webhook — Marketplace Trust, Gate B
+// HMAC-SHA256 over the RAW body (x-signature) + x-timestamp replay window.
+// ============================================================================
+router.post('/didit', async (req: Request, res: Response) => {
+  try {
+    const rawBody = (req as any).rawBody instanceof Buffer
+      ? (req as any).rawBody.toString('utf8')
+      : JSON.stringify(req.body);
+    const signature = req.headers['x-signature'] as string | undefined;
+    const timestamp = req.headers['x-timestamp'] as string | undefined;
+
+    if (!identityVerificationService.verifySignature(rawBody, signature, timestamp)) {
+      logger.warn('Didit webhook: invalid signature or stale timestamp');
+      res.status(401).json({ error: 'invalid signature' });
+      return;
+    }
+
+    await identityVerificationService.handleWebhook(req.body);
+    res.status(200).json({ ok: true });
+  } catch (error: any) {
+    // 200 to avoid a retry storm; the failure is logged for follow-up.
+    logger.error('Didit webhook error', { error: error?.message });
+    res.status(200).json({ ok: false });
   }
 });
 

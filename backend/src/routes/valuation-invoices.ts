@@ -482,7 +482,7 @@ router.post('/public/invoice/:id/initiate-crypto', async (req: Request, res: Res
         // Generate a unique reference for this crypto payment
         const reference = `PM-INV-CRYPTO-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
-        const frontendUrl = process.env.FRONTEND_URL || 'https://propmetrik.com';
+        const frontendUrl = config.app.frontendUrl;
 
         // Create NOWPayments payment
         const npResult = await nowPaymentsService.createPayment({

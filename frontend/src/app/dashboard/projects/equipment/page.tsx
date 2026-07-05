@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2, ArrowUpRight, RotateCcw } from 'lucide-react';
 
@@ -148,10 +149,10 @@ export default function EquipmentPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="inventory" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">INVENTORY ({allEquipment?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="assigned" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">ASSIGNED ({projectEquipment?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="maintenance" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">MAINTENANCE</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="inventory" className={subTabsTriggerClass}>INVENTORY ({allEquipment?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="assigned" className={subTabsTriggerClass}>ASSIGNED ({projectEquipment?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="maintenance" className={subTabsTriggerClass}>MAINTENANCE</TabsTrigger>
         </TabsList>
 
         <TabsContent value="inventory" className="mt-4">

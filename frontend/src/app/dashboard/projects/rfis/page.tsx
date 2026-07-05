@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import {
   Table,
   TableBody,
@@ -402,15 +403,15 @@ export default function RFIsPage() {
 
       {/* Tabs and Table */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted border-border">
-          <TabsTrigger value="all">All ({rfis.length})</TabsTrigger>
-          <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
-          <TabsTrigger value="open">Open ({openCount})</TabsTrigger>
-          <TabsTrigger value="overdue" className={overdueCount > 0 ? 'text-red-600 dark:text-red-400' : ''}>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="all" className={subTabsTriggerClass}>All ({rfis.length})</TabsTrigger>
+          <TabsTrigger value="awaiting-me" className={subTabsTriggerClass}>Awaiting Me</TabsTrigger>
+          <TabsTrigger value="open" className={subTabsTriggerClass}>Open ({openCount})</TabsTrigger>
+          <TabsTrigger value="overdue" className={subTabsTriggerClass}>
             Overdue ({overdueCount})
           </TabsTrigger>
-          <TabsTrigger value="answered">Answered ({answeredCount})</TabsTrigger>
-          <TabsTrigger value="closed">Closed ({closedCount})</TabsTrigger>
+          <TabsTrigger value="answered" className={subTabsTriggerClass}>Answered ({answeredCount})</TabsTrigger>
+          <TabsTrigger value="closed" className={subTabsTriggerClass}>Closed ({closedCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">

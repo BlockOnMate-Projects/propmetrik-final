@@ -20,6 +20,22 @@ import { scanUploadedFile } from '../middleware/virusScan';
 import { approvalService } from '../services/valuation-engine';
 import { uploadFile, getPresignedDownloadUrl, buckets } from '../database/minio';
 import { query } from '../database';
+import { getAuthUserId, getAuthOrgId, isOrgAdmin } from '../middleware/pmAuth';
+
+/**
+ * A valuer may only create/update their OWN professional profile. Org admins may
+ * manage valuers within their own organization. Returns null when allowed, or an
+ * error object to return. `targetUserId` is the valuer record's user_id.
+ */
+async function assertCanEditValuer(req: Request, targetUserId: string | null | undefined): Promise<{ status: number; body: any } | null> {
+  const authUserId = getAuthUserId(req);
+  if (targetUserId && targetUserId === authUserId) return null;  // self-edit
+  if (isOrgAdmin(req) && targetUserId) {
+    const r = await query(`SELECT organization_id FROM users WHERE id = $1`, [targetUserId]);
+    if (r.rows[0]?.organization_id && r.rows[0].organization_id === getAuthOrgId(req)) return null; // org admin, same org
+  }
+  return { status: 403, body: { error: 'Forbidden', message: 'You can only update your own professional profile.' } };
+}
 
 const router = Router();
 
@@ -386,6 +402,15 @@ router.post('/', async (req: Request, res: Response) => {
       company_name,
     } = req.body;
 
+    // Ownership: create a valuer profile only for YOURSELF; org admins may create for
+    // their org's members (or an unlinked external valuer).
+    if (user_id) {
+      const createErr = await assertCanEditValuer(req, user_id);
+      if (createErr) return res.status(createErr.status).json(createErr.body);
+    } else if (!isOrgAdmin(req)) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You can only create your own professional profile.' });
+    }
+
     if (!name) {
       return res.status(400).json({
         error: 'Bad Request',
@@ -490,6 +515,10 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
         message: `Valuer not found: ${req.params.id}`,
       });
     }
+
+    // A valuer may only edit their OWN profile (org admins may edit their org's valuers).
+    const editErr = await assertCanEditValuer(req, valuer.user_id);
+    if (editErr) return res.status(editErr.status).json(editErr.body);
 
     const updateFields: string[] = [];
     const updateValues: any[] = [];
