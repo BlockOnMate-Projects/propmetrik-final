@@ -11,7 +11,8 @@
  * @module services/valuation-engine/brandingService
  */
 import axios from 'axios';
-import { getOrgSettings } from './orgSettingsService';
+import { getServiceBranding, ServiceType } from '../branding/serviceBrandingService';
+import { getFile, buckets } from '../../database/minio';
 import { logger } from '../../utils/logger';
 
 export interface ResolvedBranding {
@@ -114,23 +115,28 @@ async function fetchLogoBuffer(logoUrl: string | null | undefined): Promise<{ bu
 }
 
 /**
- * Resolve an organization's branding into a render-ready object.
+ * Resolve a service's company branding into a render-ready object.
+ * Branding is now PER-SERVICE (service_branding table) — each of valuation /
+ * property_management / crm / project_management owns its own name/logo/palette.
  * @param orgId  the organization id (valuer_organization_id for valuations)
- * @param opts.context  'valuation' → default name "PROPMETRIK Valuations"; else "PROPMETRIK"
+ * @param opts.service  which service's branding to load (default 'valuation')
+ * @param opts.context  legacy alias — 'valuation' maps to service 'valuation'
  * @param opts.withLogo  fetch the logo bytes (true for PDF/DOCX; false for HTML email which uses logoUrl directly)
  */
 export async function resolveReportBranding(
   orgId: string | null | undefined,
-  opts?: { context?: 'valuation' | 'generic'; withLogo?: boolean }
+  opts?: { service?: ServiceType; context?: 'valuation' | 'generic'; withLogo?: boolean }
 ): Promise<ResolvedBranding> {
-  const defaultName = opts?.context === 'valuation' ? DEFAULTS.valuationName : DEFAULTS.name;
+  const service: ServiceType = opts?.service
+    ?? (opts?.context === 'valuation' ? 'valuation' : 'valuation');
+  const defaultName = service === 'valuation' ? DEFAULTS.valuationName : DEFAULTS.name;
 
-  let s: Awaited<ReturnType<typeof getOrgSettings>> = null;
+  let s: Awaited<ReturnType<typeof getServiceBranding>> = null;
   if (orgId) {
     try {
-      s = await getOrgSettings(orgId);
+      s = await getServiceBranding(orgId, service);
     } catch (err: any) {
-      logger.warn('Branding: getOrgSettings failed', { orgId, error: err?.message });
+      logger.warn('Branding: getServiceBranding failed', { orgId, service, error: err?.message });
     }
   }
 
@@ -146,15 +152,31 @@ export async function resolveReportBranding(
   ].filter(Boolean) as string[];
 
   let logo: { buffer: Buffer; mime: string } | null = null;
-  if (opts?.withLogo !== false && s?.logo_url) {
-    logo = await fetchLogoBuffer(s.logo_url);
+  if (opts?.withLogo !== false) {
+    if (s?.logo_key) {
+      // Uploaded logo — read bytes DIRECTLY from MinIO (no HTTP; avoids proxy/expiry issues)
+      try {
+        const obj = await getFile(buckets.media, s.logo_key);
+        const mime = obj.contentType || 'image/png';
+        if (/(png|jpe?g)/i.test(mime) && obj.body?.length) {
+          logo = { buffer: Buffer.from(obj.body), mime };
+        }
+      } catch (err: any) {
+        logger.warn('Branding: MinIO logo read failed', { logoKey: s.logo_key, error: err?.message });
+      }
+    }
+    if (!logo && s?.logo_url) {
+      logo = await fetchLogoBuffer(s.logo_url);   // external URL / data URI fallback
+    }
   }
 
   return {
     orgId: orgId || null,
+    // The service's own name, else the PROPMETRIK platform default. No org-name fallback:
+    // each service brands itself independently or renders as PROPMETRIK.
     name: s?.name?.trim() || defaultName,
-    tagline: (s?.description?.trim() && s.description.trim().length <= 64)
-      ? s.description.trim()
+    tagline: (s?.tagline?.trim() && s.tagline.trim().length <= 64)
+      ? s.tagline.trim()
       : DEFAULTS.tagline,
     credentialLine: credParts.length ? credParts.join('  ·  ') : null,
     logoUrl: s?.logo_url || null,

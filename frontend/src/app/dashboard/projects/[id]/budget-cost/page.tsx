@@ -47,6 +47,7 @@ import ProjectSubnav from '@/components/dashboard/projects/ProjectSubnav';
 import { costsApi, projectsApi } from '@/lib/projects-api';
 import type { ProjectCost, BudgetSummary, CostCategory, CostStatus } from '@/types/projects';
 import { formatCurrency as formatCurrencyUtil } from '@/lib/utils';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 
 const categoryLabels: Record<string, string> = {
   land_acquisition: 'Land Acquisition',
@@ -264,9 +265,9 @@ export default function ProjectBudgetCostPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-muted border-border">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="costs">Cost Items</TabsTrigger>
+            <TabsList className={subTabsListClass}>
+              <TabsTrigger value="overview" className={subTabsTriggerClass}>Overview</TabsTrigger>
+              <TabsTrigger value="costs" className={subTabsTriggerClass}>Cost Items</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6">

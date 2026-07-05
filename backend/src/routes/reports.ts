@@ -934,7 +934,19 @@ router.get('/:id/content', validateUUID('id'), async (req: Request, res: Respons
 
     const content = report.content as any;
     const forceRegenerate = req.query.regenerate === 'true';
-    
+
+    // Firm branding for the report viewer letterhead (name/logo/colors) — falls back to PROPMETRIK.
+    // Never fatal: a branding failure must not block report content from loading.
+    let brand: any = null;
+    try {
+      brand = await reportTemplateService.getReportBrand(report.valuation_id);
+    } catch (brandErr: any) {
+      logger.warn('Failed to resolve report brand for viewer letterhead', {
+        reportId: req.params.id,
+        error: brandErr?.message,
+      });
+    }
+
     // Return editable sections if already saved and not forcing regeneration
     if (!forceRegenerate && content?.sections && Array.isArray(content.sections) && content.sections.length > 0) {
       // Fix expired presigned MinIO URLs in saved content by replacing with proxy URLs
@@ -974,6 +986,7 @@ router.get('/:id/content', validateUUID('id'), async (req: Request, res: Respons
       return res.json({
         report_id: req.params.id,
         sections: fixedSections,
+        brand,
         last_modified: content.last_modified || report.updated_at,
       });
     }
@@ -990,6 +1003,7 @@ router.get('/:id/content', validateUUID('id'), async (req: Request, res: Respons
       res.json({
         report_id: req.params.id,
         sections,
+        brand,
         last_modified: report.updated_at,
         generated_from_template: true,
       });

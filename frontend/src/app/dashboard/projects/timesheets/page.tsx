@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Trash2, CheckCircle, Send, Pencil } from 'lucide-react';
 
@@ -205,10 +206,10 @@ export default function TimesheetsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="entries" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">ENTRIES ({entries?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="timesheets" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">TIMESHEETS ({timesheets?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="crews" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">CREWS ({crews?.data?.length || 0})</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="entries" className={subTabsTriggerClass}>ENTRIES ({entries?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="timesheets" className={subTabsTriggerClass}>TIMESHEETS ({timesheets?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="crews" className={subTabsTriggerClass}>CREWS ({crews?.data?.length || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="entries" className="mt-4">

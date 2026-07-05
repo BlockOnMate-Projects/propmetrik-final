@@ -44,6 +44,7 @@ import {
 import { propertyManagementApi, Application, ApplicationStatus, ApplicationStatusChange } from '@/lib/property-management-api'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { VerifyIdentityButton } from '@/components/identity/VerifyIdentityButton'
 
 export default function ApplicationDetailPage() {
     const router = useRouter()
@@ -61,6 +62,7 @@ export default function ApplicationDetailPage() {
     const [rejectionReason, setRejectionReason] = useState('')
     const [approvalNotes, setApprovalNotes] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
+    const [tenantVerified, setTenantVerified] = useState(false)
 
     useEffect(() => {
         if (applicationId) {
@@ -446,6 +448,26 @@ export default function ApplicationDetailPage() {
                 </Card>
             )}
 
+            {/* Verify Tenant (Didit KYC) — before lease generation */}
+            {application.status === ApplicationStatus.APPROVED && !application.tenantId && (
+                <Card className="bg-card/50 border-border">
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between gap-4 flex-wrap">
+                            <div className="flex items-start gap-3">
+                                <UserCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+                                <div>
+                                    <p className="font-medium text-foreground">Verify tenant identity</p>
+                                    <p className="text-muted-foreground text-sm mt-1 max-w-md">
+                                        Send the applicant a secure link to verify their Ghana Card + selfie (Didit) before the lease is generated.
+                                    </p>
+                                </div>
+                            </div>
+                            <VerifyIdentityButton subjectType="applicant" subjectId={application.id} onStatus={setTenantVerified} />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Generate Lease Info Banner (when approved but no lease yet) */}
             {application.status === ApplicationStatus.APPROVED && !application.tenantId && (
                 <Card className="bg-blue-100 dark:bg-blue-900/20 border-blue-900">
@@ -459,9 +481,14 @@ export default function ApplicationDetailPage() {
                                         Click "Generate Lease" to create the lease agreement using this applicant's information.
                                         Once the lease is signed, the applicant will be converted to a tenant.
                                     </p>
+                                    {!tenantVerified && (
+                                        <p className="text-amber-600 dark:text-amber-400 text-sm mt-2 flex items-center gap-1.5">
+                                            <AlertCircle className="h-4 w-4" /> This applicant hasn&apos;t completed identity verification yet — you can still proceed, but verifying first is recommended.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
-                            <Button 
+                            <Button
                                 onClick={handleGenerateLease}
                                 className="bg-emerald-600 hover:bg-emerald-700"
                             >

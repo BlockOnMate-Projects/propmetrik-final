@@ -46,10 +46,22 @@ export const config = {
       process.env.DEV_APP_URL || 'http://localhost:4000',
       process.env.PROD_APP_URL || 'https://api.propmetrik.com'
     ),
-    frontendUrl: envSelect(
-      process.env.DEV_FRONTEND_URL || 'http://localhost:3000',
-      process.env.PROD_FRONTEND_URL || 'https://propmetrik.com'
-    ),
+    // Outward-facing app URL used to build links in e-sign / invite / notification emails.
+    // Honors the legacy `FRONTEND_URL` override, but in production NEVER lets a localhost
+    // value win: a stale `FRONTEND_URL=http://localhost:3000` (from .env.example) was
+    // poisoning real e-sign signing links on prod with localhost URLs. When set to a
+    // real host it is used; a localhost override in prod is ignored in favor of the
+    // env-aware default (PROD_FRONTEND_URL || https://propmetrik.com).
+    frontendUrl: (() => {
+      const envAware = envSelect(
+        process.env.DEV_FRONTEND_URL || 'http://localhost:3000',
+        process.env.PROD_FRONTEND_URL || 'https://propmetrik.com'
+      );
+      const explicit = process.env.FRONTEND_URL?.trim();
+      if (!explicit) return envAware;
+      const isLocalhost = /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(explicit);
+      return (isProd && isLocalhost) ? envAware : explicit;
+    })(),
     tenantPortalUrl: envSelect(
       process.env.DEV_TENANT_PORTAL_URL || 'http://localhost:3001',
       process.env.PROD_TENANT_PORTAL_URL || 'https://tenant.propmetrik.com'

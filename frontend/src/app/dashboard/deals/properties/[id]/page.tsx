@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cn, formatCurrency } from '@/lib/utils'
 import { authedFetch } from '@/lib/authed-fetch'
+import { PropertyVideoUploader } from '@/components/PropertyVideoUploader'
 import {
     Loader2, ArrowLeft, Plus, MapPin, Home, Building2, LandPlot,
     Users, Phone, Mail, Calendar, FileText, ChevronRight, Clock,
@@ -42,6 +43,7 @@ interface PropertyDetail {
     year_built?: number
     status: 'available' | 'active' | 'pending' | 'under_offer' | 'reserved' | 'sold' | 'rented' | 'withdrawn'
     images?: Array<{ id: string; url: string; key?: string; original_name?: string } | string>
+    video_url?: string | null
     features?: string[]
     owner_name?: string
     owner_contact?: string
@@ -293,6 +295,7 @@ export default function PropertyDetailPage() {
                         year_built: foundProperty.year_built,
                         status: foundProperty.status || 'active',
                         images: foundProperty.images || [],
+                        video_url: foundProperty.video_url ?? null,
                         features: foundProperty.features || [],
                         owner_name: foundProperty.owner_name,
                         owner_contact: foundProperty.owner_phone,
@@ -687,6 +690,16 @@ export default function PropertyDetailPage() {
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    {/* Marketing Video */}
+                    <div className="border border-border bg-card p-4">
+                        <PropertyVideoUploader
+                            scope="crm"
+                            propertyId={propertyId}
+                            videoUrl={property.video_url}
+                            onChange={(url) => setProperty(prev => prev ? { ...prev, video_url: url } : prev)}
+                        />
                     </div>
 
                     {/* Price */}

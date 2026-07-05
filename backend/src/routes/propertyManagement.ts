@@ -72,7 +72,7 @@ import { requireServiceRole } from '../middleware/serviceAccess';
 // to redirect where money is paid out.
 const PM_FINANCE_ROLES = ['service_admin', 'property_manager', 'accounts_officer'];
 import { getSignedLeaseDownloadUrl, isS3ObjectRef, storeSignedLeaseDocument } from '../services/property-management/leases/signedLeaseStorage';
-import { buckets, uploadFile } from '../database/minio';
+import { buckets, uploadFile, getPresignedDownloadUrl } from '../database/minio';
 import { keycloakTenantOnboardingService } from '../services/property-management/auth/keycloakTenantOnboardingService';
 import { notify, resolveTenantByTenancy } from '../../shared-services/notifications/in-mail';
 import { logger } from '../utils/logger';
@@ -94,6 +94,19 @@ const propertyPhotoUpload = multer({
             return;
         }
         cb(new Error('Only JPG, PNG, and WebP images are supported'));
+    },
+});
+
+// Marketing/walkthrough video for a property (shown on the public Marketplace listing).
+const propertyVideoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 150 * 1024 * 1024 }, // 150MB
+    fileFilter: (_req, file, cb) => {
+        if (['video/mp4', 'video/webm', 'video/quicktime'].includes(file.mimetype)) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error('Only MP4, WebM, and MOV videos are supported'));
     },
 });
 
@@ -732,6 +745,201 @@ router.get('/tenancies/:id/utility-charges', asyncHandler(async (req: Request, r
     );
 
     res.json({ charges: result.rows });
+}));
+
+/**
+ * POST /api/v1/pm/tenancies/:id/utility-charges
+ * Create a utility charge for a tenancy
+ */
+router.post('/tenancies/:id/utility-charges', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = await getUserId(req);
+
+    // Accept camelCase (frontend DTO) or snake_case field names
+    const utilityType = req.body.utilityType ?? req.body.utility_type;
+    const billingPeriodStart = req.body.billingPeriodStart ?? req.body.billing_period_start;
+    const billingPeriodEnd = req.body.billingPeriodEnd ?? req.body.billing_period_end;
+    const amount = req.body.amount;
+    const currency = req.body.currency ?? 'GHS';
+    const description = req.body.description ?? null;
+    const evidenceDocumentId = req.body.evidenceDocumentId ?? req.body.evidence_document_id ?? null;
+
+    if (!utilityType || !billingPeriodStart || !billingPeriodEnd || amount === undefined || amount === null) {
+        return res.status(400).json({ error: 'utility_type, amount, billing_period_start and billing_period_end are required' });
+    }
+    if (Number(amount) <= 0 || Number.isNaN(Number(amount))) {
+        return res.status(400).json({ error: 'amount must be a positive number' });
+    }
+
+    // Ensure the tenancy belongs to this organization before creating the charge
+    const tenancyCheck = await db.query(
+        `SELECT id FROM tenancies WHERE id = $1 AND organization_id = $2`,
+        [req.params.id, organizationId]
+    );
+    if (tenancyCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Tenancy not found' });
+    }
+
+    const result = await db.query(
+        `INSERT INTO utility_charges (
+            tenancy_id, organization_id, utility_type,
+            billing_period_start, billing_period_end, amount, currency,
+            description, evidence_document_id, status, created_by
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10)
+         RETURNING *`,
+        [
+            req.params.id, organizationId, utilityType,
+            billingPeriodStart, billingPeriodEnd, amount, currency,
+            description, evidenceDocumentId, userId ?? null,
+        ]
+    );
+
+    res.status(201).json({ success: true, charge: result.rows[0] });
+}));
+
+/**
+ * PUT /api/v1/pm/utility-charges/:chargeId
+ * Update an editable (pending) utility charge
+ */
+const updateUtilityChargeHandler = asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    // Accept camelCase or snake_case field names
+    const utilityType = req.body.utilityType ?? req.body.utility_type;
+    const billingPeriodStart = req.body.billingPeriodStart ?? req.body.billing_period_start;
+    const billingPeriodEnd = req.body.billingPeriodEnd ?? req.body.billing_period_end;
+    const amount = req.body.amount;
+    const currency = req.body.currency;
+    const description = req.body.description;
+    const evidenceDocumentId = req.body.evidenceDocumentId ?? req.body.evidence_document_id;
+
+    if (amount !== undefined && amount !== null && (Number(amount) <= 0 || Number.isNaN(Number(amount)))) {
+        return res.status(400).json({ error: 'amount must be a positive number' });
+    }
+
+    const result = await db.query(
+        `UPDATE utility_charges
+         SET utility_type = COALESCE($3, utility_type),
+             billing_period_start = COALESCE($4, billing_period_start),
+             billing_period_end = COALESCE($5, billing_period_end),
+             amount = COALESCE($6, amount),
+             currency = COALESCE($7, currency),
+             description = COALESCE($8, description),
+             evidence_document_id = COALESCE($9, evidence_document_id),
+             updated_at = NOW()
+         WHERE id = $1 AND organization_id = $2 AND status = 'pending'
+         RETURNING *`,
+        [
+            req.params.chargeId, organizationId,
+            utilityType ?? null, billingPeriodStart ?? null, billingPeriodEnd ?? null,
+            amount ?? null, currency ?? null, description ?? null, evidenceDocumentId ?? null,
+        ]
+    );
+
+    if (result.rows.length === 0) {
+        // Distinguish "not found" from "not editable"
+        const existing = await db.query(
+            `SELECT status FROM utility_charges WHERE id = $1 AND organization_id = $2`,
+            [req.params.chargeId, organizationId]
+        );
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: `Cannot edit a charge with status '${existing.rows[0].status}'` });
+        }
+        return res.status(404).json({ error: 'Utility charge not found' });
+    }
+
+    res.json({ success: true, charge: result.rows[0] });
+});
+// Frontend client sends PATCH; task spec says PUT. Support both.
+router.put('/utility-charges/:chargeId', updateUtilityChargeHandler);
+router.patch('/utility-charges/:chargeId', updateUtilityChargeHandler);
+
+/**
+ * DELETE /api/v1/pm/utility-charges/:chargeId
+ * Delete a pending utility charge (applied charges cannot be deleted)
+ */
+router.delete('/utility-charges/:chargeId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const existing = await db.query(
+        `SELECT status FROM utility_charges WHERE id = $1 AND organization_id = $2`,
+        [req.params.chargeId, organizationId]
+    );
+    if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Utility charge not found' });
+    }
+    if (existing.rows[0].status !== 'pending') {
+        return res.status(409).json({ error: `Cannot delete a charge with status '${existing.rows[0].status}'` });
+    }
+
+    await db.query(
+        `DELETE FROM utility_charges WHERE id = $1 AND organization_id = $2 AND status = 'pending'`,
+        [req.params.chargeId, organizationId]
+    );
+
+    res.json({ success: true });
+}));
+
+/**
+ * POST /api/v1/pm/utility-charges/:chargeId/apply
+ * Apply a pending utility charge to a rent schedule period
+ */
+router.post('/utility-charges/:chargeId/apply', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const scheduleId = req.body.scheduleId ?? req.body.schedule_id;
+
+    if (!scheduleId) {
+        return res.status(400).json({ error: 'scheduleId is required' });
+    }
+
+    // Validate the target rent schedule belongs to this org
+    const scheduleCheck = await db.query(
+        `SELECT id FROM rent_schedules WHERE id = $1 AND organization_id = $2`,
+        [scheduleId, organizationId]
+    );
+    if (scheduleCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Rent schedule not found' });
+    }
+
+    const result = await db.query(
+        `UPDATE utility_charges
+         SET applied_to_schedule_id = $3,
+             status = 'applied',
+             applied_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1 AND organization_id = $2 AND status = 'pending'
+         RETURNING *`,
+        [req.params.chargeId, organizationId, scheduleId]
+    );
+
+    if (result.rows.length === 0) {
+        const existing = await db.query(
+            `SELECT status FROM utility_charges WHERE id = $1 AND organization_id = $2`,
+            [req.params.chargeId, organizationId]
+        );
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ error: `Cannot apply a charge with status '${existing.rows[0].status}'` });
+        }
+        return res.status(404).json({ error: 'Utility charge not found' });
+    }
+
+    // Re-select the schedule with the recomputed utility_charges_total (SUM over applied charges)
+    const scheduleResult = await db.query(
+        `SELECT rs.id, rs.period_number, rs.period_start_date, rs.period_end_date,
+                rs.due_date, rs.expected_amount, rs.amount_paid, rs.amount_outstanding,
+                rs.currency, rs.status,
+                COALESCE((
+                    SELECT SUM(uc.amount)
+                    FROM utility_charges uc
+                    WHERE uc.applied_to_schedule_id = rs.id
+                ), 0) AS utility_charges_total
+         FROM rent_schedules rs
+         WHERE rs.id = $1 AND rs.organization_id = $2`,
+        [scheduleId, organizationId]
+    );
+
+    res.json({ success: true, charge: result.rows[0], schedule: scheduleResult.rows[0] ?? null });
 }));
 
 /**
@@ -1613,6 +1821,50 @@ router.post('/properties/:id/photos', propertyPhotoUpload.single('file'), asyncH
     }, userId);
 
     res.status(201).json(doc);
+}));
+
+/**
+ * POST /api/v1/pm/properties/:id/video
+ * Upload/replace the property's marketing video (shown on the public Marketplace).
+ */
+router.post('/properties/:id/video', propertyVideoUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Video file is required' });
+
+    const property = await propertyService.getPropertyById(req.params.id, organizationId);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    const bucket = buckets.media || 'propmetrik-media';
+    const fileName = safeStorageFilename(file.originalname);
+    const objectKey = `property-management/${organizationId}/properties/${req.params.id}/video/${Date.now()}_${fileName}`;
+
+    await uploadFile(bucket, objectKey, file.buffer, file.mimetype, {
+        propertyId: req.params.id,
+        mediaType: 'property_video',
+    });
+
+    const objectRef = `s3://${bucket}/${objectKey}`;
+    await db.query(
+        `UPDATE properties SET video_url = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`,
+        [objectRef, req.params.id, organizationId]
+    );
+
+    const video_url = await getPresignedDownloadUrl(bucket, objectKey);
+    res.status(201).json({ video_url });
+}));
+
+/**
+ * DELETE /api/v1/pm/properties/:id/video
+ * Remove the property's marketing video.
+ */
+router.delete('/properties/:id/video', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    await db.query(
+        `UPDATE properties SET video_url = NULL, updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+        [req.params.id, organizationId]
+    );
+    res.json({ success: true });
 }));
 
 /**

@@ -499,7 +499,7 @@ class ValuationInvoiceService {
                             currency: 'GHS',
                             reference,
                             channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
-                            callback_url: `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
+                            callback_url: `${config.app.frontendUrl}/payment/invoice?id=${invoice.id}&status=success`,
                             metadata: {
                                 invoiceId: invoice.id,
                                 invoiceNumber: invoice.invoiceNumber,
@@ -570,7 +570,7 @@ class ValuationInvoiceService {
 
         // Store the inline payment page URL (NOT the Paystack checkout redirect URL).
         // The accessCode is stored separately for resumeTransaction fallback.
-        const inlinePaymentUrl = `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${id}`;
+        const inlinePaymentUrl = `${config.app.frontendUrl}/payment/invoice?id=${id}`;
 
         const result = await pool.query(
             `UPDATE valuation_invoices SET
@@ -604,7 +604,7 @@ class ValuationInvoiceService {
                     ? new Date(sentInvoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
                     : 'Upon receipt';
 
-                const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
+                const paymentPageUrl = `${config.app.frontendUrl}/payment/invoice?id=${sentInvoice.id}`;
                 const paymentSection = paymentLink
                     ? `
                         <div style="text-align: center; margin: 32px 0;">

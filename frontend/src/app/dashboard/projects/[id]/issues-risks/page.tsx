@@ -50,6 +50,7 @@ import { useToast } from '@/hooks/use-toast';
 import ProjectSubnav from '@/components/dashboard/projects/ProjectSubnav';
 import { format } from 'date-fns';
 import { authedFetch } from '@/lib/authed-fetch';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const fetch = authedFetch;
@@ -247,9 +248,9 @@ export default function ProjectIssuesRisksPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-muted border-border">
-              <TabsTrigger value="issues">Issues ({issues.length})</TabsTrigger>
-              <TabsTrigger value="risks">Risk Register ({risks.length})</TabsTrigger>
+            <TabsList className={subTabsListClass}>
+              <TabsTrigger value="issues" className={subTabsTriggerClass}>Issues ({issues.length})</TabsTrigger>
+              <TabsTrigger value="risks" className={subTabsTriggerClass}>Risk Register ({risks.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="issues" className="mt-6">

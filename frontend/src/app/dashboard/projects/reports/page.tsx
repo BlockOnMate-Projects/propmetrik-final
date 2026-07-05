@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -249,10 +250,10 @@ export default function PMReportsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">Overview</TabsTrigger>
-          <TabsTrigger value="budget" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">Budget</TabsTrigger>
-          <TabsTrigger value="timeline" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">Timeline</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="overview" className={subTabsTriggerClass}>Overview</TabsTrigger>
+          <TabsTrigger value="budget" className={subTabsTriggerClass}>Budget</TabsTrigger>
+          <TabsTrigger value="timeline" className={subTabsTriggerClass}>Timeline</TabsTrigger>
         </TabsList>
       </Tabs>
 

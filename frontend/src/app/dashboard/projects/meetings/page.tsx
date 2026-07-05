@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Download, Loader2, MessageSquare, Users, CheckCircle, Clock, Eye, Trash2 } from 'lucide-react';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -243,7 +244,7 @@ export default function MeetingsPage() {
         <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Schedule Meeting</DialogTitle></DialogHeader>
           <Tabs defaultValue="details">
-            <TabsList className="bg-muted"><TabsTrigger value="details">Details</TabsTrigger><TabsTrigger value="attendees">Attendees ({attendees.length})</TabsTrigger><TabsTrigger value="actions">Action Items ({actionItems.length})</TabsTrigger></TabsList>
+            <TabsList className={subTabsListClass}><TabsTrigger value="details" className={subTabsTriggerClass}>Details</TabsTrigger><TabsTrigger value="attendees" className={subTabsTriggerClass}>Attendees ({attendees.length})</TabsTrigger><TabsTrigger value="actions" className={subTabsTriggerClass}>Action Items ({actionItems.length})</TabsTrigger></TabsList>
 
             <TabsContent value="details" className="space-y-4 mt-4">
               <div><Label className="text-muted-foreground text-xs">Title *</Label><Input value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} className="bg-muted border-border" /></div>

@@ -491,6 +491,8 @@ export interface Property {
     units?: PropertyUnitInput[];
     // Computed fields optionally returned
     occupancy_rate?: number;
+    // Marketing video shown on public marketplace listing
+    video_url?: string | null;
 }
 
 export interface PropertyUnitInput {

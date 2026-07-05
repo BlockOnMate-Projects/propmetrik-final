@@ -20,7 +20,7 @@ import { logger } from '../../utils/logger';
 import { notificationService } from '../../../shared-services/notifications/unified';
 import { keycloakAdminService } from '../keycloakAdminService';
 
-const frontendUrl = (config.app.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+const frontendUrl = config.app.frontendUrl.replace(/\/$/, '');
 
 // ============================================================================
 // TYPES

@@ -5,11 +5,30 @@ import {
   COLORS as C, PAGE, PDF, fmtGHS, titleCase, safeDate, ensureSpace,
   pdfCover, pdfPageHeader, pdfSection, pdfStatCards,
   pdfKeyValueGrid, pdfProgressBar, pdfTable, pdfInfoPanel,
-  pdfBudgetBar, pdfBudgetLegend, pdfSeparator,
+  pdfBudgetBar, pdfBudgetLegend, pdfSeparator, CoverPageOptions,
 } from '../utils/pdfReportKit';
+import { resolveReportBranding, ResolvedBranding } from '../services/valuation-engine/brandingService';
 
 const router = Router();
 registerPMParamValidation(router);
+
+/** Map resolved org branding onto the pdfCover brand fields (falls back to PROPMETRIK inside pdfCover). */
+function coverBrand(b: ResolvedBranding): Partial<CoverPageOptions> {
+  return {
+    brandName: b.name,
+    brandTagline: b.tagline,
+    logoBuffer: b.logoBuffer,
+    logoMime: b.logoMime,
+    primaryColor: b.primaryColor,
+    accentColor: b.accentColor,
+    footerText: `Generated via ${b.name}`,
+  };
+}
+
+/** Footer line for PDF.addFooters — firm name + confidentiality. */
+function footerLine(b: ResolvedBranding): string {
+  return `${b.name} Report — Confidential`;
+}
 
 // ---------- PROJECT SUMMARY REPORT ----------
 router.get('/projects/:projectId/reports/summary', async (req: Request, res: Response) => {
@@ -34,6 +53,8 @@ router.get('/projects/:projectId/reports/summary', async (req: Request, res: Res
       pool.query(`SELECT COUNT(*) as count FROM project_contractors WHERE project_id = $1`,[projectId]).catch(() => ({ rows: [{ count: 0 }] })),
     ]);
 
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+
     const doc = PDF.create();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=project-summary-${projectId.slice(0, 8)}.pdf`);
@@ -41,6 +62,7 @@ router.get('/projects/:projectId/reports/summary', async (req: Request, res: Res
 
     // Cover page
     pdfCover(doc, {
+      ...coverBrand(branding),
       title: project.name || 'Project Summary',
       subtitle: 'Project Summary Report',
       reportType: 'PROJECT SUMMARY',
@@ -106,7 +128,7 @@ router.get('/projects/:projectId/reports/summary', async (req: Request, res: Res
       ['Active Contractors', String(contractorsRes.rows[0]?.count || 0)],
     ]);
 
-    PDF.addFooters(doc);
+    PDF.addFooters(doc, footerLine(branding));
     doc.end();
   } catch (error) {
     console.error('PDF generation error:', error);
@@ -128,12 +150,15 @@ router.get('/projects/:projectId/reports/issues', async (req: Request, res: Resp
       pool.query(`SELECT * FROM project_risks WHERE project_id = $1 ORDER BY created_at DESC`, [projectId]),
     ]);
 
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+
     const doc = PDF.create();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=issues-report-${projectId.slice(0, 8)}.pdf`);
     doc.pipe(res);
 
     pdfCover(doc, {
+      ...coverBrand(branding),
       title: projRes.rows[0].name,
       subtitle: 'Issues & Risks Report',
       reportType: 'ISSUES & RISKS',
@@ -164,7 +189,7 @@ router.get('/projects/:projectId/reports/issues', async (req: Request, res: Resp
       pdfInfoPanel(doc, 'No risks found for this project.', 'success');
     }
 
-    PDF.addFooters(doc);
+    PDF.addFooters(doc, footerLine(branding));
     doc.end();
   } catch (error) {
     console.error('PDF generation error:', error);
@@ -190,12 +215,15 @@ router.get('/projects/:projectId/reports/meeting/:meetingId', async (req: Reques
     if (!meetingRes.rows.length) return res.status(404).json({ success: false, error: 'Meeting not found' });
     const meeting = meetingRes.rows[0];
 
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+
     const doc = PDF.create();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=meeting-${meeting.meeting_number}.pdf`);
     doc.pipe(res);
 
     pdfCover(doc, {
+      ...coverBrand(branding),
       title: meeting.title || 'Meeting Minutes',
       subtitle: `${meeting.meeting_number} — ${projRes.rows[0].name}`,
       reportType: 'MEETING MINUTES',
@@ -254,7 +282,7 @@ router.get('/projects/:projectId/reports/meeting/:meetingId', async (req: Reques
       pdfInfoPanel(doc, 'No action items recorded for this meeting.', 'info');
     }
 
-    PDF.addFooters(doc);
+    PDF.addFooters(doc, footerLine(branding));
     doc.end();
   } catch (error) {
     console.error('PDF generation error:', error);
@@ -277,6 +305,8 @@ router.get('/projects/:projectId/reports/budget', async (req: Request, res: Resp
       [projectId]
     );
 
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+
     const doc = PDF.create();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=budget-report-${projectId.slice(0, 8)}.pdf`);
@@ -286,6 +316,7 @@ router.get('/projects/:projectId/reports/budget', async (req: Request, res: Resp
     const budget = Number(project.total_budget || 0);
 
     pdfCover(doc, {
+      ...coverBrand(branding),
       title: project.name,
       subtitle: 'Budget Report',
       reportType: 'BUDGET REPORT',
@@ -320,7 +351,7 @@ router.get('/projects/:projectId/reports/budget', async (req: Request, res: Resp
       pdfInfoPanel(doc, 'No cost entries found for this project.', 'info');
     }
 
-    PDF.addFooters(doc);
+    PDF.addFooters(doc, footerLine(branding));
     doc.end();
   } catch (error) {
     console.error('PDF generation error:', error);

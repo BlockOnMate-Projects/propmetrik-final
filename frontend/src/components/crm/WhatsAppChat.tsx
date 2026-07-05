@@ -95,7 +95,6 @@ interface WhatsAppChatProps {
     className?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Helper functions
 function formatTime(dateStr: string): string {
@@ -341,7 +340,7 @@ export function WhatsAppChat({
 
         setLoading(true);
         try {
-            let url = `${API_BASE}/api/messaging/messages?limit=50`;
+            let url = `/api/messaging/messages?limit=50`;
             if (contactId) url += `&contact_id=${contactId}`;
             if (dealId) url += `&deal_id=${dealId}`;
             if (contactPhone && !contactId) url += `&phone=${contactPhone}`;
@@ -361,7 +360,7 @@ export function WhatsAppChat({
     // Fetch templates
     const fetchTemplates = useCallback(async () => {
         try {
-            const response = await authedFetch(`${API_BASE}/api/messaging/templates`, { credentials: 'include' });
+            const response = await authedFetch(`/api/messaging/templates`, { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 setTemplates(data.templates || []);
@@ -389,7 +388,7 @@ export function WhatsAppChat({
 
         setSending(true);
         try {
-            const response = await authedFetch(`${API_BASE}/api/messaging/send`, {
+            const response = await authedFetch(`/api/messaging/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -422,7 +421,7 @@ export function WhatsAppChat({
 
         setSending(true);
         try {
-            const response = await authedFetch(`${API_BASE}/api/messaging/send-template`, {
+            const response = await authedFetch(`/api/messaging/send-template`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

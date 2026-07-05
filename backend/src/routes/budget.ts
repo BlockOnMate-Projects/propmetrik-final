@@ -15,8 +15,9 @@ import { budgetAnalyticsService } from '../services/project-management/budgetAna
 import { invoiceService, InvoiceStatus } from '../services/project-management/invoiceService';
 import { expenseLogService, ExpenseType, ExpenseStatus } from '../services/project-management/expenseLogService';
 import { logger } from '../utils/logger';
-import { registerPMParamValidation, registerProjectAccessParams, enforceFinancialsParamAccess, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, registerProjectAccessParams, enforceFinancialsParamAccess, requirePMWrite, getAuthOrgId } from '../middleware/pmAuth';
 import { generateInvoicePdf, InvoicePdfData } from '../utils/invoicePdfGenerator';
+import { resolveReportBranding } from '../services/valuation-engine/brandingService';
 import { validate } from '../middleware/validation';
 import { createExpenseSchema, updateExpenseSchema, createBudgetInvoiceSchema } from '../middleware/pmProjectValidation';
 
@@ -765,12 +766,18 @@ router.post('/invoices/render-pdf', async (req: Request, res: Response) => {
       });
     }
 
+    // Resolve the org's PROJECT-MANAGEMENT branding (logo/name/colors) — falls back to PROPMETRIK.
+    // Mirrors the branded PDF that invoiceService.sendInvoice() attaches to the client email.
+    const orgId = getAuthOrgId(req);
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+    const vendorCompany = b.vendorCompany || branding.name;
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: b.invoiceNumber || 'DRAFT',
       issueDate: b.issueDate || b.invoiceDate || '',
       dueDate: b.dueDate || '',
       currency: b.currency || 'GHS',
-      vendorCompany: b.vendorCompany || 'PROPMETRIK',
+      vendorCompany,
       vendorEmail: b.vendorEmail,
       clientName: b.clientName || 'Client',
       clientEmail: b.clientEmail,
@@ -791,6 +798,12 @@ router.post('/invoices/render-pdf', async (req: Request, res: Response) => {
       notes: b.notes,
       terms: b.terms,
       paymentLink: b.paymentLink,
+      brandName: vendorCompany,
+      brandLogo: branding.logoBuffer,
+      brandLogoMime: branding.logoMime,
+      brandAccent: branding.accentColor,
+      brandPrimary: branding.primaryColor,
+      brandFooter: branding.addressLines[0] ? `${branding.name} · ${branding.addressLines[0]}` : branding.name,
     };
 
     const pdf = await generateInvoicePdf(pdfData);

@@ -100,7 +100,7 @@ export const PDF = {
   },
 
   /** Inject page footers on every page (call BEFORE doc.end()). */
-  addFooters(doc: any, leftText = 'PROPMETRIK Report — Confidential') {
+  addFooters(doc: any, leftText: string = 'PROPMETRIK Report — Confidential') {
     const pages = doc.bufferedPageRange();
     for (let i = pages.start; i < pages.start + pages.count; i++) {
       doc.switchToPage(i);
@@ -147,6 +147,18 @@ export interface CoverPageOptions {
   brandTagline?: string;
   /** Optional QR image data URL rendered in the footer area. */
   qrCodeDataUrl?: string;
+
+  // ── Optional firm branding (all fall back to PROPMETRIK defaults) ──
+  /** Firm/company name shown in the header lock-up (replaces "PROPMETRIK"). */
+  brandName?: string;
+  /** Raster logo bytes (PNG/JPEG) rendered in the header instead of the "P" tile. */
+  logoBuffer?: Buffer | null;
+  /** Logo MIME (informational; PDFKit auto-detects). */
+  logoMime?: string | null;
+  /** Header lock-up + accent bar colour (default: COLORS.brand). */
+  primaryColor?: string;
+  /** Footer "Generated via …" text (default: "Generated via PROPMETRIK"). */
+  footerText?: string;
 }
 
 export function pdfCover(doc: any, opts: CoverPageOptions) {
@@ -189,11 +201,18 @@ export function pdfCover(doc: any, opts: CoverPageOptions) {
   }
   doc.restore();
 
-  doc.roundedRect(titleX, 40, 36, 36, 8).fill(accent);
-  doc.fontSize(20).fillColor(white).font('Helvetica-Bold')
-    .text('P', titleX, 48, { width: 36, align: 'center' });
+  const brandName = opts.brandName || 'PROPMETRIK';
+  let logoShown = false;
+  if (opts.logoBuffer && opts.logoBuffer.length > 24) {
+    try { doc.image(opts.logoBuffer, titleX, 38, { fit: [40, 40] }); logoShown = true; } catch { /* fall back to "P" tile */ }
+  }
+  if (!logoShown) {
+    doc.roundedRect(titleX, 40, 36, 36, 8).fill(accent);
+    doc.fontSize(20).fillColor(white).font('Helvetica-Bold')
+      .text((brandName[0] || 'P').toUpperCase(), titleX, 48, { width: 36, align: 'center' });
+  }
   doc.fontSize(18).fillColor(white).font('Helvetica-Bold')
-    .text('PROPMETRIK', titleX + 48, 45, { width: 220 });
+    .text(brandName, titleX + 48, 45, { width: 220 });
   doc.fontSize(8).fillColor(soft).font('Helvetica')
     .text(opts.brandTagline || 'Real Estate Intelligence', titleX + 48, 62, { width: 220 });
 
@@ -258,7 +277,7 @@ export function pdfCover(doc: any, opts: CoverPageOptions) {
   }
 
   doc.fontSize(8).fillColor('#52525b').font('Helvetica')
-    .text('Generated via PROPMETRIK', titleX, PH - 108, { width: 220 });
+    .text(opts.footerText || `Generated via ${brandName}`, titleX, PH - 108, { width: 220 });
   doc.fontSize(8).fillColor('#52525b').font('Helvetica')
     .text('Professional valuation report', titleX, PH - 94, { width: 220 });
 
@@ -281,10 +300,22 @@ export function pdfCover(doc: any, opts: CoverPageOptions) {
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE HEADER (lighter — used on continuation pages)
 // ─────────────────────────────────────────────────────────────────────────────
-export function pdfPageHeader(doc: any, title: string, subtitle?: string) {
-  doc.rect(0, 0, PAGE.width, 56).fill(COLORS.heading);
-  doc.rect(0, 56, PAGE.width, 3).fill(COLORS.brand);
-  doc.fontSize(9).fillColor(COLORS.brand).text('PROPMETRIK', PAGE.margin, 14);
+export interface PageHeaderBrand {
+  /** Firm/company name (replaces "PROPMETRIK"). */
+  brandName?: string;
+  /** Header lock-up background colour (default: COLORS.heading). */
+  primaryColor?: string;
+  /** Accent bar + brand-name colour (default: COLORS.brand). */
+  accentColor?: string;
+}
+
+export function pdfPageHeader(doc: any, title: string, subtitle?: string, brand?: PageHeaderBrand) {
+  const primary = brand?.primaryColor || COLORS.heading;
+  const accent = brand?.accentColor || COLORS.brand;
+  const brandName = brand?.brandName || 'PROPMETRIK';
+  doc.rect(0, 0, PAGE.width, 56).fill(primary);
+  doc.rect(0, 56, PAGE.width, 3).fill(accent);
+  doc.fontSize(9).fillColor(accent).text(brandName, PAGE.margin, 14);
   doc.fontSize(13).fillColor(COLORS.white).text(title, PAGE.margin, 28, { width: PAGE.contentWidth - 100 });
   if (subtitle) {
     doc.fontSize(8).fillColor(COLORS.muted).text(subtitle, PAGE.width - PAGE.margin - 140, 28, { width: 140, align: 'right' });

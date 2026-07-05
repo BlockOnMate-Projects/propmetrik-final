@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -184,10 +185,10 @@ export default function SafetyPage() {
       </div>
 
       <Tabs value={tab} onValueChange={v => { setTab(v); setForm({}); }}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="incidents" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">INCIDENTS ({incidents?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="observations" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">OBSERVATIONS ({observations?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="inspections" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">INSPECTIONS ({inspections?.data?.length || 0})</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="incidents" className={subTabsTriggerClass}>INCIDENTS ({incidents?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="observations" className={subTabsTriggerClass}>OBSERVATIONS ({observations?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="inspections" className={subTabsTriggerClass}>INSPECTIONS ({inspections?.data?.length || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="incidents" className="mt-4">

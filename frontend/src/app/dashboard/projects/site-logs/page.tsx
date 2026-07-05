@@ -57,7 +57,6 @@ import { siteLogSchema, validateForm } from '@/lib/schemas/pm.schemas';
 import { FieldError, FormErrorSummary } from '@/components/ui/form-errors';
 import { Pagination } from '@/components/ui/pagination-controls';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const fetch = authedFetch;
 
 // Types
@@ -168,7 +167,7 @@ export default function SiteLogsPage() {
       params.append('pageSize', '20');
       params.append('page', String(page));
 
-      const response = await fetch(`${API_BASE}/api/site-diaries?${params}`);
+      const response = await fetch(`/api/site-diaries?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -194,7 +193,7 @@ export default function SiteLogsPage() {
   // Fetch projects
   const fetchProjects = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects?pageSize=100`);
+      const response = await fetch(`/api/projects?pageSize=100`);
       const result = await response.json();
       
       if (result.success) {
@@ -238,8 +237,8 @@ export default function SiteLogsPage() {
 
       const isEdit = showEditDialog && selectedLog;
       const url = isEdit 
-        ? `${API_BASE}/api/site-diaries/${selectedLog.id}`
-        : `${API_BASE}/api/site-diaries`;
+        ? `/api/site-diaries/${selectedLog.id}`
+        : `/api/site-diaries`;
       
       const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
@@ -280,7 +279,7 @@ export default function SiteLogsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/site-diaries/${selectedLog.id}`, {
+      const response = await fetch(`/api/site-diaries/${selectedLog.id}`, {
         method: 'DELETE',
       });
 

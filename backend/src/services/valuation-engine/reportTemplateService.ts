@@ -1760,14 +1760,56 @@ class ReportTemplateService {
       logger.debug('Sections rendered successfully', { count: renderedSections.length });
       return renderedSections;
     } catch (error: any) {
-      logger.error('generateReportSections failed', { 
-        valuationId, 
-        templateId, 
+      logger.error('generateReportSections failed', {
+        valuationId,
+        templateId,
         error: error.message,
-        stack: error.stack 
+        stack: error.stack
       });
       throw error;
     }
+  }
+
+  /**
+   * Resolve the firm branding for a valuation's report letterhead (name/logo/colors),
+   * matching the `brand` object embedded in the render context. Returned to the report
+   * viewer so it can render a branded letterhead above the section content.
+   * Falls back to PROPMETRIK defaults when the org has no configured branding.
+   */
+  async getReportBrand(valuationId: string): Promise<{
+    name: string;
+    tagline: string;
+    initial: string;
+    logo_url: string;
+    primary_color: string;
+    accent_color: string;
+    on_primary: string;
+    on_accent: string;
+    credential: string;
+  }> {
+    let orgId: string | null = null;
+    try {
+      const result = await pool.query(
+        `SELECT valuer_organization_id FROM valuations WHERE id = $1`,
+        [valuationId]
+      );
+      orgId = result.rows[0]?.valuer_organization_id || null;
+    } catch (e: any) {
+      logger.warn('getReportBrand: valuation org lookup failed', { valuationId, error: e.message });
+    }
+
+    const branding = await resolveReportBranding(orgId, { context: 'valuation', withLogo: false });
+    return {
+      name: branding.name,
+      tagline: branding.tagline,
+      initial: (branding.name || 'P').trim().charAt(0).toUpperCase(),
+      logo_url: branding.logoUrl || '',
+      primary_color: branding.primaryColor,
+      accent_color: branding.accentColor,
+      on_primary: branding.onPrimary,
+      on_accent: branding.onAccent,
+      credential: branding.credentialLine || '',
+    };
   }
 }
 

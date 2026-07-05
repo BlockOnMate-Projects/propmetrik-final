@@ -23,7 +23,7 @@ const navigation = [
     { name: 'DOCUMENTS', href: '/dashboard/property-management/documents', key: '8', subTabKey: 'propmgmt-documents' },
     { name: 'FINANCIALS', href: '/dashboard/property-management/financials', key: '10', subTabKey: 'propmgmt-financials' },
     { name: 'TEAM', href: '/dashboard/property-management/team', key: 'T', subTabKey: 'propmgmt-team' },
-    { name: 'INTEGRATIONS', href: '/dashboard/property-management/integrations', key: 'N', subTabKey: 'propmgmt-integrations' },
+    { name: 'SETTINGS', href: '/dashboard/property-management/settings', key: 'N', subTabKey: 'propmgmt-settings', match: ['/dashboard/property-management/integrations'] },
 ]
 
 export function PMTopNav() {

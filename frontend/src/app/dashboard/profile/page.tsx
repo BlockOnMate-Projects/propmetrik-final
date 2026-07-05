@@ -378,7 +378,9 @@ export default function ProfilePage() {
       <div className="flex gap-1 mb-4 overflow-x-auto">
         {[
           { id: 'profile', label: 'PROFILE' },
-          ...(hasValuationService ? [{ id: 'professional', label: 'PROFESSIONAL' }] : []),
+          // Professional/valuer credentials moved to Valuation → Settings → Professional
+          // (they're valuation-specific + flow onto signed reports). The user menu stays
+          // focused on the personal account.
           { id: 'security', label: 'SECURITY' },
           { id: 'notifications', label: 'NOTIFICATIONS' },
         ].map((tab) => (

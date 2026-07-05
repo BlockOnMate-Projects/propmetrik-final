@@ -17,8 +17,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
     documentService, 
     templateService, 
-    DocumentInfo 
+    DocumentInfo
 } from '../../../../shared-services/document-service';
+import { resolveReportBranding } from '../../valuation-engine/brandingService';
 
 // =====================================================
 // INTERFACES
@@ -357,8 +358,28 @@ export class LeaseTemplateService {
             template = this.mapRowToTemplate(result.rows[0]);
         }
 
+        // Resolve the managing agent's (organization's) Property Management branding so
+        // the lease letterhead/footer render the firm's identity instead of a hardcoded
+        // PROPMETRIK wordmark. Falls back to PROPMETRIK defaults when the org has no
+        // branding configured. withLogo:false — the template references logoUrl directly.
+        const branding = await resolveReportBranding(organizationId, {
+            service: 'property_management',
+            withLogo: false,
+        });
+
         // Prepare data for template
         const templateData = {
+            // Firm / managing-agent branding (letterhead + footer)
+            firmName: branding.name,
+            firmTagline: branding.tagline,
+            firmLogoUrl: branding.logoUrl || '',
+            firmPrimaryColor: branding.primaryColor,
+            firmAccentColor: branding.accentColor,
+            firmAddress: (branding.addressLines || []).filter(Boolean).join(', '),
+            firmContact: branding.contactLine || '',
+            firmPhone: branding.phone || '',
+            firmWebsite: branding.website || '',
+
             // Lease details
             leaseStartDate: tenancyData.startDate,
             leaseEndDate: tenancyData.endDate,
@@ -414,7 +435,12 @@ export class LeaseTemplateService {
             // Signing scenario (from lease_terms)
             isUserLandlord: tenancyData.isUserLandlord || false,
             landlordWillSign: tenancyData.landlordWillSign || false,
-            propertyManagerName: tenancyData.propertyManagerName || tenancyData.organizationName,
+            // Managing-agent signature name = the org's resolved Property Management brand
+            // (branding.name → the firm's configured name, else the PROPMETRIK platform
+            // default). NEVER the org's raw legal name — that leaked "REALTEUM GROUP" onto
+            // leases whose PM brand was set to something else. Consistent with the
+            // letterhead/footer, which also use branding (firmName).
+            propertyManagerName: tenancyData.propertyManagerName || branding.name,
             propertyManagerSignsOnBehalf: !tenancyData.isUserLandlord && !tenancyData.landlordWillSign,
             signers: tenancyData.signers || [],
             
@@ -611,7 +637,9 @@ export class LeaseTemplateService {
             // Signing scenario from lease_terms
             isUserLandlord: leaseTerms.isUserLandlord || false,
             landlordWillSign: leaseTerms.landlordWillSign || false,
-            propertyManagerName: row.organization_name,
+            // Only a genuinely-captured managing-agent name; otherwise left null so the
+            // template layer resolves it from the PM branding (never the org legal name).
+            propertyManagerName: leaseTerms.propertyManagerName || null,
             landlordNameOverride: leaseTerms.landlordName || '',
             landlordEmailOverride: leaseTerms.landlordEmail || '',
             signers: leaseTerms.signers || [],

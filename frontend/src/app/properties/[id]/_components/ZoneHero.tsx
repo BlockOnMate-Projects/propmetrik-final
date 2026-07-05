@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { PropertyEnrichmentResponse } from '@/types/property';
-import { Bed, Bath, Move, CheckCircle } from 'lucide-react';
+import { Bed, Bath, Move, CheckCircle, Play } from 'lucide-react';
 
 interface ZoneHeroProps {
   property: PropertyEnrichmentResponse['property'];
@@ -15,6 +15,8 @@ interface ZoneHeroProps {
 export function ZoneHero({ property }: ZoneHeroProps) {
   const [currency, setCurrency] = useState<'GHS' | 'USD'>('GHS');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
+  const hasVideo = Boolean(property.video_url);
 
   const formatPrice = (amount: number, curr: 'GHS' | 'USD') => {
     return new Intl.NumberFormat('en-GH', {
@@ -29,19 +31,30 @@ export function ZoneHero({ property }: ZoneHeroProps) {
   return (
     <div className="space-y-6">
       {/* Visual Section */}
-      <div className="relative h-[400px] md:h-[500px] w-full rounded-xl overflow-hidden group">
-        <Image
-          src={images[currentImageIndex]}
-          alt={property.property_type}
-          fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-          priority
-        />
+      <div className="relative h-[400px] md:h-[500px] w-full rounded-xl overflow-hidden group bg-black">
+        {showVideo && property.video_url ? (
+          <video
+            controls
+            autoPlay
+            src={property.video_url}
+            className="w-full h-full object-contain bg-black"
+          >
+            Your browser does not support the video tag.
+          </video>
+        ) : (
+          <Image
+            src={images[currentImageIndex]}
+            alt={property.property_type}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            priority
+          />
+        )}
         
         {/* Lightbox / Gallery Trigger */}
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="secondary" className="absolute bottom-4 right-4 z-10">
+                <Button variant="secondary" className={`absolute bottom-4 right-4 z-10 ${showVideo ? 'hidden' : ''}`}>
                     View All {images.length} Photos
                 </Button>
             </DialogTrigger>
@@ -70,7 +83,7 @@ export function ZoneHero({ property }: ZoneHeroProps) {
         </Dialog>
 
         {/* Overlay Metrics */}
-        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6 text-foreground">
+        <div className={`absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6 text-foreground ${showVideo ? 'hidden' : ''}`}>
           <div className="flex justify-between items-end">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -111,14 +124,27 @@ export function ZoneHero({ property }: ZoneHeroProps) {
         </div>
       </div>
       
-      {/* Thumbnail Strip (if multiple) */}
-      {images.length > 1 && (
+      {/* Thumbnail Strip (if multiple images or a video) */}
+      {(images.length > 1 || hasVideo) && (
         <div className="flex gap-4 overflow-x-auto pb-2">
+            {hasVideo && (
+                <button
+                    type="button"
+                    onClick={() => setShowVideo(true)}
+                    aria-label="Play marketing video"
+                    className={`relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-black flex items-center justify-center transition-opacity ${showVideo ? 'ring-2 ring-primary' : 'opacity-70 hover:opacity-100'}`}
+                >
+                    <Play className="w-8 h-8 text-white fill-white" />
+                    <span className="absolute bottom-1 left-1 right-1 text-center text-[10px] font-medium text-white bg-black/50 rounded px-1">
+                        Video
+                    </span>
+                </button>
+            )}
             {images.slice(0, 5).map((img, idx) => (
-                <button 
+                <button
                     key={idx}
-                    onClick={() => setCurrentImageIndex(idx)}
-                    className={`relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 transition-opacity ${currentImageIndex === idx ? 'ring-2 ring-primary' : 'opacity-70 hover:opacity-100'}`}
+                    onClick={() => { setShowVideo(false); setCurrentImageIndex(idx); }}
+                    className={`relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 transition-opacity ${!showVideo && currentImageIndex === idx ? 'ring-2 ring-primary' : 'opacity-70 hover:opacity-100'}`}
                 >
                     <Image src={img} alt={`View ${idx}`} fill className="object-cover" />
                 </button>

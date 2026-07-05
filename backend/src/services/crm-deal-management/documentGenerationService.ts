@@ -13,10 +13,9 @@ import db from '../../database';
 import { logger } from '../../utils/logger';
 import { crmDocumentTemplateService, DocumentTemplate } from './crmDocumentTemplateService';
 import * as minio from '../../database/minio';
-// import puppeteer from 'puppeteer';
-// import Handlebars from 'handlebars';
-const Handlebars: any = { compile: (html: string) => () => html, registerHelper: () => { } };
-const puppeteer: any = { launch: () => ({ close: () => { }, newPage: () => ({ setContent: () => { }, pdf: () => Buffer.from([]) }) }) };
+import { resolveReportBranding } from '../valuation-engine/brandingService';
+import puppeteer from 'puppeteer';
+import Handlebars from 'handlebars';
 
 // =============================================
 // Types
@@ -66,6 +65,8 @@ export interface MergeData {
   project?: Record<string, any>;
   agent?: Record<string, any>;
   organization?: Record<string, any>;
+  /** Resolved CRM service branding (name/logo/colors/address/contact) for template cover/footer. */
+  branding?: Record<string, any>;
   current?: Record<string, any>;
   custom?: Record<string, any>;
 }
@@ -682,6 +683,35 @@ class DocumentGenerationService {
       };
     }
 
+    // Resolved CRM service branding for template cover/footer letterhead. Templates can
+    // reference {{branding.logoUrl}}, {{branding.name}}, {{branding.primaryColor}}, etc.
+    // instead of hardcoded PROPMETRIK strings. Falls back to PROPMETRIK when unset.
+    try {
+      const b = await resolveReportBranding(organizationId, { service: 'crm', withLogo: false });
+      data.branding = {
+        name: b.name,
+        tagline: b.tagline,
+        logoUrl: b.logoUrl || '',
+        primaryColor: b.primaryColor,
+        accentColor: b.accentColor,
+        secondaryColor: b.secondaryColor,
+        onPrimary: b.onPrimary,
+        onAccent: b.onAccent,
+        address: b.addressLines.join(', '),
+        addressLines: b.addressLines,
+        contactLine: b.contactLine,
+        credentialLine: b.credentialLine || '',
+        phone: b.phone || '',
+        website: b.website || '',
+        taxId: b.taxId || '',
+      };
+    } catch (brandErr: any) {
+      logger.warn('gatherMergeData: branding resolution failed', {
+        organizationId,
+        error: brandErr?.message,
+      });
+    }
+
     return data;
   }
 
@@ -757,7 +787,9 @@ class DocumentGenerationService {
   private async htmlToPdf(html: string, template: DocumentTemplate): Promise<Buffer> {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      // Use the system Chromium in the Docker image; falls back to the bundled binary in dev.
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     });
 
     try {

@@ -15,6 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, AlertTriangle, ShieldAlert, Download, Filter, Loader2, LayoutGrid, List, Calendar as CalendarIcon } from 'lucide-react';
 import { PmKanbanBoard, type KanbanColumnDef } from '@/components/projects/PmKanbanBoard';
+import { cn } from '@/lib/utils';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -202,9 +204,9 @@ export default function IssuesPage() {
       {/* Tabs */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <TabsList className="bg-card border border-border">
-            <TabsTrigger value="issues" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-500"><AlertTriangle className="h-3.5 w-3.5 mr-1.5" />Issues ({issues.length})</TabsTrigger>
-            <TabsTrigger value="risks" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-500"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Risks ({risks.length})</TabsTrigger>
+          <TabsList className={subTabsListClass}>
+            <TabsTrigger value="issues" className={cn(subTabsTriggerClass, 'flex items-center')}><AlertTriangle className="h-3.5 w-3.5 mr-1.5" />Issues ({issues.length})</TabsTrigger>
+            <TabsTrigger value="risks" className={cn(subTabsTriggerClass, 'flex items-center')}><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Risks ({risks.length})</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
             {tab === 'issues' && (

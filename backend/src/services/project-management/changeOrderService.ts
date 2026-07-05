@@ -32,6 +32,7 @@ import { getFile, buckets } from '../../database/minio';
 import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { generateChangeOrderPdf, changeOrderSignatureSlots } from '../../utils/changeOrderPdfGenerator';
+import { resolveReportBranding } from '../valuation-engine/brandingService';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 
 // =====================================================
@@ -1535,6 +1536,8 @@ class ChangeOrderService {
 
     // Generate the branded change-order document.
     const labels = signerLabels && signerLabels.length ? signerLabels : ['Authorised Signatory'];
+    // Resolve the org's PROJECT-MANAGEMENT branding (logo/name/colors) — falls back to PROPMETRIK
+    const branding = await resolveReportBranding(changeOrder.organization_id, { service: 'project_management', withLogo: true });
     return generateChangeOrderPdf({
       co_number: changeOrder.co_number,
       title: changeOrder.title,
@@ -1553,6 +1556,12 @@ class ChangeOrderService {
       project_name: (changeOrder as any).project_name,
       created_at: changeOrder.created_at,
       signerLabels: labels,
+      brandName: branding.name,
+      brandTagline: branding.tagline,
+      brandLogo: branding.logoBuffer,
+      brandAccent: branding.accentColor,
+      brandPrimary: branding.primaryColor,
+      brandFooter: branding.addressLines[0] ? `${branding.name} · ${branding.addressLines[0]}` : branding.name,
     });
   }
 

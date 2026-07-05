@@ -2,6 +2,24 @@
 import db from '../../src/database';
 import { logger } from '../../src/utils/logger';
 import { getSignedLeaseDownloadUrl, isS3ObjectRef } from '../../src/services/property-management/leases/signedLeaseStorage';
+import { listableOrgExistsSql } from '../../src/services/marketplace/listingGuardService';
+import { rightToListSql } from '../../src/services/marketplace/listingMandateService';
+import { conflictGateSql } from '../../src/services/marketplace/propertyRegistryService';
+import { moderationGateSql } from '../../src/services/marketplace/listingModerationService';
+
+// Gate A (KYB): only serve listings from verified (or platform) organizations.
+const LISTABLE_ORG_FILTER = listableOrgExistsSql('organization_id');
+// Gate C (mandate): only serve listings with a valid right-to-list (platform org exempt).
+// Columns are table-qualified because the EXISTS subqueries join listing_mandates +
+// esign_envelopes, which also have `id` — unqualified would be ambiguous.
+const PM_RIGHT_TO_LIST = rightToListSql('pm', 'properties.organization_id', 'properties.id');
+const CRM_RIGHT_TO_LIST = rightToListSql('crm', 'crm_properties.organization_id', 'crm_properties.id');
+// Gate D (double-sale): hide any listing that is an open identity-conflict challenger.
+const PM_CONFLICT_GATE = conflictGateSql('pm', 'properties.id');
+const CRM_CONFLICT_GATE = conflictGateSql('crm', 'crm_properties.id');
+// Gate E (moderation): hide any listing suspended by community reports / admin.
+const PM_MODERATION_GATE = moderationGateSql('pm', 'properties.id');
+const CRM_MODERATION_GATE = moderationGateSql('crm', 'crm_properties.id');
 
 export interface MarketplaceProperty {
   id: string;
@@ -51,7 +69,9 @@ export interface MarketplaceProperty {
     url: string;
     caption: string | null;
   }>;
-  
+  /** Optional marketing/walkthrough video (ready-to-play URL), null when none. */
+  video_url: string | null;
+
   // Metadata
   listed_at: string;
   views: number;
@@ -362,12 +382,17 @@ export class MarketplaceService {
             marketplace_listed_at AS listed_at,
             marketplace_views AS views,
             marketplace_clicks AS clicks,
-            image_urls AS images
+            image_urls AS images,
+            video_url
           FROM properties
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'under_offer')
             AND parent_property_id IS NULL
+            AND ${LISTABLE_ORG_FILTER}
+            AND ${PM_RIGHT_TO_LIST}
+            AND ${PM_CONFLICT_GATE}
+            AND ${PM_MODERATION_GATE}
         ),
         crm_props AS (
           SELECT 
@@ -409,11 +434,16 @@ export class MarketplaceService {
             marketplace_listed_at AS listed_at,
             marketplace_views AS views,
             marketplace_clicks AS clicks,
-            images
+            images,
+            video_url
           FROM crm_properties
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'pending')
+            AND ${LISTABLE_ORG_FILTER}
+            AND ${CRM_RIGHT_TO_LIST}
+            AND ${CRM_CONFLICT_GATE}
+            AND ${CRM_MODERATION_GATE}
         ),
         all_properties AS (
           SELECT * FROM pm_properties
@@ -478,10 +508,16 @@ export class MarketplaceService {
           }
           return { id: img.id || '', url: img.url || '', original_name: img.original_name || '' };
         }),
+        video_url: row.video_url || null,
         listed_at: row.listed_at,
         views: row.views,
         clicks: row.clicks,
         distance_km: row.distance_km ? parseFloat(row.distance_km) : undefined
+      }));
+
+      // Resolve any s3:// video refs to ready-to-play (presigned) URLs, same as images.
+      await Promise.all(properties.map(async (p) => {
+        if (p.video_url) p.video_url = await this.resolveImageUrl(p.video_url);
       }));
 
       return {
@@ -518,12 +554,17 @@ export class MarketplaceService {
           condition::text AS property_condition,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
           marketplace_clicks AS clicks,
-          image_urls AS images
+          image_urls AS images,
+          video_url
         FROM properties
         WHERE permanent_link_token = $1
           AND organization_id IS NOT NULL
           AND marketplace_enabled = TRUE
           AND status IN ('active', 'under_offer')
+          AND ${LISTABLE_ORG_FILTER}
+          AND ${PM_RIGHT_TO_LIST}
+            AND ${PM_CONFLICT_GATE}
+            AND ${PM_MODERATION_GATE}
       `;
 
       const crmQuery = `
@@ -540,25 +581,33 @@ export class MarketplaceService {
           NULL::text AS property_condition,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
           marketplace_clicks AS clicks,
-          images
+          images,
+          video_url
         FROM crm_properties
         WHERE permanent_link_token = $1
           AND organization_id IS NOT NULL
           AND marketplace_enabled = TRUE
           AND status IN ('active', 'pending')
+          AND ${LISTABLE_ORG_FILTER}
+          AND ${CRM_RIGHT_TO_LIST}
+            AND ${CRM_CONFLICT_GATE}
+            AND ${CRM_MODERATION_GATE}
       `;
 
       const pmResult = await db.query(pmQuery, [token]);
       if (pmResult.rows.length > 0) {
         const row = pmResult.rows[0];
         const [property] = await this.enrichPmPropertyImages([this.mapRowToProperty(row)]);
+        if (property?.video_url) property.video_url = await this.resolveImageUrl(property.video_url);
         return property;
       }
 
       const crmResult = await db.query(crmQuery, [token]);
       if (crmResult.rows.length > 0) {
         const row = crmResult.rows[0];
-        return this.mapRowToProperty(row);
+        const property = this.mapRowToProperty(row);
+        if (property.video_url) property.video_url = await this.resolveImageUrl(property.video_url);
+        return property;
       }
 
       return null;
@@ -673,6 +722,7 @@ export class MarketplaceService {
         }
         return { id: img.id || '', url: img.url || '', original_name: img.original_name || '' };
       }),
+      video_url: row.video_url || null,
       listed_at: row.listed_at,
       views: row.views,
       clicks: row.clicks

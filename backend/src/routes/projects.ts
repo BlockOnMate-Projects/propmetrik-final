@@ -2495,11 +2495,26 @@ import {
   fmtGHS, fmtPct, titleCase, safeDate, ensureSpace,
   pdfCover, pdfSection, pdfStatCards, pdfKeyValueGrid, pdfProgressBar,
   pdfTable as pdfRichTable, pdfInfoPanel, pdfBudgetBar, pdfBudgetLegend,
-  pdfPageHeader, pdfSeparator,
+  pdfPageHeader, pdfSeparator, CoverPageOptions,
 } from '../utils/pdfReportKit';
+import { resolveReportBranding, ResolvedBranding } from '../services/valuation-engine/brandingService';
 
 const MARGIN = PAGE.margin;
 const CONTENT_W = PAGE.contentWidth;
+
+/** Map resolved org branding onto pdfCover brand fields (falls back to PROPMETRIK inside pdfCover). */
+function pmCoverBrand(b: ResolvedBranding): Partial<CoverPageOptions> {
+  return {
+    brandName: b.name,
+    brandTagline: b.tagline,
+    logoBuffer: b.logoBuffer,
+    logoMime: b.logoMime,
+    primaryColor: b.primaryColor,
+    accentColor: b.accentColor,
+    footerText: `Generated via ${b.name}`,
+  };
+}
+const pmFooterLine = (b: ResolvedBranding): string => `${b.name} Report — Confidential`;
 
 // ============================================================================
 // PORTFOLIO-LEVEL PDF REPORT (must be before /:projectId routes)
@@ -2519,6 +2534,8 @@ router.get('/portfolio/reports/:reportType', async (req: Request, res: Response,
       dashboardAnalyticsService.getUpcomingMilestones(orgId).catch(() => []),
     ]);
 
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+
     const doc = PDF.create();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="portfolio-${reportType}-${new Date().toISOString().split('T')[0]}.pdf"`);
@@ -2532,6 +2549,7 @@ router.get('/portfolio/reports/:reportType', async (req: Request, res: Response,
     // ── Summary ──
     if (reportType === 'summary' || reportType === 'all') {
       pdfCover(doc, {
+        ...pmCoverBrand(branding),
         title: 'Portfolio Summary Report',
         subtitle: 'All Projects Overview',
         reportType: 'PORTFOLIO SUMMARY',
@@ -2612,6 +2630,7 @@ router.get('/portfolio/reports/:reportType', async (req: Request, res: Response,
     if (reportType === 'budget' || reportType === 'all') {
       if (reportType === 'all') doc.addPage();
       pdfCover(doc, {
+        ...pmCoverBrand(branding),
         title: 'Portfolio Budget Report',
         subtitle: 'Financial Analysis',
         reportType: 'BUDGET REPORT',
@@ -2694,6 +2713,7 @@ router.get('/portfolio/reports/:reportType', async (req: Request, res: Response,
     if (reportType === 'issues' || reportType === 'all') {
       if (reportType === 'all') doc.addPage();
       pdfCover(doc, {
+        ...pmCoverBrand(branding),
         title: 'Portfolio Risk & Timeline Report',
         subtitle: 'Schedule & Risk Analysis',
         reportType: 'RISK ANALYSIS',
@@ -2757,7 +2777,7 @@ router.get('/portfolio/reports/:reportType', async (req: Request, res: Response,
       }
     }
 
-    PDF.addFooters(doc);
+    PDF.addFooters(doc, pmFooterLine(branding));
     doc.end();
   } catch (error) {
     next(error);
@@ -2790,6 +2810,8 @@ router.get('/:projectId/reports/:reportType', async (req: Request, res: Response
     const sum = report.summary;
     const budget = report.budget;
 
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
+
     const doc = PDF.create();
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${projName.replace(/[^a-zA-Z0-9]/g, '_')}-${reportType}-${new Date().toISOString().split('T')[0]}.pdf"`);
@@ -2798,6 +2820,7 @@ router.get('/:projectId/reports/:reportType', async (req: Request, res: Response
     // ── Summary ──
     if (reportType === 'summary' || reportType === 'all') {
       pdfCover(doc, {
+        ...pmCoverBrand(branding),
         title: projName,
         subtitle: 'Project Summary Report',
         reportType: 'PROJECT SUMMARY',
@@ -2926,6 +2949,7 @@ router.get('/:projectId/reports/:reportType', async (req: Request, res: Response
     if (reportType === 'budget' || reportType === 'all') {
       if (reportType === 'all') doc.addPage();
       pdfCover(doc, {
+        ...pmCoverBrand(branding),
         title: projName,
         subtitle: 'Budget & Financial Report',
         reportType: 'BUDGET REPORT',
@@ -3010,6 +3034,7 @@ router.get('/:projectId/reports/:reportType', async (req: Request, res: Response
     if (reportType === 'issues' || reportType === 'all') {
       if (reportType === 'all') doc.addPage();
       pdfCover(doc, {
+        ...pmCoverBrand(branding),
         title: projName,
         subtitle: 'Issues & Risk Report',
         reportType: 'RISK ANALYSIS',
@@ -3136,7 +3161,7 @@ router.get('/:projectId/reports/:reportType', async (req: Request, res: Response
       }
     }
 
-    PDF.addFooters(doc);
+    PDF.addFooters(doc, pmFooterLine(branding));
     doc.end();
   } catch (error) {
     next(error);

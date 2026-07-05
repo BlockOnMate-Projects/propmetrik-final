@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 
 const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -467,20 +468,20 @@ export default function BidManagementPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="invitations" className="space-y-4">
-          <TabsList className="bg-card border border-border">
-            <TabsTrigger value="invitations" className="data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground text-xs">
+          <TabsList className={subTabsListClass}>
+            <TabsTrigger value="invitations" className={subTabsTriggerClass}>
               <Users className="h-3 w-3 mr-1" /> Invitations ({invitations.length})
             </TabsTrigger>
-            <TabsTrigger value="submissions" className="data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground text-xs">
+            <TabsTrigger value="submissions" className={subTabsTriggerClass}>
               <DollarSign className="h-3 w-3 mr-1" /> Submissions ({submissions.length})
             </TabsTrigger>
-            <TabsTrigger value="qa" className="data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground text-xs">
+            <TabsTrigger value="qa" className={subTabsTriggerClass}>
               <MessageSquare className="h-3 w-3 mr-1" /> Q&A ({qa.length})
             </TabsTrigger>
-            <TabsTrigger value="attachments" className="data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground text-xs">
+            <TabsTrigger value="attachments" className={subTabsTriggerClass}>
               <Paperclip className="h-3 w-3 mr-1" /> Files ({detail.attachments?.length || 0})
             </TabsTrigger>
-            <TabsTrigger value="activity" className="data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground text-xs">
+            <TabsTrigger value="activity" className={subTabsTriggerClass}>
               <Clock className="h-3 w-3 mr-1" /> Activity
             </TabsTrigger>
           </TabsList>

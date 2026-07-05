@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
+import { CompanyBrandingSettings } from '@/components/settings/CompanyBrandingSettings'
+import { CompanyVerificationPanel } from '@/components/settings/CompanyVerificationPanel'
+import { ValuerProfessionalProfile } from '@/components/settings/ValuerProfessionalProfile'
 import {
     Settings,
     Save,
     Shield,
+    ShieldCheck,
     Banknote,
     FileText,
     Globe,
@@ -165,6 +169,8 @@ export default function SettingsPage() {
     const sections = [
         { id: 'general', label: 'GENERAL', icon: Building2 },
         { id: 'branding', label: 'BRANDING', icon: Palette },
+        { id: 'verification', label: 'VERIFICATION', icon: ShieldCheck },
+        { id: 'professional', label: 'PROFESSIONAL', icon: Key },
         { id: 'fees', label: 'FEE DEFAULTS', icon: Banknote },
         { id: 'reports', label: 'REPORTS', icon: FileText },
         { id: 'approvals', label: 'APPROVALS', icon: GitBranch },
@@ -397,99 +403,16 @@ export default function SettingsPage() {
 
                     {/* ═══ BRANDING (Enterprise) ═══ */}
                     {activeSection === 'branding' && (
-                        <div className="space-y-4">
-                            <div className="bg-card border border-border p-6 space-y-4">
-                                <div className="font-mono text-sm text-foreground mb-4 flex items-center gap-2">
-                                    <Palette className="w-4 h-4 text-amber-500" />
-                                    FIRM BRANDING & WHITE-LABEL
-                                </div>
-                                {orgBranding ? (
-                                    <>
-                                        <InputField label="FIRM NAME" value={orgBranding.name || ''} onChange={(v) => setOrgBranding({ ...orgBranding, name: v })} />
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">PRIMARY COLOR</label>
-                                                <div className="flex items-center gap-2">
-                                                    <input type="color" value={orgBranding.primary_color || '#f59e0b'} onChange={(e) => setOrgBranding({ ...orgBranding, primary_color: e.target.value })}
-                                                        className="w-8 h-8 border border-border bg-transparent cursor-pointer" />
-                                                    <span className="font-mono text-xs text-muted-foreground">{orgBranding.primary_color}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">SECONDARY COLOR</label>
-                                                <div className="flex items-center gap-2">
-                                                    <input type="color" value={orgBranding.secondary_color || '#000000'} onChange={(e) => setOrgBranding({ ...orgBranding, secondary_color: e.target.value })}
-                                                        className="w-8 h-8 border border-border bg-transparent cursor-pointer" />
-                                                    <span className="font-mono text-xs text-muted-foreground">{orgBranding.secondary_color}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="font-mono text-[10px] text-muted-foreground block mb-1">ACCENT COLOR</label>
-                                                <div className="flex items-center gap-2">
-                                                    <input type="color" value={orgBranding.accent_color || '#f59e0b'} onChange={(e) => setOrgBranding({ ...orgBranding, accent_color: e.target.value })}
-                                                        className="w-8 h-8 border border-border bg-transparent cursor-pointer" />
-                                                    <span className="font-mono text-xs text-muted-foreground">{orgBranding.accent_color}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <InputField label="FONT FAMILY" value={orgBranding.font_family || 'Inter'} onChange={(v) => setOrgBranding({ ...orgBranding, font_family: v })} />
+                        <CompanyBrandingSettings service="valuation" />
+                    )}
 
-                                        <div className="border-t border-border pt-4 mt-4">
-                                            <div className="font-mono text-[10px] text-muted-foreground mb-3">PROFESSIONAL CREDENTIALS</div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <InputField label="PROFESSIONAL BODY" value={orgBranding.professional_body || ''} onChange={(v) => setOrgBranding({ ...orgBranding, professional_body: v })} />
-                                                <InputField label="LICENSE NUMBER" value={orgBranding.license_number || ''} onChange={(v) => setOrgBranding({ ...orgBranding, license_number: v })} />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                                <InputField label="TAX ID / TIN" value={orgBranding.tax_id || ''} onChange={(v) => setOrgBranding({ ...orgBranding, tax_id: v })} />
-                                                <InputField label="WEBSITE" value={orgBranding.website || ''} onChange={(v) => setOrgBranding({ ...orgBranding, website: v })} />
-                                            </div>
-                                        </div>
+                    {/* ═══ VERIFICATION (KYB — org-level, Gate A/B) ═══ */}
+                    {activeSection === 'verification' && (
+                        <CompanyVerificationPanel />
+                    )}
 
-                                        <div className="border-t border-border pt-4 mt-4">
-                                            <div className="font-mono text-[10px] text-muted-foreground mb-3">OFFICE ADDRESS</div>
-                                            <InputField label="ADDRESS" value={orgBranding.address_line1 || ''} onChange={(v) => setOrgBranding({ ...orgBranding, address_line1: v })} />
-                                            <div className="grid grid-cols-3 gap-4 mt-4">
-                                                <InputField label="CITY" value={orgBranding.city || ''} onChange={(v) => setOrgBranding({ ...orgBranding, city: v })} />
-                                                <InputField label="REGION" value={orgBranding.region || ''} onChange={(v) => setOrgBranding({ ...orgBranding, region: v })} />
-                                                <InputField label="COUNTRY" value={orgBranding.country || 'GH'} onChange={(v) => setOrgBranding({ ...orgBranding, country: v })} />
-                                            </div>
-                                        </div>
-
-                                        <button onClick={saveBranding} disabled={saving}
-                                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
-                                            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                            {saving ? 'SAVING...' : 'SAVE BRANDING'}
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div className="flex items-center justify-center py-8">
-                                        <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
-                                        <span className="font-mono text-xs text-muted-foreground ml-2">Loading branding...</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Preview */}
-                            {orgBranding && (
-                                <div className="bg-card border border-border p-6">
-                                    <div className="font-mono text-[10px] text-muted-foreground mb-3">REPORT HEADER PREVIEW</div>
-                                    <div className="border border-border p-4 bg-card text-foreground">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="text-lg font-bold" style={{ color: orgBranding.primary_color }}>{orgBranding.name || 'Your Firm'}</div>
-                                                <div className="text-xs text-muted-foreground">{orgBranding.professional_body} • License: {orgBranding.license_number}</div>
-                                            </div>
-                                            <div className="text-right text-xs text-muted-foreground">
-                                                <div>{orgBranding.address_line1}</div>
-                                                <div>{orgBranding.city}, {orgBranding.region}</div>
-                                                <div>{orgBranding.phone}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                    {activeSection === 'professional' && (
+                        <ValuerProfessionalProfile />
                     )}
 
                     {/* ═══ APPROVAL CHAINS (Enterprise) ═══ */}

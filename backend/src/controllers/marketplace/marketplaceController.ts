@@ -8,6 +8,68 @@ import { applicationService } from '../../services/property-management/applicati
 import db from '../../database';
 import { logger } from '../../utils/logger';
 import { config } from '../../config';
+import { getServiceBranding, type ServiceType } from '../../services/branding/serviceBrandingService';
+
+/**
+ * Resolve the "Listed by" company branding for a public marketplace listing.
+ * PM listings surface the org's Property Management branding; CRM listings surface the
+ * CRM branding — the same per-org branding a firm configures in its service Settings.
+ * Best-effort: never throws (a listing must still render if branding lookup fails).
+ */
+async function resolveListingBranding(
+  source: 'pm' | 'crm',
+  token: string
+): Promise<Record<string, any> | null> {
+  try {
+    const service: ServiceType = source === 'pm' ? 'property_management' : 'crm';
+    const table = source === 'pm' ? 'properties' : 'crm_properties';
+    const orgRes = await db.query(
+      `SELECT p.organization_id, o.name AS organization_name,
+              o.is_verified, o.is_platform_org, o.is_active, o.verified_at,
+              EXISTS (SELECT 1 FROM listing_mandates lm LEFT JOIN esign_envelopes e ON e.id = lm.envelope_id
+                       WHERE lm.property_source = $2 AND lm.property_id = p.id
+                         AND (lm.expires_at IS NULL OR lm.expires_at > NOW())
+                         AND (lm.kind = 'self_attested' OR e.status = 'completed')) AS has_mandate
+         FROM ${table} p
+         JOIN organizations o ON o.id = p.organization_id
+        WHERE p.permanent_link_token = $1
+        LIMIT 1`,
+      [token, source]
+    );
+    const orgRow = orgRes.rows[0];
+    if (!orgRow?.organization_id) return null;
+
+    // A listing only reaches the public marketplace when its org is verified (Gate A),
+    // so `verified` is effectively always true here — but compute it explicitly so the
+    // badge is driven by the real flag, not a cosmetic default.
+    const verified = !!(orgRow.is_active && (orgRow.is_verified || orgRow.is_platform_org));
+
+    const b = (await getServiceBranding(orgRow.organization_id, service)) || ({} as Record<string, any>);
+    return {
+      organization_id: orgRow.organization_id,
+      service,
+      // Prefer the service branding name; fall back to the organization's real name.
+      company_name: b.name || orgRow.organization_name || null,
+      tagline: b.tagline || null,
+      phone: b.phone || null,
+      email: b.email || null,
+      website: b.website || null,
+      city: b.city || null,
+      region: b.region || null,
+      professional_body: b.professional_body || null,
+      license_number: b.license_number || null,
+      primary_color: b.primary_color || null,
+      logo_url: b.logo_key ? `/api/branding/logo/${orgRow.organization_id}/${service}` : null,
+      configured: !!b.configured,
+      verified,
+      verified_at: orgRow.verified_at || null,
+      owner_authorized: !!(orgRow.is_platform_org || orgRow.has_mandate),
+    };
+  } catch (err: any) {
+    logger.warn('Listing branding resolve failed', { token, source, error: err?.message });
+    return null;
+  }
+}
 
 export class MarketplaceController {
   /**
@@ -126,6 +188,9 @@ export class MarketplaceController {
         ip_address: req.ip,
         user_agent: req.headers['user-agent']
       });
+
+      // Attach the listing company's public branding ("Listed by …").
+      (property as any).listing = await resolveListingBranding(property.source, token);
 
       return res.json(property);
     } catch (error: any) {

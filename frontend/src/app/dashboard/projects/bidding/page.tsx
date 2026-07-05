@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PSTATUS: Record<string, string> = { draft: 'bg-zinc-500/20 text-muted-foreground', published: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', under_review: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', awarded: 'bg-green-500/20 text-green-600 dark:text-green-400', cancelled: 'bg-red-500/20 text-red-600 dark:text-red-400' };
@@ -113,10 +114,10 @@ export default function BiddingPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="packages" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">PACKAGES ({packages?.data?.length || 0})</TabsTrigger>
-          <TabsTrigger value="compare" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">COMPARE</TabsTrigger>
-          <TabsTrigger value="vendors" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">VENDORS ({vendors?.data?.length || 0})</TabsTrigger>
+        <TabsList className={subTabsListClass}>
+          <TabsTrigger value="packages" className={subTabsTriggerClass}>PACKAGES ({packages?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="compare" className={subTabsTriggerClass}>COMPARE</TabsTrigger>
+          <TabsTrigger value="vendors" className={subTabsTriggerClass}>VENDORS ({vendors?.data?.length || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="packages" className="mt-4 space-y-2">

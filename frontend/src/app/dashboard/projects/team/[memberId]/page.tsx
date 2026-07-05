@@ -16,6 +16,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { authedFetch } from '@/lib/authed-fetch'
 import { getRoleProfileConfig, TAB_LABELS } from '@/lib/roleProfileConfig'
 import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -266,10 +268,10 @@ export default function MemberProfilePage() {
 
       {/* ── Role-Aware Tabs ── */}
       <Tabs value={profileTab} onValueChange={setProfileTab}>
-        <TabsList className="bg-card border border-border flex flex-wrap gap-0.5 h-auto p-1">
+        <TabsList className={cn(subTabsListClass, 'flex-wrap h-auto')}>
           {config.tabs.map(tab => (
             <TabsTrigger key={tab} value={tab}
-              className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-[10px] uppercase px-3 py-1.5">
+              className={subTabsTriggerClass}>
               {TAB_LABELS[tab]}
             </TabsTrigger>
           ))}

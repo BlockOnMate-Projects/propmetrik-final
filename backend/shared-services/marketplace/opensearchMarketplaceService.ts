@@ -352,6 +352,7 @@ class OpenSearchMarketplaceService {
         }
         return { url: img.url || '', caption: img.caption || null };
       }),
+      video_url: src.video_url || null,
       listed_at: src.listed_date || src.created_at || '',
       views: src.views || 0,
       clicks: src.clicks || 0,

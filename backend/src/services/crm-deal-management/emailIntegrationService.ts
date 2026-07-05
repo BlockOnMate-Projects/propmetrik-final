@@ -15,9 +15,68 @@ import { pool } from '../../database';
 import { logger } from '../../utils/logger';
 import { getFile } from '../../database/minio';
 import axios from 'axios';
+import { resolveReportBranding } from '../valuation-engine/brandingService';
 
 /** Resolved attachment ready to embed in a provider message. */
 interface LoadedAttachment { name: string; mimeType: string; data: Buffer }
+
+/** Escape a string for safe interpolation into HTML attribute/text. */
+function escapeHtml(s: string): string {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/**
+ * Wrap a caller-supplied email body in a branded HTML shell (org logo/name header +
+ * contact-line footer) using the org's CRM service branding. Falls back to PROPMETRIK
+ * defaults when the org has no configured branding. Never throws — on any failure the
+ * original (unwrapped) body is returned so email delivery is never blocked.
+ */
+export async function wrapEmailWithBranding(
+    organizationId: string | null | undefined,
+    bodyHtml: string
+): Promise<string> {
+    if (!organizationId) return bodyHtml;
+    // Idempotency guard: don't double-wrap a body that already carries our shell.
+    if (bodyHtml && bodyHtml.includes('data-pm-branded-email')) return bodyHtml;
+    try {
+        const b = await resolveReportBranding(organizationId, { service: 'crm', withLogo: false });
+        const primary = b.primaryColor || '#18181B';
+        const onPrimary = b.onPrimary || '#FFFFFF';
+        const accent = b.accentColor || '#F59E0B';
+        const name = escapeHtml(b.name);
+        const tagline = b.tagline ? escapeHtml(b.tagline) : '';
+        const logo = b.logoUrl
+            ? `<img src="${escapeHtml(b.logoUrl)}" alt="${name}" style="height:40px;width:auto;max-width:180px;object-fit:contain;display:block;" />`
+            : `<div style="font-size:20px;font-weight:700;color:${onPrimary};">${name}</div>`;
+        const footerParts = [b.contactLine, [b.addressLines?.[0]].filter(Boolean).join('')]
+            .filter(Boolean)
+            .map((p) => escapeHtml(p as string));
+        const footer = footerParts.length ? footerParts.join('  ·  ') : name;
+
+        return `<div data-pm-branded-email style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;max-width:640px;margin:0 auto;">
+  <div style="background:${primary};border-bottom:4px solid ${accent};padding:18px 24px;">
+    ${logo}
+    ${tagline ? `<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${onPrimary};opacity:0.75;margin-top:4px;">${tagline}</div>` : ''}
+  </div>
+  <div style="padding:24px;">
+    ${bodyHtml}
+  </div>
+  <div style="border-top:1px solid #e5e5e5;padding:16px 24px;font-size:11px;color:#888;text-align:center;">
+    ${footer}
+  </div>
+</div>`;
+    } catch (err: any) {
+        logger.warn('wrapEmailWithBranding failed; sending unwrapped body', {
+            organizationId,
+            error: err?.message,
+        });
+        return bodyHtml;
+    }
+}
 
 // =====================================================
 // TYPES
@@ -672,6 +731,12 @@ class EmailIntegrationService {
         await ensureTable();
         const tokens = await getTokens(userId, provider);
         if (!tokens) throw new Error(`${provider} not connected`);
+
+        // Wrap the caller-supplied HTML in the org's branded shell (logo/name header +
+        // contact footer). No-ops when there's no orgId or on any branding failure.
+        if (email.body_html) {
+            email = { ...email, body_html: await wrapEmailWithBranding(organizationId, email.body_html) };
+        }
 
         let providerId: string;
         const attachments = await loadAttachments(email.attachments);

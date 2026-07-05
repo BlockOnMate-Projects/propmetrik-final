@@ -75,6 +75,14 @@ export interface ChangeOrderPdfData {
   created_at?: Date | string;
   /** Display labels for each signer block, in signing order. */
   signerLabels: string[];
+
+  // ── Optional firm branding (all fall back to PROPMETRIK defaults) ──
+  brandName?: string;
+  brandTagline?: string;
+  brandLogo?: Buffer | null;
+  brandAccent?: string;   // "#RRGGBB"
+  brandPrimary?: string;  // "#RRGGBB"
+  brandFooter?: string;
 }
 
 const fmtAmt = (n: number, ccy: string) =>
@@ -100,11 +108,24 @@ export async function generateChangeOrderPdf(data: ChangeOrderPdfData): Promise<
       const ccy = data.currency || 'GHS';
       const pct = (p: number, dim: number) => (p / 100) * dim;
 
+      // Firm branding (falls back to PROPMETRIK)
+      const brandName = data.brandName || 'PROPMETRIK';
+      const brandTagline = data.brandTagline || 'PROJECT MANAGEMENT';
+      const primary = data.brandPrimary || C.dark;
+      const accent = data.brandAccent || C.amber;
+      const footerText = data.brandFooter || 'PROPMETRIK Ghana Ltd.';
+
       // ── Header band ──
-      doc.rect(0, 0, PAGE_W, 64).fill(C.dark);
-      doc.rect(0, 64, PAGE_W, 3).fill(C.amber);
-      doc.fontSize(15).fillColor(C.amber).font('Helvetica-Bold').text('PROPMETRIK', M, 16, { ...NB, width: CW / 2 });
-      doc.fontSize(8).fillColor(C.muted).font('Helvetica').text('PROJECT MANAGEMENT', M, 35, { ...NB, width: CW / 2 });
+      doc.rect(0, 0, PAGE_W, 64).fill(primary);
+      doc.rect(0, 64, PAGE_W, 3).fill(accent);
+      let coLogoShown = false;
+      if (data.brandLogo && data.brandLogo.length > 24) {
+        try { doc.image(data.brandLogo, M, 14, { fit: [140, 38] }); coLogoShown = true; } catch { /* fall back to name text */ }
+      }
+      if (!coLogoShown) {
+        doc.fontSize(15).fillColor(accent).font('Helvetica-Bold').text(brandName, M, 16, { ...NB, width: CW / 2 });
+        doc.fontSize(8).fillColor(C.muted).font('Helvetica').text(brandTagline, M, 35, { ...NB, width: CW / 2 });
+      }
       doc.fontSize(17).fillColor(C.white).font('Helvetica-Bold').text('CHANGE ORDER', PAGE_W - M - 220, 16, { ...NB, width: 220, align: 'right' });
       doc.fontSize(9).fillColor(C.muted).font('Helvetica').text(data.co_number, PAGE_W - M - 220, 38, { ...NB, width: 220, align: 'right' });
 
@@ -191,7 +212,7 @@ export async function generateChangeOrderPdf(data: ChangeOrderPdfData): Promise<
 
       // ── Footer ──
       doc.fontSize(6).fillColor(C.muted).font('Helvetica')
-        .text('PROPMETRIK Ghana Ltd. · This change order is executed electronically.', M, PAGE_H - 24, { ...NB, width: CW, align: 'center' });
+        .text(`${footerText} · This change order is executed electronically.`, M, PAGE_H - 24, { ...NB, width: CW, align: 'center' });
 
       doc.end();
     } catch (err) {

@@ -26,6 +26,7 @@ import { emailIntegrationService, EmailProvider } from '../../services/crm-deal-
 import { getAuthUserId, getAuthOrgId } from '../../middleware/pmAuth';
 import { uploadFile, buckets } from '../../database/minio';
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 
 const router = Router();
 
@@ -81,7 +82,7 @@ router.get('/emails/auth/:provider', (req: Request, res: Response) => {
  * OAuth callback — exchanges code for tokens, redirects to frontend
  */
 router.get('/emails/auth/:provider/callback', async (req: Request, res: Response) => {
-    const frontendUrl = process.env.FRONTEND_URL || '';
+    const frontendUrl = config.app.frontendUrl;
     try {
         const { provider } = req.params;
         const code = req.query.code as string;

@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles';
 import {
   Dialog,
   DialogContent,
@@ -63,7 +64,6 @@ import { checklistSchema, validateForm } from '@/lib/schemas/pm.schemas';
 import { FieldError, FormErrorSummary } from '@/components/ui/form-errors';
 import { Pagination } from '@/components/ui/pagination-controls';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 const fetch = authedFetch;
 
 // Types
@@ -196,7 +196,7 @@ export default function ChecklistsPage() {
   // Fetch templates
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/checklists/templates?isPublished=true&pageSize=50`);
+      const response = await fetch(`/api/checklists/templates?isPublished=true&pageSize=50`);
       const result = await response.json();
       
       if (result.success) {
@@ -218,7 +218,7 @@ export default function ChecklistsPage() {
       params.append('pageSize', '20');
       params.append('page', String(page));
 
-      const response = await fetch(`${API_BASE}/api/checklists/instances?${params}`);
+      const response = await fetch(`/api/checklists/instances?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -244,7 +244,7 @@ export default function ChecklistsPage() {
   // Fetch projects
   const fetchProjects = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects?pageSize=100`);
+      const response = await fetch(`/api/projects?pageSize=100`);
       const result = await response.json();
       
       if (result.success) {
@@ -273,7 +273,7 @@ export default function ChecklistsPage() {
     try {
       setSubmitting(true);
       
-      const response = await fetch(`${API_BASE}/api/checklists/instances`, {
+      const response = await fetch(`/api/checklists/instances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(createData),
@@ -408,11 +408,11 @@ export default function ChecklistsPage() {
       {/* Tabs and Filters */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="inspections" className="data-[state=active]:bg-zinc-700">
+          <TabsList className={subTabsListClass}>
+            <TabsTrigger value="inspections" className={subTabsTriggerClass}>
               <ClipboardCheck className="h-4 w-4 mr-2" /> Inspections
             </TabsTrigger>
-            <TabsTrigger value="templates" className="data-[state=active]:bg-zinc-700">
+            <TabsTrigger value="templates" className={subTabsTriggerClass}>
               <Layers className="h-4 w-4 mr-2" /> Templates
             </TabsTrigger>
           </TabsList>

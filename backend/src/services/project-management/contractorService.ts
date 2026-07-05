@@ -23,6 +23,7 @@ import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { generateContractorContractPdf } from '../../utils/pmDocumentPdfGenerators';
+import { resolveReportBranding } from '../valuation-engine/brandingService';
 import { changeOrderSignatureSlots } from '../../utils/changeOrderPdfGenerator';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 import { logger } from '../../utils/logger';
@@ -812,6 +813,9 @@ class ContractorService extends BaseService {
     signerLabels?: string[]
   ): Promise<Buffer> {
     const labels = signerLabels && signerLabels.length ? signerLabels : ['Authorised Signatory'];
+    // Resolve the org's PROJECT-MANAGEMENT branding (logo/name/colors) — falls back to PROPMETRIK
+    const orgId = assignment?.organization_id || contractor?.organization_id || project?.organization_id;
+    const branding = await resolveReportBranding(orgId, { service: 'project_management', withLogo: true });
     return generateContractorContractPdf({
       contractor_company: contractor?.company_name || 'Contractor',
       project_name: project?.name,
@@ -823,6 +827,12 @@ class ContractorService extends BaseService {
       end_date: assignment?.end_date,
       created_at: assignment?.created_at,
       signerLabels: labels,
+      brandName: branding.name,
+      brandTagline: branding.tagline,
+      brandLogo: branding.logoBuffer,
+      brandAccent: branding.accentColor,
+      brandPrimary: branding.primaryColor,
+      brandFooter: branding.addressLines[0] ? `${branding.name} · ${branding.addressLines[0]}` : branding.name,
     });
   }
 

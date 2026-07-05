@@ -130,7 +130,8 @@ export class RentReminderJob {
                         currency: row.currency || 'GHS',
                         dueDate: new Date(row.due_date).toLocaleDateString('en-GB'),
                         paymentLink
-                    }
+                    },
+                    row.organization_id
                 );
 
                 // In-app inbox push (email/SMS already handled above by notificationService)
@@ -209,7 +210,8 @@ export class RentReminderJob {
                         daysOverdue: row.days_overdue,
                         lateFee: parseFloat(row.late_fee_applied || row.late_fee_amount || 0),
                         paymentLink
-                    }
+                    },
+                    row.organization_id
                 );
 
                 await notify({

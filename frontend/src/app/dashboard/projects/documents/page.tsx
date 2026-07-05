@@ -27,6 +27,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { authedFetch } from '@/lib/authed-fetch'
+import { subTabsListClass, subTabsTriggerClass } from '@/components/layout/subTabStyles'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -269,9 +270,9 @@ export default function PMDocumentsPage() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setPage(1) }} className="w-full sm:w-auto">
-          <TabsList className="bg-card border border-border">
+          <TabsList className={subTabsListClass}>
             {['all', 'contract', 'permit', 'drawing', 'submittal', 'report'].map(tab => (
-              <TabsTrigger key={tab} value={tab} className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
+              <TabsTrigger key={tab} value={tab} className={subTabsTriggerClass}>
                 {tab === 'all' ? 'All Files' : tab}
               </TabsTrigger>
             ))}

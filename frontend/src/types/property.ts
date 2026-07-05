@@ -35,6 +35,7 @@ export interface PropertyEnrichmentResponse {
       last_updated: string;
     };
     images: string[];
+    video_url?: string | null;
     location: {
       lat: number;
       lng: number;

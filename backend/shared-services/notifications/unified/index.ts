@@ -19,6 +19,93 @@ const SOCIAL_LINKS = {
 };
 
 // =====================================================
+// PER-ORG BRANDING (Property Management)
+// =====================================================
+
+/**
+ * Resolved branding used by the PM tenant emails below. Structural (not an
+ * import) so this shared module stays decoupled from the valuation-engine.
+ */
+export interface PmEmailBranding {
+    name: string;
+    primaryColor: string;
+    accentColor: string;
+    onPrimary: string;
+    onAccent: string;
+    logoUrl: string | null;
+    contactLine: string | null;
+    website: string | null;
+}
+
+/** Legacy PROPMETRIK look — used whenever an org has no branding / no orgId. */
+const DEFAULT_PM_BRANDING: PmEmailBranding = {
+    name: 'PROPMETRIK',
+    primaryColor: '#0891b2',
+    accentColor: '#06b6d4',
+    onPrimary: '#ffffff',
+    onAccent: '#ffffff',
+    logoUrl: null,
+    contactLine: null,
+    website: SOCIAL_LINKS.website,
+};
+
+/**
+ * Best-effort resolve of an org's Property Management branding. Returns the
+ * PROPMETRIK defaults when there's no orgId or resolution fails, so callers that
+ * pass no orgId render exactly as before. Lazy-imported to avoid a load cycle.
+ */
+async function resolvePmBranding(organizationId?: string): Promise<PmEmailBranding> {
+    if (!organizationId) return DEFAULT_PM_BRANDING;
+    try {
+        const { resolveReportBranding } = await import(
+            '../../../src/services/valuation-engine/brandingService'
+        );
+        const b = await resolveReportBranding(organizationId, {
+            service: 'property_management',
+            withLogo: false,
+        });
+        return {
+            name: b.name,
+            primaryColor: b.primaryColor,
+            accentColor: b.accentColor,
+            onPrimary: b.onPrimary,
+            onAccent: b.onAccent,
+            logoUrl: b.logoUrl,
+            contactLine: b.contactLine || null,
+            website: b.website || SOCIAL_LINKS.website,
+        };
+    } catch (err: any) {
+        logger.warn('PM email branding resolve failed, using PROPMETRIK defaults', {
+            organizationId,
+            error: err?.message,
+        });
+        return DEFAULT_PM_BRANDING;
+    }
+}
+
+/**
+ * Wrap a simple email body fragment in a branded header (logo/name) + footer
+ * (org name/contact). Keeps the legacy PROPMETRIK look when unbranded.
+ */
+function pmEmailShell(brand: PmEmailBranding, inner: string): string {
+    const logo = brand.logoUrl
+        ? `<img src="${brand.logoUrl}" alt="${brand.name}" style="max-height: 34px; max-width: 180px; margin: 0 auto 8px; display: block;" />`
+        : '';
+    return `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+        <div style="background: ${brand.primaryColor}; padding: 20px 24px; border-radius: 10px 10px 0 0; text-align: center;">
+            ${logo}
+            <span style="color: ${brand.onPrimary}; font-size: 17px; font-weight: 700; letter-spacing: 1px;">${brand.name}</span>
+        </div>
+        <div style="background: #ffffff; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px;">
+            ${inner}
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 12px;" />
+            <p style="font-size: 12px; color: #94a3b8; margin: 0;">${brand.name}${brand.contactLine ? ` · ${brand.contactLine}` : ''}</p>
+        </div>
+    </div>`;
+}
+
+// =====================================================
 // INTERFACES
 // =====================================================
 
@@ -662,16 +749,17 @@ export class UnifiedNotificationService {
     /**
      * Send Magic Link via Email (generic / re-login)
      */
-    async sendMagicLink(email: string, magicLink: string): Promise<NotificationResult> {
+    async sendMagicLink(email: string, magicLink: string, organizationId?: string): Promise<NotificationResult> {
+        const brand = await resolvePmBranding(organizationId);
         return this.sendEmail({
             to: email,
-            subject: 'Login to PROPMETRIK Tenant Portal',
+            subject: `Login to ${brand.name} Tenant Portal`,
             html: `
-                <h2>Login to PROPMETRIK</h2>
+                <h2>Login to ${brand.name}</h2>
                 <p>Click the button below to log in to your tenant portal:</p>
                 <p>
-                    <a href="${magicLink}" 
-                       style="background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; display: inline-block; border-radius: 4px;">
+                    <a href="${magicLink}"
+                       style="background-color: ${brand.primaryColor}; color: ${brand.onPrimary}; padding: 14px 28px; text-decoration: none; display: inline-block; border-radius: 4px;">
                         Log In
                     </a>
                 </p>
@@ -679,7 +767,7 @@ export class UnifiedNotificationService {
                 <p>This link expires in 15 minutes.</p>
                 <p>If you didn't request this, please ignore this email.</p>
             `,
-            text: `Login to PROPMETRIK. Click this link: ${magicLink}. This link expires in 15 minutes.`
+            text: `Login to ${brand.name}. Click this link: ${magicLink}. This link expires in 15 minutes.`
         });
     }
 
@@ -694,18 +782,28 @@ export class UnifiedNotificationService {
             organizationName: string;
             propertyTitle: string;
             propertyAddress: string;
-        }
+        },
+        organizationId?: string
     ): Promise<NotificationResult> {
         const { tenantName, organizationName, propertyTitle, propertyAddress } = context;
         const firstName = tenantName.split(' ')[0] || tenantName;
+        const brand = await resolvePmBranding(organizationId);
+
+        // Header/CTA use the org's palette; when unbranded these are the legacy teal.
+        const headerBg = `linear-gradient(135deg, ${brand.primaryColor} 0%, ${brand.accentColor} 100%)`;
+        const accentLeft = brand.primaryColor;
+        const logoHeader = brand.logoUrl
+            ? `<img src="${brand.logoUrl}" alt="${brand.name}" style="max-height: 40px; max-width: 200px; margin: 0 auto 10px; display: block;" />`
+            : '';
 
         return this.sendEmail({
             to: email,
             subject: `You're Invited to Your Tenant Portal — ${propertyTitle}`,
             html: `
                 <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
-                    <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 32px 24px; border-radius: 12px 12px 0 0; text-align: center;">
-                        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Welcome to Your Tenant Portal</h1>
+                    <div style="background: ${headerBg}; padding: 32px 24px; border-radius: 12px 12px 0 0; text-align: center;">
+                        ${logoHeader}
+                        <h1 style="color: ${brand.onPrimary}; margin: 0; font-size: 24px; font-weight: 600;">Welcome to Your Tenant Portal</h1>
                     </div>
 
                     <div style="background: #ffffff; padding: 32px 24px; border: 1px solid #e2e8f0; border-top: none;">
@@ -715,8 +813,8 @@ export class UnifiedNotificationService {
                             <strong>${organizationName}</strong> has invited you to activate your tenant portal for your tenancy at:
                         </p>
 
-                        <div style="background: #f0fdfa; border-left: 4px solid #0891b2; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-                            <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #0e7490;">${propertyTitle}</p>
+                        <div style="background: #f0fdfa; border-left: 4px solid ${accentLeft}; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                            <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: ${accentLeft};">${propertyTitle}</p>
                             <p style="margin: 0; font-size: 14px; color: #475569;">${propertyAddress}</p>
                         </div>
 
@@ -749,7 +847,7 @@ export class UnifiedNotificationService {
 
                         <div style="text-align: center; margin: 28px 0;">
                             <a href="${magicLink}"
-                               style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: #ffffff; padding: 16px 36px; text-decoration: none; display: inline-block; border-radius: 8px; font-size: 16px; font-weight: 600; letter-spacing: 0.3px;">
+                               style="background: ${headerBg}; color: ${brand.onPrimary}; padding: 16px 36px; text-decoration: none; display: inline-block; border-radius: 8px; font-size: 16px; font-weight: 600; letter-spacing: 0.3px;">
                                 Activate My Portal
                             </a>
                         </div>
@@ -765,8 +863,10 @@ export class UnifiedNotificationService {
                     </div>
 
                     <div style="background: #f8fafc; padding: 20px 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px; text-align: center;">
-                        <p style="margin: 0 0 12px 0; font-size: 13px; color: #94a3b8;">The PROPMETRIK Team &middot; On behalf of <strong>${organizationName}</strong></p>
-                        <p style="margin: 0;">
+                        <p style="margin: 0 0 12px 0; font-size: 13px; color: #94a3b8;">Delivered by <strong>${brand.name}</strong> &middot; On behalf of <strong>${organizationName}</strong></p>
+                        ${brand.contactLine
+                            ? `<p style="margin: 0; font-size: 12px; color: #94a3b8;">${brand.contactLine}</p>`
+                            : `<p style="margin: 0;">
                             <a href="${SOCIAL_LINKS.twitter}" style="color: #64748b; text-decoration: none; margin: 0 8px; font-size: 13px;">Twitter</a>
                             <span style="color: #cbd5e1;">&middot;</span>
                             <a href="${SOCIAL_LINKS.instagram}" style="color: #64748b; text-decoration: none; margin: 0 8px; font-size: 13px;">Instagram</a>
@@ -774,7 +874,7 @@ export class UnifiedNotificationService {
                             <a href="${SOCIAL_LINKS.tiktok}" style="color: #64748b; text-decoration: none; margin: 0 8px; font-size: 13px;">TikTok</a>
                             <span style="color: #cbd5e1;">&middot;</span>
                             <a href="${SOCIAL_LINKS.website}" style="color: #64748b; text-decoration: none; margin: 0 8px; font-size: 13px;">propmetrik.com</a>
-                        </p>
+                        </p>`}
                     </div>
                 </div>
             `,
@@ -795,7 +895,8 @@ export class UnifiedNotificationService {
             currency: string;
             dueDate: string;
             paymentLink?: string;
-        }
+        },
+        organizationId?: string
     ): Promise<{ sms?: NotificationResult; email?: NotificationResult }> {
         const results: { sms?: NotificationResult; email?: NotificationResult } = {};
 
@@ -805,24 +906,25 @@ export class UnifiedNotificationService {
         }
 
         if ((channel === 'email' || channel === 'both') && contact.email) {
+            const brand = await resolvePmBranding(organizationId);
             results.email = await this.sendEmail({
                 to: contact.email,
                 subject: `Rent Payment Reminder - ${data.propertyTitle}`,
-                html: `
+                html: pmEmailShell(brand, `
                     <h2>Rent Payment Reminder</h2>
                     <p>Dear ${data.tenantName},</p>
-                    <p>This is a friendly reminder that your rent payment of <strong>${data.currency} ${data.amount.toLocaleString()}</strong> 
+                    <p>This is a friendly reminder that your rent payment of <strong>${data.currency} ${data.amount.toLocaleString()}</strong>
                        for <strong>${data.propertyTitle}</strong> is due on <strong>${data.dueDate}</strong>.</p>
                     ${data.paymentLink ? `
                         <p>
-                            <a href="${data.paymentLink}" 
-                               style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; display: inline-block; border-radius: 4px;">
+                            <a href="${data.paymentLink}"
+                               style="background-color: ${brand.primaryColor}; color: ${brand.onPrimary}; padding: 10px 20px; text-decoration: none; display: inline-block; border-radius: 4px;">
                                 Pay Now
                             </a>
                         </p>
                     ` : ''}
                     <p>Thank you for your prompt payment.</p>
-                `,
+                `),
                 text: `Dear ${data.tenantName}, your rent of ${data.currency} ${data.amount.toLocaleString()} for ${data.propertyTitle} is due on ${data.dueDate}. Please make payment.`
             });
         }
@@ -844,7 +946,8 @@ export class UnifiedNotificationService {
             daysOverdue: number;
             lateFee: number;
             paymentLink?: string;
-        }
+        },
+        organizationId?: string
     ): Promise<{ sms?: NotificationResult; email?: NotificationResult }> {
         const results: { sms?: NotificationResult; email?: NotificationResult } = {};
 
@@ -854,25 +957,27 @@ export class UnifiedNotificationService {
         }
 
         if ((channel === 'email' || channel === 'both') && contact.email) {
+            const brand = await resolvePmBranding(organizationId);
             results.email = await this.sendEmail({
                 to: contact.email,
                 subject: `URGENT: Rent Payment Overdue - ${data.propertyTitle}`,
-                html: `
+                // Urgency red is intentional and kept regardless of branding.
+                html: pmEmailShell(brand, `
                     <h2 style="color: #d32f2f;">Rent Payment Overdue</h2>
                     <p>Dear ${data.tenantName},</p>
-                    <p>Your rent payment of <strong>${data.currency} ${data.amount.toLocaleString()}</strong> 
+                    <p>Your rent payment of <strong>${data.currency} ${data.amount.toLocaleString()}</strong>
                        for <strong>${data.propertyTitle}</strong> is now <strong style="color: #d32f2f;">${data.daysOverdue} days overdue</strong>.</p>
                     <p>A late fee of <strong>${data.currency} ${data.lateFee.toLocaleString()}</strong> has been applied.</p>
                     <p>Please make payment immediately to avoid further fees and potential legal action.</p>
                     ${data.paymentLink ? `
                         <p>
-                            <a href="${data.paymentLink}" 
+                            <a href="${data.paymentLink}"
                                style="background-color: #d32f2f; color: white; padding: 10px 20px; text-decoration: none; display: inline-block; border-radius: 4px;">
                                 Pay Now
                             </a>
                         </p>
                     ` : ''}
-                `
+                `)
             });
         }
 
@@ -892,7 +997,8 @@ export class UnifiedNotificationService {
             currency: string;
             receiptNumber: string;
             periodCovered: string;
-        }
+        },
+        organizationId?: string
     ): Promise<{ sms?: NotificationResult; email?: NotificationResult }> {
         const results: { sms?: NotificationResult; email?: NotificationResult } = {};
 
@@ -902,10 +1008,12 @@ export class UnifiedNotificationService {
         }
 
         if ((channel === 'email' || channel === 'both') && contact.email) {
+            const brand = await resolvePmBranding(organizationId);
             results.email = await this.sendEmail({
                 to: contact.email,
                 subject: `Payment Confirmation - ${data.receiptNumber}`,
-                html: `
+                // Success green is intentional and kept regardless of branding.
+                html: pmEmailShell(brand, `
                     <h2 style="color: #4CAF50;">Payment Confirmed</h2>
                     <p>Dear ${data.tenantName},</p>
                     <p>We have received your payment. Thank you!</p>
@@ -915,7 +1023,7 @@ export class UnifiedNotificationService {
                         <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Period</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.periodCovered}</td></tr>
                         <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Receipt #</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${data.receiptNumber}</td></tr>
                     </table>
-                `
+                `)
             });
         }
 
@@ -933,7 +1041,8 @@ export class UnifiedNotificationService {
             propertyTitle: string;
             expiryDate: string;
             daysRemaining: number;
-        }
+        },
+        organizationId?: string
     ): Promise<{ sms?: NotificationResult; email?: NotificationResult }> {
         const results: { sms?: NotificationResult; email?: NotificationResult } = {};
 
@@ -943,16 +1052,17 @@ export class UnifiedNotificationService {
         }
 
         if ((channel === 'email' || channel === 'both') && contact.email) {
+            const brand = await resolvePmBranding(organizationId);
             results.email = await this.sendEmail({
                 to: contact.email,
                 subject: `Lease Expiring Soon - ${data.propertyTitle}`,
-                html: `
+                html: pmEmailShell(brand, `
                     <h2>Lease Expiry Notice</h2>
                     <p>Dear ${data.tenantName},</p>
-                    <p>Your lease for <strong>${data.propertyTitle}</strong> will expire on <strong>${data.expiryDate}</strong> 
+                    <p>Your lease for <strong>${data.propertyTitle}</strong> will expire on <strong>${data.expiryDate}</strong>
                        (${data.daysRemaining} days from now).</p>
                     <p>Please contact us at your earliest convenience to discuss renewal options.</p>
-                `
+                `)
             });
         }
 
@@ -971,7 +1081,8 @@ export class UnifiedNotificationService {
             workOrderRef: string;
             status: string;
             notes?: string;
-        }
+        },
+        organizationId?: string
     ): Promise<{ sms?: NotificationResult; email?: NotificationResult }> {
         const results: { sms?: NotificationResult; email?: NotificationResult } = {};
 
@@ -981,17 +1092,18 @@ export class UnifiedNotificationService {
         }
 
         if ((channel === 'email' || channel === 'both') && contact.email) {
+            const brand = await resolvePmBranding(organizationId);
             results.email = await this.sendEmail({
                 to: contact.email,
                 subject: `Maintenance Update - ${data.workOrderRef}`,
-                html: `
+                html: pmEmailShell(brand, `
                     <h2>Maintenance Request Update</h2>
                     <p>Dear ${data.tenantName},</p>
                     <p>There's an update on your maintenance request for <strong>${data.propertyTitle}</strong>.</p>
                     <p><strong>Reference:</strong> ${data.workOrderRef}</p>
                     <p><strong>Status:</strong> ${data.status}</p>
                     ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
-                `
+                `)
             });
         }
 
