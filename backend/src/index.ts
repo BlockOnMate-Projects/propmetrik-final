@@ -602,6 +602,14 @@ app.use('/api/subscriptions', subscriptionRoutes);  // Also mount for frontend c
 app.use('/api/v1/short-stay', apiAccess('short_stay'), shortStayRoutes);
 app.use('/api/short-stay', apiAccess('short_stay'), shortStayRoutes);  // Also mount for frontend compatibility
 
+// Tenant Portal — MUST be mounted BEFORE the broad `/api(/v1)` authenticate catch-alls below. Its
+// public login routes (password-login, setup-password, otp, magic-link) carry NO bearer token, so
+// the catch-all's `authenticate` otherwise 401s them in production ("No authentication token
+// provided") — dev only "works" because AUTH_DEV_BYPASS injects a super-admin. Data routes
+// self-protect via `requireTenantAuth`, so mounting early removes no protection.
+app.use('/api/v1/tenant-portal', tenantPortalRoutes);
+app.use('/api/tenant-portal', tenantPortalRoutes);  // frontend compat
+
 // ── Catch-all /api/v1 routers (construction, governance, etc.) ───────────────
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), constructionRoutes); // Construction Ops (Site Diaries, Petty Cash, Market Prices)
 app.use('/api/v1/rfis', authenticate, requirePMAccess, requireServiceAccess('construction'), rfiRoutes);
@@ -765,9 +773,7 @@ app.use('/api/transmittals', authenticate, requirePMAccess, requireServiceAccess
 app.use('/api/v1/admin/platform', authenticate, requireAdmin, commercializationRoutes);
 app.use('/api/admin/platform', authenticate, requireAdmin, commercializationRoutes);
 
-// Tenant Portal Routes (auth, conversations, payments, maintenance, documents)
-app.use('/api/v1/tenant-portal', tenantPortalRoutes);
-app.use('/api/tenant-portal', tenantPortalRoutes);  // Also mount for frontend compatibility
+// (Tenant Portal routes are mounted ABOVE, before the broad auth catch-alls — see that block.)
 
 // E-Sign Routes (signature envelopes, signer IDs, certificate of completion)
 // Uses optionalAuth: public signing endpoints use token-based auth, internal endpoints check req.user
