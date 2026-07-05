@@ -833,7 +833,9 @@ class DocumentGenerationService {
         </html>
       `;
 
-      await page.setContent(styledHtml, { waitUntil: 'networkidle0' });
+      // 'load' (not 'networkidle0'): newer Puppeteer narrows setContent's waitUntil to
+      // 'load' | 'domcontentloaded'. 'load' still waits for images/fonts before the PDF snapshot.
+      await page.setContent(styledHtml, { waitUntil: 'load' });
 
       const pdfBuffer = await page.pdf({
         format: 'A4',
