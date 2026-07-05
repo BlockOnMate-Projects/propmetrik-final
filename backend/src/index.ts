@@ -610,6 +610,98 @@ app.use('/api/short-stay', apiAccess('short_stay'), shortStayRoutes);  // Also m
 app.use('/api/v1/tenant-portal', tenantPortalRoutes);
 app.use('/api/tenant-portal', tenantPortalRoutes);  // frontend compat
 
+// ════════════════════════════════════════════════════════════════════════════
+// PUBLIC / SELF-PROTECTING ROUTERS — MUST be mounted BEFORE the broad
+// `app.use('/api(/v1)', authenticate, …)` catch-alls below. Those catch-alls run
+// `authenticate` for EVERY `/api(/v1)/*` path that matches the prefix, so any
+// anonymous / token / optionalAuth route mounted AFTER them 401s in production
+// ("No authentication token provided") — dev only "works" because AUTH_DEV_BYPASS
+// injects a super-admin. Each router here either takes no auth (public webhooks,
+// OAuth callbacks, token email-links) or self-protects its privileged endpoints
+// internally (optionalAuth / per-route authenticate), so mounting early removes no
+// protection. Do NOT move these below the first `/api/v1` authenticate catch-all.
+// ════════════════════════════════════════════════════════════════════════════
+
+// WhatsApp Business webhook (Meta calls this with no Bearer token)
+app.use('/api/v1/whatsapp', whatsappRoutes);
+app.use('/api/whatsapp', whatsappRoutes);  // Also mount for frontend compatibility
+
+// Public Vendor Bid Portal (token-based, no auth)
+app.use('/api/v1', bidVendorRouter);
+app.use('/api', bidVendorRouter);
+
+// Shared Integrations Hub — public OAuth callback (providers redirect here without our Bearer token)
+app.use('/api/v1/org-integrations', integrationsPublicRouter);
+app.use('/api/org-integrations', integrationsPublicRouter);
+
+// Xero OAuth2 — public callback (Xero redirects back without our Bearer token)
+app.use('/api/v1', xeroPublicRouter);
+app.use('/api', xeroPublicRouter);
+
+// E-Sign — optionalAuth: external signer links are token-based (no Bearer); internal endpoints check req.user
+app.use('/api/v1/esign', optionalAuth, eSignRoutes);
+app.use('/api/esign', optionalAuth, eSignRoutes);  // Also mount for frontend compatibility
+
+// Unified Invitations — public token endpoints + internally-authenticated management
+app.use('/api/v1/invitations', invitationRoutes);
+app.use('/api/invitations', invitationRoutes);  // Also mount for frontend compatibility
+
+// Valuation Org — public invitation acceptance + internally-authenticated team management
+app.use('/api/v1/valuation-org', valuationOrgRoutes);
+app.use('/api/valuation-org', valuationOrgRoutes);  // Also mount for frontend compatibility
+
+// Enterprise B2B — internally-authenticated (no app-level authenticate)
+app.use('/api/v1/enterprise', enterpriseRoutes);
+app.use('/api/enterprise', enterpriseRoutes);  // Also mount for frontend compatibility
+
+// PM Transmittals — public token-based acknowledge + download from email links (no Bearer)
+app.get('/api/v1/transmittals/public/acknowledge/:token', async (req, res) => {
+  try {
+    const result = await transmittalService.acknowledgeByToken(req.params.token, req.query.notes as string);
+    if (!result.success) {
+      return res.status(404).send(buildTransmittalAckPage({ error: result.error || 'Invalid or expired link.' }));
+    }
+    if (result.already) {
+      return res.send(buildTransmittalAckPage({ title: 'Already Acknowledged', message: 'You have already acknowledged this transmittal. Thank you.' }));
+    }
+    return res.send(buildTransmittalAckPage({
+      title: 'Acknowledged',
+      message: `Transmittal ${result.transmittal_number} — "${result.subject}" has been acknowledged successfully.${result.recipient_name ? ` Thank you, ${result.recipient_name}.` : ''}`,
+      items: result.items,
+      token: result.token,
+    }));
+  } catch (err: any) {
+    res.status(500).send(buildTransmittalAckPage({ error: 'An unexpected error occurred. Please try again.' }));
+  }
+});
+app.get('/api/v1/transmittals/public/download/:token/:itemId', async (req, res) => {
+  try {
+    const { token, itemId } = req.params;
+    // Validate token belongs to a real recipient
+    const recipientResult = await pool.query(
+      `SELECT r.transmittal_id FROM pm_transmittal_recipients r WHERE r.acknowledge_token = $1`,
+      [token],
+    );
+    if (recipientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Invalid link' });
+    }
+    // Fetch the item and verify it belongs to the transmittal
+    const itemResult = await pool.query(
+      `SELECT * FROM pm_transmittal_items WHERE id = $1 AND transmittal_id = $2`,
+      [itemId, recipientResult.rows[0].transmittal_id],
+    );
+    if (itemResult.rows.length === 0 || !itemResult.rows[0].file_key) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    const item = itemResult.rows[0];
+    const bucket = buckets.documents || 'propmetrik-documents';
+    const downloadUrl = await getPresignedDownloadUrl(bucket, item.file_key, 3600);
+    res.redirect(downloadUrl);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to generate download link' });
+  }
+});
+
 // ── Catch-all /api/v1 routers (construction, governance, etc.) ───────────────
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), constructionRoutes); // Construction Ops (Site Diaries, Petty Cash, Market Prices)
 app.use('/api/v1/rfis', authenticate, requirePMAccess, requireServiceAccess('construction'), rfiRoutes);
@@ -620,8 +712,6 @@ app.use('/api/v1/submittals', authenticate, requirePMAccess, requireServiceAcces
 app.use('/api/submittals', authenticate, requirePMAccess, requireServiceAccess('construction'), submittalRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/portfolio', authenticate, requirePMAccess, requireServiceAccess('portfolio'), portfolioRoutes);
 app.use('/api/portfolio', authenticate, requirePMAccess, requireServiceAccess('portfolio'), portfolioRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/whatsapp', whatsappRoutes);
-app.use('/api/whatsapp', whatsappRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/photos', authenticate, requirePMAccess, requireServiceAccess('construction'), photoRoutes);
 app.use('/api/photos', authenticate, requirePMAccess, requireServiceAccess('construction'), photoRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/checklists', authenticate, requirePMAccess, requireServiceAccess('construction'), checklistRoutes);
@@ -680,9 +770,7 @@ app.use('/api', authenticate, requirePMAccess, requireServiceAccess('constructio
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), bidManagementRoutes);
 app.use('/api', authenticate, requirePMAccess, requireServiceAccess('construction'), bidManagementRoutes);
 
-// Public Vendor Bid Portal (token-based, no auth)
-app.use('/api/v1', bidVendorRouter);
-app.use('/api', bidVendorRouter);
+// (Public Vendor Bid Portal is mounted ABOVE, in the PUBLIC / SELF-PROTECTING block.)
 
 // Closeout & Warranty Routes
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), closeoutRoutes);
@@ -701,71 +789,20 @@ app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('projects
 app.use('/api', authenticate, requirePMAccess, requireServiceAccess('projects'), appIntegrationRoutes);
 
 // Shared Integrations Hub (org-wide — reachable from every service's Integrations tab).
-// Public OAuth callback FIRST (no auth — providers redirect here without our Bearer token).
-app.use('/api/v1/org-integrations', integrationsPublicRouter);
-app.use('/api/org-integrations', integrationsPublicRouter);
+// Public OAuth callback is mounted ABOVE, in the PUBLIC / SELF-PROTECTING block.
 // Authenticated catalog/connections/connect/disconnect (org-wide, NOT service-gated).
 app.use('/api/v1/org-integrations', authenticate, requirePMAccess, orgIntegrationsRoutes);
 app.use('/api/org-integrations', authenticate, requirePMAccess, orgIntegrationsRoutes);
 
 // Xero OAuth2 + Cost Sync Routes
-// Public callback — no auth (Xero redirects back without our Bearer token)
-app.use('/api/v1', xeroPublicRouter);
-app.use('/api', xeroPublicRouter);
+// Public callback is mounted ABOVE, in the PUBLIC / SELF-PROTECTING block.
 // Protected Xero routes (auth + status + sync)
 app.use('/api/v1', authenticate, requirePMAccess, xeroRoutes);
 app.use('/api', authenticate, requirePMAccess, xeroRoutes);
 
 // PM Transmittals Routes (document distribution & acknowledgement)
-// Public acknowledge endpoint (no auth — token-based from email link)
-app.get('/api/v1/transmittals/public/acknowledge/:token', async (req, res) => {
-  try {
-    const result = await transmittalService.acknowledgeByToken(req.params.token, req.query.notes as string);
-    if (!result.success) {
-      return res.status(404).send(buildTransmittalAckPage({ error: result.error || 'Invalid or expired link.' }));
-    }
-    if (result.already) {
-      return res.send(buildTransmittalAckPage({ title: 'Already Acknowledged', message: 'You have already acknowledged this transmittal. Thank you.' }));
-    }
-    return res.send(buildTransmittalAckPage({
-      title: 'Acknowledged',
-      message: `Transmittal ${result.transmittal_number} — "${result.subject}" has been acknowledged successfully.${result.recipient_name ? ` Thank you, ${result.recipient_name}.` : ''}`,
-      items: result.items,
-      token: result.token,
-    }));
-  } catch (err: any) {
-    res.status(500).send(buildTransmittalAckPage({ error: 'An unexpected error occurred. Please try again.' }));
-  }
-});
-// Public download endpoint — token-based file access from email link
-app.get('/api/v1/transmittals/public/download/:token/:itemId', async (req, res) => {
-  try {
-    const { token, itemId } = req.params;
-    // Validate token belongs to a real recipient
-    const recipientResult = await pool.query(
-      `SELECT r.transmittal_id FROM pm_transmittal_recipients r WHERE r.acknowledge_token = $1`,
-      [token],
-    );
-    if (recipientResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Invalid link' });
-    }
-    // Fetch the item and verify it belongs to the transmittal
-    const itemResult = await pool.query(
-      `SELECT * FROM pm_transmittal_items WHERE id = $1 AND transmittal_id = $2`,
-      [itemId, recipientResult.rows[0].transmittal_id],
-    );
-    if (itemResult.rows.length === 0 || !itemResult.rows[0].file_key) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-    const item = itemResult.rows[0];
-    const bucket = buckets.documents || 'propmetrik-documents';
-    const downloadUrl = await getPresignedDownloadUrl(bucket, item.file_key, 3600);
-    res.redirect(downloadUrl);
-  } catch (err: any) {
-    res.status(500).json({ error: 'Failed to generate download link' });
-  }
-});
-// Authenticated transmittal routes
+// Public token-based acknowledge/download endpoints are mounted ABOVE, in the
+// PUBLIC / SELF-PROTECTING block. Authenticated transmittal routes:
 app.use('/api/v1/transmittals', authenticate, requirePMAccess, requireServiceAccess('projects'), transmittalRoutes);
 app.use('/api/transmittals', authenticate, requirePMAccess, requireServiceAccess('projects'), transmittalRoutes);
 
@@ -775,23 +812,9 @@ app.use('/api/admin/platform', authenticate, requireAdmin, commercializationRout
 
 // (Tenant Portal routes are mounted ABOVE, before the broad auth catch-alls — see that block.)
 
-// E-Sign Routes (signature envelopes, signer IDs, certificate of completion)
-// Uses optionalAuth: public signing endpoints use token-based auth, internal endpoints check req.user
-app.use('/api/v1/esign', optionalAuth, eSignRoutes);
-app.use('/api/esign', optionalAuth, eSignRoutes);  // Also mount for frontend compatibility
-
-// Unified Invitations (public token endpoints + authenticated management)
-// Auth handled internally: token routes are public, management routes use authenticate + authorize
-app.use('/api/v1/invitations', invitationRoutes);
-app.use('/api/invitations', invitationRoutes);  // Also mount for frontend compatibility
-
-// Valuation Org Routes (RBAC, team management, invitations)
-app.use('/api/v1/valuation-org', valuationOrgRoutes);
-app.use('/api/valuation-org', valuationOrgRoutes);  // Also mount for frontend compatibility
-
-// Enterprise B2B Routes (org settings, approval chains, API keys, firm analytics)
-app.use('/api/v1/enterprise', enterpriseRoutes);
-app.use('/api/enterprise', enterpriseRoutes);  // Also mount for frontend compatibility
+// (E-Sign, Unified Invitations, Valuation-Org, and Enterprise B2B routes are all
+// mounted ABOVE, in the PUBLIC / SELF-PROTECTING block, because each exposes public
+// token/callback endpoints that the broad `/api/v1` authenticate catch-all would 401.)
 
 // Developer Portal (subscriber /developers console: keys, usage, entitlements)
 // Session-authenticated + org-scoped; requires an active analytics API product.
