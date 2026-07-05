@@ -58,6 +58,13 @@ export interface PaystackVerifyResponse {
             card_type: string;
             last4: string;
             bank: string;
+            // Present on tokenizable charges — governs whether the auth can be
+            // re-charged customer-not-present (true for cards; usually false for GH MoMo).
+            reusable?: boolean;
+            channel?: string;      // 'card' | 'mobile_money'
+            signature?: string;
+            exp_month?: string;
+            exp_year?: string;
         };
         metadata?: Record<string, any>;
         subaccount?: {
@@ -196,9 +203,14 @@ export class PaystackService {
         reference: string;
         currency?: string;
         metadata?: Record<string, any>;
+        // Split-payment (rent autopay): route the principal to the landlord's subaccount
+        // and keep the pre-computed platform fee, exactly like a hosted rent charge.
+        subaccount?: string;
+        transaction_charge?: number;              // platform fee in pesewas (already computed)
+        bearer?: 'account' | 'subaccount';
     }): Promise<PaystackVerifyResponse> {
         try {
-            const payload = {
+            const payload: Record<string, any> = {
                 email: params.email,
                 amount: Math.round(params.amount),
                 authorization_code: params.authorization_code,
@@ -206,6 +218,13 @@ export class PaystackService {
                 currency: params.currency || 'GHS',
                 metadata: params.metadata || {},
             };
+            if (params.subaccount) {
+                payload.subaccount = params.subaccount;
+                if (typeof params.transaction_charge === 'number') {
+                    payload.transaction_charge = Math.round(params.transaction_charge);
+                }
+                payload.bearer = params.bearer || 'subaccount';
+            }
             const response = await this.client.post('/transaction/charge_authorization', payload);
             return response.data;
         } catch (error: any) {

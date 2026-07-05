@@ -88,8 +88,13 @@ export function RealtimeProvider({
 
   // Only connect SSE on authenticated dashboard pages — marketing/public pages
   // don't need realtime and the backend requires projects service access.
+  // EXCLUDE the tenant portal (/dashboard/tenant/*): tenants authenticate with a
+  // tenant session token that has no projects service access, so the SSE handshake
+  // 401s and reconnect-loops (console spam). Tenants use their own notifications feed.
   const isAuthenticatedDashboard =
-    status === 'authenticated' && pathname?.startsWith('/dashboard');
+    status === 'authenticated' &&
+    pathname?.startsWith('/dashboard') &&
+    !pathname.startsWith('/dashboard/tenant');
 
   // Only enable on client side
   useEffect(() => {

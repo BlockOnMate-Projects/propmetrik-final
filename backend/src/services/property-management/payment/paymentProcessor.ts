@@ -338,6 +338,118 @@ export class PaymentProcessor {
         };
     }
 
+    /**
+     * Charge rent against a SAVED Paystack authorization (customer-not-present).
+     * Used by the tenant Auto-Pay job. Mirrors initializeRentPayment's fee/FX/split/
+     * ledger construction, then charges the saved card token instead of returning a
+     * hosted URL, and routes the result through verifyAndRecordPayment so the ledger,
+     * rent_payments, schedule application and receipt notification are all identical
+     * to a manual payment. Returns the reference + whether the charge succeeded.
+     */
+    async chargeRentWithAuthorization(params: {
+        tenancyId: string;
+        organizationId: string;
+        authorizationCode: string;
+        payerEmail: string;
+        amount: number;            // native obligation amount (lease currency) to collect
+        scheduleIds?: string[];
+    }): Promise<{ success: boolean; reference: string; error?: string; declined?: boolean }> {
+        const { tenancyId, organizationId, authorizationCode, payerEmail, amount, scheduleIds } = params;
+
+        // 1. Verify tenancy
+        const tenancy = await tenancyService.getTenancyById(tenancyId, organizationId);
+        if (!tenancy) throw new Error('Tenancy not found');
+
+        // 2. Landlord subaccount (rent must not land in PROPMETRIK's main account)
+        const paymentConfig = await paystackService.getPaymentAccountConfig(organizationId, 'organization', 'property_management');
+        if (!paymentConfig || !paymentConfig.subaccountCode) {
+            throw new Error('Payment account not configured for this property manager.');
+        }
+
+        // 3. Lock obligation → GHS (live rate) + compute fee on the GHS principal
+        const { obligationCurrency, fx, principalGhs, isForeign } =
+            await this.lockObligationToGhs(amount, tenancy.rentCurrency, { tenancyId });
+        const fee = await feeEngine.calculate('rent', principalGhs, organizationId, 'organization');
+
+        // 4. Unique idempotent reference for this attempt
+        const reference = `PMK-AP-${tenancyId.slice(0, 8)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`.toUpperCase();
+
+        // 5. Metadata identical in shape to initializeRentPayment (so verify records it the same)
+        const metadata: Record<string, any> = {
+            tenancy_id: tenancyId,
+            organization_id: organizationId,
+            payment_type: 'rent',
+            autopay: true,
+            principal_amount: principalGhs,
+            service_fee: fee.serviceFee,
+            fee_mode: fee.feeMode,
+            obligation_currency: obligationCurrency,
+            obligation_amount: amount,
+            fx_rate: isForeign ? fx.rate : undefined,
+            fx_source: isForeign ? fx.source : undefined,
+            fx_locked_at: isForeign ? fx.fetchedAt.toISOString() : undefined,
+            schedule_ids: scheduleIds || [],
+        };
+
+        // 6. Record pending ledger row up front (mirrors the manual flow)
+        await this.recordPendingTransaction({
+            reference,
+            paymentType: 'rent',
+            entityId: tenancyId,
+            recipientEntityId: organizationId,
+            recipientEntityType: 'organization',
+            principalAmount: principalGhs,
+            serviceFee: fee.serviceFee,
+            totalAmount: fee.totalCharge,
+            currency: 'GHS',
+            feeMode: fee.feeMode,
+            percentageRateApplied: fee.percentageRateApplied,
+            flatAmountApplied: fee.flatAmountApplied,
+            subaccountCode: paymentConfig.subaccountCode,
+            payerEmail,
+            metadata,
+            obligationCurrency,
+            obligationAmount: amount,
+            fxRate: isForeign ? fx.rate : undefined,
+            fxSource: isForeign ? fx.source : undefined,
+            fxLockedAt: isForeign ? fx.fetchedAt : undefined,
+        });
+
+        // 7. Charge the saved authorization (split to the landlord subaccount)
+        try {
+            const chargeResp = await paystackService.chargeAuthorization({
+                email: payerEmail,
+                amount: fee.totalChargeSubunits,          // total the tenant pays (pesewas)
+                authorization_code: authorizationCode,
+                reference,
+                currency: 'GHS',
+                metadata,
+                subaccount: paymentConfig.subaccountCode,
+                transaction_charge: fee.serviceFeeSubunits,
+                bearer: 'subaccount',
+            });
+
+            if (chargeResp.data.status !== 'success') {
+                await pool.query(
+                    `UPDATE payment_transactions SET status = 'failed', paystack_status = $1 WHERE paystack_reference = $2`,
+                    [chargeResp.data.gateway_response || chargeResp.data.status, reference]
+                ).catch(() => {});
+                return { success: false, reference, declined: true, error: chargeResp.data.gateway_response || 'Charge declined' };
+            }
+
+            // 8. Record identically to a manual payment (idempotent; applies to schedules + notifies)
+            const result = await this.verifyAndRecordPayment(reference);
+            return { success: !!result.success, reference, error: result.success ? undefined : (result.error || 'Recording failed') };
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err.message || 'Charge failed';
+            await pool.query(
+                `UPDATE payment_transactions SET status = 'failed', paystack_status = $1 WHERE paystack_reference = $2`,
+                [msg, reference]
+            ).catch(() => {});
+            return { success: false, reference, error: msg };
+        }
+    }
+
     // ─── Deal / Project Payments ───────────────────────────────
 
     /**
@@ -667,6 +779,41 @@ export class PaymentProcessor {
                     paymentId: recordedPayment.id,
                     schedulesUpdated
                 });
+
+                // Auto-Pay mandate capture: if this tenant enabled autopay (a pending/active
+                // mandate exists) and Paystack returned a REUSABLE authorization (cards; rarely
+                // GH MoMo), save/refresh the token so the daily job can charge it later.
+                // Inlined via `pool` (no autopayService import) to avoid a circular dependency.
+                if (authorization?.reusable === true && authorization.authorization_code) {
+                    try {
+                        await pool.query(
+                            `UPDATE tenant_autopay_mandates
+                             SET authorization_code = $1,
+                                 authorization_email = $2,
+                                 channel = $3,
+                                 card_last4 = $4,
+                                 card_bank = $5,
+                                 card_exp = $6,
+                                 status = 'active',
+                                 consecutive_failures = 0,
+                                 last_error = NULL,
+                                 updated_at = NOW()
+                             WHERE tenancy_id = $7 AND status IN ('pending', 'active')`,
+                            [
+                                authorization.authorization_code,
+                                verifyResponse.data.customer?.email || metadata.payer_email || null,
+                                authorization.channel || channel || null,
+                                authorization.last4 || null,
+                                authorization.bank || null,
+                                (authorization.exp_month && authorization.exp_year)
+                                    ? `${authorization.exp_month}/${String(authorization.exp_year).slice(-2)}` : null,
+                                metadata.tenancy_id,
+                            ]
+                        );
+                    } catch (capErr: any) {
+                        logger.warn('Auto-Pay mandate capture failed (non-fatal)', { reference, error: capErr.message });
+                    }
+                }
 
                 // Notify tenant (confirmation) + landlord staff (payment received).
                 await this.notifyRentPaymentReceived(

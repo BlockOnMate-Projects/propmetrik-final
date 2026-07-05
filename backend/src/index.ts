@@ -116,6 +116,7 @@ import { initRentReminderJob } from './jobs/rentReminderJob';
 import { initCrmTaskReminderJob } from './jobs/crmTaskReminderJob';
 import { initDripExecutionJob } from './jobs/dripExecutionJob';
 import { initSubscriptionRenewalJob } from './jobs/subscriptionRenewalJob';
+import { initTenantAutopayJob } from './jobs/tenantAutopayJob';
 import { initDataHubSyncJob } from './jobs/dataHubSyncJob';
 import { initContributionProcessorJob } from './jobs/contributionProcessorJob';
 import { initAnalyticsRefreshJob } from './jobs/analyticsRefreshJob';
@@ -1059,6 +1060,8 @@ const server = app.listen(config.port, async () => {
   initDripExecutionJob();
   // Start daily subscription renewal / dunning sweep
   initSubscriptionRenewalJob();
+  // Start daily tenant rent Auto-Pay sweep (charges saved authorizations on the due day)
+  initTenantAutopayJob();
   // Start CRM→data-hub property sync sweep (DH-B) so Deal Management properties
   // enrich the centralized valuation dataset automatically.
   initDataHubSyncJob();

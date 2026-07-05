@@ -620,6 +620,49 @@ export async function initiatePayment(tenancyId: string, amount: number, schedul
   return res.json();
 }
 
+// ── Auto-Pay (standing rent mandate) ─────────────────────────────
+export interface AutopayStatus {
+  enabled: boolean;
+  status: 'none' | 'pending' | 'active' | 'paused' | 'revoked';
+  chargeDay: number | null;
+  card: { last4?: string; bank?: string; exp?: string; channel?: string } | null;
+  lastChargeAt: string | null;
+  lastError: string | null;
+  ready: boolean;   // active + a reusable card on file → autopay will actually run
+}
+
+export async function getAutopayStatus(tenancyId: string): Promise<AutopayStatus> {
+  const res = await authedFetch(apiUrl(`/tenant-portal/autopay/${tenancyId}`));
+  if (!res.ok) throw new Error('Failed to load auto-pay status');
+  return res.json();
+}
+
+export async function enableAutopay(tenancyId: string, chargeDay: number): Promise<AutopayStatus> {
+  const res = await authedFetch(apiUrl(`/tenant-portal/autopay/enable`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenancyId, chargeDay }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to enable auto-pay');
+  }
+  return (await res.json()).autopay as AutopayStatus;
+}
+
+export async function disableAutopay(tenancyId: string): Promise<AutopayStatus> {
+  const res = await authedFetch(apiUrl(`/tenant-portal/autopay/disable`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenancyId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to disable auto-pay');
+  }
+  return (await res.json()).autopay as AutopayStatus;
+}
+
 export interface FxBreakdown {
   obligationCurrency: string;   // native lease currency, e.g. 'USD'
   obligationAmount: number;     // amount owed in the native currency

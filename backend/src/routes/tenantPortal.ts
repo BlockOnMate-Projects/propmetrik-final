@@ -18,6 +18,7 @@ import { keycloakTenantOnboardingService } from '../services/property-management
 import { rentScheduleService } from '../services/property-management/rent-collection/rentScheduleService';
 import { paymentProcessor } from '../services/property-management/payment/paymentProcessor';
 import { paystackService } from '../services/property-management/payment/paystackService';
+import { autopayService } from '../services/property-management/payment/autopayService';
 import { WorkOrderService } from '../services/property-management/maintenance/workOrderService';
 import { notificationService } from '../../shared-services/notifications/unified';
 import { notify, resolveOrgStaff } from '../../shared-services/notifications/in-mail';
@@ -891,6 +892,66 @@ router.get('/payments/verify/:reference', asyncHandler(async (req: Request, res:
         logger.error('Payment verification failed', { error: error.message, reference });
         res.status(400).json({ error: error.message });
     }
+}));
+
+// =====================================================
+// AUTO-PAY (standing rent mandate)
+// =====================================================
+
+/** Confirm the authenticated tenant owns the tenancy; returns its organization_id. */
+async function resolveOwnedTenancyOrg(req: Request, tenancyId: string): Promise<string | null> {
+    const tenant = (req as any).tenant;
+    const owns = tenant?.activeTenancies?.some((t: any) => t.id === tenancyId);
+    if (!owns) return null;
+    const r = await db.query(`SELECT organization_id FROM tenancies WHERE id = $1`, [tenancyId]);
+    return r.rows[0]?.organization_id || null;
+}
+
+/**
+ * GET /api/v1/tenant-portal/autopay/:tenancyId
+ * Current auto-pay state (safe fields only — never the saved card token).
+ */
+router.get('/autopay/:tenancyId', requireTenantAuth, asyncHandler(async (req: Request, res: Response) => {
+    const { tenancyId } = req.params;
+    const organizationId = await resolveOwnedTenancyOrg(req, tenancyId);
+    if (!organizationId) return res.status(404).json({ error: 'Tenancy not found' });
+    res.json(await autopayService.getStatus(tenancyId));
+}));
+
+/**
+ * POST /api/v1/tenant-portal/autopay/enable  { tenancyId, chargeDay }
+ * Creates/updates the mandate (pending until a reusable card authorization is captured
+ * from a successful card rent payment).
+ */
+router.post('/autopay/enable', requireTenantAuth, asyncHandler(async (req: Request, res: Response) => {
+    const tenant = (req as any).tenant;
+    const { tenancyId, chargeDay } = req.body || {};
+    if (!tenancyId) return res.status(400).json({ error: 'tenancyId is required' });
+
+    const organizationId = await resolveOwnedTenancyOrg(req, tenancyId);
+    if (!organizationId) return res.status(404).json({ error: 'Tenancy not found' });
+
+    const status = await autopayService.enable({
+        tenancyId,
+        tenantId: tenant.id,
+        organizationId,
+        chargeDay: Number(chargeDay) || 5,
+    });
+    res.json({ success: true, autopay: status });
+}));
+
+/**
+ * POST /api/v1/tenant-portal/autopay/disable  { tenancyId }
+ */
+router.post('/autopay/disable', requireTenantAuth, asyncHandler(async (req: Request, res: Response) => {
+    const { tenancyId } = req.body || {};
+    if (!tenancyId) return res.status(400).json({ error: 'tenancyId is required' });
+
+    const organizationId = await resolveOwnedTenancyOrg(req, tenancyId);
+    if (!organizationId) return res.status(404).json({ error: 'Tenancy not found' });
+
+    const status = await autopayService.disable(tenancyId);
+    res.json({ success: true, autopay: status });
 }));
 
 // =====================================================
