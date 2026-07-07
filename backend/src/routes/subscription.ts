@@ -37,6 +37,12 @@ import {
   chargeRenewal,
   processDueRenewals,
 } from '../../shared-services/payments/subscriptions/subscriptionBillingService';
+import {
+  getPricingCatalog,
+  getPricingConfig,
+  setPricingConfig,
+  computeBundleQuote,
+} from '../../shared-services/payments/subscriptions/subscriptionPricing';
 
 const router = Router();
 
@@ -83,6 +89,49 @@ router.get('/plans/:slug', optionalAuth, async (req: Request, res: Response) => 
   } catch (err: any) {
     logger.error('Failed to get plan', err);
     res.status(500).json({ error: 'Failed to fetch plan' });
+  }
+});
+
+/**
+ * GET /subscriptions/pricing-catalog
+ * Authoritative annual-bundle catalog: the four sellable services + their single
+ * annual price, the full-platform price, and the bundle discount curve. Drives
+ * the pricing page and signup when annual-only mode is on. Public.
+ */
+router.get('/pricing-catalog', optionalAuth, async (req: Request, res: Response) => {
+  try {
+    // Optional ?tier= builds a tiered bundle catalog (starter/professional/
+    // enterprise); omitted → the annual entry tier.
+    const tier = typeof req.query.tier === 'string' ? req.query.tier : undefined;
+    const catalog = await getPricingCatalog(tier);
+    res.json(catalog);
+  } catch (err: any) {
+    logger.error('Failed to build pricing catalog', err);
+    res.status(500).json({ error: 'Failed to fetch pricing catalog' });
+  }
+});
+
+/**
+ * POST /subscriptions/pricing-quote
+ * Preview the authoritative price for a set of selected services before
+ * subscribing. Body: { services: string[], billing_interval?: 'annual'|'monthly' }.
+ * Public — no side effects.
+ */
+router.post('/pricing-quote', optionalAuth, async (req: Request, res: Response) => {
+  try {
+    const { services, billing_interval, tier } = req.body || {};
+    if (!Array.isArray(services) || services.length === 0) {
+      return res.status(400).json({ error: 'services[] is required' });
+    }
+    const quote = await computeBundleQuote(
+      services,
+      billing_interval === 'monthly' ? 'monthly' : 'annual',
+      typeof tier === 'string' ? tier : undefined
+    );
+    res.json(quote);
+  } catch (err: any) {
+    logger.warn('Failed to compute pricing quote', { error: err?.message });
+    res.status(400).json({ error: err?.message || 'Failed to compute quote' });
   }
 });
 
@@ -143,10 +192,38 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
     const orgId = (req as any).user?.organizationId;
     const userId = (req as any).user?.id;
     const userEmail = (req as any).user?.email;
-    const { plan_slug, billing_interval, payment_provider, start_trial, metadata } = req.body;
+    const { plan_slug, billing_interval, payment_provider, start_trial, metadata, services, tier } = req.body;
 
-    if (!plan_slug) {
-      return res.status(400).json({ error: 'plan_slug is required' });
+    // Two ways to subscribe:
+    //  A) à la carte bundle — `services: string[]` (1-4 of the workflow services).
+    //     We compute the authoritative anchor plan + discounted price server-side
+    //     (never trusting a client amount) and carry the service set + bundle
+    //     price in metadata so entitlements + invoicing bill exactly the bundle.
+    //  B) legacy single plan — `plan_slug` (tiered catalog / back-compat).
+    let effectivePlanSlug = plan_slug as string | undefined;
+    let effectiveInterval = billing_interval as 'annual' | 'monthly' | undefined;
+    let effectiveMetadata: Record<string, any> = { ...(metadata || {}) };
+
+    if (Array.isArray(services) && services.length > 0) {
+      const quote = await computeBundleQuote(
+        services,
+        billing_interval === 'monthly' ? 'monthly' : 'annual',
+        typeof tier === 'string' ? tier : undefined
+      );
+      effectivePlanSlug = quote.anchor_plan_slug;
+      effectiveInterval = quote.billing_interval;
+      effectiveMetadata = {
+        ...effectiveMetadata,
+        services: quote.services,
+        bundle_price_ghs: quote.price_ghs,
+        bundle_list_ghs: quote.list_ghs,
+        bundle_discount_pct: quote.discount_pct,
+        is_full_platform: quote.is_full_platform,
+      };
+    }
+
+    if (!effectivePlanSlug) {
+      return res.status(400).json({ error: 'plan_slug or services[] is required' });
     }
 
     // Charge-immediately model (no free trial): when real payment is required,
@@ -159,12 +236,12 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
     const subscription = await createSubscription({
       organization_id: orgId || undefined,
       user_id: userId,
-      plan_slug,
-      billing_interval,
+      plan_slug: effectivePlanSlug,
+      billing_interval: effectiveInterval,
       payment_provider,
       start_trial: false,
       payment_pending: requiresPayment,
-      metadata,
+      metadata: effectiveMetadata,
       actor_id: userId,
     });
 
@@ -224,7 +301,7 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
             payment_type: 'subscription',
             subscription_id: subscription.id,
             invoice_id: invoice.id,
-            plan_slug,
+            plan_slug: effectivePlanSlug, // anchor plan (bundle-safe; raw plan_slug is undefined for services[] requests)
             ...(isForeign ? {
               obligation_currency: obligationCurrency,
               obligation_amount: invoice.total,
@@ -714,6 +791,38 @@ router.delete('/admin/plans/:id', authenticate, requireSuperAdmin, async (req: R
   } catch (err: any) {
     logger.error('Failed to deactivate plan', err);
     res.status(500).json({ error: 'Failed to deactivate plan' });
+  }
+});
+
+/**
+ * GET /admin/pricing-config
+ * Read the pricing display config (annual-only toggle, canonical tier, discounts).
+ */
+router.get('/admin/pricing-config', authenticate, requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const cfg = await getPricingConfig();
+    res.json(cfg);
+  } catch (err: any) {
+    logger.error('Failed to read pricing config', err);
+    res.status(500).json({ error: 'Failed to read pricing config' });
+  }
+});
+
+/**
+ * PUT /admin/pricing-config
+ * Update the pricing display config. Body: { annual_only?, canonical_tier?, bundle_discounts? }.
+ * The `annual_only` toggle hides tiered + monthly plans, showing only annual
+ * per-service and full-platform pricing on the public catalog.
+ */
+router.put('/admin/pricing-config', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const actorId = (req as any).user?.id;
+    const { annual_only, canonical_tier, bundle_discounts } = req.body || {};
+    const next = await setPricingConfig({ annual_only, canonical_tier, bundle_discounts }, actorId);
+    res.json(next);
+  } catch (err: any) {
+    logger.error('Failed to update pricing config', err);
+    res.status(500).json({ error: 'Failed to update pricing config' });
   }
 });
 
