@@ -31,6 +31,11 @@ import {
   Subscription,
   Invoice,
 } from './subscriptionService';
+import {
+  resolveEntitlementServiceKeys,
+  grantServiceEntitlements,
+  revokeServiceEntitlements,
+} from './subscriptionEntitlements';
 import { notify } from '../../notifications/notify';
 
 // Dunning policy
@@ -213,6 +218,22 @@ export async function reconcileSubscriptionPayment(reference: string): Promise<R
   await captureAuthorization(subscriptionId, verify.data);
 
   const sub = await getSubscriptionById(subscriptionId);
+
+  // Grant service access now that payment has settled. markInvoicePaid flips the
+  // sub incomplete→active but does NOT unlock services — this is the payment-path
+  // half of the fix (createSubscription handles the trial/free-activation path).
+  // Idempotent, so harmless on renewals of an already-entitled org.
+  if (sub) {
+    const serviceKeys = resolveEntitlementServiceKeys(sub.plan, (sub.metadata as any)?.services);
+    await grantServiceEntitlements(pool, {
+      organizationId: sub.organization_id,
+      userId: sub.user_id,
+      serviceKeys,
+      tier: sub.plan?.tier,
+    }).catch((err) =>
+      logger.error('Failed to grant entitlements on reconcile', { subscriptionId, error: err?.message })
+    );
+  }
 
   // If this settles a RENEWAL whose period already lapsed (e.g. a mobile-money
   // prompt the customer approved minutes/hours later), roll the period forward.
@@ -447,6 +468,10 @@ export async function processDueRenewals(): Promise<{ renewed: number; failed: n
     await pool.query(`UPDATE subscriptions SET status = 'expired', updated_at = NOW() WHERE id = $1`, [row.id]);
     if (row.organization_id) {
       await pool.query(`UPDATE organizations SET subscription_status = 'expired' WHERE id = $1`, [row.organization_id]);
+      // The paid period has now ended — revoke the org's workflow service access.
+      await revokeServiceEntitlements(pool, { organizationId: row.organization_id }).catch((err) =>
+        logger.error('Failed to revoke entitlements on expiry', { subscriptionId: row.id, error: err?.message })
+      );
     }
     await pool.query(
       `INSERT INTO subscription_events (subscription_id, event_type, to_status, details)

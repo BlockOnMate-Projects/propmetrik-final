@@ -11,6 +11,11 @@
 import { pool } from '../../../src/database';
 import { logger } from '../../../src/utils/logger';
 import { keycloakConfig } from '../../../src/config';
+import {
+  resolveEntitlementServiceKeys,
+  grantServiceEntitlements,
+  revokeServiceEntitlements,
+} from './subscriptionEntitlements';
 import axios from 'axios';
 import crypto from 'crypto';
 
@@ -615,6 +620,18 @@ export async function createSubscription(data: {
       JSON.stringify({ plan_slug: plan.slug, billing_interval: interval }),
     ]);
 
+    // Grant service access NOW when the subscription is immediately usable.
+    // Payment-pending subs stay locked until reconcileSubscriptionPayment confirms.
+    if (status === 'active' || status === 'trialing') {
+      const serviceKeys = resolveEntitlementServiceKeys(plan, data.metadata?.services);
+      await grantServiceEntitlements(client, {
+        organizationId: data.organization_id,
+        userId: data.user_id,
+        serviceKeys,
+        tier: plan.tier,
+      });
+    }
+
     await client.query('COMMIT');
 
     // Sync Keycloak roles (best-effort)
@@ -704,6 +721,22 @@ export async function changeSubscriptionPlan(
       JSON.stringify({ from_plan: subscription.plan?.slug, to_plan: newPlan.slug }),
     ]);
 
+    // Re-sync service access to the new plan: revoke the org's workflow services,
+    // then grant exactly what the new plan (or its à la carte selection) unlocks.
+    if (subscription.organization_id) {
+      await revokeServiceEntitlements(client, { organizationId: subscription.organization_id });
+    }
+    const newServiceKeys = resolveEntitlementServiceKeys(
+      newPlan,
+      (subscription.metadata as any)?.services
+    );
+    await grantServiceEntitlements(client, {
+      organizationId: subscription.organization_id,
+      userId: subscription.user_id,
+      serviceKeys: newServiceKeys,
+      tier: newPlan.tier,
+    });
+
     await client.query('COMMIT');
 
     // Sync Keycloak
@@ -750,6 +783,9 @@ export async function cancelSubscription(
       await client.query(`
         UPDATE organizations SET subscription_status = 'cancelled' WHERE id = $1
       `, [subscription.organization_id]);
+      // Immediate cancel revokes service access now; period-end cancels keep
+      // access until markExpired runs at the end of the paid period.
+      await revokeServiceEntitlements(client, { organizationId: subscription.organization_id });
     }
 
     await client.query(`
@@ -1074,10 +1110,15 @@ export async function createInvoice(
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + dueDays);
 
-    // Calculate base price
-    const price = subscription.billing_interval === 'annual'
+    // Calculate base price. À la carte / multi-service bundles carry an
+    // authoritative, discounted price in metadata (computed server-side by
+    // subscriptionPricing.computeBundleQuote) — honour it over the anchor plan's
+    // list price so the customer is billed the bundled amount.
+    const bundlePrice = Number((subscription.metadata as any)?.bundle_price_ghs);
+    const planPrice = subscription.billing_interval === 'annual'
       ? (subscription.plan.price_annual_ghs || subscription.plan.price_monthly_ghs * 12)
       : subscription.plan.price_monthly_ghs;
+    const price = Number.isFinite(bundlePrice) && bundlePrice > 0 ? bundlePrice : planPrice;
 
     let subtotal = price * subscription.quantity;
 
@@ -1123,13 +1164,18 @@ export async function createInvoice(
 
     const invoice = invoiceRows[0];
 
-    // Add base plan line item
+    // Add base plan line item. For a multi-service bundle, label it by the
+    // services it covers rather than the anchor plan name.
+    const bundleServices: string[] = (subscription.metadata as any)?.services || [];
+    const lineLabel = bundleServices.length >= 2
+      ? `Bundle: ${bundleServices.join(' + ')} (${subscription.billing_interval})`
+      : `${subscription.plan.name} (${subscription.billing_interval})`;
     await client.query(`
       INSERT INTO invoice_items (invoice_id, description, plan_id, quantity, unit_price, total)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [
       invoice.id,
-      `${subscription.plan.name} (${subscription.billing_interval})`,
+      lineLabel,
       subscription.plan.id,
       subscription.quantity,
       price,

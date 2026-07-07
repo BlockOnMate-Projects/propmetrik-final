@@ -21,6 +21,15 @@ import {
     TrendingUp,
     Database,
 } from 'lucide-react';
+import {
+    PricingCatalog,
+    WorkflowService,
+    WORKFLOW_SERVICES,
+    fetchPricingCatalog,
+    computeLocalQuote,
+    formatGhs,
+} from '@/lib/pricing';
+import BundleSelector from '@/components/pricing/BundleSelector';
 
 /* ====================================================================
    Multi-step signup form
@@ -33,6 +42,8 @@ function SignupForm() {
     const plan = searchParams.get('plan');
     const category = searchParams.get('category');
     const billingParam = searchParams.get('billing');
+    const servicesParam = searchParams.get('services'); // 'crm,projects' | 'full'
+    const tierParam = searchParams.get('tier'); // tiered bundle: 'starter'|'professional'|'enterprise'
 
     /* ------ plans: fetched from the DB (the single source of truth) ------ */
     // Prices live in subscription_plans (served by GET /subscriptions/plans).
@@ -112,6 +123,32 @@ function SignupForm() {
     const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>(
         (billingParam as 'monthly' | 'annual') || 'monthly'
     );
+
+    /* ------ bundle mode (annual entry toggle, or a tiered bundle link) ------ */
+    const [catalog, setCatalog] = useState<PricingCatalog | null>(null);
+    const [selectedServices, setSelectedServices] = useState<WorkflowService[]>([]);
+    // Bundle flow when the annual toggle is on, OR when arriving from a tiered
+    // bundle link (?services=&tier=). Tiered bundles carry a tier + billing interval.
+    const bundleMode = !!servicesParam || catalog?.mode === 'annual_bundle';
+    const bundleInterval: 'annual' | 'monthly' = tierParam ? billingInterval : 'annual';
+    useEffect(() => {
+        fetchPricingCatalog(tierParam || undefined).then((c) => {
+            setCatalog(c);
+            if (c?.mode === 'annual_bundle' && !tierParam) setBillingInterval('annual');
+        });
+    }, [tierParam]);
+    // Preselect services from the pricing-page CTA (?services=crm,projects | full).
+    useEffect(() => {
+        if (!servicesParam) return;
+        if (servicesParam === 'full') {
+            setSelectedServices([...WORKFLOW_SERVICES]);
+        } else {
+            const wanted = servicesParam.split(',').filter((s): s is WorkflowService =>
+                (WORKFLOW_SERVICES as string[]).includes(s)
+            );
+            if (wanted.length) setSelectedServices(wanted);
+        }
+    }, [servicesParam]);
     const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'bank_transfer'>('paystack');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -137,7 +174,7 @@ function SignupForm() {
     const selectedPlanInfo = allPlans.find((p) => p.slug === selectedPlan);
 
     const canProceedStep1 = firstName && lastName && email && password && password.length >= 8;
-    const canProceedStep2 = !!selectedPlan;
+    const canProceedStep2 = bundleMode ? selectedServices.length > 0 : !!selectedPlan;
 
     /* ------ submit ------ */
     const handleSubmit = async (e: React.FormEvent) => {
@@ -145,8 +182,8 @@ function SignupForm() {
         setIsLoading(true);
         setError(null);
 
-        if (!selectedPlan) {
-            setError('Please select a plan.');
+        if (bundleMode ? selectedServices.length === 0 : !selectedPlan) {
+            setError(bundleMode ? 'Please select at least one service.' : 'Please select a plan.');
             setIsLoading(false);
             return;
         }
@@ -184,8 +221,12 @@ function SignupForm() {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    plan_slug: selectedPlan,
-                    billing_interval: billingInterval,
+                    // Bundle mode sends services[] (+ tier for tiered bundles); the
+                    // server computes the authoritative anchor plan + discounted price.
+                    ...(bundleMode
+                        ? { services: selectedServices, ...(tierParam ? { tier: tierParam } : {}) }
+                        : { plan_slug: selectedPlan }),
+                    billing_interval: bundleMode ? bundleInterval : billingInterval,
                     payment_provider: paymentMethod,
                     billing_phone: billingPhone || undefined,
                     billing_address: billingAddress || undefined,
@@ -446,11 +487,29 @@ function SignupForm() {
                             className="space-y-5"
                         >
                             <div>
-                                <h2 className="text-2xl font-bold text-foreground mb-1">Choose your plan</h2>
-                                <p className="text-sm text-muted-foreground">Select a product and tier that fits your needs.</p>
+                                <h2 className="text-2xl font-bold text-foreground mb-1">
+                                    {bundleMode ? 'Choose your services' : 'Choose your plan'}
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    {bundleMode
+                                        ? 'Pick the services you need — bundle 2 for 20% off, 3 for 35% off, or get the full platform.'
+                                        : 'Select a product and tier that fits your needs.'}
+                                </p>
                             </div>
 
+                            {/* Annual bundle selector (admin toggle mode) */}
+                            {bundleMode && catalog && (
+                                <BundleSelector
+                                    catalog={catalog}
+                                    selected={selectedServices}
+                                    onChange={setSelectedServices}
+                                    interval={bundleInterval}
+                                    compact
+                                />
+                            )}
+
                             {/* Billing toggle */}
+                            {!bundleMode && (<>
                             <div className="flex items-center justify-center gap-1 p-1 bg-card border border-border rounded-xl w-fit mx-auto">
                                 <button
                                     type="button"
@@ -546,6 +605,7 @@ function SignupForm() {
                                     </div>
                                 ))}
                             </div>
+                            </>)}
 
                             <div className="flex gap-3 pt-2">
                                 <button
@@ -609,7 +669,32 @@ function SignupForm() {
                             </div>
 
                             {/* Order summary mini */}
-                            {selectedPlanInfo && (
+                            {bundleMode && catalog ? (
+                                (() => {
+                                    const q = computeLocalQuote(catalog, selectedServices, bundleInterval);
+                                    return (
+                                        <div className="bg-card/50 border border-border rounded-xl p-4 flex items-center justify-between">
+                                            <div>
+                                                <div className="text-xs text-muted-foreground uppercase tracking-wider">
+                                                    {q.is_full_platform ? 'Full Platform' : `${selectedServices.length} service${selectedServices.length > 1 ? 's' : ''}`}
+                                                </div>
+                                                <div className="text-sm font-bold text-foreground">
+                                                    {q.is_full_platform
+                                                        ? 'Valuations · PM · CRM · Projects'
+                                                        : selectedServices.map((s) => catalog.services.find((c) => c.key === s)?.name || s).join(' + ')}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                {q.discount_pct > 0 && (
+                                                    <div className="text-[10px] text-muted-foreground line-through">{formatGhs(q.list_ghs)}</div>
+                                                )}
+                                                <div className="text-sm font-bold text-foreground">{formatGhs(q.price_ghs)}</div>
+                                                <div className="text-[10px] text-muted-foreground uppercase">{bundleInterval === 'annual' ? 'billed annually' : 'billed monthly'}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()
+                            ) : selectedPlanInfo && (
                                 <div className="bg-card/50 border border-border rounded-xl p-4 flex items-center justify-between">
                                     <div>
                                         <div className="text-xs text-muted-foreground uppercase tracking-wider">{CATEGORY_LABELS[selectedPlanInfo.category] || selectedPlanInfo.category}</div>

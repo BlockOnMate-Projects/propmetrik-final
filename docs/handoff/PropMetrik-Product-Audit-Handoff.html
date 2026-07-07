@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PropMetrik — Product &amp; Technical Audit Handoff</title>
+<style>
+  :root{
+    --navy:#1e2a44; --navy2:#2a3652; --ink:#26303f; --muted:#5b6675; --faint:#8a94a3;
+    --orange:#c47f2c; --line:#e4e7ec; --rule:#c47f2c;
+    --code-bg:#f2f4f7; --thead:#2b3652;
+    --crit:#c0392b; --high:#d4761f; --med:#b7791f; --low:#8a94a3;
+    --green:#2e8b6b; --greenbg:#e8f5ee; --amber:#b7791f; --amberbg:#fbf3e2; --red:#c0392b; --redbg:#fbeceb;
+    --blue:#2f5aa8; --bluebg:#eef3fb;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{font-family:"Helvetica Neue",Arial,"Segoe UI",system-ui,sans-serif; color:var(--ink); font-size:9.4px; line-height:1.5; margin:0;}
+  .page{padding:0 4px;}
+  h1{font-size:30px; color:var(--navy); margin:0 0 2px; letter-spacing:-.4px;}
+  h2{font-size:15px; color:var(--navy); margin:26px 0 3px; padding-bottom:5px; border-bottom:2px solid var(--rule); page-break-after:avoid;}
+  h2 .n{color:var(--navy); font-weight:800; margin-right:6px;}
+  h3{font-size:11px; color:var(--navy); margin:16px 0 4px; page-break-after:avoid;}
+  h4{font-size:9.6px; color:var(--ink); margin:11px 0 3px; page-break-after:avoid;}
+  p{margin:5px 0;}
+  .subtitle{font-size:13px; color:var(--navy2); font-weight:600; margin:0 0 10px;}
+  .lead{color:var(--ink); max-width:96%;}
+  .tag{color:var(--orange); font-weight:700;}
+  code,.c{font-family:"SF Mono","Consolas","Roboto Mono",monospace; background:var(--code-bg); color:#33405a; padding:1px 4px; border-radius:3px; font-size:8.4px; white-space:nowrap;}
+  .chips{margin:8px 0 14px;}
+  .chip{display:inline-block; border:1px solid var(--line); border-radius:12px; padding:2px 10px; font-size:8.4px; color:var(--muted); margin:0 5px 5px 0; background:#fff;}
+  table{border-collapse:collapse; width:100%; margin:7px 0 4px; font-size:8.5px;}
+  thead th{background:var(--thead); color:#fff; text-align:left; padding:5px 7px; font-weight:600; vertical-align:top;}
+  td{border-bottom:1px solid var(--line); padding:5px 7px; vertical-align:top;}
+  tbody tr:nth-child(even){background:#fafbfc;}
+  .t td:first-child{font-weight:600; color:var(--navy2);}
+  ul{margin:5px 0 5px 0; padding-left:16px;}
+  li{margin:3px 0;}
+  .muted{color:var(--muted);}
+  .faint{color:var(--faint); font-size:8.2px;}
+  .sev{font-weight:800; letter-spacing:.2px;}
+  .crit{color:var(--crit);} .high{color:var(--high);} .med{color:var(--med);} .low{color:var(--low);}
+  .pill{display:inline-block; border-radius:10px; padding:1px 8px; font-size:7.6px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; white-space:nowrap;}
+  .built,.live{background:var(--greenbg); color:var(--green);}
+  .partial,.avail{background:var(--amberbg); color:var(--amber);}
+  .gap,.soon{background:var(--redbg); color:var(--red);}
+  .build{background:#eef1f6; color:#3f4a5e;}
+  .box{border-left:3px solid var(--navy); background:#f7f9fc; padding:8px 12px; margin:10px 0; border-radius:0 4px 4px 0;}
+  .risk{border-left:3px solid var(--crit); background:#fdf1f0; padding:8px 12px; margin:10px 0; border-radius:0 4px 4px 0;}
+  .info{border-left:3px solid var(--blue); background:var(--bluebg); padding:8px 12px; margin:10px 0; border-radius:0 4px 4px 0;}
+  .scopebox{position:absolute; bottom:8px; left:0; right:0; border-top:1px solid var(--line); padding-top:8px; font-size:8.3px; color:var(--muted);}
+  .cover{position:relative; height:960px;}
+  .cover .bar{width:64px; height:5px; background:var(--orange); margin-bottom:16px;}
+  .toc a{color:var(--ink); text-decoration:none;}
+  .toc .row{margin:7px 0;}
+  .toc .num{color:var(--orange); font-weight:700; margin-right:6px;}
+  .toc .sub{color:var(--muted); font-size:8.4px; margin-left:16px;}
+  .pagebreak{page-break-before:always;}
+  .kicker{color:var(--faint); font-size:8.2px; margin:2px 0 6px;}
+  figure{margin:12px 0; page-break-inside:avoid;}
+  figcaption{font-size:8.2px; color:var(--muted); margin-top:4px; text-align:center;}
+  .dgm{width:100%; border:1px solid var(--line); border-radius:6px; background:#fff;}
+  .legend{font-size:8px; fill:var(--muted);}
+  .nowrap{white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<div class="page cover">
+  <div class="bar"></div>
+  <h1>PropMetrik</h1>
+  <div class="subtitle">Product &amp; Technical Audit Handoff</div>
+  <div class="chips">
+    <span class="chip">Valuations</span><span class="chip">Property Management</span>
+    <span class="chip">Deals / CRM</span><span class="chip">Projects</span>
+    <span class="chip">Data Hub</span><span class="chip">Platform &amp; Admin</span>
+    <span class="chip">Portals &amp; RBAC</span>
+  </div>
+  <p class="lead">A structured reference for an external engineering team engaged to <b>audit the product, remediate defects,
+  close feature gaps, and verify readiness</b> for corporate-client onboarding and SOC certification. It lists each
+  service's features and capabilities, the purpose of every sub-tab, the <b>Data Hub data infrastructure</b> that feeds
+  valuation and analytics, all authenticated portals, and the RBAC roles they must be tested under, with the gaps
+  identified per service.</p>
+
+  <div class="scopebox">
+    <p style="margin:3px 0"><b>Scope included:</b> Valuations · Property Management (+ Tenant Portal) · Deals/CRM · Projects · <b>Data Hub (data infrastructure)</b> · Platform/Admin · Integrations · Communications · Authentication &amp; RBAC · all end-user portals.</p>
+    <p style="margin:3px 0"><b>Explicitly excluded:</b> the customer-facing Analytics / market-intelligence <i>dashboards</i> (the Data Hub <i>pipeline</i> that produces their data <b>is</b> in scope) · Blockchain / crypto payout (multi-chain) features.</p>
+    <p style="margin:3px 0"><b>Classification:</b> Confidential — for the engaged audit team only. &nbsp;·&nbsp; <b>Architecture:</b> Next.js (App Router) frontend · Express/TypeScript backend · Python valuation engine · Python/Scrapy ingestion worker · PostgreSQL + PostGIS · OpenSearch · Redis · MinIO · Keycloak identity.</p>
+    <p class="faint" style="margin:3px 0">Every claim in this document is grounded in a direct read of the codebase on branch <code>main</code>; file paths are cited so findings are independently verifiable.</p>
+  </div>
+</div>
+
+<!-- ===================== 1. EXEC SUMMARY ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">1</span>Executive Summary</h2>
+<p>PropMetrik is a multi-tenant proptech SaaS for the Ghanaian market composed of four separately-subscribed customer services on one platform, a shared <b>Data Hub</b> data-infrastructure layer, a platform/admin layer, and several external portals.</p>
+
+<h3>1.1 What the product is</h3>
+<table class="t">
+  <thead><tr><th style="width:16%">Service</th><th style="width:46%">Purpose</th><th>Primary users</th></tr></thead>
+  <tbody>
+    <tr><td>Valuations</td><td>RICS-compliant multi-method property valuation, reconciliation &amp; sealed report production.</td><td>Valuers, reviewers/QA, finance officers, instructing clients (as records).</td></tr>
+    <tr><td>Property Management</td><td>Landlord/facilities operations: properties &amp; multi-unit buildings, tenancies/leases, rent &amp; utility billing, maintenance, inspections, portfolio financials.</td><td>Property managers, leasing/maintenance staff, accounts officers, tenants (self-service portal).</td></tr>
+    <tr><td>Deals / CRM</td><td>Real-estate sales CRM: leads/contacts, deal pipeline, agent territories, commissions, marketing automation, e-sign.</td><td>Sales agents, sales managers, admins; buyers/sellers via public marketplace.</td></tr>
+    <tr><td>Projects</td><td>Construction &amp; development project management: phases/milestones, schedule/Gantt, RFIs, submittals, change orders, procurement, draws, financials.</td><td>Project managers, QS, site supervisors; vendors via tokenized bid portal.</td></tr>
+    <tr><td><b>Data Hub</b></td><td><b>The data infrastructure.</b> A tiered ingestion + provenance layer that turns operational activity (PM/CRM/valuation) into a proprietary, first-party comparable dataset, blends it with scraped listings and government/statistical feeds, and serves it to valuation (comparables) and analytics (indices).</td><td>Internal — feeds the valuation engine and analytics; admin-visible via the Data Hub console.</td></tr>
+  </tbody>
+</table>
+<p>These are unified by a <b>shared platform layer</b>: authentication/RBAC, an org-wide <b>Integrations Hub</b> (BYO OAuth/api-key/webhook), a shared <b>Communications Hub</b> (chat · mail · social · calendar), a centralized notification engine, fiat payments (Paystack), and a staff <b>Admin</b> console.</p>
+
+<h3>1.2 Overall readiness posture (for the auditor's attention)</h3>
+<div class="risk">
+<p style="margin:2px 0"><b>Headline risks to prioritise.</b> An internal audit rated the codebase ~4/10 overall (Security 3/10; the Data Hub domain 3.5/10 on its own). The highest-severity, cross-cutting items an external auditor should validate first:</p>
+<ul>
+  <li><span class="sev crit">CRITICAL</span> — <b>Dev-mode auth bypass</b> in the backend falls back to the first <code>super_admin</code> on multiple error paths when dev flags are set. Must be provably disabled in production config (single highest-risk control).</li>
+  <li><span class="sev crit">CRITICAL</span> — <b>Unauthenticated Python valuation engine</b> (CORS <code>*</code> + credentials on <code>0.0.0.0:8001</code>) is called <i>directly</i> from the browser, exposing the engine and its DB-backed comparable search.</li>
+  <li><span class="sev crit">CRITICAL</span> — <b>Data Hub ingestion has an unauthenticated worker + SSRF surface</b> (§7.7): the Scrapy worker on <code>0.0.0.0:5000</code> has no auth or run-cap, and partner-pull endpoints read attacker-writable URLs as request targets. Official-FX provenance can be poisoned into the money-settlement path.</li>
+  <li><span class="sev high">HIGH</span> — <b>Fail-open RBAC on the frontend</b> ("no scoping defined = allow") with hardcoded fallbacks; every route must be re-enforced server-side. Prioritise <code>viewer</code> (never writes), <code>service_admin</code> (only inviter), and finance/commission (money) tabs across all services.</li>
+  <li><span class="sev high">HIGH</span> — <b>Money-out has no disbursement rail:</b> commission payouts, refunds and deposit releases are tracked/approved but never actually paid; money-in (Paystack) works. Money paths need dedicated test coverage.</li>
+  <li><span class="sev high">HIGH</span> — <b>Silent data-integrity risk in the Data Hub</b> (§7.7): the Bull job queue runs in stub mode and <i>drops every queued job</i>; multiple scrapers report "success" on total fetch failure; official-source labels are applied to third-party FX data.</li>
+  <li><span class="sev high">HIGH</span> — <b>Two non-production portals present:</b> the Contractor portal is an unauthenticated mock stub, and there is no external client/owner or valuation-client portal. These must be built &amp; tested or removed before a corporate/SOC handoff.</li>
+  <li><span class="sev med">MEDIUM</span> — <b>API-URL contract violations</b> (~24+ files hardcode <code>http://localhost:4000</code> instead of the relative <code>/api</code> proxy), a dev/prod-leak risk; and single-prod-DB with local-dev-hits-prod operational risk.</li>
+</ul>
+<p class="faint" style="margin:2px 0">Full, per-service detail and file citations follow. Section 9 consolidates the security &amp; SOC-readiness backlog.</p>
+</div>
+
+<h3>1.3 How to read this document</h3>
+<p>Status tags used throughout: <span class="pill built">Built</span> production-wired &nbsp; <span class="pill partial">Partial</span> exists but incomplete/UI-only &nbsp; <span class="pill gap">Gap</span> not built / stub / must build+test.</p>
+<p>Section 2 documents authentication, the full RBAC role model, and the complete portal inventory. Sections 3–6 document each customer service (purpose, sub-tab table, capabilities, roles, gaps). <b>Section 7 documents the Data Hub</b> — the data infrastructure, its source tiers, the contribution flywheel, and how it feeds valuation and analytics. Section 8 covers the platform/admin layer. Section 9 is the consolidated security &amp; SOC gap backlog. Section 10 is the portal-and-role test matrix the external team should execute.</p>
+</div>
+
+<!-- ===================== CONTENTS ===================== -->
+<div class="page pagebreak">
+<h2 style="border-bottom-color:var(--orange)">Contents</h2>
+<div class="toc">
+  <div class="row"><span class="num">1.</span>Executive Summary</div>
+  <div class="row"><span class="num">2.</span>Authentication, RBAC &amp; Portals<div class="sub">Auth &amp; session architecture · Staff-vs-customer model · Role matrix (all services) · Portals inventory · Role-scoped sub-portals · Portal/RBAC gaps</div></div>
+  <div class="row"><span class="num">3.</span>Valuations Service<div class="sub">Sub-tabs · Valuation methods · Reports &amp; e-sign · Roles &amp; client access · Gaps</div></div>
+  <div class="row"><span class="num">4.</span>Property Management Service (+ Tenant Portal)<div class="sub">Sub-tabs · Tenant portal · Roles · Gaps</div></div>
+  <div class="row"><span class="num">5.</span>Deals / CRM Service<div class="sub">Sub-tabs · Capabilities · Roles &amp; customer touchpoints · Gaps</div></div>
+  <div class="row"><span class="num">6.</span>Projects (Project Management) Service<div class="sub">Sub-tabs · Capabilities · Roles &amp; external portals · Gaps</div></div>
+  <div class="row"><span class="num" style="color:var(--orange)">7.</span><b>Data Hub — Data Infrastructure</b><div class="sub">What it is &amp; why it matters · Source tiers (diagram) · Contribution flywheel (diagram) · Scraped-listing catalog · Statistical/economic feeds · Contribution &amp; superseding · Flow to valuation · Flow to analytics · Gaps &amp; SOC findings</div></div>
+  <div class="row"><span class="num">8.</span>Platform, Admin, Integrations &amp; Communications</div>
+  <div class="row"><span class="num">9.</span>Consolidated Security &amp; SOC-Readiness Backlog</div>
+  <div class="row"><span class="num">10.</span>Portal &amp; Role Test Matrix (readiness checklist)</div>
+</div>
+<p class="faint" style="margin-top:14px">The customer-facing analytics <i>dashboards</i> and blockchain/crypto payout features are intentionally out of scope and are omitted or noted only where they intersect a shared surface. The Data Hub <i>data pipeline</i> that produces analytics data <b>is</b> in scope (Section 7).</p>
+</div>
+
+<!-- ===================== 2. AUTH / RBAC / PORTALS ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">2</span>Authentication, RBAC &amp; Portals</h2>
+<p class="kicker">Source of truth: code on branch <code>main</code>. Written for an external SOC audit handoff; every claim cites a file path.</p>
+
+<h3>2.1 Auth &amp; session architecture</h3>
+<h4>Identity providers &amp; token model</h4>
+<p>Authentication is split between a Next.js session layer (<code>frontend/src/auth.ts</code>, NextAuth v5) and an Express verification layer (<code>backend/src/middleware/auth.ts</code>). Four frontend providers:</p>
+<table class="t">
+  <thead><tr><th style="width:16%">Provider id</th><th style="width:30%">Purpose</th><th style="width:32%">Backend call</th><th>Resulting <code>userType</code></th></tr></thead>
+  <tbody>
+    <tr><td><code>credentials</code></td><td>Email/password staff &amp; customer login</td><td><code>POST /api/v1/auth/login</code></td><td>from backend (staff/customer)</td></tr>
+    <tr><td><code>tenant-credentials</code></td><td>Tenant portal login</td><td><code>/tenant-portal/auth/keycloak/password-login</code></td><td><code>tenant</code></td></tr>
+    <tr><td><code>keycloak</code></td><td>Enterprise SSO (OIDC)</td><td>Keycloak issuer</td><td>from token realm roles</td></tr>
+    <tr><td><code>google</code></td><td>Social sign-in/up</td><td><code>POST /api/v1/auth/google</code> (verifies Google <code>id_token</code> server-side)</td><td>from backend</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>Session strategy is JWT, 30-day max age. The NextAuth JWT stores <code>accessToken</code> (backend-issued local JWT or a Keycloak access token), <code>role</code>, <code>tier</code>, <code>userType</code>, <code>subscribedServices</code>, <code>organizationId</code>. Token refresh is built in; failure sets <code>session.error='RefreshTokenError'</code>.</li>
+  <li>The backend <code>authenticate</code> middleware accepts three credential types in order: <b>(1)</b> Keycloak JWT verified against remote JWKS (issuer+audience checks; Redis blacklist for logout/revocation), <b>(2)</b> Local JWT via <code>config.jwt.secret</code>, <b>(3)</b> Dev-mode bypass loading the first <code>super_admin</code> when <code>AUTH_DEV_BYPASS=true</code> and non-prod. Tokens may also arrive as a <code>?token=</code> query param for SSE/EventSource. After auth, <code>enrichUserFromDb</code> populates <code>userType</code>/<code>tier</code> and <b>fails closed to</b> <code>customer</code> (never staff) — correct least-privilege default.</li>
+  <li>Analytics API keys (<code>pmk_</code>) are explicitly rejected on session routes.</li>
+</ul>
+<div class="risk"><p style="margin:2px 0"><b>AUDIT FLAG — dev bypass.</b> Multiple <code>catch</code> branches in <code>authenticate</code> fall back to the dev <code>super_admin</code> user on <i>any</i> auth failure when <code>config.app.devAuthBypass</code> (<code>AUTH_DEV_BYPASS=true</code> + non-prod) is set. This must be provably disabled in production via a config assertion + test. It is the single highest-risk control for SOC.</p></div>
+
+<h4>Subdomain model &amp; host-only cookie isolation</h4>
+<p>Three hosts: <code>propmetrik.com</code> (main app), <code>tenant.propmetrik.com</code> (tenant portal), <code>api.propmetrik.com</code> (backend); <code>app.*</code> is legacy/dead. Host routing lives in <code>frontend/src/middleware.ts</code> (<code>NEXT_PUBLIC_TENANT_HOST</code>-driven, nothing hardcoded). On the tenant host the portal <b>is the whole site</b> (staff routes never served). NextAuth runs <code>trustHost:true</code> and derives the auth URL from the request host, so session cookies are <b>host-scoped, not domain-scoped</b> — a tenant session on <code>tenant.*</code> is never sent to <code>propmetrik.com</code> and vice-versa. <b>This host-only cookie isolation is the primary tenant/staff separation boundary and should be a named SOC control.</b></p>
+
+<h4>Staff vs Customer model &amp; backend authorization layers</h4>
+<ul>
+  <li><code>organizations.is_platform_org=true</code> marks the single PropMetrik staff org → members are <code>user_type='staff'</code>; everyone else <code>'customer'</code>.</li>
+  <li><b>Admin console requires role AND</b> <code>user_type='staff'</code> (<code>requirePlatformRoles</code>): a customer holding an <code>admin</code> role still fails because <code>isPlatformStaff</code> is false. Frontend mirrors this. Staff bypass subscription tiers; tiers apply to customers only.</li>
+  <li>Backend layers guards: <code>requirePMAccess</code>/<code>requirePMWrite</code> (roles) → project-scoped membership (<code>getProjectMembership</code>) with 8 per-member permission flags. Org-leadership roles bypass project scoping; non-admins only see projects they own/are active members of — enforced on path params, allow-listed child-resource params (injection-safe), and query-param list endpoints.</li>
+</ul>
+
+<h3>2.2 RBAC role model</h3>
+<h4>Platform / staff roles (org-internal realm roles)</h4>
+<p class="faint">From <code>frontend/src/lib/rbac.ts</code> (lower level = more authority). Live map is fetched from <code>GET /api/v1/rbac/config</code> (5-min cache) with these as fallbacks.</p>
+<table class="t">
+  <thead><tr><th style="width:22%">Role</th><th style="width:8%">Lvl</th><th>Access scope</th></tr></thead>
+  <tbody>
+    <tr><td><code>super_admin</code></td><td>1</td><td>Full platform; bypasses all RBAC/tier/service/project checks everywhere</td></tr>
+    <tr><td><code>firm_principal</code></td><td>10</td><td>Director/Principal Valuer; full service access (all services + construction/budget/data_hub)</td></tr>
+    <tr><td><code>admin</code></td><td>15</td><td>Org admin; full services; Admin console only if <code>user_type='staff'</code></td></tr>
+    <tr><td><code>senior_valuer</code></td><td>20</td><td>Lead valuer / QA; valuations</td></tr>
+    <tr><td><code>manager</code></td><td>25</td><td>Team manager; broad access across all services</td></tr>
+    <tr><td><code>project_manager</code></td><td>28</td><td>projects, analytics, property_management, construction, budget</td></tr>
+    <tr><td><code>valuer</code></td><td>30</td><td>Valuations only</td></tr>
+    <tr><td><code>agent</code></td><td>30</td><td>CRM/Deals only</td></tr>
+    <tr><td><code>finance_manager</code></td><td>35</td><td>Finance/billing sub-tabs (valuations finance)</td></tr>
+    <tr><td><code>compliance_officer</code></td><td>40</td><td>Valuations only</td></tr>
+    <tr><td><code>probationer / inspector</code></td><td>50/55</td><td>Trainee (supervised) / field inspections (+ PM read)</td></tr>
+    <tr><td><code>analyst</code></td><td>60</td><td>Read-only analytics + valuations</td></tr>
+    <tr><td><code>viewer</code></td><td>90</td><td>Read-only basic</td></tr>
+    <tr><td><code>tenant</code></td><td>—</td><td>Tenant portal only (<code>/dashboard/tenant</code>); never sees staff tabs</td></tr>
+  </tbody>
+</table>
+
+<h4>Customer service roles (per subscribed service)</h4>
+<p class="faint">Customer roles are scoped per service (<code>user_service_subscriptions.service_role</code>). <code>service_admin</code> = full access within a service and the only role that can invite teammates (<code>requireCanInvite</code>). Type = customer for all rows.</p>
+<table class="t">
+  <thead><tr><th style="width:16%">Service</th><th style="width:24%">Role</th><th>Access scope</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="5">Valuations</td><td><code>service_admin</code></td><td>Full: valuations, finance, clients, calendar, analytics, team, settings</td></tr>
+    <tr><td><code>senior_associate</code></td><td>valuations, clients, calendar, analytics, team</td></tr>
+    <tr><td><code>associate</code></td><td>valuations, clients, calendar, team</td></tr>
+    <tr><td><code>finance_officer</code></td><td>valuations, finance</td></tr>
+    <tr><td><code>viewer</code></td><td>valuations (read)</td></tr>
+    <tr><td rowspan="4">CRM / Deals</td><td><code>service_admin</code></td><td>Full incl. pipelines, integrations, team</td></tr>
+    <tr><td><code>sales_manager</code></td><td>deals, agents, financials, commissions, analytics, workflows, campaigns</td></tr>
+    <tr><td><code>sales_agent</code></td><td>deals, properties, contacts, tasks, docs, messaging, calendar, targets</td></tr>
+    <tr><td><code>viewer</code></td><td>deals/properties/contacts (read)</td></tr>
+    <tr><td rowspan="4">Projects</td><td><code>service_admin</code></td><td>Full incl. settings, team</td></tr>
+    <tr><td><code>project_manager</code></td><td>overview, construction, procurement, financials, docs, units, analytics</td></tr>
+    <tr><td><code>site_supervisor</code></td><td>overview, construction, docs, comms</td></tr>
+    <tr><td><code>quantity_surveyor</code> / <code>viewer</code></td><td>overview, procurement, financials, docs / read</td></tr>
+    <tr><td rowspan="5">Property Mgmt</td><td><code>service_admin</code></td><td>Full incl. team, integrations</td></tr>
+    <tr><td><code>property_manager</code></td><td>properties, tenants, maintenance, portfolios, vendors, applications</td></tr>
+    <tr><td><code>leasing_agent</code></td><td>properties, tenants, applications, docs, calendar</td></tr>
+    <tr><td><code>maintenance_coordinator</code></td><td>maintenance, vendors, tenants, docs</td></tr>
+    <tr><td><code>accounts_officer</code> / <code>viewer</code></td><td>financials, portfolios, tenants, docs / read</td></tr>
+  </tbody>
+</table>
+<p class="faint">Backend enforcement: <code>requireServiceAccess(serviceKey)</code> gates the service (staff/leadership bypass, else active subscription); <code>requireServiceRole(serviceKey,[…])</code> gates sensitive writes to specific roles. Internal roles bypass subscription checks for their authorized services only (<code>ROLE_SERVICE_ACCESS</code>).</p>
+
+<h3>2.3 Portals inventory (what must be tested; what needs building)</h3>
+<table class="t">
+  <thead><tr><th>Portal</th><th>Who logs in</th><th>URL / Route</th><th>Auth method</th><th>Status</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Staff/platform dashboard</td><td>PropMetrik staff</td><td><code>propmetrik.com/dashboard/*</code></td><td>NextAuth credentials/keycloak/google</td><td><span class="pill built">Built</span></td><td>Full nav incl. Admin tab</td></tr>
+    <tr><td>Customer org dashboard</td><td>Corporate customer</td><td><code>propmetrik.com/dashboard/*</code></td><td>Same; nav filtered by subscriptions + role</td><td><span class="pill built">Built</span></td><td>No Admin tab; tabs gated by subscribed services + <code>service_role</code></td></tr>
+    <tr><td>Tenant portal</td><td>Tenant (<code>user_type='tenant'</code>)</td><td><code>tenant.propmetrik.com/dashboard/tenant/*</code></td><td><code>tenant-credentials</code>→Keycloak; host-only cookie isolation</td><td><span class="pill built">Built</span></td><td>Payments, maintenance, documents, lease e-sign, messages, profile</td></tr>
+    <tr><td>Tenant apply/onboarding (public)</td><td>Prospective tenant (unauth, magic-link)</td><td><code>/tenant/apply/[id]</code>, <code>/tenant/set-password</code>, <code>/tenant/application/[id]/status</code></td><td>Magic link / OTP / Keycloak set-password</td><td><span class="pill built">Built</span></td><td>Separate <code>/app/tenant/*</code> tree — duplication flag (two tenant trees)</td></tr>
+    <tr><td>Public marketplace + enquiry</td><td>Anyone (unauthenticated)</td><td><code>propmetrik.com/marketplace</code></td><td>None (public)</td><td><span class="pill built">Built</span></td><td>search, property-by-token, inquiries, application-link (mounted <b>no-auth</b>)</td></tr>
+    <tr><td>E-Sign external signer</td><td>Any invited signer (email link)</td><td><code>/sign/[token]</code></td><td>Token-based (<code>optionalAuth</code>)</td><td><span class="pill built">Built</span></td><td>Draw/type/upload signature, decline. Token is the credential</td></tr>
+    <tr><td>Developer / API console</td><td>Customer org w/ API product</td><td><code>propmetrik.com/developers/*</code></td><td>NextAuth session + <code>requireApiProductAccess</code></td><td><span class="pill built">Built</span></td><td>Self-serve <code>pmk_</code> keys, usage, plan, streaming</td></tr>
+    <tr><td>Vendor bid portal</td><td>Invited vendor/contractor</td><td><code>/vendor/bid/[token]</code></td><td>Token-based, no login</td><td><span class="pill built">Built</span></td><td>View bid, submit line-items/attachments/Q&amp;A, decline — fully wired</td></tr>
+    <tr><td>Staff Admin console</td><td>Staff <code>admin</code>/<code>super_admin</code> only</td><td><code>/dashboard/admin/*</code></td><td><code>requireAdmin</code> = role AND <code>user_type='staff'</code></td><td><span class="pill built">Built</span></td><td>Customer cannot reach even with admin role</td></tr>
+    <tr><td>Contractor portal</td><td>Contractor</td><td><code>/contractor-portal</code></td><td>None wired</td><td><span class="pill gap">Gap/Stub</span></td><td>Renders <b>mock data only</b>; no auth, no API, not linked in nav. Build or remove before audit</td></tr>
+    <tr><td>Client/owner project portal</td><td>Project owner/client (external)</td><td>—</td><td>—</td><td><span class="pill gap">Gap</span></td><td>No external surface to view draws, approve/sign change orders, answer RFIs</td></tr>
+    <tr><td>Valuation instructing-client view</td><td>Instructing/valuation client</td><td>—</td><td>—</td><td><span class="pill gap">Gap</span></td><td>No share-token report route; clients are <b>records only</b>; report viewing is staff-only</td></tr>
+    <tr><td>Buyer/seller CRM portal</td><td>Marketplace buyer/seller</td><td>—</td><td>—</td><td><span class="pill gap">Gap</span></td><td>Only public marketplace + enquiry; no logged-in deal-tracking portal for the customer side</td></tr>
+  </tbody>
+</table>
+
+<h3>2.4 Role-scoped in-app "sub-portals" (test independently per service)</h3>
+<ul>
+  <li><b>Deals/CRM:</b> <code>agent</code>/<code>sales_agent</code> (own pipeline, no commissions/pipelines/team) vs <code>sales_manager</code> (financials, commissions) vs <code>service_admin</code> (full). Commissions default admin-only.</li>
+  <li><b>Valuations:</b> <code>valuer</code>/<code>associate</code> (author) vs <code>senior_valuer</code>/<code>senior_associate</code> (QA/review) vs <code>finance_manager</code>/<code>finance_officer</code> (finance tab only) vs <code>compliance_officer</code>. No external instructing-client view (gap above).</li>
+  <li><b>Projects:</b> <code>project_manager</code> (owns projects) vs org-admin (all) vs per-member permission flags (<code>can_view_financials</code> etc.). External contractor = stub; vendor = real bid portal.</li>
+  <li><b>Property Management:</b> staff/customer PM roles vs the <b>tenant</b> portal (separate host, separate session) — the clearest staff-vs-external split and strongest isolation story.</li>
+</ul>
+
+<h3>2.5 Portal &amp; RBAC gaps (SOC portal-readiness)</h3>
+<ul>
+  <li><span class="sev high">HIGH</span> <b>Contractor portal is a non-functional stub</b> — serves hardcoded mock data, no auth, not linked. Build real auth or remove; an unauthenticated route that <i>looks</i> like a portal is itself a finding.</li>
+  <li><span class="sev med">MEDIUM</span> No valuation instructing-client / external report portal, no buyer/seller CRM portal, no project client/owner portal. If any promised capabilities, they are unbuilt.</li>
+  <li><span class="sev med">MEDIUM</span> Two parallel tenant trees (<code>/app/tenant/*</code> public onboarding vs <code>/app/dashboard/tenant/*</code> authed). Confirm which is canonical and that the legacy tree exposes no authed data unauthenticated.</li>
+</ul>
+<h4>Auth hardening to verify for SOC</h4>
+<ul>
+  <li>Prove <code>AUTH_DEV_BYPASS</code> + dev-user fallback are disabled in prod (config assertion + test).</li>
+  <li>Token-in-query-string (<code>?token=</code>) for SSE — verify stripped from access logs / not cached by the proxy.</li>
+  <li>Public/no-auth route inventory for pen-test scope: marketplace, inquiries, property-by-token, <code>/vendor/bid/:token</code>, <code>/sign/:token</code>, public PM invoice pay/verify endpoints, tenant magic-link/OTP/set-password, OAuth callback. Confirm token entropy, single-use, expiry for each.</li>
+  <li>Frontend RBAC is a fetched config with hardcoded fallbacks — test the fallback path (backend <code>/rbac/config</code> unreachable) does not over-grant; confirm the backend re-enforces every route. Prioritise, per service: <code>viewer</code> (never write), <code>service_admin</code> (only inviter), finance/commission tabs.</li>
+</ul>
+<p class="faint">Key files: <code>frontend/src/middleware.ts</code>, <code>frontend/src/auth.ts</code>, <code>frontend/src/lib/rbac.ts</code>, <code>backend/src/middleware/{auth,serviceAccess,pmAuth}.ts</code>, <code>backend/src/routes/{tenantPortal,developerPortal,marketplace,bid-management,eSign}.ts</code>, <code>backend/src/index.ts</code>.</p>
+</div>
+
+<!-- ===================== 3. VALUATIONS ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">3</span>Valuations Service</h2>
+<p>RICS-compliant property valuation workspace: valuers run a subject property through a guided multi-method wizard (up to 8 RICS methods computed by a Python engine), reconcile the methods into a single opinion of value with sensitivity analysis, and produce a sealed, e-signed, branded valuation report — with client, invoicing, team and document-vault management around it.</p>
+<h3>3.1 Sub-tabs</h3>
+<p class="kicker">Nav in <code>frontend/src/app/dashboard/valuations/layout.tsx</code>; role-gating in <code>rbac.ts</code> (<code>FALLBACK_valuationTabAccess</code>).</p>
+<table class="t">
+  <thead><tr><th style="width:15%">Sub-tab</th><th style="width:22%">Route</th><th style="width:26%">Purpose / Use case</th><th>Key features</th></tr></thead>
+  <tbody>
+    <tr><td>Valuations (list)</td><td><code>/dashboard/valuations</code></td><td>Home list of all valuation jobs</td><td>List + filters; entry into per-valuation workflow</td></tr>
+    <tr><td>New Valuation</td><td><code>/valuations/new</code></td><td>Intake wizard for a new job</td><td>Subject-property form; auto-creates a DRAFT + autosaves; <code>?client_id</code> prefill; inline "Generate with AI" writeups</td></tr>
+    <tr><td>Per-valuation workflow</td><td><code>/valuations/[id]/…</code></td><td>The valuation as an ordered wizard</td><td>Property Setup → Floor Plans → HBU → Method Selection → method pages → Reconciliation → Report; step order method-driven (<code>valuation-workflow.ts</code>); sub-routes: property, floor-plan, hbu, methods, comparables, market, cost, rental-market, income, drc, profits, residual, reconciliation, report, documents, subject</td></tr>
+    <tr><td>Team</td><td><code>/valuations/team</code></td><td>Manage the valuation team</td><td>Invites, roles, Keycloak wiring</td></tr>
+    <tr><td>Finance</td><td><code>/valuations/finance</code></td><td>Invoicing &amp; fees</td><td>Ghana Valuation Fee Calculator (GhIS scales), invoices, KPIs</td></tr>
+    <tr><td>Clients</td><td><code>/valuations/clients</code></td><td>Instructing-client registry</td><td>Individual/Corporate/Government; overview/invoices/valuations tabs; "New Valuation" passes <code>?client_id</code></td></tr>
+    <tr><td>Calendar</td><td><code>/calendar?service=valuations</code></td><td>Scheduling (shared, service-scoped)</td><td>Shared dashboard calendar filtered to valuations</td></tr>
+    <tr><td>Documents (Vault)</td><td><code>/valuations/documents</code></td><td>Central document vault across all valuations</td><td>Version history w/ status badges — Current (approved) / Superseded / Draft; upload/download/delete</td></tr>
+    <tr><td>Integrations</td><td><code>/valuations/integrations</code></td><td>Org-level BYO connectors</td><td>Admin-only; shared Integrations Hub</td></tr>
+    <tr><td>Settings</td><td><code>/valuations/settings</code></td><td>Org/firm configuration</td><td>General, Branding, Fee Defaults, Reports, Approvals (approval chains), API Keys, Notifications, Professional (valuer credentials)</td></tr>
+  </tbody>
+</table>
+<h3>3.2 Valuation methods</h3>
+<p class="kicker">All computed by the Python engine (<code>backend/src/services/valuation-engine/python/app/methods/</code>), orchestrated by Node routes; the frontend method pages source inputs and render results.</p>
+<table class="t">
+  <thead><tr><th style="width:32%">Method</th><th>What it values</th></tr></thead>
+  <tbody>
+    <tr><td>Sales Comparison</td><td>Market value by adjusting a basket of comparable sales to the subject (comparable search → market analysis)</td></tr>
+    <tr><td>Cost</td><td>Replacement/reproduction cost new less depreciation, plus land — for buildings with limited market evidence</td></tr>
+    <tr><td>DRC (Depreciated Replacement Cost)</td><td>Specialised/owner-occupied assets via feature-driven MEA (Method, Economic-life, Age) depreciation</td></tr>
+    <tr><td>Profits</td><td>Trade-related property (hotels, schools, healthcare, fuel stations) from divisible-balance / trading potential</td></tr>
+    <tr><td>Residual</td><td>Development land / sites: GDV less costs, fees, finance and developer's profit</td></tr>
+    <tr><td>Income</td><td>Investment property via pro forma + direct capitalisation + DCF (rental-market evidence → income engine)</td></tr>
+    <tr><td>Market Rent</td><td>Open-market rental value by adjusting rental comparables (feeds Income + standalone rent opinions)</td></tr>
+    <tr><td>Land Value</td><td>Land value by reconciling a residual approach with land comparable sales (GhIS strength-based weighting)</td></tr>
+    <tr><td><b>Multi-method reconciliation + sensitivity</b></td><td>Combines applied methods into one reconciled opinion; sensitivity does <b>real per-method re-runs</b> per RICS VPS 3 (<code>POST /sensitivity</code>)</td></tr>
+  </tbody>
+</table>
+<h3>3.3 Reports &amp; e-sign</h3>
+<p>Three renderers exist: an <b>HTML viewer</b>, a <b>signed DOCX→PDF pipeline</b> (LibreOffice), and a <b>PDFKit cover</b> page; structured Phase-2 report data (cover, certification, legal, risk, reconciliation table, TOC) is assembled server-side. AI narrative sections are <b>draft-only</b> — the valuer edits before approval; narratives are grounded strictly in real data (coordinates, comparable rates, Google Places amenities). Firm branding from <b>Settings → Valuation Company Branding</b> flows into the DOCX/PDF report and cover and the invoice email (PROPMETRIK fallback); the HTML report-viewer letterhead is <b>not</b> branded. On approval the report is <b>locked-on-seal</b>: a SHA-256 tamper hash is computed (a tamper-evidence hash — <b>not</b> a cryptographic/PKI signature), any prior approved version is marked <code>superseded</code>, and an optional <b>client e-sign</b> can be triggered (external signer signs via the token page <code>/sign/[token]</code>). Revisions go reject-for-revision → new version, surfaced in the Document Vault as Current/Superseded/Draft.</p>
+<h3>3.4 Roles &amp; client access</h3>
+<p>Internal roles: <code>firm_principal</code> (Director/Principal Valuer), <code>senior_valuer</code> (Lead/QA/reviewer-approver), <code>valuer</code> (independent valuer), <code>finance_manager</code>, <code>compliance_officer</code>, plus <code>probationer</code>/<code>inspector</code>/<code>analyst</code>. Customer roles: <code>service_admin</code>, <code>senior_associate</code>, <code>associate</code>, <code>finance_officer</code>, <code>viewer</code>. Approval/QA is internal (chains default to <code>senior_valuer</code>). <b>The instructing client is a data record, not a portal user</b> — there is no external instructing-client report view; the only external touchpoint is the token e-sign page.</p>
+<h3>3.5 Gaps identified</h3>
+<ul>
+  <li><span class="sev crit">CRITICAL</span> Python engine security posture — unauthenticated with CORS <code>*</code>+credentials on <code>0.0.0.0:8001</code>, and the <b>browser calls it directly</b> (<code>NEXT_PUBLIC_PYTHON_API_URL</code>), exposing the engine and its DB-backed land-comparable search.</li>
+  <li><span class="sev high">HIGH</span> Digital seal is a hash, not a signature — SHA-256 tamper-evidence over the PDF; proves integrity but not signer identity / non-repudiation cryptographically.</li>
+  <li><span class="sev med">MEDIUM</span> No external instructing-client report portal — clients are records only; no authenticated view of their report status/version history.</li>
+  <li><span class="sev med">MEDIUM</span> Conflicting method-weight tables historically existed across TS/Python paths — verify the single DB-config source is authoritative on every code path.</li>
+  <li><span class="sev low">LOW</span> HTML report viewer unbranded; generated report content is cached in <code>valuation_reports.content</code> (template fixes need a manual regenerate); Ghana <code>DateField</code> dd/mm/yyyy sweep still pending across many pages.</li>
+</ul>
+</div>
+
+<!-- ===================== 4. PROPERTY MANAGEMENT ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">4</span>Property Management Service <span class="faint" style="font-size:11px">(+ Tenant Portal)</span></h2>
+<p>PropMetrik's landlord/facilities operations suite — manages a portfolio of properties and multi-unit buildings, rental applications, tenancies/leases, rent &amp; utility billing, maintenance work orders routed to vendors, inspections, documents and portfolio financials. Paired with a self-service <b>Tenant Portal</b>. Top-nav in <code>PMTopNav.tsx</code>; grouped sub-navs in <code>PMSectionNav.tsx</code>.</p>
+<h3>4.1 Sub-tabs</h3>
+<table class="t">
+  <thead><tr><th style="width:17%">Sub-tab</th><th style="width:18%">Route</th><th style="width:26%">Purpose / Use case</th><th>Key features</th></tr></thead>
+  <tbody>
+    <tr><td>Overview</td><td><code>/property-management</code></td><td>Portfolio-health dashboard</td><td>KPI cards (occupancy, income, overdue, work orders, expiring leases, applications); NOI/cap-rate/cash-flow; quick actions</td></tr>
+    <tr><td>Properties → Listings</td><td><code>/properties</code></td><td>Asset registry incl. multi-unit buildings</td><td>Buildings as parent rows + expandable unit roster (lazy-loaded); search/filters; live FX → GHS normalization; add/edit/delete; marketing-video upload → Marketplace</td></tr>
+    <tr><td>Properties → Enquiries</td><td><code>/enquiries</code></td><td>Buyer/lessee leads from marketplace</td><td>Lead table (sale/lease/rent badge, offer, status workflow); "View in pipeline" → CRM deal; PM-only upsell</td></tr>
+    <tr><td>Communications</td><td><code>/communications</code></td><td>Unified Chat/Mail/Social/Calendar hub</td><td>Wrapper around shared <code>CommunicationsHub</code></td></tr>
+    <tr><td>Portfolios → Portfolio</td><td><code>/portfolios</code></td><td>Portfolio analytics &amp; performance</td><td>Value w/ YoY, occupancy, collection rate; composition pies; lease-expiry buckets</td></tr>
+    <tr><td>Portfolios → Financials</td><td><code>/financials</code></td><td>Portfolio P&amp;L / receivables (real, data-backed)</td><td>Period-filtered revenue/expenses/NOI/outstanding; charts; receivables aging; PDF export; Payment Settings</td></tr>
+    <tr><td>Portfolios → Reports/Audit/Bulk Ops/Brochure</td><td><code>/reports · /audit · /bulk-operations · /portfolios/brochure</code></td><td>Enterprise ops suite</td><td>Aged Receivables/Vacancy/Performance (NOI)/Tenant Turnover/Maintenance reports; filterable audit trail; bulk rent increase / bulk work-order + CSV/JSON/Excel import-export; 5-page printable brochure (cover w/ QR, geo distribution, asset schedule)</td></tr>
+    <tr><td>Applications</td><td><code>/applications</code></td><td>Rental application intake → lease pipeline</td><td>Status workflow (draft→…→<code>lease_generated</code>→<code>lease_signed</code>); Review/Approve/Reject; <b>Generate Lease</b> (e-sign); convert to tenant/tenancy; shareable public application links</td></tr>
+    <tr><td>Tenants</td><td><code>/tenants</code></td><td>Tenant directory + tenancy/lease mgmt</td><td>Roster + status; detail tabs (Tenancies/Utilities/Payments/Maintenance/Documents); generate/renew/terminate lease; apply utility charges; <b>Send Access Invite (Email)</b>; multi-step new-tenant wizard</td></tr>
+    <tr><td>Maintenance → Work Orders</td><td><code>/maintenance</code></td><td>Work-order tracking + vendor dispatch</td><td>Stats + table; <b>Assign Vendor</b> modal (vendor + date + slot → notifies vendor &amp; tenant); Complete (actual cost); status updates</td></tr>
+    <tr><td>Maintenance → Inspections / Vendors</td><td><code>/inspections · /vendors</code></td><td>Condition reports / service-provider directory</td><td>Move-in/out/routine/periodic; room-by-room condition; vendor table (categories, rating, jobs); performance metrics</td></tr>
+    <tr><td>Documents / Team / Integrations</td><td><code>/documents · /team · /integrations</code></td><td>Doc vault / roles / BYO integrations</td><td>Tabs All/Legal/Financial/Tenant; e-sign signing-status tracking; <code>ServiceTeamManager</code>; shared <code>IntegrationsHub</code></td></tr>
+  </tbody>
+</table>
+<h3>4.2 Tenant Portal</h3>
+<p>Runs on <code>tenant.propmetrik.com</code>; primary tree <code>/app/dashboard/tenant/*</code> (wrapped in <code>PortalShell</code>). Sidebar: Dashboard, Payments, Maintenance, Documents, Messages, Profile/Settings/Lease.</p>
+<ul>
+  <li><b>Dashboard</b> — balance / next-due / open-maintenance / lease-progress cards; recent activity; lease summary.</li>
+  <li><b>Pay rent</b> — rent schedule + totals + history; pay via Mobile Money (MTN/Vodafone/AirtelTigo), Bank, Card, GhQR (crypto path excluded from scope); live FX-locked GHS-equivalent + fee breakdown; Auto-Pay setup; utility charges with dispute flow.</li>
+  <li><b>Maintenance</b> — submit request w/ category, priority, up to 5 photos, preferred date/time, "permission to enter" consent; view status per request.</li>
+  <li><b>View &amp; sign lease</b> — in-portal signature capture + terms agreement → e-sign the lease. <b>Documents</b> — view/upload. <b>Messages</b> — threaded landlord↔tenant chat with read receipts (5s polling). <b>Public flows</b> — application status tracker + public apply (validates a manager-issued application-link token).</li>
+  <li><b>Auth</b> — tenants are <code>userType='tenant'</code> on the tenant subdomain via NextAuth <code>tenant-credentials</code> (Keycloak ROPC). Manager sends an email invite → <code>/tenant/set-password?token=…</code>. The Keycloak realm has <b>no SMTP</b>, so set/forgot-password is served by the app's own 3-tier mailer, not Keycloak.</li>
+</ul>
+<h3>4.3 Roles (customer RBAC)</h3>
+<p><code>service_admin</code> (full + only inviter) · <code>property_manager</code> (everything except Financials/Team/Integrations) · <code>leasing_agent</code> (leasing-focused; no maintenance/vendors/financials) · <code>maintenance_coordinator</code> (maintenance/vendors/tenants; no applications/financials) · <code>accounts_officer</code> (billing/finance-focused) · <code>viewer</code> (read-only subset). Gating is fail-open on unconfigured sub-tabs and must be re-enforced server-side.</p>
+<h3>4.4 Gaps identified</h3>
+<ul>
+  <li><span class="sev high">HIGH</span> API-URL contract violations — several pages hardcode <code>http://localhost:4000</code> instead of the relative <code>/api</code> proxy (dev-leak / prod risk).</li>
+  <li><span class="sev med">MEDIUM</span> Tenant Auto-Pay UI vs persistence — verify the standing-mandate auto-debit path is fully wired end-to-end (card-backed Paystack) and no payment-history controls are cosmetic.</li>
+  <li><span class="sev med">MEDIUM</span> Public application status tracker step logic historically used placeholder highlighting — confirm the timeline reads the real status enum (the underlying data is real).</li>
+  <li><span class="sev med">MEDIUM</span> <b>Duplicate-tenancy risk</b> (verified): the e-sign lease-generator can mint a standalone tenancy while the application→tenancy path creates another, so a signed lease can land on a tenant-less row while the tenant's row stays pending. Reconcile by merging onto the signed row; the underlying completion wiring is correct.</li>
+  <li><span class="sev low">LOW</span> Two coexisting tenant trees (<code>/app/tenant/*</code> vs <code>/app/dashboard/tenant/*</code>) = duplication risk; inspections photo capture (presigned-MinIO) pending; unbounded list fetches flagged for perf.</li>
+</ul>
+</div>
+
+<!-- ===================== 5. CRM ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">5</span>Deals / CRM Service</h2>
+<p>A standalone, separately-subscribed real-estate sales CRM for Ghana: leads/contacts, a configurable deal pipeline, agents and geo-fenced territories, listing inventory, commissions and targets, document generation + e-sign, multi-channel communications, and marketing automation (drip campaigns). A thin orchestration layer over shared platform services, scoped by <code>organization_id</code>. UI label: "DEAL MANAGEMENT" (<code>CrmSidebar.tsx</code>).</p>
+<h3>5.1 Sub-tabs</h3>
+<table class="t">
+  <thead><tr><th style="width:15%">Sub-tab</th><th style="width:20%">Route</th><th style="width:26%">Purpose / Use case</th><th>Key features</th></tr></thead>
+  <tbody>
+    <tr><td>Deals</td><td><code>/deals</code></td><td>Pipeline root — work deals through stages</td><td>Kanban + table, pipeline selector, FilterBuilder, bulk stage-change/tags/delete/export, slide-in panel</td></tr>
+    <tr><td>Properties</td><td><code>/deals/properties</code></td><td>CRM listing inventory (native + PM-bridged)</td><td>Property cards w/ pipeline-stage progress, stacking-plan toggle, filters; marketing-video upload → Marketplace</td></tr>
+    <tr><td>Contacts</td><td><code>/deals/contacts</code></td><td>Leads &amp; clients</td><td>Lead status/score/budget, CSV import wizard, merge-dedupe, relationship map</td></tr>
+    <tr><td>Agents</td><td><code>/deals/agents</code></td><td>Agent roster</td><td>License, specializations, active/closed deals, rating; filters</td></tr>
+    <tr><td>Territories</td><td><code>/deals/territories</code></td><td>Geo-fenced territories + lead auto-routing</td><td>Mapbox click-to-draw polygon, PostGIS boundaries, exclusive/priority/color</td></tr>
+    <tr><td>Companies / Tasks</td><td><code>/deals/companies · /deals/tasks</code></td><td>Corporate clients / task tracking</td><td>Industry/type, deal count/value; complete-checkbox rows, priority/status filters, stats</td></tr>
+    <tr><td>Documents</td><td><code>/deals/documents</code></td><td>Deal document template library</td><td>Category, stamp-duty/notarization/witness toggles, versioning, "Seed Ghana Templates"</td></tr>
+    <tr><td>Financials</td><td><code>/deals/financials</code></td><td>Revenue, forecasting, commission payouts, billing</td><td><b>Real 6-tab module</b> (Overview/Commissions/Forecast/Billing/Payments/Settings), KPIs, top-earners, Paystack refunds</td></tr>
+    <tr><td>Communications / Workflows</td><td><code>/deals/communications · /deals/workflows</code></td><td>Unified comms hub / automation engine</td><td><code>CommunicationsHub</code> → WhatsApp lead chat · Mail · Social · Calendar; campaign list, trigger-type icons, active/executions/success-rate stats</td></tr>
+    <tr><td>Pipelines / Commissions</td><td><code>/deals/pipelines · /deals/commissions</code></td><td>Pipeline config / commission ledger</td><td>Stage reorder/edit/delete, deal-type, PipelineDesigner; <b>maker-checker payout approvals</b> (records→statements→approvals), calculator, generate-statements, bulk approve</td></tr>
+    <tr><td>Targets / Drip Campaigns</td><td><code>/deals/targets · /deals/drip-campaigns</code></td><td>Sales targets + leaderboard / email sequences</td><td>Circular-progress target cards, pacing, leaderboard, badges; A/B step variants w/ open/click tracking, audience segments w/ match-preview, delivery log</td></tr>
+    <tr><td>Team / Integrations · Deal detail / New</td><td><code>/deals/team · /deals/[id] · /deals/new</code></td><td>Service-team RBAC · unified deal workspace</td><td><code>ServiceTeamManager</code> · <code>IntegrationsHub</code>; clickable stage bar, inline-edit KPIs, doc panel + checklist + signed indicator, unified timeline; new-deal financials grid w/ auto-calc probability</td></tr>
+  </tbody>
+</table>
+<h3>5.2 Capabilities (done vs pending)</h3>
+<p><b>Done / live:</b> configurable multi-pipeline deals (real tables); contacts/leads w/ score + CSV import/export + merge-dedupe; <b>agent territory management</b> (PostGIS boundaries, click-to-draw, point-in-polygon, auto-route unassigned contact to owning territory's agent — fully real); campaign segmentation + open/click tracking; drip engine w/ weighted A/B step variants; <b>commissions maker-checker</b> (records→statements→approvals, plans/tiers/splits/clawback); real 6-tab Financials; document templates + e-sign; Communications hub; FX normalization + enterprise RBAC dispatcher on money endpoints.</p>
+<p><b>Pending / partial:</b> offers/reservations/earnest holds (no dedicated schema — modeled as pipeline stages); purchase installment plans (metadata only); <b>outbound payout rail</b> (commissions tracked but <b>never actually disbursed</b>); lead-scoring engine (field + property-match only, no AI); social syndication (connection UI exists, no publishing service); voice calling, KYC, i18n.</p>
+<h3>5.3 Roles &amp; customer touchpoints</h3>
+<p>Staff roles: <code>agent</code> (deals/contacts/tasks/targets/comms), plus <code>finance_manager</code> (financials/commissions) and <code>manager</code>/<code>admin</code>. Customer roles: <code>service_admin</code>, <code>sales_manager</code>, <code>sales_agent</code>, <code>viewer</code>. Customer-facing touchpoints are public only: the marketplace (listings) + enquiry. The enquiry endpoint is <b>public, deal-gated</b>: PM listings always capture into <code>property_inquiries</code>; a CRM deal is auto-created only if the org has the CRM service (via <code>ensureCrmMirror()</code>). Gap: there is <b>no logged-in buyer/seller portal</b> — post-enquiry, the buyer cannot track their deal.</p>
+<h3>5.4 Gaps identified</h3>
+<div class="info"><p style="margin:2px 0"><b>Phantom CRM-table bug — remediated in source (status update).</b> The systemic defect (code querying non-existent <code>crm_deals</code>/<code>crm_contacts</code>/<code>crm_tasks</code>/… when the real tables are un-prefixed <code>deals</code>/<code>contacts</code>/<code>tasks</code>/…; tsc-green but runtime-broken) is now fixed in all originally-broken source files (0 phantom refs in <code>backend/src</code>). <b>Residual risk:</b> phantom references survive in non-source artifacts — the stale compiled <code>dist/</code> (will re-break on redeploy if not rebuilt), integration tests, <code>scripts/check-crm-tables.mjs</code>, and one migration. <b>No build-time SQL-schema guard exists</b>, so this class of bug can silently regress — the recommended generated-types/repository layer is still a gap.</p></div>
+<ul>
+  <li><span class="sev high">HIGH</span> No outbound disbursement rail — commission payouts, refunds and deposit releases are tracked/approved but never actually paid (money-in works; money-out absent). Highest-risk money-movement gap.</li>
+  <li><span class="sev med">MEDIUM</span> No dedicated offers/reservations/installments schema; no AI lead-scoring engine; social syndication publishing pipeline absent; no buyer/seller customer portal.</li>
+  <li><span class="sev low">LOW</span> Merge-field registry historically shipped empty (confirm if template merge is depended on); voice calling, KYC (Ghana Card captured but not verified), i18n, Sentry (integrated but <code>SENTRY_DSN</code> unset), backup/DR codification outstanding.</li>
+</ul>
+</div>
+
+<!-- ===================== 6. PROJECTS ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">6</span>Projects (Project Management) Service</h2>
+<p>A Procore-style construction &amp; development command center for Ghanaian developers — from land acquisition through permits, construction, procurement, financials and handover. Subscription-gated. Two-tier nav: 8 group tabs (Overview, Construction, Procurement, Financials, Documents, Communications, Units, Settings) each expanding to sub-items; inside a project, a per-project sub-nav (Milestones, Change Orders, RFIs, Submittals, Photos, Punch Lists, Site Logs, Procurement, Budget/Cost, Draws, Issues/Risks).</p>
+<h3>6.1 Sub-tabs / sections (selected)</h3>
+<table class="t">
+  <thead><tr><th style="width:16%">Section</th><th style="width:22%">Route</th><th style="width:24%">Purpose / Use case</th><th>Key features</th></tr></thead>
+  <tbody>
+    <tr><td>Projects list</td><td><code>/projects</code></td><td>Portfolio hub of all developments</td><td>Grid/list, filters, project cards (progress, budget), portfolio KPIs</td></tr>
+    <tr><td>Project detail</td><td><code>/projects/[id]</code></td><td>Single-project command center</td><td>Tabbed Overview/Schedule/Budget/Phases/RFIs/Submittals/Change Orders/Punch Lists/Docs; Gantt; budget line items; team + contractor assignments</td></tr>
+    <tr><td>Schedule (Gantt) / Milestones</td><td><code>/projects/gantt · /[id]/milestones</code></td><td>Timeline &amp; delivery checkpoints incl. Ghana statutory</td><td>Phase bars, actual-progress fill, milestone markers, critical path, drag-to-reschedule autosave; List/Timeline, create/start/complete, sub-phases</td></tr>
+    <tr><td>RFIs / Change Orders / Submittals</td><td><code>/projects/rfis · /change-orders · /submittals</code></td><td>Info requests, change mgmt (e-sign), shop drawings</td><td>Create/submit/close, <b>ball-in-court + "Awaiting Me" tabs</b>; cost+schedule impacts, Request E-signature (branded PDF), approve/execute; revision tracking, review workflow</td></tr>
+    <tr><td>Draws / Procurement / Bids</td><td><code>/[id]/draws · /projects/procurement · /projects/bids</code></td><td>Payment draws, POs, competitive bidding + tokenized vendor portal</td><td>Line items, retainage/net, submit→approve→fund, e-signature request, record funding; PO Draft→…→Delivered; publish + invite vendors by email, submission analytics, comparison table, Q&amp;A, award</td></tr>
+    <tr><td>Contractors / Budget / Invoices</td><td><code>/projects/contractors · /financials · /[id]/budget-cost · /invoice-builder · /cost-estimator</code></td><td>Registry / per-project budget / invoicing + parametric estimation</td><td>Trade, bank + mobile-money, license/TIN, ratings; invoiced/collected/outstanding KPIs, budget-vs-actual variance, at-risk projects; visual invoice builder + approval; GFA/region/spec estimate → "Convert to Project"</td></tr>
+    <tr><td>Field ops / Comms / Settings</td><td><code>/projects/…</code></td><td>Full field-ops suite + config</td><td>Issues/risk register w/ deficiency tracking; incident/OSHA; daily diary; GPS timesheets; equipment; drawing register w/ revisions; minutes; warranties; QA templates; unit sales; Xero/QuickBooks/Procore/DocuSign catalog; SOC-2 activity log; E-Signature settings manager</td></tr>
+  </tbody>
+</table>
+<h3>6.2 Capabilities (verified in code)</h3>
+<ul>
+  <li><b>Auto-seeded Ghana phase + milestone plan</b> — type-specific templates (single-house 6, multi-residential 8, commercial 7) with Ghana-statutory milestones (development/building permit, EPA/EIA, fire cert, habitation/occupancy cert, handover); EPA-permit logic (&gt;40 units / &gt;5000 sqm) codified.</li>
+  <li>Gantt (drag-to-reschedule, critical path); kanban issues + risk register. RFI/submittal/change-order ball-in-court routing (<code>ball_in_court</code> derived in SQL, "Awaiting Me" filter, notifications).</li>
+  <li>Change Orders / Draws / Contractor Contracts e-sign — config-driven Pattern B: 3 per-org config tables, each opt-in (<code>trigger_on_approval</code>/<code>auto_trigger_on_assignment</code>), min-amount threshold, signer roles, auto-execute/auto-fund. The manual "Request E-Signature" button always works; auto-trigger requires the org to enable the type.</li>
+  <li>Invoice payments — idempotent <code>confirmPayment</code> (webhook + manual), unique <code>reference</code> ledger upsert, Paystack (subaccount split + fee engine + FX→GHS) + NOWPayments.</li>
+  <li>Project-scoped access + 8 permission flags — org-leadership sees all; others restricted to owned/active-member projects; flags <code>can_view</code>, <code>can_edit</code>, <code>can_approve_costs</code>, <code>can_upload_documents</code>, <code>can_add_tasks</code>, <code>can_manage_team</code>, <code>can_view_financials</code>, <code>can_receive_notifications</code>; guards on path, child-resource, list-query and financials params.</li>
+  <li><b>Tokenized vendor bid portal</b> — the one real external portal: emailed magic-link lets invited vendors view a bid, submit, decline, ask Q&amp;A, download attachments via a real public API.</li>
+</ul>
+<h3>6.3 Roles &amp; external portals (built vs gap)</h3>
+<p>Internal roles: staff <code>project_manager</code> (+ leadership) with read-level <code>finance_manager</code>/<code>inspector</code>/<code>analyst</code>/<code>viewer</code>; customer roles <code>service_admin</code>, <code>project_manager</code>, <code>site_supervisor</code>, <code>quantity_surveyor</code>, <code>viewer</code> (sub-tab-scoped). All internal (subscribed-org) roles.</p>
+<p><b>External portals — BUILT:</b> the Vendor bid portal (<code>/vendor/bid/[token]</code>) is wired end-to-end. (The Tenant portal exists but belongs to Property Management.)</p>
+<ul>
+  <li><span class="pill gap">Gap</span> <b>Contractor portal</b> (<code>/contractor-portal</code>) — UI shell only: renders from a hardcoded <code>mockData</code> object, no API, no auth, not linked in any nav. "Submit Invoice / Update Progress / Upload Photos" are inert. Non-functional stub.</li>
+  <li><span class="pill gap">Gap</span> <b>Client / owner portal</b> — does not exist. No external route for an owner/client to view draws, approve/sign change orders, or answer RFIs. E-sign <code>signer_roles</code> reference <code>owner_representative</code>/<code>lender_representative</code>/<code>contractor_representative</code> but there is no portal surface for them.</li>
+</ul>
+<h3>6.4 Gaps identified</h3>
+<ul>
+  <li><span class="sev high">HIGH</span> Contractor external portal is a mock stub (build+wire+test or remove); no client/owner external portal (biggest construction-workflow handoff gap).</li>
+  <li><span class="sev med">MEDIUM</span> PM e-sign auto-trigger is opt-in and off by default (only manual "Request E-Signature" works out of the box); API-URL contract violations in ~24 files; a team-page hardcodes <code>organizationId=''</code> // TODO, breaking team scoping on that route.</li>
+  <li><span class="sev low">LOW</span> <code>/bids</code> vs <code>/bidding</code> overlap (likely redundant); duplicated <code>[id]/X</code> vs top-level <code>X</code> pages; no <code>next/dynamic</code> (eager Recharts), fetch waterfalls + unbounded list fetches (perf against remote prod DB); inspections photo capture (presigned-MinIO) pending.</li>
+</ul>
+</div>
+
+<!-- ===================== 7. DATA HUB ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">7</span>Data Hub — Data Infrastructure</h2>
+<p class="kicker">Code under <code>backend/src/services/data-hub/</code> (81 TS files, ~38k LOC) + a Python/Scrapy ingestion worker (<code>backend/src/services/data-hub/pipelines/scrapy/</code>, 30 files, ~9.4k LOC). Admin surface: <code>/dashboard/admin/data-hub</code>. Internal audit domain score: <b>3.5/10</b>.</p>
+
+<p>The Data Hub is the <b>data infrastructure that the rest of the product sits on</b>. It is not an analytics dashboard — it is the ingestion, provenance and blending layer that turns three independent input classes into <b>one canonical, first-party property dataset</b> and a set of macro/statistical series, then serves them to (a) the <b>valuation engine</b> as comparable evidence and (b) the <b>analytics</b> composites as index inputs. Its strategic point is a data flywheel: <b>operational activity inside Property Management, CRM and Valuations is captured back as proprietary comparable data that supersedes scraped listings</b> — the moat that makes Ghanaian valuations defensible in a market with thin public sale/rent evidence. An audit that omits it (as the prior revision of this handoff did) misses both the product's core asset and a cluster of its highest-severity security findings (§7.9).</p>
+
+<h3>7.1 Architecture at a glance</h3>
+<p>The canonical store is the PostGIS-enabled, <b>region-partitioned <code>properties</code> table</b> (16 Ghana regions; migration 241). It is simultaneously the operational property registry <i>and</i> the comparable dataset — PM writes land in it directly; CRM listings sync into it; scraped listings are written by the Python pipeline; provenance and trust are tracked per source. Everything downstream (comparable search, analytics) reads from it.</p>
+
+<figure>
+<svg class="dgm" viewBox="0 0 760 372" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#7a8598"/></marker>
+  </defs>
+  <!-- left tier cards -->
+  <text x="12" y="14" font-size="11" fill="#8a94a3">INPUT TIERS</text>
+  <g font-size="11">
+    <rect x="10" y="22" width="212" height="70" rx="6" fill="#eef3fb" stroke="#c9d6ec"/>
+    <text x="20" y="40" font-size="12" font-weight="700" fill="#2f5aa8">Tier 1 · Government / Statistical</text>
+    <text x="20" y="56" fill="#26303f">GSS StatsBank, Bank of Ghana, World</text>
+    <text x="20" y="70" fill="#26303f">Bank (WDI), NPA, NADMO, GREDA/BRRI</text>
+    <text x="20" y="85" fill="#8a94a3">authoritative macro — feeds analytics</text>
+
+    <rect x="10" y="100" width="212" height="62" rx="6" fill="#fbf3e2" stroke="#e6cf9a"/>
+    <text x="20" y="118" font-size="12" font-weight="700" fill="#b7791f">Tier 2 · Financial partner (API)</text>
+    <text x="20" y="134" fill="#26303f">Bank/partner pull-integrations; Tier-2</text>
+    <text x="20" y="149" fill="#26303f">PII anonymized before staging</text>
+
+    <rect x="10" y="170" width="212" height="70" rx="6" fill="#e8f5ee" stroke="#a9dcc4"/>
+    <text x="20" y="188" font-size="12" font-weight="700" fill="#2e8b6b">Tier 3 · First-party contributions</text>
+    <text x="20" y="204" fill="#26303f">PM tenancies/rent, CRM deals/listings,</text>
+    <text x="20" y="218" fill="#26303f">completed valuations — trust-scored</text>
+    <text x="20" y="233" font-weight="700" fill="#2e8b6b">highest trust for property comps</text>
+
+    <rect x="10" y="248" width="212" height="62" rx="6" fill="#f2f4f7" stroke="#cfd6e0"/>
+    <text x="20" y="266" font-size="12" font-weight="700" fill="#5b6675">Tier 5 · Public web scrape</text>
+    <text x="20" y="282" fill="#26303f">meqasa, gpc, housemaster, realtor,</text>
+    <text x="20" y="296" fill="#26303f">airbnb, ownkey · lowest trust</text>
+  </g>
+  <!-- center hub -->
+  <rect x="292" y="120" width="176" height="130" rx="9" fill="#1e2a44"/>
+  <text x="380" y="150" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">properties</text>
+  <text x="380" y="168" font-size="10.5" fill="#c8d2e6" text-anchor="middle">PostGIS · region-partitioned</text>
+  <text x="380" y="186" font-size="11" font-weight="700" fill="#e8b874" text-anchor="middle">THE DATA HUB</text>
+  <text x="380" y="204" font-size="10" fill="#c8d2e6" text-anchor="middle">canonical comparable</text>
+  <text x="380" y="217" font-size="10" fill="#c8d2e6" text-anchor="middle">dataset + provenance</text>
+  <text x="380" y="234" font-size="9.5" fill="#9fb0cc" text-anchor="middle">multi_source_tracker · trust</text>
+  <!-- arrows in -->
+  <g stroke="#7a8598" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M222,57 C260,70 262,150 290,160"/>
+    <path d="M222,131 C255,140 262,168 290,175"/>
+    <path d="M222,205 C255,205 265,195 290,192"/>
+    <path d="M222,279 C260,265 262,215 290,208"/>
+  </g>
+  <!-- right outputs -->
+  <rect x="538" y="118" width="210" height="60" rx="6" fill="#eef3fb" stroke="#c9d6ec"/>
+  <text x="548" y="137" font-size="12" font-weight="700" fill="#2f5aa8">Valuation Engine</text>
+  <text x="548" y="153" font-size="11" fill="#26303f">comparable search → Sales Comparison,</text>
+  <text x="548" y="167" font-size="11" fill="#26303f">Market Rent, Land, Cost inputs</text>
+
+  <rect x="538" y="192" width="210" height="62" rx="6" fill="#e8f5ee" stroke="#a9dcc4"/>
+  <text x="548" y="211" font-size="12" font-weight="700" fill="#2e8b6b">Analytics composites</text>
+  <text x="548" y="227" font-size="11" fill="#26303f">CCI · GHAI/affordability · RHDS/demand ·</text>
+  <text x="548" y="241" font-size="11" fill="#26303f">DPMDI · PTMPI · ESSI · RICI · scoring</text>
+  <!-- arrows out -->
+  <g stroke="#7a8598" stroke-width="1.4" fill="none" marker-end="url(#ar)">
+    <path d="M468,165 C505,158 512,150 536,148"/>
+    <path d="M468,205 C505,212 512,220 536,222"/>
+  </g>
+</svg>
+<figcaption>Fig. 7-A — Input tiers converge on the <code>properties</code> data hub, which serves valuation comparables and analytics indices.</figcaption>
+</figure>
+
+<h3>7.2 Source tiers (trust taxonomy)</h3>
+<p class="kicker">Tier keys as stored in <code>data_sources.tier</code> and mapped in <code>dataSourceService.ts:330-336</code> / <code>analyticsService.ts:65-72</code>.</p>
+<table class="t">
+  <thead><tr><th style="width:20%">Tier</th><th style="width:34%">What it is</th><th>Role &amp; trust</th></tr></thead>
+  <tbody>
+    <tr><td><code>tier1_government</code></td><td>GSS StatsBank (PxWeb), Bank of Ghana, World Bank WDI, NPA fuel, NADMO flood, GREDA/BRRI.</td><td>Authoritative statistical/macro inputs. Feed the <b>analytics composites and construction cost base</b> — not individual property comps.</td></tr>
+    <tr><td><code>tier2_financial</code></td><td>Bank/partner financial data via the pull-integration framework; contains Tier-2 PII.</td><td>Anonymized (<code>anonymizationService</code>) before staging. Medium trust; DPA-sensitive (see §7.9).</td></tr>
+    <tr><td><code>tier3_partners</code> / <code>tier3c_construction</code> / <code>api_import</code></td><td>Partner API imports and construction-cost partners.</td><td>Medium trust; provenance-tracked, blended with first-party.</td></tr>
+    <tr><td><code>tier3b_user_generated</code> <span class="faint">(a.k.a. contributions / first-party)</span></td><td>Data generated by operating the product: PM tenancies &amp; rents, CRM deals &amp; listings, completed valuations. Enters via <code>serviceHooks</code> → <code>contributions</code>, trust-scored by <code>calculate_contribution_trust_score()</code>.</td><td><b>Highest trust for property comps.</b> First-party sale/rent evidence <b>supersedes scraped listings</b> for the same asset (§7.3). This is the moat.</td></tr>
+    <tr><td><code>tier5_public_web</code></td><td>Scraped public listings (meqasa, gpc, housemaster, realtor, airbnb, ownkey) written by the Python pipeline.</td><td><b>Lowest trust</b> — broad coverage, self-reported asking prices. Used to bootstrap coverage; deprioritised where first-party evidence exists.</td></tr>
+  </tbody>
+</table>
+
+<h3>7.3 The contribution flywheel (how PM/CRM data becomes valuation data)</h3>
+<p>Every operational service emits <b>contributions</b> back into the hub. A completed tenancy or rent schedule (PM), a won deal or a new listing (CRM), and a completed/sold valuation each raise a contribution through <code>serviceHooks.ts</code> (8 importers across PM/CRM/valuations) and <code>crmPropertySyncService</code> (CRM→hub). Contributions land in the <code>contributions</code> table with a <b>trust score</b> (<code>contributionService.ts:147-151</code>, DB function <code>calculate_contribution_trust_score</code>) and are drained by the <b>contribution processor cron</b> (<code>jobs/contributionProcessorJob.ts</code> → <code>contributionService.processPendingContributions</code>) from <i>pending</i> → <i>applied</i> onto <code>properties</code>. Provenance is recorded by the live Python tracker (<code>multi_source_tracker.py</code>). Because first-party operational evidence carries a higher tier/trust than <code>tier5</code> scraped rows, it <b>supersedes</b> the scraped value for the same asset — turning day-to-day operations into a compounding, proprietary comparable base.</p>
+
+<figure>
+<svg class="dgm" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2e8b6b"/></marker>
+    <marker id="ar3" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#c47f2c"/></marker>
+  </defs>
+  <!-- events -->
+  <g font-size="11">
+    <rect x="8" y="14" width="150" height="34" rx="5" fill="#e8f5ee" stroke="#a9dcc4"/>
+    <text x="18" y="30" fill="#26303f">PM · tenancy / lease / rent</text>
+    <text x="18" y="43" font-size="9.5" fill="#8a94a3">serviceHooks.ts</text>
+    <rect x="8" y="56" width="150" height="34" rx="5" fill="#e8f5ee" stroke="#a9dcc4"/>
+    <text x="18" y="72" fill="#26303f">CRM · deal won / listing</text>
+    <text x="18" y="85" font-size="9.5" fill="#8a94a3">crmPropertySyncService</text>
+    <rect x="8" y="98" width="150" height="34" rx="5" fill="#e8f5ee" stroke="#a9dcc4"/>
+    <text x="18" y="114" fill="#26303f">Valuation · completed sale</text>
+    <text x="18" y="127" font-size="9.5" fill="#8a94a3">evidence</text>
+  </g>
+  <!-- contributions -->
+  <rect x="196" y="42" width="150" height="62" rx="6" fill="#fff" stroke="#c9d6ec"/>
+  <text x="271" y="64" font-size="12" font-weight="700" fill="#2f5aa8" text-anchor="middle">contributions</text>
+  <text x="271" y="80" font-size="10" fill="#26303f" text-anchor="middle">trust-scored</text>
+  <text x="271" y="94" font-size="9.5" fill="#8a94a3" text-anchor="middle">calculate_contribution_trust_score</text>
+  <!-- processor -->
+  <rect x="196" y="126" width="150" height="48" rx="6" fill="#fff" stroke="#c9d6ec"/>
+  <text x="271" y="146" font-size="11.5" font-weight="700" fill="#26303f" text-anchor="middle">contributionProcessorJob</text>
+  <text x="271" y="162" font-size="10" fill="#8a94a3" text-anchor="middle">cron: pending → applied</text>
+  <!-- properties -->
+  <rect x="392" y="60" width="176" height="96" rx="8" fill="#1e2a44"/>
+  <text x="480" y="88" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">properties (canonical)</text>
+  <text x="480" y="108" font-size="10" fill="#c8d2e6" text-anchor="middle">first-party evidence</text>
+  <text x="480" y="122" font-size="10.5" font-weight="700" fill="#e8b874" text-anchor="middle">supersedes tier5 scraped</text>
+  <text x="480" y="138" font-size="9.5" fill="#9fb0cc" text-anchor="middle">by provenance + trust</text>
+  <!-- comps + valuation -->
+  <rect x="392" y="176" width="176" height="40" rx="6" fill="#eef3fb" stroke="#c9d6ec"/>
+  <text x="480" y="193" font-size="11" font-weight="700" fill="#2f5aa8" text-anchor="middle">comparableSearch (PostGIS)</text>
+  <text x="480" y="208" font-size="9.5" fill="#8a94a3" text-anchor="middle">RICS-tiered · auto-widen radius</text>
+  <rect x="392" y="238" width="176" height="34" rx="6" fill="#e8f5ee" stroke="#a9dcc4"/>
+  <text x="480" y="259" font-size="11.5" font-weight="700" fill="#2e8b6b" text-anchor="middle">Valuation opinion</text>
+  <!-- analytics -->
+  <rect x="602" y="88" width="146" height="52" rx="6" fill="#e8f5ee" stroke="#a9dcc4"/>
+  <text x="675" y="108" font-size="11" font-weight="700" fill="#2e8b6b" text-anchor="middle">Analytics indices</text>
+  <text x="675" y="124" font-size="9.5" fill="#8a94a3" text-anchor="middle">CCI · GHAI · RHDS · composites</text>
+  <!-- arrows -->
+  <g stroke="#2e8b6b" stroke-width="1.4" fill="none" marker-end="url(#ar2)">
+    <path d="M158,31 C176,40 180,55 194,58"/>
+    <path d="M158,73 C176,73 180,72 194,72"/>
+    <path d="M158,115 C176,105 180,92 194,88"/>
+    <path d="M271,104 L271,124"/>
+    <path d="M346,150 C368,150 372,120 390,112"/>
+    <path d="M480,156 L480,174"/>
+    <path d="M480,216 L480,236"/>
+    <path d="M568,112 L600,112"/>
+  </g>
+  <!-- flywheel return -->
+  <path d="M392,255 C300,255 300,150 271,106" stroke="#c47f2c" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#ar3)"/>
+  <text x="300" y="196" font-size="9.5" fill="#c47f2c">new sale / rent evidence (flywheel)</text>
+</svg>
+<figcaption>Fig. 7-B — Operational events → trust-scored contributions → <code>properties</code> → comparables → valuation → new evidence loops back (the moat).</figcaption>
+</figure>
+
+<h3>7.4 Scraped-listing catalog (Tier 5)</h3>
+<p class="kicker">Python/Scrapy fleet, dispatched by <code>scrapyScheduler.ts</code> to the worker; written by <code>pipelines.py</code> (the real property writer). Weekly full scrape (Sun 02:00) + daily update (03:00) + hourly retry.</p>
+<table class="t">
+  <thead><tr><th style="width:20%">Spider</th><th style="width:26%">Source</th><th style="width:24%">What it yields → table</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td><code>meqasa</code></td><td>meQasa.com (Ghana's largest portal)</td><td>Sale/rent listings → <code>properties</code></td><td><span class="pill live">Live</span></td></tr>
+    <tr><td><code>gpc</code></td><td>Ghana Property Centre</td><td>Listings → <code>properties</code></td><td><span class="pill live">Live</span></td></tr>
+    <tr><td><code>housemaster</code></td><td>HouseMaster GH</td><td>Listings → <code>properties</code></td><td><span class="pill live">Live</span></td></tr>
+    <tr><td><code>realtor</code></td><td>Realtor International (largest spider)</td><td>Listings → <code>properties</code></td><td><span class="pill live">Live</span></td></tr>
+    <tr><td><code>airbnb_ghana</code></td><td>Airbnb GH (Selenium)</td><td>Short-stay rates → short-stay analytics</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td><code>daily_graphic_legal</code></td><td>Daily Graphic legal notices</td><td>Litigation/encumbrance signals → <code>litigation_risk_data</code></td><td><span class="pill live">Live</span></td></tr>
+    <tr><td><code>ownkey</code></td><td>OwnKey (RSC extraction)</td><td>Listings → <code>properties</code></td><td><span class="pill partial">Verify</span> — built &amp; wired; had a worker-whitelist reachability defect (remediated per <code>scrapyScheduler</code> hardening) — reconfirm it dispatches.</td></tr>
+    <tr><td><code>tonaton</code></td><td>Tonaton</td><td>—</td><td><span class="pill gap">Stub</span> — disabled stub that still reported "completed"; drop from the default schedule.</td></tr>
+  </tbody>
+</table>
+<p class="faint">Shared spider base (<code>base.py</code>) does price/bed/area/amenity extraction, address parsing and error-back; site spiders carry only selectors/pagination. Provenance/dedupe via <code>multi_source_tracker.py</code> (SAVEPOINT-isolated). The worker itself (<code>api_server.py</code>, Flask on <code>0.0.0.0:5000</code>) is a security finding (§7.9).</p>
+
+<h3>7.5 Statistical, economic &amp; government feeds (Tiers 1–3)</h3>
+<p class="kicker">Ingested by <code>backend/src/services/data-hub/scrapers/*</code> on cron (<code>economicDataScheduler.ts</code>, all crons env-overridable); the GSS family reads GSS StatsBank PxWeb (json-stat2).</p>
+<table class="t">
+  <thead><tr><th style="width:26%">Feed</th><th style="width:30%">What it provides</th><th>Target tables → consumers</th></tr></thead>
+  <tbody>
+    <tr><td>Bank of Ghana (FX + indicators)</td><td>Official daily FX, policy rate, lending, monetary indicators (monthly + daily scrapers + monthly charts PDF)</td><td><code>economic_indicators</code>, <code>bog_*</code> → FX-settled rent, mortgage derivation, macro strips</td></tr>
+    <tr><td>World Bank (WDI)</td><td>Development indicators (quarterly)</td><td><code>economic_indicators</code> → macro context</td></tr>
+    <tr><td>GSS — PPI / IIP</td><td>Construction producer-price index, industrial production</td><td><code>gss_ppi_construction_series</code>, <code>gss_iip_monthly</code> → Construction Cost Index (CCI)</td></tr>
+    <tr><td>GSS — Financial / MIEG / Trade</td><td>Interest &amp; financial-soundness, monthly economic indicators, GDP, construction-material imports (HS2)</td><td><code>gss_interest_rates_monthly</code>, <code>gss_mieg_monthly</code>, <code>gss_construction_material_imports</code> → CCI/GCMIPI, investment scoring</td></tr>
+    <tr><td>GSS — PHC 2021 (population / employment / poverty / housing)</td><td>Census population, employment, poverty, housing stock by region/district</td><td><code>gss_phc_*</code> → Regional Housing Demand Score (RHDS), NIQS, GHAI</td></tr>
+    <tr><td>GSS — GLSS7 &amp; Income</td><td>Living-standards survey, regional household income</td><td><code>gss_glss7_*</code>, <code>regional_household_income</code> → affordability (GHAI), demand, rentals</td></tr>
+    <tr><td>NPA / fuel · ConstructionGhana materials · Fair-Wages labor · GREDA/BRRI</td><td>Pump prices, local material prices, labour rates, specialised construction costs</td><td><code>fuel_prices</code>, <code>material_prices</code>, <code>labor_rates</code>, <code>specialized_construction_costs</code>, <code>base_costs_per_sqm</code> → Cost/DRC methods, project budgets</td></tr>
+    <tr><td>NADMO (flood risk)</td><td>Flood-risk zones (ingestion route)</td><td><code>flood_risk_*</code> → risk overlays</td></tr>
+  </tbody>
+</table>
+
+<h3>7.6 Flow to valuation (comparable evidence)</h3>
+<p>The <code>properties</code> hub is the comparable source for the market-based methods. For <b>Sales Comparison</b>, <b>Market Rent</b> and <b>Land Value</b>, a PostGIS tiered comparable search selects like-for-like comps by transaction basis (sale vs rental), property type, size band and radius, <b>auto-widening the radius</b> until it reaches a RICS-workable count; prices are converted to GHS once at the engine boundary at the live locked FX rate (no per-comp double-conversion). The Python valuation engine consumes the comp grid and returns the reasoned result. First-party contributed sales/rents (Tier 3b) rank above scraped rows, so a firm's own transaction history directly improves its comparable quality over time. The <b>Cost/DRC</b> methods read the construction-cost tables (<code>base_costs_per_sqm</code>, <code>material_prices</code>, <code>labor_rates</code>, <code>specialized_construction_costs</code>) built from Tier-1/3 feeds; <b>litigation_risk_data</b> (Daily Graphic) surfaces as an encumbrance signal.</p>
+
+<h3>7.7 Flow to analytics (indices &amp; scores)</h3>
+<p>The same substrate feeds the analytics composites (whose customer-facing <i>dashboards</i> are out of scope, but whose <i>pipeline</i> is Data Hub): the <b>Construction Cost Index (CCI/GCMIPI)</b> from PPI + material imports + material/labour prices; the <b>Ghana Housing Affordability Index (GHAI)</b> + <code>housing_affordability_index</code> from GSS income + BoG lending; the <b>Regional Housing Demand Score (RHDS)</b> from PHC population/employment/poverty + housing deficit; and the higher-order market-intelligence composites <b>DPMDI</b> (market depth), <b>PTMPI</b> (proptech penetration), <b>ESSI</b> and <b>RICI</b>, plus investment scoring and short-stay tourism analytics. Monthly snapshots are taken by <code>analyticsScheduler</code>.</p>
+
+<h3>7.8 What is genuinely strong here</h3>
+<div class="info"><ul style="margin:2px 0">
+  <li>SQL is <b>parameterized essentially everywhere</b> (the Python <code>pipelines.py</code> writer and the TS services) — SQL-injection surface is minimal.</li>
+  <li>The GSS PHC Slice-3/4 ingestors and <code>scrapyScheduler.ts</code> (preflight worker-health, stuck-job reaper, degradation alerts, fetch timeouts) are well-engineered.</li>
+  <li>The <code>properties</code> region-partitioning, the contribution/trust model, and the multi-source provenance tracker are the right architecture for the flywheel.</li>
+  <li>Credential storage uses AES-256-GCM + PBKDF2 with a required env secret; the shared PxWeb client is a real shared module (for the services that use it).</li>
+</ul></div>
+
+<h3>7.9 Gaps identified &amp; SOC findings (Data Hub)</h3>
+<ul>
+  <li><span class="sev crit">CRITICAL</span> <b>SSRF via DB-stored partner endpoint URLs</b> — <code>apiPullIntegrationService.ts:256-264,386-395</code> and <code>partnerApiClient.ts:167</code> use attacker-writable <code>partner_api_endpoints</code> URLs as request targets (no allowlist/scheme/private-IP guard, no timeout on the token POST) → the backend can be made to hit cloud metadata / internal infra and exfiltrate OAuth secrets.</li>
+  <li><span class="sev crit">CRITICAL</span> <b>Unauthenticated Scrapy worker</b> — <code>pipelines/scrapy/api_server.py:100-141</code>: Flask on <code>0.0.0.0:5000</code>, <code>/run</code> with no auth and no concurrent-run cap (fork-bomb / thread exhaustion). Add a shared-secret header + max-running cap.</li>
+  <li><span class="sev crit">CRITICAL</span> <b>Official-FX provenance poisoning</b> — <code>fxFeedService.ts:769-794</code> stamps Yahoo Finance data as <code>source:'Bank of Ghana', is_official:true</code>, which lands in the exact query the FX-settled rent path reads; meanwhile the real official scraper (<code>bogDailyFxScraper.ts</code>) uses a Cloudflare-blocked bot UA and bypasses sync-logging (plausibly silently dead). This poisons a <b>money-settlement</b> input.</li>
+  <li><span class="sev high">HIGH</span> <b>Job queue silently drops every job in prod</b> — <code>jobQueue.ts:328-336</code> runs stub mode (no worker deployed); CRM sync, manual triggers and ingestion all "queue" jobs that vanish. Deploy the worker or reroute to the DB-backed <code>etl_jobs</code> path and make stub <code>addJob</code> throw.</li>
+  <li><span class="sev high">HIGH</span> <b>"Success" reported on total failure</b> (systemic masking) — bogScraper, wdiClient, gredaScraper, apiPull batch-fallback, ingestion checksum/validation "theater", and GSS scheduler wrappers all report green on total fetch failure; source-health hardcodes <code>true</code> for several sources. Status must derive from fetch success.</li>
+  <li><span class="sev high">HIGH</span> <b>Remote-prod-DB write pattern</b> — row-by-row single-INSERT loops (GSS ×15, materials, labor, WDI) against the remote prod DB, with full-history refetch every run and no watermarks; material/labor scrapers append without <code>ON CONFLICT</code> (unbounded table growth). Needs batch upsert + per-series watermarks + unique keys.</li>
+  <li><span class="sev med">MEDIUM</span> <b>Weak anonymization of Tier-2 PII</b> — <code>anonymizationService.ts:69,225-233</code>: unsalted per-record SHA-256 with a hardcoded in-repo salt (dictionary-reversible for phones/Ghana-Card/accounts); no-rules → raw pass-through. Ghana DPA exposure.</li>
+  <li><span class="sev med">MEDIUM</span> <b>TLS verification disabled</b> (<code>rejectUnauthorized:false</code>) on all three BoG feeds; credential-rotation bug bricks stored credentials (<code>credentialsService.ts:243</code>); partner-pull cron never initialised at boot (the pull pipeline has never run end-to-end).</li>
+  <li><span class="sev low">LOW</span> <b>~5,000 LOC dead/unreachable</b> — an entire legacy TS ETL layer (orchestrator, propertyStorage, dataEnrichment with hardcoded FX 12.5), <code>etlJobProcessor</code> (fabricates job stats with <code>Math.random</code>), <code>dataSourceScheduler</code>, <code>mlIntegrationService</code>, an unused Airflow DAG, and fabricated insights/lineage/SLA in a few read services. Delete or clearly quarantine; several would be broken if revived (legacy columns / non-existent SQL functions).</li>
+</ul>
+<p class="faint">Full file-by-file evidence: <code>docs/audit/05-backend-services-datahub.md</code> (111 files, 100% coverage). Note: several 2026-07-02 findings above (e.g. public-listing FX double-conversion, OpenSearch comparable override, GSS slices, ownkey wiring) were remediated in later work — reconfirm current state per file before acting.</p>
+</div>
+
+<!-- ===================== 8. PLATFORM / ADMIN ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">8</span>Platform, Admin, Integrations &amp; Communications</h2>
+<p>The shared layers underneath the five services. (Customer-facing analytics <i>dashboards</i> and blockchain/crypto payout are out of scope; the Data Hub pipeline is Section 7.)</p>
+
+<h3>8.1 Admin service (F8 — platform-staff console)</h3>
+<p>The PropMetrik-operator control plane at <code>/dashboard/admin/*</code>. Access gating: <code>admin/layout.tsx</code> is a server component that calls <code>auth()</code> and redirects <i>before</i> any admin markup/JS is sent; access requires <b>both</b> a platform role (<code>super_admin</code>/<code>admin</code> — deliberately not <code>firm_principal</code>, the org-owner role every subscriber gets) <b>and</b> <code>userType==='staff'</code>. The auditor should verify backend admin routes enforce the same role+user_type check.</p>
+<table class="t">
+  <thead><tr><th style="width:24%">Sub-tab</th><th>Purpose / use case</th></tr></thead>
+  <tbody>
+    <tr><td>Overview</td><td>Operator console: stat cards (users, orgs, active 24h, properties, valuations MTD, security events), live system-status (API/PostgreSQL/Redis/object-storage), recent activity.</td></tr>
+    <tr><td>User management</td><td>Platform-wide user directory; destructive <b>hard-delete user</b> (<code>DELETE /admin/users/:id</code>, email-confirm; removes account + Keycloak login, irreversible).</td></tr>
+    <tr><td>Organizations</td><td>Org directory; <b>Downgrade to free</b> (cancel paid sub, keep data) and <b>hard-delete org</b> (name-confirm; removes org + all member accounts platform+Keycloak + subscriptions/invoices/payments).</td></tr>
+    <tr><td>Platform billing / revenue</td><td>Platform Revenue dashboard: period selector; Total Revenue, Subscriptions, Platform Fees, MRR/ARR, Active Subs, Processed Volume, Pending/Overdue; Transactions + Invoices ledgers. Platform revenue = subscriptions + platform fees only (customer principal excluded).</td></tr>
+    <tr><td>RBAC config</td><td>RBAC Policy Manager: bind <code>resource_type</code> + <code>action</code> → <code>allowed_roles</code> (14 roles) + scoping predicates (<code>require_ownership</code>/<code>require_assignment</code>/<code>require_same_org</code>); invalidate RBAC cache; Audit tab of allow/deny decisions.</td></tr>
+    <tr><td>Integrations (platform-owned) · Verification / KYC</td><td>Catalog of ~35 platform-level services (Payments, Auth, Messaging, Infra, AI/ML, Maps, Data, Documents, Verification) with health overlay. Where Paystack and Identity/KYC (Didit / Ghana Card — not yet configured) live — distinct from the org BYO hub.</td></tr>
+  </tbody>
+</table>
+
+<h3>8.2 Integrations Hub (org-wide BYO framework)</h3>
+<p>One UI behind every service's Integrations tab (<code>IntegrationsHub.tsx</code>), driven by the backend catalog (<code>integrationCatalog.ts</code>). Each provider is tagged model (<code>platform</code> / <code>byo_org</code> / <code>byo_user</code> / <code>hybrid</code>) + auth (<code>oauth2</code> / <code>api_key</code> / <code>webhook</code> / <code>managed</code>). A BYO-OAuth provider is only "Connect"-able once the platform OAuth app creds exist in env (else "Requires setup"). Org-shared integrations are gated to leadership+finance server-side (403); <code>byo_user</code> creds are scoped to org AND user_id (no cross-teammate inbox leak).</p>
+<table class="t">
+  <thead><tr><th style="width:28%">Provider</th><th style="width:12%">Type</th><th style="width:12%">Model</th><th style="width:12%">Status</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Xero</td><td>oauth2</td><td>byo_org</td><td><span class="pill live">Live</span></td><td>Only accounting integration live end-to-end (syncs project costs as bills)</td></tr>
+    <tr><td>Gmail · Google Calendar</td><td>oauth2</td><td>byo_user</td><td><span class="pill live">Live</span></td><td>Inbox sync + log to records · two-way calendar sync</td></tr>
+    <tr><td>Custom Webhook</td><td>webhook</td><td>byo_org</td><td><span class="pill live">Live</span></td><td>Events to a URL you control; optional signing secret</td></tr>
+    <tr><td>WhatsApp Business</td><td>managed</td><td>platform</td><td><span class="pill live">Live</span></td><td>Info-only; templates/reminders run by PropMetrik</td></tr>
+    <tr><td>QuickBooks · Outlook · Google Drive · OneDrive</td><td>oauth2</td><td>byo_org/user</td><td><span class="pill avail">Available</span></td><td>Wired; need app creds (Outlook/OneDrive live-confirmed in history)</td></tr>
+    <tr><td>Facebook · Instagram · TikTok · LinkedIn · X</td><td>oauth2</td><td>byo_org</td><td><span class="pill avail">Available</span></td><td>Publish listings; TikTok live-confirmed. Shared publish pipeline (approved photos)</td></tr>
+    <tr><td>Twilio SMS</td><td>api_key</td><td>byo_user</td><td><span class="pill avail">Available</span></td><td>Auth Token AES-256-GCM encrypted at rest; requires <code>CREDENTIALS_ENCRYPTION_SECRET</code></td></tr>
+    <tr><td>Zapier · Connect Website</td><td>api_key</td><td>byo_org</td><td><span class="pill avail">Available</span></td><td>5000+ app bridge · listings on own site + enquiries back</td></tr>
+    <tr><td>Twilio Voice</td><td>api_key</td><td>hybrid</td><td><span class="pill soon">Coming soon</span></td><td>Click-to-call; not connectable</td></tr>
+  </tbody>
+</table>
+<div class="box"><p style="margin:2px 0"><b>Encrypted secret store.</b> <code>backend/src/utils/secretCrypto.ts</code> — reversible AES-256-GCM (PBKDF2 key from <code>CREDENTIALS_ENCRYPTION_SECRET</code>) for outbound BYO credentials that must be read back (e.g. an org's Twilio Auth Token), distinct from the one-way <code>api_key_hash</code>. <span class="faint">SOC note: this reversible key is a single-point root of trust for every org's outbound credential — confidentiality + rotation of <code>CREDENTIALS_ENCRYPTION_SECRET</code> is a named control.</span></p></div>
+
+<h3>8.3 Communications Hub (shared PM / Deals / Projects)</h3>
+<p>One tabbed shell (<code>CommunicationsHub.tsx</code>) — Chat · Mail · Social · Calendar — adapting to the <code>service</code> prop. Chat: WhatsApp lead chat (Deals) or landlord↔tenant messaging (PM). Mail: per-user scoped + optional per-record filter, bodies rendered in a <b>sandboxed iframe with no</b> <code>allow-scripts</code> (email JS cannot execute — good hardening); reply/forward + "Link to record". Compose: docked Gmail-style window carrying <code>entity_type</code>/<code>entity_id</code> so sent mail attaches to a record. Calendar: shared view filtered by service. (Internal team chat stays in the separate floating Workspace messenger.)</p>
+
+<h3>8.4 Notifications &amp; Payments</h3>
+<p><b>Notifications</b> — one canonical <code>notify()</code> core (<code>backend/shared-services/notifications/notify.ts</code>) fans an event across in-app (staff/tenant tables), email (3-tier failover: MS Graph → SES → SMTP), SMS (Twilio incl. BYO), and SSE realtime; routed by <code>audience</code> (staff vs tenant) + <code>category</code>; <b>never throws</b> (channel failures collected, business action never broken); cron reminders (rent, CRM tasks, drip). <i>Debt:</i> a legacy parallel PM notification service still exists and should be folded in.</p>
+<p><b>Payments (fiat)</b> — Paystack (cards + Mobile Money) with sub-accounts so managers receive payouts directly and the platform takes a split fee; central <code>paymentProcessor.ts</code> across deal/project/valuation/subscription rails + ledger + webhook reconcile; daily subscription renewal + dunning; idempotent invoice <code>confirmPayment</code>; FX-settled USD-rent-in-GHS at a live locked rate (dual-currency ledger). <b>This is a live money path with material audit findings</b> (see §9.3): verify race + non-transactional success path, non-atomic FIFO, five Paystack clients / three HMAC impls, opt-in webhook signature verification, float money math. Outbound disbursement (commission/refund/deposit payouts) is <b>not built</b>.</p>
+</div>
+
+<!-- ===================== 9. SECURITY BACKLOG ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">9</span>Consolidated Security &amp; SOC-Readiness Backlog</h2>
+<p>Synthesised from the internal <code>docs/audit/</code> (19 reports; overall 4/10, Security 3/10 — the lowest dimension; Data Hub 3.5/10) plus the per-service findings above. The auditor changed no code and cited <code>file:line</code> throughout. Most severe issues are <b>systemic</b> — one bad pattern at a shared chokepoint — so fixes are high-leverage. This is the recommended external-auditor priority order.</p>
+<div class="box"><p style="margin:2px 0"><b>Positives to preserve (audit-confirmed):</b> zero committed secrets (correct <code>.gitignore</code>; only <code>.example</code> envs); clean <code>notify()</code> core; clean Workspace org-isolation; host-only cookie tenant/staff isolation; region-partitioned <code>properties</code> table; sandboxed no-script email rendering; parameterized SQL across the Data Hub; fail-closed-to-customer default in <code>enrichUserFromDb</code>.</p></div>
+<table class="t">
+  <thead><tr><th style="width:4%">#</th><th style="width:12%">Severity</th><th style="width:22%">Area</th><th>What to fix / verify</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><span class="sev crit">CRITICAL</span></td><td>Authentication bypass paths</td><td><code>POST /auth/google</code> reportedly trusts client-supplied <code>{email,googleId}</code> with no token verification (note the frontend now verifies the <code>id_token</code> server-side; confirm the backend route does too); dev-auth-bypass fail-open; <code>JWT_SECRET</code> constant fallback if env unset; <code>AppError</code> prototype bug makes <code>instanceof</code> auth-error branches never fire. Any one enables takeover.</td></tr>
+    <tr><td>2</td><td><span class="sev crit">CRITICAL</span></td><td>E-sign is not real cryptography</td><td>Signatures hash the <b>PDF URL string, not the bytes</b>; private keys "encrypted" with XOR under a hardcoded dev secret; TSA timestamps are a self-signed in-memory mock — on a live valuation + lease signing path. Non-repudiation is currently fake. (Valuation "digital seal" is likewise a SHA-256 hash, not a PKI signature.)</td></tr>
+    <tr><td>3</td><td><span class="sev crit">CRITICAL</span></td><td>Money-path integrity</td><td>Non-transactional / traceable payment confirmation (double-record / lost rent); non-atomic FIFO application; org-unscoped commission mutations; five Paystack clients / three webhook-HMAC impls (some sign <code>JSON.stringify(body)</code> not raw bytes); opt-in webhook signature verification (returns "valid" when the secret is unset); float money math. No outbound disbursement rail exists (payouts tracked, never paid).</td></tr>
+    <tr><td>4</td><td><span class="sev crit">CRITICAL</span></td><td>Data Hub ingestion (§7.9)</td><td>SSRF via DB-stored partner URLs (+ OAuth-secret exfiltration); unauthenticated Scrapy worker on <code>0.0.0.0:5000</code> with no run-cap; official-FX provenance poisoning into the money-settlement path; Bull job queue in stub mode silently drops every queued job. All ingestion-side; all remediable at their chokepoints.</td></tr>
+    <tr><td>5</td><td><span class="sev high">HIGH</span></td><td>Cross-org IDOR (systemic)</td><td>Unscoped role/member mutations (<code>team.ts</code>, <code>serviceTeam.ts</code> — a <code>service_admin</code> of org A could alter users in any org); <code>rbac.ts</code> admin gate missing <code>user_type='staff'</code> (a customer with an <code>admin</code> role could rewrite platform-wide policies); e-sign envelope status leaks any envelope to any caller; world-open unauthenticated Python valuation engine (CORS <code>*</code>, browser calls it directly).</td></tr>
+    <tr><td>6</td><td><span class="sev high">HIGH</span></td><td>Server-side RBAC enforcement</td><td>Frontend RBAC fails open ("no scoping defined = allow") with hardcoded fallbacks; confirm every route is re-enforced server-side and org-scoped BYO 403s are consistent (button-hiding is not the boundary). Prioritise <code>viewer</code>/<code>service_admin</code>/finance tabs per service, and the staff-AND-userType admin gate.</td></tr>
+    <tr><td>7</td><td><span class="sev high">HIGH</span></td><td>Data Hub write pattern &amp; masking</td><td>Row-by-row single-INSERT loops against the remote prod DB with full-history refetch and no watermarks (perf); "success reported on total failure" across multiple scrapers + ingestion "checksum/validation theater"; weak/reversible anonymization of Tier-2 PII (Ghana DPA). Derive status from fetch success; batch-upsert + watermarks; real anonymization.</td></tr>
+    <tr><td>8</td><td><span class="sev med">MEDIUM</span></td><td>Single prod DB + local-dev-hits-prod</td><td>One production PostgreSQL; local dev (<code>NODE_ENV=development</code>) connects to production data (no dev/staging DB). Amplifies every fail-open auth path against prod and is the root of the performance profile (remote latency, pool max 10).</td></tr>
+    <tr><td>9</td><td><span class="sev med">MEDIUM</span></td><td>Secrets rotation &amp; blast radius</td><td><code>CREDENTIALS_ENCRYPTION_SECRET</code> (reversible AES key for all BYO outbound creds) and <code>ESIGN_KEY_SECRET</code> are single-point roots of trust — define rotation / Vault / HSM posture. (Positive: nothing committed.) Plus <code>FRONTEND_URL</code>-in-prod hygiene (a stale localhost value can poison outbound e-sign/payment links).</td></tr>
+    <tr><td>10</td><td><span class="sev med">MEDIUM</span></td><td>Retention, audit, controls &amp; coverage</td><td>Irreversible hard-deletes (DB + Keycloak) with no retention window; token blacklist never written (logout doesn't revoke tokens); no CSP/HSTS on the Next origin; <code>eslint.ignoreDuringBuilds:true</code>; 47 backend tests but 0 frontend tests, no coverage gate, no CI regression guard including money paths; ~24 files hardcode <code>http://localhost:4000</code> (dev/prod-leak).</td></tr>
+  </tbody>
+</table>
+<p class="faint">Legacy-debt items (parallel notification/e-sign/Paystack stacks, ~5,000 LOC dead Data-Hub trees) are documented in the audit but are quality/maintainability rather than SOC-blocking.</p>
+</div>
+
+<!-- ===================== 10. TEST MATRIX ===================== -->
+<div class="page pagebreak">
+<h2><span class="n">10</span>Portal &amp; Role Test Matrix (readiness checklist)</h2>
+<p>The distinct authenticated experiences the external team must exercise for corporate-onboarding + SOC readiness, and the roles each must be tested under. "Build" = must be built before it can be tested.</p>
+<h3>10.1 Portals to test / build</h3>
+<table class="t">
+  <thead><tr><th style="width:22%">Portal</th><th style="width:8%">State</th><th style="width:30%">Roles / identities to test under</th><th>Priority test focus</th></tr></thead>
+  <tbody>
+    <tr><td>Staff/platform dashboard</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>super_admin, admin, manager, firm_principal, valuer, agent, project_manager, finance_manager, viewer</td><td>Tab visibility per role; non-privileged roles cannot reach money/admin surfaces</td></tr>
+    <tr><td>Customer org dashboard</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>Per service: <code>service_admin</code>, the mid-tier, and <code>viewer</code> (× Valuations/CRM/PM/Projects)</td><td>Subscription gating; <code>viewer</code> never writes; only <code>service_admin</code> can invite; finance/commission tabs</td></tr>
+    <tr><td>Tenant portal</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td><code>tenant</code> (on <code>tenant.*</code> host)</td><td>Host-only cookie isolation (tenant session cannot reach staff app); pay/maintenance/lease-sign; cross-tenant IDOR</td></tr>
+    <tr><td>Tenant apply/onboarding (public)</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>Unauthenticated + magic-link token</td><td>Token entropy/single-use/expiry; set-password flow; no authed-data leak from legacy <code>/app/tenant/*</code> tree</td></tr>
+    <tr><td>Public marketplace + enquiry</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>Unauthenticated</td><td>Enquiry capture; deal-gating (deal only if org has CRM); no injection via public search/inquiry</td></tr>
+    <tr><td>E-sign external signer</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>Token identity (email link)</td><td>Envelope-status IDOR (any envelope to any caller — a known finding); signature integrity (see §9.2)</td></tr>
+    <tr><td>Vendor bid portal</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>Invited vendor (token)</td><td>Token scope to one bid; submit/decline/Q&amp;A; cannot view other vendors' bids</td></tr>
+    <tr><td>Developer / API console</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>Customer org w/ API product; staff</td><td>API-key issuance/rotation; entitlement gate; rate-limit; <code>pmk_</code> keys rejected on session routes</td></tr>
+    <tr><td>Staff Admin console</td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>staff <code>admin</code>/<code>super_admin</code> — <b>and negative:</b> customer holding an admin role</td><td>role AND <code>user_type='staff'</code> gate; backend admin routes enforce it; hard-delete confirmations</td></tr>
+    <tr><td><b>Data Hub / ingestion</b></td><td><span class="pill build" style="background:#e8f5ee;color:#2e8b6b">Test</span></td><td>staff <code>admin</code> (console) + infra pen-test (worker, partner-pull)</td><td>Scrapy worker auth + run-cap; partner-endpoint SSRF allowlist; FX provenance labels on the settlement query; job-queue does not silently drop; contribution → <code>properties</code> supersede correctness</td></tr>
+    <tr><td>Contractor portal</td><td><span class="pill build">Build</span></td><td>(none — needs real auth first)</td><td>Currently mock+unauth+orphaned. Build real auth or remove before audit</td></tr>
+    <tr><td>Project client/owner portal</td><td><span class="pill build">Build</span></td><td>owner_representative, lender_representative</td><td>External RFI answers, change-order approval/sign, draw visibility — does not exist</td></tr>
+    <tr><td>Valuation instructing-client view</td><td><span class="pill build">Build</span></td><td>instructing client</td><td>No external report view/status; clients are records only — build if promised</td></tr>
+    <tr><td>Buyer/seller CRM portal</td><td><span class="pill build">Build</span></td><td>marketplace buyer/seller</td><td>No logged-in deal-tracking portal — build if promised</td></tr>
+  </tbody>
+</table>
+<h3>10.2 Cross-cutting RBAC test cases (all services)</h3>
+<ul>
+  <li><b>Fail-open fallback:</b> make backend <code>/rbac/config</code> unreachable → confirm the frontend hardcoded fallback does not over-grant, and every route is still enforced server-side.</li>
+  <li><b>Cross-org IDOR sweep:</b> as <code>service_admin</code> of org A, attempt to read/mutate org B's members, roles, deals, tenants, projects, envelopes, commissions, and Data Hub contributions.</li>
+  <li><b>Least-privilege writes:</b> every <code>viewer</code> role attempts a write on each sub-tab (must 403); every non-finance role attempts finance/commission/payout actions.</li>
+  <li><b>Invite control:</b> only <code>service_admin</code> can invite/assign roles (<code>requireCanInvite</code>); non-admins blocked server-side.</li>
+  <li><b>Admin gate:</b> customer user with an <code>admin</code> role cannot reach <code>/dashboard/admin</code> nor any backend admin route (role AND <code>user_type='staff'</code>).</li>
+  <li><b>Money paths:</b> replay/duplicate webhooks; unsigned webhook with secret unset (must reject, not accept); concurrent payment confirm (no double-record / lost rent).</li>
+  <li><b>Data integrity:</b> confirm ingestion status derives from fetch success (no false green); official-FX source labels are correct on the settlement query; contributions supersede scraped rows by trust, not overwrite blindly.</li>
+  <li><b>Session isolation:</b> a <code>tenant.*</code> session cookie must never authenticate against <code>propmetrik.com</code> and vice-versa.</li>
+</ul>
+<div class="box"><p style="margin:2px 0"><b>Suggested remediation sequence for corporate + SOC readiness:</b></p>
+<ol style="margin:2px 0 2px 16px">
+  <li>Close the CRITICAL auth-bypass paths (§9.1) and prove dev-bypass is off in prod.</li>
+  <li>Replace the e-sign crypto with a real PKI/TSA provider (§9.2) — it underpins legal valuation + lease documents.</li>
+  <li>Make the money path transactional + verify webhook signatures + scope commission mutations by org (§9.3); then build the outbound disbursement rail.</li>
+  <li>Contain the Data Hub ingestion surface (§9.4 / §7.9): auth the Scrapy worker, allowlist partner URLs, fix FX provenance, make the job queue non-silent.</li>
+  <li>Sweep cross-org IDOR + authenticate the Python engine + re-enforce fail-open RBAC server-side (§9.5–9.6).</li>
+  <li>Stand up a dev/staging DB (no dev-hits-prod); define secrets-rotation and data-retention/soft-delete policy (§9.8–9.10).</li>
+  <li>Decide each GAP portal (§10.1): build+test or remove; remove the unauthenticated contractor stub either way.</li>
+  <li>Add CSP/HSTS, a frontend test suite + CI coverage gate including money and ingestion paths.</li>
+</ol></div>
+<p class="faint" style="margin-top:10px">— End of handoff. All findings are grounded in a direct read of branch <code>main</code>; the internal audit reports live under <code>docs/audit/</code> for deeper evidence, and the Data Hub file-by-file is <code>docs/audit/05-backend-services-datahub.md</code>.</p>
+</div>
+
+<!--INSERT-->
+</body>
+</html>

@@ -225,6 +225,84 @@ export default function SubscriptionCostsPage() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
+  // ── Pricing display config (annual-only bundle toggle) ──────────
+  const [pricingCfg, setPricingCfg] = useState<{
+    annual_only: boolean
+    canonical_tier: string
+    bundle_discounts: Record<string, number>
+  } | null>(null)
+  const [cfgSaving, setCfgSaving] = useState(false)
+
+  const loadPricingCfg = useCallback(async () => {
+    try {
+      const res = await authedFetch(`${API_BASE}/subscriptions/admin/pricing-config`, { credentials: 'include' })
+      if (res.ok) setPricingCfg(await res.json())
+    } catch {
+      /* non-blocking */
+    }
+  }, [])
+
+  const savePricingCfg = useCallback(async (patch: Record<string, any>) => {
+    setCfgSaving(true)
+    try {
+      const res = await authedFetch(`${API_BASE}/subscriptions/admin/pricing-config`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (res.ok) setPricingCfg(await res.json())
+      else setError('Failed to update pricing display mode')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setCfgSaving(false)
+    }
+  }, [])
+
+  // Categories that make up the annual bundle catalog (the 4 sellable services + full platform).
+  const BUNDLE_CATEGORIES: { category: PlanCategory; label: string }[] = [
+    { category: 'full_platform', label: 'Full Platform (all 4 services)' },
+    { category: 'valuation_services', label: 'Valuations' },
+    { category: 'property_management', label: 'Property Management' },
+    { category: 'crm', label: 'CRM' },
+    { category: 'project_management', label: 'Projects' },
+  ]
+  type BundleEdit = { annual: string; description: string; features: string }
+  const [bundleEdits, setBundleEdits] = useState<Record<string, BundleEdit>>({})
+  const [bundleSavingSlug, setBundleSavingSlug] = useState<string | null>(null)
+
+  const saveBundlePrice = useCallback(async (plan: SubscriptionPlan) => {
+    setBundleSavingSlug(plan.slug)
+    try {
+      const edit = bundleEdits[plan.slug]
+      const annual = Number(edit?.annual)
+      if (!Number.isFinite(annual) || annual < 0) { setError('Enter a valid annual price'); return }
+      const features = (edit?.description !== undefined)
+        ? (edit.features || '').split('\n').map(f => f.trim()).filter(Boolean)
+        : undefined
+      const res = await authedFetch(`${API_BASE}/subscriptions/admin/plans/${plan.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          price_annual_ghs: annual,
+          description: edit?.description ?? plan.description ?? '',
+          ...(features ? { features } : {}),
+        }),
+      })
+      if (!res.ok) { setError('Failed to save annual plan'); return }
+      setSaveSuccess(`Saved ${plan.name}`)
+      setTimeout(() => setSaveSuccess(null), 2500)
+      await loadPlans()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setBundleSavingSlug(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundleEdits])
+
   const loadPlans = useCallback(async () => {
     try {
       setLoading(true)
@@ -242,6 +320,22 @@ export default function SubscriptionCostsPage() {
   }, [])
 
   useEffect(() => { loadPlans() }, [loadPlans])
+  useEffect(() => { loadPricingCfg() }, [loadPricingCfg])
+  // Seed the annual-bundle editor (price + description + features) from the canonical-tier plans.
+  useEffect(() => {
+    if (!pricingCfg || plans.length === 0) return
+    const seed: Record<string, BundleEdit> = {}
+    for (const p of plans) {
+      if (p.tier === pricingCfg.canonical_tier) {
+        seed[p.slug] = {
+          annual: String(p.price_annual_ghs ?? ''),
+          description: p.description ?? '',
+          features: (p.features || []).join('\n'),
+        }
+      }
+    }
+    setBundleEdits(seed)
+  }, [plans, pricingCfg])
 
   // ── Handlers ────────────────────────────────────────────────
   const startEdit = (plan: SubscriptionPlan) => {
@@ -320,9 +414,12 @@ export default function SubscriptionCostsPage() {
   }
 
   // ── Filter ──────────────────────────────────────────────────
+  // The 'annual' unlimited plans are managed by the dedicated Annual Bundle
+  // Prices editor above — keep them out of the tiered grid to avoid confusion.
+  const tieredPlans = plans.filter(p => (p.tier as string) !== 'annual')
   const filtered = filterCategory === 'all'
-    ? plans
-    : plans.filter(p => p.category === filterCategory)
+    ? tieredPlans
+    : tieredPlans.filter(p => p.category === filterCategory)
 
   // ── Group by category ───────────────────────────────────────
   const grouped = filtered.reduce<Record<string, SubscriptionPlan[]>>((acc, plan) => {
@@ -381,6 +478,137 @@ export default function SubscriptionCostsPage() {
           <p><strong>Deactivating</strong> a plan hides it from new signups but does not affect existing subscribers.</p>
         </div>
       </div>
+
+      {/* Pricing Display Mode — annual-only bundle toggle */}
+      {pricingCfg && (
+        <Card className="bg-card border-amber-900/40 border">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-mono uppercase font-bold text-foreground">Public Pricing Display</span>
+                </div>
+                <p className="text-xs text-muted-foreground font-mono max-w-2xl">
+                  When <strong>Annual-only bundle mode</strong> is on, the public pricing page and signup hide
+                  the tiered plans and the monthly option — showing only the annual price for each of the four
+                  services and the full platform. Customers bundle 2 services for{' '}
+                  <strong>{Math.round((pricingCfg.bundle_discounts?.['2'] ?? 0) * 100)}%</strong> off and 3 for{' '}
+                  <strong>{Math.round((pricingCfg.bundle_discounts?.['3'] ?? 0) * 100)}%</strong> off.
+                  The <strong>{pricingCfg.canonical_tier}</strong>-tier plan price is used as each service&apos;s
+                  annual price — edit it below. Turning this off restores the full tiered/monthly catalog.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {cfgSaving && <Loader2 className="h-4 w-4 animate-spin text-amber-500" />}
+                <span className="text-xs font-mono text-muted-foreground">
+                  {pricingCfg.annual_only ? 'Annual bundle' : 'Tiered'}
+                </span>
+                <Switch
+                  checked={pricingCfg.annual_only}
+                  disabled={cfgSaving}
+                  onCheckedChange={(v) => savePricingCfg({ annual_only: v })}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Annual Bundle Prices — the exact prices the public annual-only page uses */}
+      {pricingCfg?.annual_only && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-sm font-mono uppercase text-foreground flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-amber-500" />
+              Annual Bundle Prices
+            </CardTitle>
+            <p className="text-xs text-muted-foreground font-mono">
+              These are the exact annual prices shown on the public pricing page and signup. Each is the{' '}
+              <strong>{pricingCfg.canonical_tier}</strong>-tier plan for its service. Edit &amp; save below —
+              changes are live immediately. (Bundling discounts of{' '}
+              {Math.round((pricingCfg.bundle_discounts?.['2'] ?? 0) * 100)}% / {Math.round((pricingCfg.bundle_discounts?.['3'] ?? 0) * 100)}%
+              are applied automatically on 2 / 3 services.)
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {BUNDLE_CATEGORIES.map(({ category, label }) => {
+              const plan = plans.find((p) => p.category === category && p.tier === pricingCfg.canonical_tier)
+              if (!plan) {
+                return (
+                  <div key={category} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/40">
+                    <span className="text-sm font-mono text-foreground">{label}</span>
+                    <span className="text-xs text-amber-500 font-mono">No {pricingCfg.canonical_tier} plan found</span>
+                  </div>
+                )
+              }
+              const edit = bundleEdits[plan.slug]
+              const dirty = !!edit && (
+                Number(edit.annual) !== Number(plan.price_annual_ghs) ||
+                (edit.description ?? '') !== (plan.description ?? '') ||
+                (edit.features ?? '') !== (plan.features || []).join('\n')
+              )
+              const setField = (k: keyof BundleEdit, v: string) =>
+                setBundleEdits((s) => ({ ...s, [plan.slug]: { ...(s[plan.slug] || { annual: '', description: '', features: '' }), [k]: v } }))
+              return (
+                <div key={category} className="p-4 rounded-lg border border-border bg-background/40 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-mono font-bold text-foreground">{label}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono truncate">slug: {plan.slug} · unlimited usage</div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground font-mono">GHS</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={edit?.annual ?? ''}
+                        onChange={(e) => setField('annual', e.target.value)}
+                        className="w-32 h-9 bg-background border-border font-mono text-sm text-right"
+                      />
+                      <span className="text-[10px] text-muted-foreground font-mono">/yr</span>
+                      <Button
+                        size="sm"
+                        disabled={!dirty || bundleSavingSlug === plan.slug}
+                        onClick={() => saveBundlePrice(plan)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs uppercase disabled:opacity-40"
+                      >
+                        {bundleSavingSlug === plan.slug ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground font-mono uppercase">Description (shown on card)</Label>
+                      <Input
+                        value={edit?.description ?? ''}
+                        onChange={(e) => setField('description', e.target.value)}
+                        placeholder="e.g. Unlimited property valuations, all year."
+                        className="bg-background border-border text-foreground font-mono text-xs mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground font-mono uppercase">Features (one per line)</Label>
+                      <textarea
+                        value={edit?.features ?? ''}
+                        onChange={(e) => setField('features', e.target.value)}
+                        rows={4}
+                        placeholder={"Unlimited valuations\nAll RICS report templates\nPriority support"}
+                        className="w-full bg-background border border-border rounded-md text-foreground font-mono text-xs mt-1 p-2 resize-y"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {saveSuccess && (
+              <div className="flex items-center gap-2 text-xs text-green-500 font-mono pt-1">
+                <CheckCircle className="h-3.5 w-3.5" /> {saveSuccess}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Category Filter */}
       <div className="flex items-center gap-2">

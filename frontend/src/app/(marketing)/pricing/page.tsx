@@ -3,12 +3,17 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { PricingCatalog, WorkflowService, fetchPricingCatalog } from '@/lib/pricing';
+import BundleSelector from '@/components/pricing/BundleSelector';
+import TieredBundleBuilder from '@/components/pricing/TieredBundleBuilder';
 
 // ============================================================
 // Types
 // ============================================================
 
 type ServiceCategory = 'full_platform' | 'valuation_services' | 'property_management' | 'crm' | 'data_intelligence' | 'project_management';
+// Data Intelligence is parked (not sold yet) — excluded from every sellable surface.
+type SellableCategory = Exclude<ServiceCategory, 'data_intelligence'>;
 type Segment = 'all' | 'b2c' | 'b2b';
 type BillingInterval = 'monthly' | 'annual';
 
@@ -41,10 +46,10 @@ interface PlanData {
 // Category Metadata
 // ============================================================
 
-const CATEGORY_META: Record<ServiceCategory, { label: string; description: string }> = {
+const CATEGORY_META: Record<SellableCategory, { label: string; description: string }> = {
     full_platform: {
         label: 'Full Platform',
-        description: 'Complete real estate management suite — valuations, PM, CRM, data & more.',
+        description: 'Complete real estate management suite — valuations, PM, CRM & projects.',
     },
     valuation_services: {
         label: 'Valuation Services',
@@ -58,18 +63,14 @@ const CATEGORY_META: Record<ServiceCategory, { label: string; description: strin
         label: 'CRM & Deals',
         description: 'Pipeline management, client tracking, and deal flow automation.',
     },
-    data_intelligence: {
-        label: 'Data Intelligence',
-        description: 'Market data API, analytics, and real-time property intelligence.',
-    },
     project_management: {
         label: 'Project Management',
         description: 'Construction & development project tracking with budgets and timelines.',
     },
 };
 
-const CATEGORIES: ServiceCategory[] = [
-    'full_platform', 'valuation_services', 'property_management', 'crm', 'data_intelligence', 'project_management',
+const CATEGORIES: SellableCategory[] = [
+    'full_platform', 'valuation_services', 'property_management', 'crm', 'project_management',
 ];
 
 // ============================================================
@@ -77,12 +78,20 @@ const CATEGORIES: ServiceCategory[] = [
 // ============================================================
 
 export default function PricingPage() {
-    const [category, setCategory] = useState<ServiceCategory>('full_platform');
+    const [category, setCategory] = useState<SellableCategory>('full_platform');
     const [segment, setSegment] = useState<Segment>('all');
     const [billing, setBilling] = useState<BillingInterval>('monthly');
     const [plans, setPlans] = useState<Record<string, PlanData[]>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    // Annual bundle mode (admin toggle). When on, we show the à la carte bundle
+    // selector instead of the tiered/monthly catalog.
+    const [catalog, setCatalog] = useState<PricingCatalog | null>(null);
+    const [selectedServices, setSelectedServices] = useState<WorkflowService[]>([]);
+    useEffect(() => {
+        fetchPricingCatalog().then(setCatalog);
+    }, []);
 
     // Fetch plans from API
     useEffect(() => {
@@ -127,6 +136,64 @@ export default function PricingPage() {
         const monthlyTotal = plan.price_monthly_ghs * 12;
         return Math.round(((monthlyTotal - plan.price_annual_ghs) / monthlyTotal) * 100);
     };
+
+    // ── Annual bundle mode ───────────────────────────────────────────
+    // Admin toggle (pricing_display_config.annual_only) collapses the tiered +
+    // monthly catalog into a single annual per-service / full-platform bundle.
+    if (catalog?.mode === 'annual_bundle') {
+        const href = selectedServices.length === 4
+            ? '/signup?services=full'
+            : selectedServices.length > 0
+            ? `/signup?services=${selectedServices.join(',')}`
+            : '';
+        return (
+            <main className="min-h-screen bg-background text-foreground">
+                <div className="max-w-5xl mx-auto px-6 py-24">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center mb-12"
+                    >
+                        <h1 className="text-5xl md:text-6xl font-bold mb-4 font-mono">
+                            Simple, annual <span className="text-amber-500">pricing</span>
+                        </h1>
+                        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                            Choose the services you need — or the full platform. Bundle 2 services for
+                            20% off, 3 for 35% off. Billed annually. Full access the moment you subscribe.
+                        </p>
+                    </motion.div>
+
+                    <BundleSelector
+                        catalog={catalog}
+                        selected={selectedServices}
+                        onChange={setSelectedServices}
+                        interval="annual"
+                    />
+
+                    <div className="mt-8 flex flex-col items-center gap-3">
+                        {href ? (
+                            <Link
+                                href={href}
+                                className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-8 py-3.5 font-mono font-bold text-zinc-950 transition-colors hover:bg-amber-400"
+                            >
+                                Get started
+                            </Link>
+                        ) : (
+                            <button
+                                disabled
+                                className="inline-flex items-center justify-center rounded-xl bg-muted px-8 py-3.5 font-mono font-bold text-muted-foreground cursor-not-allowed"
+                            >
+                                Select a service to continue
+                            </button>
+                        )}
+                        <p className="text-xs text-muted-foreground font-mono">
+                            Cedi pricing · secure checkout · cancel anytime
+                        </p>
+                    </div>
+                </div>
+            </main>
+        );
+    }
 
     return (
         <main className="min-h-screen bg-background text-foreground">
@@ -372,37 +439,7 @@ export default function PricingPage() {
                         animate={{ opacity: 1 }}
                         className="mt-20 text-center"
                     >
-                        <div className="border-t border-border pt-16">
-                            <h3 className="text-2xl font-bold mb-3 font-mono">
-                                Prefer à la carte? <span className="text-amber-500">Mix & match modules.</span>
-                            </h3>
-                            <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
-                                Subscribe to the Full Platform or add individual modules to any plan.
-                                Available as standalone subscriptions or add-ons to your base plan.
-                            </p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-                                {([
-                                    { cat: 'valuation_services' as ServiceCategory, label: 'Valuations', from: 325 },
-                                    { cat: 'property_management' as ServiceCategory, label: 'Property Mgmt', from: 390 },
-                                    { cat: 'crm' as ServiceCategory, label: 'CRM & Deals', from: 325 },
-                                    { cat: 'project_management' as ServiceCategory, label: 'Project Mgmt', from: 325 },
-                                    { cat: 'data_intelligence' as ServiceCategory, label: 'Data & API', from: 260 },
-                                ]).map(mod => (
-                                    <button
-                                        key={mod.cat}
-                                        onClick={() => setCategory(mod.cat)}
-                                        className="bg-card border border-border hover:border-amber-500/30 rounded-xl p-4 text-left transition-all group"
-                                    >
-                                        <p className="font-mono text-sm font-bold group-hover:text-amber-500 transition-colors">
-                                            {mod.label}
-                                        </p>
-                                        <p className="text-muted-foreground text-xs mt-1">
-                                            From GHS {mod.from}/mo
-                                        </p>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        <TieredBundleBuilder billing={billing} />
                     </motion.div>
                 )}
 
