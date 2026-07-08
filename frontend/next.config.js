@@ -2,6 +2,11 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  // Lower peak build memory (frees webpack caches sooner) so `next build` fits under
+  // the deploy server's Node heap — the prod build was OOM-ing at ~2GB.
+  experimental: {
+    webpackMemoryOptimizations: true,
+  },
   images: {
     remotePatterns: [
       {
