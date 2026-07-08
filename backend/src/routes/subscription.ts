@@ -36,6 +36,9 @@ import {
   reconcileSubscriptionPayment,
   chargeRenewal,
   processDueRenewals,
+  initiateCardSetup,
+  reconcileCardSetup,
+  isCardSetupReference,
 } from '../../shared-services/payments/subscriptions/subscriptionBillingService';
 import {
   getPricingCatalog,
@@ -143,7 +146,11 @@ router.post('/pricing-quote', optionalAuth, async (req: Request, res: Response) 
  */
 router.get('/verify/:reference', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const result = await reconcileSubscriptionPayment(req.params.reference);
+    const reference = req.params.reference;
+    // Card-setup charges (subcard_…) tokenise a card + refund; they have no invoice.
+    const result = isCardSetupReference(reference)
+      ? await reconcileCardSetup(reference)
+      : await reconcileSubscriptionPayment(reference);
     return res.json(result);
   } catch (err: any) {
     logger.error('Subscription payment verify failed', { reference: req.params.reference, error: err?.message });
@@ -429,6 +436,41 @@ router.post('/subscription/reactivate', authenticate, authorize('subscription', 
   } catch (err: any) {
     logger.error('Failed to reactivate subscription', err);
     res.status(500).json({ error: 'Failed to reactivate subscription' });
+  }
+});
+
+// ============================================================
+// PAYMENT METHOD (add / replace the auto-renewal card)
+// ============================================================
+
+/**
+ * POST /subscription/payment-method/setup
+ * Tokenise a card via a small refundable Paystack charge so the subscriber can add
+ * or replace their auto-renewal card even when no invoice is outstanding.
+ */
+router.post('/subscription/payment-method/setup', authenticate, authorize('subscription', 'manage'), async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const userId = (req as any).user?.id;
+    let email = (req as any).user?.email as string | undefined;
+
+    const current = await getSubscription(orgId, userId);
+    if (!current) {
+      return res.status(404).json({ error: 'No active subscription. Subscribe to a plan first.' });
+    }
+    if (!email) {
+      const { pool: dbPool } = await import('../database');
+      const userRow = await dbPool.query('SELECT email FROM users WHERE id = $1', [userId]);
+      email = userRow.rows[0]?.email;
+    }
+    if (!email) return res.status(400).json({ error: 'No email on file for payment' });
+
+    const setup = await initiateCardSetup(current.id, email);
+    if (!setup) return res.status(502).json({ error: 'Could not initialize card setup' });
+    return res.json(setup); // { payment_url, reference }
+  } catch (err: any) {
+    logger.error('Failed to initialize card setup', { error: err?.message });
+    res.status(500).json({ error: 'Failed to initialize card setup' });
   }
 });
 

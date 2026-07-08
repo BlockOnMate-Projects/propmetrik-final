@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { marketplaceService } from '../../../shared-services/marketplace/marketplaceService';
 import { opensearchMarketplaceService } from '../../../shared-services/marketplace/opensearchMarketplaceService';
 import { geocodingService } from '../../../shared-services/marketplace/geocodingService';
+import { neighborhoodInsightsService } from '../../../shared-services/marketplace/neighborhoodInsightsService';
 import { applicationService } from '../../services/property-management/applications/applicationService';
 import db from '../../database';
 import { logger } from '../../utils/logger';
@@ -283,6 +284,61 @@ export class MarketplaceController {
   }
 
   /**
+   * Get nearby homes — the geographically CLOSEST public listings, regardless of
+   * type or price (distinct from /similar, which matches property type + price band).
+   * GET /api/v1/marketplace/properties/:token/nearby
+   *
+   * Reuses the gated marketplace search (so only already-public listings surface —
+   * never private data-hub properties), filtered by radius only + distance-sorted.
+   */
+  async getNearbyHomes(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      const limit = parseInt(req.query.limit as string) || 6;
+
+      let property;
+      try { property = await opensearchMarketplaceService.getPropertyByToken(token); } catch { property = null; }
+      if (!property) property = await marketplaceService.getPropertyByToken(token);
+      if (!property) return res.status(404).json({ error: 'Property not found' });
+
+      // Needs coordinates to rank by distance; nothing to show otherwise.
+      if (!property.location) return res.json({ total: 0, properties: [] });
+
+      const nearbyFilters = {
+        geo_radius: {
+          latitude: property.location.lat,
+          longitude: property.location.lon,
+          // Wide radius: the verified-org listing pool is sparse, so "nearby" means the
+          // closest AVAILABLE public listings (distance-sorted, capped) — the distance
+          // badge on each card keeps it honest.
+          radius_km: 25,
+        },
+        sort_by: 'distance' as const,
+        sort_order: 'asc' as const,
+        from: 0,
+        size: limit + 1, // one extra to drop the current property
+      };
+
+      // Query the gated marketplace (Postgres) search DIRECTLY — it holds the verified
+      // public listings. The old copy queried OpenSearch first (which only has scraped
+      // external listings, not PM/CRM ones) and only fell back to Postgres on a thrown
+      // error, so it returned empty for real listings. Postgres already returns them
+      // distance-sorted; scraped/ungated externals are intentionally not shown here.
+      const result = await marketplaceService
+        .searchProperties(nearbyFilters)
+        .catch(() => ({ total: 0, properties: [] as any[] }));
+      const nearby = result.properties
+        .filter((p) => p.permanent_link_token !== token)
+        .slice(0, limit);
+
+      return res.json({ total: nearby.length, properties: nearby });
+    } catch (error: any) {
+      logger.error('Get nearby homes error:', { error: error.message, token: req.params.token });
+      return res.status(500).json({ error: 'Failed to fetch nearby homes', message: error.message });
+    }
+  }
+
+  /**
    * Location autocomplete
    * GET /api/v1/marketplace/autocomplete
    */
@@ -397,6 +453,41 @@ export class MarketplaceController {
         error: 'Failed to fetch nearby amenities',
         message: error.message
       });
+    }
+  }
+
+  /**
+   * Neighbourhood insights for a listing (Zillow-style): nearby schools/hospitals/
+   * transit, walk/transit/bike scores, flood risk, and area demographics.
+   * GET /api/v1/marketplace/properties/:token/neighborhood
+   */
+  async getNeighborhood(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      const data = await neighborhoodInsightsService.getInsights(token);
+      if (!data) {
+        return res.status(404).json({ error: 'Property not found' });
+      }
+      return res.json({ data });
+    } catch (error: any) {
+      logger.error('Get neighborhood insights error:', { error: error.message, token: req.params.token });
+      return res.status(500).json({ error: 'Failed to fetch neighborhood insights', message: error.message });
+    }
+  }
+
+  /**
+   * AI-generated neighbourhood narrative (strictly grounded on the facts above).
+   * GET /api/v1/marketplace/properties/:token/neighborhood/narrative
+   */
+  async getNeighborhoodNarrative(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      const data = await neighborhoodInsightsService.getNarrative(token);
+      return res.json({ data });
+    } catch (error: any) {
+      logger.error('Get neighborhood narrative error:', { error: error.message, token: req.params.token });
+      // A missing narrative must never break the page — degrade gracefully.
+      return res.json({ data: { summary: null } });
     }
   }
 

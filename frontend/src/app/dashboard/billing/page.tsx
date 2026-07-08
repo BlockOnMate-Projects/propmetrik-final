@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     CreditCard, AlertTriangle, CheckCircle2, XCircle, Loader2,
     Receipt, BarChart3, History as HistoryIcon, LayoutGrid, ArrowRight, X,
-    CalendarClock, Sparkles, ExternalLink,
+    CalendarClock, Sparkles, ExternalLink, Plus,
 } from 'lucide-react';
 import { authedFetch } from '@/lib/authed-fetch';
 import { formatCurrency } from '@/lib/utils';
@@ -195,6 +195,8 @@ export default function BillingPage() {
     const [payingId, setPayingId] = useState<string | null>(null);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showPlanModal, setShowPlanModal] = useState(false);
+    const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+    const [settingUpCard, setSettingUpCard] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [toasts, setToasts] = useState<ToastItem[]>([]);
     const toastSeq = useRef(0);
@@ -234,11 +236,14 @@ export default function BillingPage() {
         if (!ref || !ref.startsWith('sub')) return;
         verifiedRef.current = true;
         (async () => {
+            const isCard = ref.startsWith('subcard');
             const res = await fetchJSON<{ status: string }>(`${API}/verify/${encodeURIComponent(ref)}`);
             if (res?.status === 'success' || res?.status === 'already_paid') {
-                toast('success', 'Payment confirmed', 'Your subscription is active.');
+                toast('success', isCard ? 'Card saved' : 'Payment confirmed',
+                    isCard ? 'Your renewal card is saved. The GHS 1 verification charge is refunded automatically.' : 'Your subscription is active.');
             } else {
-                toast('error', 'Payment not confirmed', 'If you completed payment, it may take a moment to reflect.');
+                toast('error', isCard ? 'Card not saved' : 'Payment not confirmed',
+                    isCard ? 'If you completed the card setup, it may take a moment to reflect.' : 'If you completed payment, it may take a moment to reflect.');
             }
             window.history.replaceState({}, '', '/dashboard/billing');
             await loadData();
@@ -328,6 +333,41 @@ export default function BillingPage() {
         }
     };
 
+    // Add a service (à la carte add-on) → grants access now, billed next cycle
+    const handleAddService = async (planSlug: string) => {
+        setActionLoading(true);
+        try {
+            const res = await authedFetch(`${API}/subscription/addons`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan_slug: planSlug }),
+            });
+            if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error); }
+            setShowAddServiceModal(false);
+            toast('success', 'Service added', 'Access is active now; it will appear on your next invoice.');
+            await loadData();
+        } catch (e: any) {
+            toast('error', 'Could not add service', e?.message || 'Please try again.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Add / replace the auto-renewal card (small refundable verification charge → Paystack)
+    const handleSetupCard = async () => {
+        setSettingUpCard(true);
+        try {
+            const res = await authedFetch(`${API}/subscription/payment-method/setup`, { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.payment_url) { window.location.href = data.payment_url; return; }
+            toast('error', 'Could not start card setup', data.error || 'Please try again.');
+        } catch {
+            toast('error', 'Could not start card setup', 'Please try again.');
+        } finally {
+            setSettingUpCard(false);
+        }
+    };
+
     // Derived ------------------------------------------------
     const plan = subscription?.plan;
     const status = subscription?.status || 'none';
@@ -341,6 +381,21 @@ export default function BillingPage() {
             : plan.price_monthly_ghs
         : 0;
     const needsPayment = ['incomplete', 'past_due', 'suspended'].includes(status);
+
+    // Addable à la carte services: workflow-service plans whose service isn't already
+    // covered by the base plan or an existing add-on. One plan per service (prefer current tier).
+    const WORKFLOW_CATS = ['valuation_services', 'property_management', 'crm', 'project_management'];
+    const coveredCats = new Set(
+        [plan?.category, ...(subscription?.addons?.map((a) => a.plan?.category) || [])].filter(Boolean) as string[]
+    );
+    const hasFullPlatform = plan?.category === 'full_platform' || subscription?.addons?.some((a) => a.plan?.category === 'full_platform');
+    const addableByCat = new Map<string, Plan>();
+    for (const p of plans) {
+        if (p.is_active === false || !WORKFLOW_CATS.includes(p.category) || coveredCats.has(p.category)) continue;
+        const cur = addableByCat.get(p.category);
+        if (!cur || (p.tier === plan?.tier && cur.tier !== plan?.tier)) addableByCat.set(p.category, p);
+    }
+    const addableServices = hasFullPlatform ? [] : Array.from(addableByCat.values());
 
     if (loading) {
         return (
@@ -541,11 +596,6 @@ export default function BillingPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        {outstanding && (
-                                            <button onClick={() => handlePayInvoice(outstanding.id)} disabled={payingId === outstanding.id} className="text-xs text-primary hover:underline disabled:opacity-60">
-                                                Update
-                                            </button>
-                                        )}
                                     </div>
                                 ) : (
                                     <p className="text-muted-foreground text-sm">
@@ -554,11 +604,29 @@ export default function BillingPage() {
                                             : 'A card is saved automatically when you pay an invoice, enabling automatic renewals.'}
                                     </p>
                                 )}
+                                {subscription && !['cancelled', 'expired'].includes(status) && (
+                                    <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                        <button onClick={handleSetupCard} disabled={settingUpCard}
+                                            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline disabled:opacity-60">
+                                            {settingUpCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                                            {subscription.payment_card_last4 ? 'Replace card' : 'Add a card'}
+                                        </button>
+                                        <span className="text-xs text-muted-foreground">A GHS 1 verification charge is refunded automatically, enabling auto-renewal.</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Active modules */}
                             <div className="bg-card border border-border rounded-xl p-5">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">Active modules</h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active modules</h3>
+                                    {subscription && !['cancelled', 'expired'].includes(status) && addableServices.length > 0 && (
+                                        <button onClick={() => setShowAddServiceModal(true)}
+                                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+                                            <Plus className="w-3.5 h-3.5" /> Add a service
+                                        </button>
+                                    )}
+                                </div>
                                 {modules.length === 0 ? (
                                     <p className="text-muted-foreground text-sm">No modules active.</p>
                                 ) : (
@@ -783,6 +851,43 @@ export default function BillingPage() {
                             </div>
                             <p className="text-muted-foreground text-xs mt-4 text-center">
                                 <Link href="/pricing" className="inline-flex items-center gap-1 text-primary hover:underline">Compare all plans <ExternalLink className="w-3 h-3" /></Link>
+                            </p>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Add-service modal */}
+            <AnimatePresence>
+                {showAddServiceModal && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-background/70 flex items-center justify-center z-[90] p-4">
+                        <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }} className="bg-card border border-border rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                            <div className="flex items-center justify-between mb-1">
+                                <h3 className="text-lg font-bold">Add a service</h3>
+                                <button onClick={() => setShowAddServiceModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                            </div>
+                            <p className="text-muted-foreground text-sm mb-4">Unlock another service on top of your current plan. Access is granted immediately and added to your next invoice.</p>
+                            {addableServices.length === 0 ? (
+                                <p className="text-muted-foreground text-sm py-6 text-center">You already have every available service.</p>
+                            ) : (
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    {addableServices.map((p) => (
+                                        <button key={p.slug} onClick={() => handleAddService(p.slug)} disabled={actionLoading}
+                                            className="bg-muted border border-border hover:border-primary/40 rounded-xl p-4 text-left transition disabled:opacity-60">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="font-semibold text-sm">{p.name}</span>
+                                                <span className="text-primary text-sm">{formatCurrency(p.price_monthly_ghs)}<span className="text-muted-foreground text-xs">/mo</span></span>
+                                            </div>
+                                            <p className="text-muted-foreground text-xs capitalize">{p.category.replace(/_/g, ' ')} • {p.tier}</p>
+                                            <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-semibold text-primary">
+                                                <Plus className="w-3 h-3" /> Add service
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-muted-foreground text-xs mt-4 text-center">
+                                <Link href="/pricing" className="inline-flex items-center gap-1 text-primary hover:underline">See all plans &amp; bundles <ExternalLink className="w-3 h-3" /></Link>
                             </p>
                         </motion.div>
                     </motion.div>

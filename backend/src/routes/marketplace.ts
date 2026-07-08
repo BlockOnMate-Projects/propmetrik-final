@@ -54,6 +54,28 @@ router.get('/properties/:token', marketplaceController.getPropertyByToken.bind(m
 router.get('/properties/:token/similar', marketplaceController.getSimilarProperties.bind(marketplaceController));
 
 /**
+ * @route   GET /api/v1/marketplace/properties/:token/nearby
+ * @desc    Nearby homes — the closest public listings by distance (any type/price).
+ * @access  Public
+ */
+router.get('/properties/:token/nearby', marketplaceController.getNearbyHomes.bind(marketplaceController));
+
+/**
+ * @route   GET /api/v1/marketplace/properties/:token/neighborhood
+ * @desc    Neighbourhood insights — nearby schools/hospitals/transit, walk/transit/bike
+ *          scores, flood risk, and area demographics (reuses existing PropMetrik data).
+ * @access  Public
+ */
+router.get('/properties/:token/neighborhood', marketplaceController.getNeighborhood.bind(marketplaceController));
+
+/**
+ * @route   GET /api/v1/marketplace/properties/:token/neighborhood/narrative
+ * @desc    AI-generated neighbourhood summary, grounded strictly on the facts above.
+ * @access  Public
+ */
+router.get('/properties/:token/neighborhood/narrative', marketplaceController.getNeighborhoodNarrative.bind(marketplaceController));
+
+/**
  * @route   GET /api/v1/marketplace/properties/:token/application-link
  * @desc    Get or create application link for property (redirects to tenant portal)
  * @access  Public
