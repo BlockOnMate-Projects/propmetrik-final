@@ -1,0 +1,8 @@
+# Nixpacks build config for the Next.js frontend (Coolify deploy).
+#
+# The production `next build` OOM-ed at Node's default ~2GB old-space cap as the app
+# grew. Coolify's build command is `next build` (not `npm run build`), so raising the
+# heap via the package.json script wouldn't apply — setting it as a build variable
+# here does. Applies at build time (and harmlessly at runtime).
+[variables]
+NODE_OPTIONS = "--max-old-space-size=4096"
