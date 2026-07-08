@@ -2,6 +2,20 @@
 import axios from 'axios';
 import { logger } from '../../src/utils/logger';
 
+// Overpass (OpenStreetMap) endpoints tried in order. The main instance returns HTTP
+// 406 for library/bot User-Agents and is frequently overloaded (504/429), so we send
+// an identifying User-Agent (as its usage policy requires) and fall back to mirrors.
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+const OVERPASS_HEADERS = {
+  'Content-Type': 'application/x-www-form-urlencoded',
+  'User-Agent': 'PropMetrik/1.0 (+https://propmetrik.com; marketplace neighbourhood insights)',
+  Accept: 'application/json',
+};
+
 interface GeocodeResult {
   address: string;
   location: {
@@ -33,6 +47,8 @@ interface NearbyAmenity {
   name: string;
   distance_km: number;
   location: { lat: number; lon: number };
+  /** Human descriptor from OSM tags, e.g. "Public school · Primary", "Clinic", "Bus stop". */
+  kind?: string;
 }
 
 export class GeocodingService {
@@ -173,9 +189,13 @@ export class GeocodingService {
     try {
       const result: any = {};
 
-      for (const type of types) {
-        const amenities = await this.queryOverpass(lat, lng, radius_km, type);
-        
+      // Query each amenity type in PARALLEL — Overpass calls are ~seconds each, so a
+      // sequential loop over 3 types tripled the latency for the marketplace page.
+      const pairs = await Promise.all(
+        types.map(async (type) => [type, await this.queryOverpass(lat, lng, radius_km, type)] as const)
+      );
+
+      for (const [type, amenities] of pairs) {
         if (type === 'school') {
           result.schools = amenities;
         } else if (type === 'hospital') {
@@ -190,6 +210,30 @@ export class GeocodingService {
       logger.error('Get nearby amenities error:', { error: error.message, lat, lng });
       return {};
     }
+  }
+
+  /**
+   * Run a raw OpenStreetMap Overpass QL query and return its elements. Shared by
+   * queryOverpass() and the getting-around (walk/transit/bike) scorer so the HTTP
+   * call + error handling live in exactly one place. Returns [] on any failure.
+   */
+  async overpass(overpassQL: string, timeoutMs: number = 25000): Promise<any[]> {
+    const body = `data=${encodeURIComponent(overpassQL)}`;
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      try {
+        const response = await axios.post(endpoint, body, { headers: OVERPASS_HEADERS, timeout: timeoutMs });
+        return response.data?.elements || [];
+      } catch (error: any) {
+        // Try the next mirror on 406/429/504/timeout etc. — don't fail the whole section.
+        logger.warn('Overpass endpoint failed, trying next', {
+          endpoint,
+          status: error?.response?.status,
+          error: error.message,
+        });
+      }
+    }
+    logger.error('All Overpass endpoints failed');
+    return [];
   }
 
   /**
@@ -251,38 +295,64 @@ export class GeocodingService {
   ): Promise<NearbyAmenity[]> {
     try {
       const radius_m = radius_km * 1000;
-      const overpassUrl = 'https://overpass-api.de/api/interpreter';
-      
-      // Map amenity types to OSM tags
-      const osmQuery = this.getOSMQuery(amenityType, lat, lng, radius_m);
-      
-      const response = await axios.post(overpassUrl, `data=${encodeURIComponent(osmQuery)}`, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 10000
-      });
 
-      const elements = response.data.elements || [];
-      
+      // Map amenity types to OSM tags, then run via the shared Overpass helper.
+      const osmQuery = this.getOSMQuery(amenityType, lat, lng, radius_m);
+      const elements = await this.overpass(osmQuery, 15000);
+
       return elements
-        .map((el: any) => {
+        .map((el: any): NearbyAmenity | null => {
           const elLat = el.lat || (el.center && el.center.lat);
           const elLon = el.lon || (el.center && el.center.lon);
-          
+
           if (!elLat || !elLon) return null;
-          
+
           return {
             name: el.tags?.name || 'Unknown',
             distance_km: this.calculateDistance(lat, lng, elLat, elLon),
-            location: { lat: elLat, lon: elLon }
+            location: { lat: elLat, lon: elLon },
+            kind: this.describeKind(amenityType, el.tags)
           };
         })
-        .filter((a: any) => a !== null)
+        .filter((a: NearbyAmenity | null): a is NearbyAmenity => a !== null)
         .sort((a: NearbyAmenity, b: NearbyAmenity) => a.distance_km - b.distance_km)
         .slice(0, 10); // Return top 10 closest
     } catch (error: any) {
       logger.error('Overpass query error:', { error: error.message, amenityType });
       return [];
     }
+  }
+
+  /** Human descriptor for an amenity from its OSM tags (Ghana-oriented). */
+  private describeKind(amenityType: string, tags: Record<string, string> | undefined): string | undefined {
+    const t = tags || {};
+    if (amenityType === 'school') {
+      const op = (t['operator:type'] || '').toLowerCase();
+      let base = 'School';
+      if (op.includes('gov') || op === 'public') base = 'Public school';
+      else if (op === 'private') base = 'Private school';
+      else if (op.includes('relig') || t.religion) base = 'Faith school';
+      // Grade band from grades / isced:level (0 pre, 1 primary, 2 JHS, 3 SHS).
+      if (t.grades) return `${base} · ${t.grades}`;
+      if (t['isced:level']) {
+        const map: Record<string, string> = { '0': 'Preschool', '1': 'Primary', '2': 'JHS', '3': 'SHS' };
+        const levels = t['isced:level'].split(/[;,-]/).map((s) => map[s.trim()]).filter(Boolean);
+        if (levels.length) return `${base} · ${levels.join('–')}`;
+      }
+      return base;
+    }
+    if (amenityType === 'hospital') {
+      if (t.amenity === 'clinic') return 'Clinic';
+      if (t.amenity === 'pharmacy') return 'Pharmacy';
+      if (t.amenity === 'doctors') return "Doctor's office";
+      return 'Hospital';
+    }
+    if (amenityType === 'transit') {
+      if (t.railway === 'station') return 'Train station';
+      if (t.amenity === 'bus_station') return 'Bus station';
+      return 'Bus stop';
+    }
+    return undefined;
   }
 
   private getOSMQuery(type: string, lat: number, lng: number, radius: number): string {

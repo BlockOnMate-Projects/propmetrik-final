@@ -903,6 +903,19 @@ export async function addSubscriptionAddon(
     JSON.stringify({ addon_slug: plan.slug, quantity }),
   ]);
 
+  // GRANT the add-on's service access immediately. Without this the add-on was
+  // recorded + billed (createInvoice sums add-ons) but never actually unlocked the
+  // service. The grant is additive/idempotent — it never touches existing services.
+  const serviceKeys = resolveEntitlementServiceKeys(plan);
+  if (serviceKeys.length && subscription.user_id) {
+    await grantServiceEntitlements(pool, {
+      organizationId: subscription.organization_id,
+      userId: subscription.user_id,
+      serviceKeys,
+      tier: plan.tier,
+    });
+  }
+
   return { ...rows[0], plan };
 }
 
@@ -926,6 +939,27 @@ export async function removeSubscriptionAddon(
       INSERT INTO subscription_events (subscription_id, event_type, from_plan_id, actor_id, details)
       VALUES ($1, 'addon_removed', $2, $3, '{}')
     `, [subscriptionId, rows[0].plan_id, actorId || null]);
+
+    // Revoke the removed add-on's service access — but ONLY the keys not still
+    // covered by the base plan or another still-active add-on (never over-revoke).
+    const subscription = await getSubscriptionById(subscriptionId);
+    const removedPlan = await getPlan(rows[0].plan_id);
+    const removedKeys = resolveEntitlementServiceKeys(removedPlan);
+    if (subscription && removedKeys.length) {
+      const baseKeys = resolveEntitlementServiceKeys(subscription.plan, (subscription.metadata as any)?.services);
+      const otherAddons = await pool.query(
+        `SELECT sp.category FROM subscription_addons sa
+           JOIN subscription_plans sp ON sp.id = sa.plan_id
+          WHERE sa.subscription_id = $1 AND sa.status = 'active'`,
+        [subscriptionId]
+      );
+      const addonKeys = otherAddons.rows.flatMap((r: any) => resolveEntitlementServiceKeys({ category: r.category }));
+      const covered = new Set<string>([...baseKeys, ...addonKeys]);
+      const toRevoke = removedKeys.filter((k) => !covered.has(k));
+      if (toRevoke.length && subscription.organization_id) {
+        await revokeServiceEntitlements(pool, { organizationId: subscription.organization_id, serviceKeys: toRevoke });
+      }
+    }
   }
 }
 

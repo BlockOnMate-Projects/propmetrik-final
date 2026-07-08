@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import ApplicationForm from '@/components/ApplicationForm';
+import NeighborhoodInsights from '@/components/marketplace/NeighborhoodInsights';
 
 interface Listing {
   organization_id: string;
@@ -83,6 +84,7 @@ interface Property {
   listed_at: string;
   views: number;
   clicks: number;
+  distance_km?: number;
   listing?: Listing | null;
 }
 
@@ -93,6 +95,7 @@ export default function PropertyApplicationPage() {
 
   const [property, setProperty] = useState<Property | null>(null);
   const [similarProperties, setSimilarProperties] = useState<Property[]>([]);
+  const [nearbyHomes, setNearbyHomes] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,10 +155,16 @@ export default function PropertyApplicationPage() {
         })
       });
 
-      // Load similar properties
+      // Load similar properties (matched by type + price band)
       fetch(`/api/marketplace/properties/${token}/similar?limit=6`)
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d?.properties) setSimilarProperties(d.properties); })
+        .catch(() => {});
+
+      // Load nearby homes (closest public listings by distance, any type)
+      fetch(`/api/marketplace/properties/${token}/nearby?limit=6`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.properties) setNearbyHomes(d.properties); })
         .catch(() => {});
     } catch (error: any) {
       console.error('Failed to load property:', error);
@@ -266,6 +275,17 @@ export default function PropertyApplicationPage() {
       .join(' ');
   };
 
+  // Region is stored as a code ("greater_accra") — display it as a label ("Greater Accra").
+  const formatRegion = (r?: string) =>
+    r ? r.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase()) : '';
+
+  // Backend `address` is "street, city" (may be blank). Clean stray commas, fall back to
+  // city, then append the region label — no leading comma, no raw enum.
+  const cleanedAddress = (property.address || '').replace(/^[\s,]+|[\s,]+$/g, '').trim();
+  const locationText = [cleanedAddress || property.city || '', formatRegion(property.region)]
+    .filter(Boolean)
+    .join(', ');
+
   const dealLabel =
     property.transaction_type === 'rental' ? 'For Rent'
     : property.transaction_type === 'lease' ? 'For Lease'
@@ -369,7 +389,7 @@ export default function PropertyApplicationPage() {
               </h1>
               <div className="flex items-center text-muted-foreground gap-1.5 text-sm sm:text-base">
                 <MapPin className="w-4 h-4 flex-shrink-0" />
-                <span>{property.address}, {property.city}{property.region ? `, ${property.region}` : ''}</span>
+                <span>{locationText || 'Location available on request'}</span>
               </div>
               {property.digital_address && (
                 <a
@@ -459,6 +479,9 @@ export default function PropertyApplicationPage() {
                 </div>
               </div>
             )}
+
+            {/* Neighbourhood insights — schools/amenities, getting-around, flood, demographics, AI overview */}
+            <NeighborhoodInsights token={token} />
           </div>
 
           {/* RIGHT: sticky sidebar */}
@@ -546,48 +569,30 @@ export default function PropertyApplicationPage() {
           </div>
         )}
 
-        {/* Similar properties */}
+        {/* Nearby homes — closest public listings by distance (any type) */}
+        {nearbyHomes.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-xl font-bold text-foreground mb-1">Nearby homes</h2>
+            <p className="text-sm text-muted-foreground mb-4">The closest listings to this property.</p>
+            <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+              {nearbyHomes.map((np) => (
+                <div key={np.id} className="snap-start shrink-0 w-[280px]">
+                  <MiniPropertyCard p={np} onClick={() => router.push(`/apply/${np.permanent_link_token}`)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Similar properties — matched by type + price band */}
         {similarProperties.length > 0 && (
           <div className="mt-10">
-            <h2 className="text-xl font-bold text-foreground mb-4">Similar properties</h2>
+            <h2 className="text-xl font-bold text-foreground mb-1">Similar properties</h2>
+            <p className="text-sm text-muted-foreground mb-4">Comparable homes by type and price.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {similarProperties.map((sp) => {
-                const spImage = sp.images?.[0];
-                const spImageUrl = spImage ? (typeof spImage === 'string' ? spImage : spImage.url) : null;
-                return (
-                  <div
-                    key={sp.id}
-                    onClick={() => router.push(`/apply/${sp.permanent_link_token}`)}
-                    className="bg-card rounded-2xl overflow-hidden border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group"
-                  >
-                    <div className="relative h-44 bg-muted">
-                      {spImageUrl ? (
-                        <Image src={spImageUrl} alt={sp.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Home className="w-8 h-8" /></div>
-                      )}
-                      <span className={`absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white shadow ${sp.transaction_type === 'rental' ? 'bg-emerald-500' : sp.transaction_type === 'lease' ? 'bg-amber-500' : 'bg-indigo-600'}`}>
-                        {sp.transaction_type === 'rental' ? 'RENT' : sp.transaction_type === 'lease' ? 'LEASE' : 'SALE'}
-                      </span>
-                    </div>
-                    <div className="p-4">
-                      <div className="text-lg font-bold text-foreground mb-1">
-                        {sp.currency} {sp.price.toLocaleString()}
-                        {sp.transaction_type === 'rental' && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
-                      </div>
-                      <h3 className="text-sm font-medium text-foreground/90 line-clamp-1 mb-1">{sp.title}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-1 mb-2.5">
-                        <MapPin className="inline w-3 h-3 mr-0.5" />{sp.city}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {sp.bedrooms ? <span className="flex items-center gap-1"><Bed className="w-3.5 h-3.5" />{sp.bedrooms}</span> : null}
-                        {sp.bathrooms ? <span className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{sp.bathrooms}</span> : null}
-                        {sp.total_area_sqm ? <span className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{sp.total_area_sqm}m²</span> : null}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {similarProperties.map((sp) => (
+                <MiniPropertyCard key={sp.id} p={sp} onClick={() => router.push(`/apply/${sp.permanent_link_token}`)} />
+              ))}
             </div>
           </div>
         )}
@@ -597,6 +602,62 @@ export default function PropertyApplicationPage() {
 }
 
 /* ── Small presentational helpers ─────────────────────────────────── */
+
+/** Compact property card, shared by "Nearby homes" + "Similar properties". */
+function MiniPropertyCard({ p, onClick }: { p: Property; onClick: () => void }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const img = p.images?.[0];
+  const imgUrl = img ? (typeof img === 'string' ? img : img.url) : null;
+  const dist = typeof p.distance_km === 'number'
+    ? (p.distance_km < 1 ? `${Math.round(p.distance_km * 1000)} m` : `${p.distance_km.toFixed(1)} km`)
+    : null;
+  return (
+    <div
+      onClick={onClick}
+      className="bg-card rounded-2xl overflow-hidden border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group"
+    >
+      <div className="relative h-44 bg-muted">
+        {imgUrl && !imgFailed ? (
+          // Plain <img> (not next/image): marketplace thumbnails come from mixed sources
+          // (MinIO + scraped) — some hotlink-protected — which 403 the /_next/image
+          // optimizer. onError degrades to the placeholder instead of a broken image.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imgUrl}
+            alt={p.title}
+            onError={() => setImgFailed(true)}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Home className="w-8 h-8" /></div>
+        )}
+        <span className={`absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white shadow ${p.transaction_type === 'rental' ? 'bg-emerald-500' : p.transaction_type === 'lease' ? 'bg-amber-500' : 'bg-indigo-600'}`}>
+          {p.transaction_type === 'rental' ? 'RENT' : p.transaction_type === 'lease' ? 'LEASE' : 'SALE'}
+        </span>
+        {dist && (
+          <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full text-[11px] font-semibold text-foreground bg-card/90 backdrop-blur-sm shadow inline-flex items-center gap-1">
+            <Navigation className="w-3 h-3" />{dist}
+          </span>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="text-lg font-bold text-foreground mb-1">
+          {p.currency} {p.price.toLocaleString()}
+          {p.transaction_type === 'rental' && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
+        </div>
+        <h3 className="text-sm font-medium text-foreground/90 line-clamp-1 mb-1">{p.title}</h3>
+        <p className="text-xs text-muted-foreground line-clamp-1 mb-2.5">
+          <MapPin className="inline w-3 h-3 mr-0.5" />{p.city}
+        </p>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {p.bedrooms ? <span className="flex items-center gap-1"><Bed className="w-3.5 h-3.5" />{p.bedrooms}</span> : null}
+          {p.bathrooms ? <span className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{p.bathrooms}</span> : null}
+          {p.total_area_sqm ? <span className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{p.total_area_sqm}m²</span> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Stat({ icon, value, label }: { icon: React.ReactNode; value: React.ReactNode; label: string }) {
   return (

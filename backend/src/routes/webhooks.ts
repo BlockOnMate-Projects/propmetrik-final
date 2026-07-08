@@ -17,6 +17,8 @@ import { paymentProcessor } from '../services/property-management/payment/paymen
 import {
   isSubscriptionReference,
   reconcileSubscriptionPayment,
+  isCardSetupReference,
+  reconcileCardSetup,
 } from '../../shared-services/payments/subscriptions/subscriptionBillingService';
 import { logger } from '../utils/logger';
 import { CompletionEvent, ESignSourceModule } from '../../shared-services/e-sign/integration/types';
@@ -414,7 +416,16 @@ router.post('/paystack', async (req: Request, res: Response) => {
     //    verifyAndRecordPayment re-verifies with Paystack, is safe to call twice
     //    (ledger/rent_payment idempotency), and carries the locked FX through metadata.
     if (event === 'charge.success' && reference) {
-      if (isSubscriptionReference(reference)) {
+      if (isCardSetupReference(reference)) {
+        // Card-tokenisation charge (add/replace auto-renewal card) → save the
+        // reusable authorization + refund the nominal charge. Idempotent.
+        reconcileCardSetup(reference).catch((err) =>
+          logger.error('Paystack webhook: reconcileCardSetup failed', {
+            reference,
+            error: (err as Error).message,
+          })
+        );
+      } else if (isSubscriptionReference(reference)) {
         // SaaS subscription charge (signup or renewal) → capture authorization,
         // mark invoice paid, activate. Idempotent with the verify endpoint.
         reconcileSubscriptionPayment(reference).catch((err) =>

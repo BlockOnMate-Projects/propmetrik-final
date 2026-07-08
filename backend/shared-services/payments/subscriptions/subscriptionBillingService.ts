@@ -72,6 +72,18 @@ function parseSubscriptionReference(reference: string): { subscriptionId: string
   return { subscriptionId: m[1], invoiceId: m[2] };
 }
 
+/** Card-setup:  subcard_<subId>_<ts>. Starts with "sub" (so the billing page's
+ *  return handler fires) but is NOT matched by isSubscriptionReference — it has no
+ *  invoice; it only tokenises a card for future renewals. */
+export function isCardSetupReference(reference: string): boolean {
+  return /^subcard_/.test(reference);
+}
+
+function parseCardSetupReference(reference: string): { subscriptionId: string } | null {
+  const m = reference.match(/^subcard_([0-9a-f-]{36})_/i);
+  return m ? { subscriptionId: m[1] } : null;
+}
+
 /** Convert an invoice total (in its own currency) to GHS pesewas for Paystack. */
 async function invoiceTotalToGhsPesewas(invoice: Invoice): Promise<{ pesewas: number; fx: any | null }> {
   const currency = (invoice.currency || 'GHS').toUpperCase();
@@ -128,6 +140,70 @@ async function captureAuthorization(subscriptionId: string, verifyData: any): Pr
       verifyData?.customer?.customer_code || '',
     ]
   );
+}
+
+// =============================================================================
+// Card setup (manage payment method without an outstanding invoice)
+// =============================================================================
+
+// Paystack has no true $0 tokenisation, so a standalone "add/replace card" runs a
+// nominal verification charge and refunds it once the reusable card auth is captured.
+const CARD_SETUP_PESEWAS = 100; // GHS 1.00 — refunded immediately after tokenisation.
+
+/**
+ * Initialise a Paystack card-tokenisation charge so a subscriber can add/replace
+ * the card that funds automatic renewals — even with no invoice due. Card channel
+ * only (mobile-money authorizations are not reusable for unattended renewals).
+ */
+export async function initiateCardSetup(
+  subscriptionId: string,
+  email: string
+): Promise<{ payment_url: string; reference: string } | null> {
+  // `${...Date.now()}` is fine in a service (only workflow scripts forbid it).
+  const reference = `subcard_${subscriptionId}_${Date.now()}`;
+  const res = await paystackService.initializeTransaction({
+    email,
+    amount: CARD_SETUP_PESEWAS,
+    currency: 'GHS',
+    reference,
+    callback_url: `${config.app.frontendUrl}/dashboard/billing?payment=success&ref=${reference}`,
+    metadata: { payment_type: 'card_setup', subscription_id: subscriptionId },
+    channels: ['card'],
+  });
+  if (res.status && res.data?.authorization_url) {
+    return { payment_url: res.data.authorization_url, reference: res.data.reference };
+  }
+  return null;
+}
+
+/**
+ * Reconcile a card-setup charge: verify it, capture the reusable authorization onto
+ * the subscription (enabling auto-renew), then refund the nominal charge. Idempotent
+ * and safe to run from both the return-verify path and the Paystack webhook.
+ */
+export async function reconcileCardSetup(reference: string): Promise<ReconcileResult> {
+  const parsed = parseCardSetupReference(reference);
+  if (!parsed) return { status: 'not_found', message: 'Unparseable card-setup reference' };
+  const { subscriptionId } = parsed;
+
+  const verify = await paystackService.verifyTransaction(reference);
+  const data = verify?.data;
+  if (!verify?.status || data?.status !== 'success') {
+    return { status: 'failed', subscriptionId, message: 'Card verification not successful' };
+  }
+
+  // Save the reusable card token for future renewals.
+  await captureAuthorization(subscriptionId, data);
+
+  // Refund the nominal verification charge (Paystack processes refunds async).
+  try {
+    await paystackService.refundTransaction(reference);
+  } catch (err: any) {
+    logger.warn('Card-setup refund submit failed (card auth still saved)', { reference, error: err?.message });
+  }
+
+  logger.info('Card setup reconciled — authorization saved', { subscriptionId, reference });
+  return { status: 'success', subscriptionId };
 }
 
 /**
