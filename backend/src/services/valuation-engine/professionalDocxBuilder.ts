@@ -1716,6 +1716,7 @@ function buildAppendices(data: ReportSectionData): FileChild[] {
   const mapDocs = docImages.filter((d) => d.docType === 'location_map');
   const photoDocs = docImages.filter((d) => d.docType === 'photo');
   const titleDocs = docImages.filter((d) => d.docType === 'title_document');
+  const threeDDocs = docImages.filter((d) => d.docType === '3d_view');
 
   const embedImg = (img: { buffer: Buffer; mime: string }, maxW = 560, maxH = 680): Paragraph => {
     let w = maxW;
@@ -1738,6 +1739,16 @@ function buildAppendices(data: ReportSectionData): FileChild[] {
     spacing: { after: 140 },
     children: [new TextRun({ text, italics: true, size: 18, font: 'Calibri', color: PALETTE.textLight })],
   });
+
+  // Appendix B (continued): 3D views auto-captured from the floor plan studio
+  if (threeDDocs.length > 0) {
+    paragraphs.push(heading3('3D Views'));
+    threeDDocs.forEach((d) => {
+      paragraphs.push(embedImg(d, 520, 380));
+      if (d.caption) paragraphs.push(caption(d.caption));
+    });
+    paragraphs.push(emptyLine());
+  }
 
   // Appendix C: Satellite / Location Map
   paragraphs.push(heading2('Appendix C: Satellite / Location Map'));

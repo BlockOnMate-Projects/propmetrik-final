@@ -10,7 +10,7 @@ import {
   PropertyTypeBadge,
 } from '@/components/ui/terminal'
 import { EditableConstructionCostPanel, type ConstructionCostEditableData, type MaterialIndex } from '@/components/valuation/EditableConstructionCostPanel'
-import { valuationsApi, costApproachApi, overridesApi, landValueApi, pythonMethodsApi } from '@/lib/valuation-api'
+import { valuationsApi, costApproachApi, overridesApi, landValueApi, pythonMethodsApi, floorPlanApi } from '@/lib/valuation-api'
 import { valuationConfigApi, mapPropertyRegionToConstructionCluster, mapShortRegionToDataHub } from '@/lib/api'
 import { getSelectedMethods, getNextStep, getPrevStep, stepPath } from '@/lib/valuation-workflow'
 import type { Valuation, CostApproachData } from '@/types/valuation'
@@ -116,6 +116,7 @@ export default function CostApproachPage() {
   const [constructionRate, setConstructionRate] = useState(5000)
   const [systemRate, setSystemRate] = useState<number | null>(null) // Track the system default
   const [gfa, setGfa] = useState(0)
+  const [floorPlanGfa, setFloorPlanGfa] = useState<number | null>(null)
   const [plotSize, setPlotSize] = useState(0) // Land area from property
   const [components, setComponents] = useState<ComponentCost[]>([])
 
@@ -209,6 +210,11 @@ export default function CostApproachPage() {
         // API returns property with camelCase fields: builtArea, grossFloorArea, landArea, plotSize
         const property = valuationRes.data.property
         setGfa(property?.builtArea || property?.grossFloorArea || property?.building_area_sqm || property?.totalArea || property?.total_area_sqm || 200)
+        // measured GFA from the drawn floor plan (exact, IPMS 2) — offered as a source
+        floorPlanApi.getSummary(valuationId).then((r) => {
+          const g = (r.data as unknown as { total_gross_area_sqm?: number } | null)?.total_gross_area_sqm
+          if (r.success && typeof g === 'number' && g > 0) setFloorPlanGfa(Math.round(g * 100) / 100)
+        }).catch(() => undefined)
         setPlotSize(property?.plotSize || property?.landArea || property?.land_area_sqm || 0)
 
         // Load existing cost approach data if available
@@ -496,7 +502,11 @@ export default function CostApproachPage() {
           // Amenity flags have NO dedicated property column — they live in metadata. Reading
           // property.<flag> here sent undefined, starving the shared FunctionalObsolescenceCalculator
           // (e.g. "no generator on a premium type") so functional obsolescence always read 0%.
-          parking_spaces: property.parking_spaces ?? property.metadata?.parking_spaces,
+          // Python engine contract caps parking at 50 — clamp instead of 500ing the whole calc
+          parking_spaces: (() => {
+            const v = Number(property.parking_spaces ?? property.metadata?.parking_spaces)
+            return Number.isFinite(v) ? Math.max(0, Math.min(50, Math.round(v))) : undefined
+          })(),
           has_ac: property.metadata?.has_air_conditioning ?? property.has_air_conditioning ?? property.hasAirConditioning,
           has_generator: property.metadata?.has_generator ?? property.has_generator ?? property.hasGenerator,
           has_borehole: property.metadata?.has_borehole ?? property.has_borehole ?? property.hasBorehole,
@@ -1083,6 +1093,18 @@ export default function CostApproachPage() {
                   readOnly
                   className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono cursor-not-allowed opacity-80"
                 />
+                {floorPlanGfa != null && Math.abs(floorPlanGfa - gfa) > 0.5 && (
+                  <button
+                    onClick={() => setGfa(floorPlanGfa)}
+                    className="mt-1 font-mono text-[10px] text-sky-400 underline hover:text-sky-300"
+                    title="Measured from the drawn floor plan (wall centerlines, IPMS 2)"
+                  >
+                    📐 Use floor plan GFA: {floorPlanGfa.toFixed(2)} sqm
+                  </button>
+                )}
+                {floorPlanGfa != null && Math.abs(floorPlanGfa - gfa) <= 0.5 && (
+                  <p className="mt-1 font-mono text-[10px] text-emerald-500">📐 matches drawn floor plan</p>
+                )}
               </div>
               <div className="flex items-end">
                 <div className="w-full p-3 bg-muted/30">

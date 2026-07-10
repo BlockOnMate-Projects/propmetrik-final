@@ -1977,7 +1977,12 @@ router.post('/:id/prepare-esign', validateUUID('id'), async (req: Request, res: 
       }
     }
     if (!credentials) {
-      return res.status(404).json({ error: 'Not Found', message: 'Valuer not found' });
+      return res.status(404).json({
+        error: 'Not Found',
+        message:
+          'The assigned valuer has no registered valuer profile (license + signature), which is required to sign reports. ' +
+          'Register the valuer in the valuers registry, or reassign the valuation to a registered valuer.',
+      });
     }
 
     // Ensure DOCX is generated

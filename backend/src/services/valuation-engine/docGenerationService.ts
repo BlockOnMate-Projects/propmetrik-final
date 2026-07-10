@@ -254,7 +254,7 @@ class DocGenerationService {
       logger.warn('Location map auto-generation skipped', { valuationId, error: e.message });
     }
     const documentImages = await valuationDocumentService.getImageBuffers(
-      valuationId, ['location_map', 'photo', 'title_document']
+      valuationId, ['location_map', 'photo', 'title_document', '3d_view']
     );
 
     // Load saved TipTap editor sections (user-edited report content)

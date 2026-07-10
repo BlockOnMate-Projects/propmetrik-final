@@ -42,7 +42,7 @@ async function rasterizePdfToPngs(pdf: Buffer, maxPages = 15): Promise<Buffer[]>
   }
 }
 
-export type ValuationDocType = 'photo' | 'title_document' | 'location_map';
+export type ValuationDocType = 'photo' | 'title_document' | 'location_map' | '3d_view';
 
 export interface ValuationDocImage {
   docType: string;

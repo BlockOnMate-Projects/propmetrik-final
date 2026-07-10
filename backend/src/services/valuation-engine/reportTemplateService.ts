@@ -718,7 +718,7 @@ class ReportTemplateService {
    */
   private async buildDocAppendixHtml(
     valuationId: string,
-    docType: 'location_map' | 'photo' | 'title_document'
+    docType: 'location_map' | 'photo' | 'title_document' | '3d_view'
   ): Promise<string> {
     try {
       const docs = await valuationDocumentService.list(valuationId, docType);
@@ -1502,6 +1502,7 @@ class ReportTemplateService {
       // Appendix C/D/E images for the VIEWER (location map, photos, title documents)
       location_map_image: await this.buildDocAppendixHtml(valuation.id, 'location_map'),
       photos_gallery: await this.buildDocAppendixHtml(valuation.id, 'photo'),
+      floor_plan_3d_views: await this.buildDocAppendixHtml(valuation.id, '3d_view'),
       title_documents_gallery: await this.buildDocAppendixHtml(valuation.id, 'title_document'),
 
       // Comparables

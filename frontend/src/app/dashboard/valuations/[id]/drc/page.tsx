@@ -14,6 +14,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
+import { FloorPlanAreasBadge } from '@/components/valuation/floorplan-studio/FloorPlanAreas'
 import {
   TerminalPanel,
   AlertBanner,
@@ -593,6 +594,15 @@ export default function DRCMethodPage() {
                     className={`w-full bg-background border p-2 font-mono text-sm text-foreground cursor-not-allowed opacity-80 ${
                       gfaSource === 'estimated' ? 'border-amber-500/50' : 'border-border'
                     }`}
+                  />
+                  <FloorPlanAreasBadge
+                    valuationId={valuationId}
+                    basis="gfa"
+                    current={gfa}
+                    onApply={(v) => {
+                      setGfa(v)
+                      setGfaSource('user')
+                    }}
                   />
                   {gfaSource === 'estimated' && (
                     <div className="font-mono text-[9px] text-amber-600 dark:text-amber-400 mt-1">

@@ -55,6 +55,7 @@ import {
 } from 'lucide-react'
 
 // Import new components
+import { FloorPlanAreasBadge } from '@/components/valuation/floorplan-studio/FloorPlanAreas'
 import { 
   MarketContextPanel,
   ComparableDetailCard,
@@ -683,13 +684,15 @@ export default function MarketDataPage() {
   // =====================================================
 
   // Subject property for adjustment grid
+  const [gfaOverride, setGfaOverride] = useState<number | null>(null)
   const subjectProperty: SubjectProperty = useMemo(() => {
     const prop = valuation?.property as any
     return {
       id: prop?.id,
       address: prop?.address_street || prop?.full_address,
       // GFA = BUILDING area (built_area_sqm). total_area_sqm/plot_size are the PLOT — never the GFA.
-      gfa: prop?.building_area_sqm || prop?.builtArea || prop?.grossFloorArea || prop?.metadata?.gfa,
+      // valuer-adopted measured GFA (from the drawn floor plan) takes precedence
+      gfa: gfaOverride ?? (prop?.building_area_sqm || prop?.builtArea || prop?.grossFloorArea || prop?.metadata?.gfa),
       plot_size: prop?.plot_size || prop?.metadata?.plot_size,
       bedrooms: prop?.bedrooms,
       bathrooms: prop?.bathrooms,
@@ -708,7 +711,7 @@ export default function MarketDataPage() {
       has_garden: prop?.metadata?.has_garden,
       has_security: prop?.metadata?.has_security,
     }
-  }, [valuation])
+  }, [valuation, gfaOverride])
 
   // Region for market context
   const region = useMemo(() => {
@@ -928,6 +931,12 @@ export default function MarketDataPage() {
                 <div className="font-mono text-xl text-foreground">
                   {pythonValuationResult?.sales_comparison?.subject_gfa || subjectProperty.gfa || '—'} sqm
                 </div>
+                <FloorPlanAreasBadge
+                  valuationId={valuationId}
+                  basis="gfa"
+                  current={typeof subjectProperty.gfa === 'number' ? subjectProperty.gfa : undefined}
+                  onApply={(v) => setGfaOverride(v)}
+                />
               </div>
               <div className="p-4 bg-green-100 dark:bg-green-900/20 border border-green-800 text-center">
                 <div className="font-mono text-[10px] text-green-600 dark:text-green-400 mb-1">

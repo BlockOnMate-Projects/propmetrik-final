@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
+import { FloorPlanAreasBadge } from '@/components/valuation/floorplan-studio/FloorPlanAreas'
 import {
   TerminalPanel,
   AlertBanner,
@@ -964,6 +965,7 @@ export default function IncomeApproachPage() {
               <Ruler className="w-3 h-3 text-muted-foreground" />
               {property?.builtArea || property?.grossFloorArea || property?.gfa_sqm || 'N/A'} sqm
             </div>
+            <FloorPlanAreasBadge valuationId={valuationId} basis="net" />
           </div>
           <div>
             <div className="font-mono text-[10px] text-muted-foreground mb-1">BEDROOMS</div>

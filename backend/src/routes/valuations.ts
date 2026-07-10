@@ -4465,7 +4465,7 @@ router.post('/:id/documents', validateUUID('id'), handleDocumentUpload, async (r
   try {
     const body = req.body || {};
     const file = (req as any).file as { buffer: Buffer; mimetype: string; originalname: string } | undefined;
-    const allowed: ValuationDocType[] = ['photo', 'title_document'];
+    const allowed: ValuationDocType[] = ['photo', 'title_document', '3d_view'];
     const type: ValuationDocType = allowed.includes(body.docType) ? body.docType : 'photo';
     const displayOrder = body.displayOrder != null && Number.isFinite(Number(body.displayOrder)) ? Number(body.displayOrder) : 0;
 
@@ -4547,9 +4547,7 @@ router.post('/:id/documents/location-map', validateUUID('id'), async (req: Reque
   }
 });
 
-// NOTE: LLM Design Intent routes were removed as part of Blender/LLM cleanup
-// The floor plan builder now uses pure Fabric.js canvas on the frontend
-// Data flows: ComprehensivePropertyForm → properties table → Fabric.js Floor Plan Builder
+// Floor plans are drawn client-side (Konva) and stored as canvas_json + a rasterized PNG in MinIO
 
 /**
  * POST /api/valuations/:id/floor-plans
@@ -4822,6 +4820,27 @@ router.post('/floor-plans/:planId/lock', async (req: Request, res: Response) => 
   } catch (error: any) {
     logger.error('Failed to lock floor plan', { error: error.message });
     res.status(500).json({ error: 'Failed to lock floor plan', message: error.message });
+  }
+});
+
+/**
+ * POST /api/valuations/floor-plans/:planId/unlock
+ * Unlock a locked floor plan (requires authentication, mirrors /lock)
+ */
+router.post('/floor-plans/:planId/unlock', async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Authentication required to unlock floor plans' });
+    }
+    const floorPlan = await floorPlanService.unlock(req.params.planId);
+    if (!floorPlan) {
+      return res.status(404).json({ error: 'Not Found', message: 'Floor plan not found' });
+    }
+    res.json({ success: true, data: floorPlan });
+  } catch (error: any) {
+    logger.error('Failed to unlock floor plan', { error: error.message });
+    res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 });
 
@@ -6979,18 +6998,6 @@ async function saveMethodInputs(req: Request, res: Response, methodType: string)
     });
   }
 }
-
-// =====================================================
-// FLOOR PLAN ENHANCEMENT ROUTES (Phase 1)
-// NOTE: Blender/LLM geometry and design intent routes were removed
-// Floor plan builder now uses pure Fabric.js on frontend
-// =====================================================
-
-import floorPlanDesignRoutes from './floor-plan-design';
-
-// Mount the floor plan design routes
-// Design routes: /api/valuations/:valuationId/floor-plans/design
-router.use('/', floorPlanDesignRoutes);
 
 // =====================================================
 // VALUATION REPORT DATA ENDPOINTS (Phase 2)
