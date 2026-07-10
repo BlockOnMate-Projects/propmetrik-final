@@ -498,297 +498,6 @@ export const valuationsApi = {
 };
 
 // ============================================================================
-// DESIGN INTENT API - LLM-Powered Floor Plan Generation
-// Endpoints: POST/GET /:valuationId/floor-plans/design-intent
-// ============================================================================
-
-// Room program item from backend (matches LLM output)
-export interface RoomProgram {
-  room_id: string;
-  room_type: string;
-  room_name?: string;
-  target_area_sqm: number;
-  min_area_sqm: number;
-  max_area_sqm?: number;
-  importance: 'primary' | 'secondary' | 'ancillary';
-  adjacency_requirements: string[];
-  natural_light_required: boolean;
-  ventilation_required: boolean;
-  floor_number: number;
-}
-
-// Layout strategy from backend
-export interface LayoutStrategy {
-  template_id: string;
-  style: 'colonial' | 'modern' | 'compound' | 'apartment' | 'bungalow' | 'split_level';
-  circulation_type: 'central_corridor' | 'side_corridor' | 'open_flow' | 'gallery' | 'courtyard';
-  primary_orientation?: string;
-  entrance_position?: string;
-  kitchen_style?: string;
-}
-
-// Full design intent from backend
-export interface LLMDesignIntent {
-  version: string;
-  timestamp: string;
-  model_id: string;
-  request_id: string;
-  input_features: Record<string, any>;
-  layout_strategy: LayoutStrategy;
-  room_program: RoomProgram[];
-  assumptions: Array<{
-    assumption_id: string;
-    category: string;
-    assumption: string;
-    default_value: string | number;
-    unit?: string;
-    confidence: number;
-    source: string;
-    overridable: boolean;
-    applied: boolean;
-  }>;
-  alternatives?: any[];
-  generation_time_ms?: number;
-  prompt_tokens?: number;
-  completion_tokens?: number;
-  total_tokens?: number;
-}
-
-export interface DesignIntentResponse {
-  success: boolean;
-  data?: {
-    designIntent: LLMDesignIntent;
-    record: {
-      id: string;
-      valuation_id: string;
-      status: string;
-      created_at: string;
-    };
-    assumptions?: Array<{
-      id: string;
-      category: string;
-      assumption: string;
-      default_value: any;
-      confidence: number;
-      source: string;
-      requires_user_confirmation: boolean;
-    }>;
-    metrics?: {
-      providerUsed: string;
-      inputTokens: number;
-      outputTokens: number;
-      totalCost?: number;
-    };
-  };
-  error?: string;
-  validationErrors?: string[];
-}
-
-export const designIntentApi = {
-  /**
-   * Generate an LLM-powered floor plan design intent from property features
-   * The backend will automatically fetch property features from the valuation
-   */
-  async generate(
-    valuationId: string,
-    options?: {
-      generateAlternatives?: boolean;
-      numAlternatives?: number;
-      preferences?: {
-        preferred_style?: string;
-        open_plan_kitchen?: boolean;
-        master_ensuite?: boolean;
-        separate_dining?: boolean;
-        garage_spaces?: number;
-        outdoor_living?: boolean;
-        home_office?: boolean;
-        additional_requirements?: string[];
-      };
-    }
-  ): Promise<DesignIntentResponse> {
-    try {
-      const response = await fetchTypescriptApi(`/${valuationId}/floor-plans/design-intent`, {
-        method: 'POST',
-        body: JSON.stringify({
-          preferences: options?.preferences,
-          generateAlternatives: options?.generateAlternatives ?? false,
-          numAlternatives: options?.numAlternatives ?? 2,
-        }),
-      });
-      return response;
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  /**
-   * Get existing design intents for a valuation
-   */
-  async getByValuation(valuationId: string): Promise<{ success: boolean; data: any[]; error?: string }> {
-    try {
-      const response = await fetchTypescriptApi(`/${valuationId}/floor-plans/design-intent`);
-      return response;
-    } catch (error: any) {
-      return { success: false, data: [], error: error.message };
-    }
-  },
-
-  /**
-   * Convert design intent room_program to Fabric.js canvas JSON
-   * This creates a visual floor plan from the LLM's room layout
-   */
-  convertToCanvasJson(designIntent: DesignIntentResponse['data']): string {
-    if (!designIntent?.designIntent?.room_program || !Array.isArray(designIntent.designIntent.room_program)) {
-      return JSON.stringify({ version: '5.3.0', objects: [] });
-    }
-
-    const PIXELS_PER_METER = 100;
-    const ROOM_COLORS: Record<string, string> = {
-      bedroom: 'rgba(147, 197, 253, 0.4)',
-      master_bedroom: 'rgba(99, 102, 241, 0.4)',
-      bathroom: 'rgba(167, 243, 208, 0.4)',
-      master_bathroom: 'rgba(52, 211, 153, 0.4)',
-      kitchen: 'rgba(253, 224, 71, 0.4)',
-      living_room: 'rgba(252, 211, 77, 0.4)',
-      dining_room: 'rgba(251, 191, 36, 0.4)',
-      storage: 'rgba(209, 213, 219, 0.4)',
-      corridor: 'rgba(229, 231, 235, 0.4)',
-      porch: 'rgba(196, 181, 253, 0.4)',
-      garage: 'rgba(156, 163, 175, 0.4)',
-      laundry: 'rgba(147, 197, 253, 0.4)',
-      office: 'rgba(254, 202, 202, 0.4)',
-      store: 'rgba(209, 213, 219, 0.4)',
-    };
-
-    const objects: any[] = [];
-    const rooms = designIntent.designIntent.room_program;
-
-    // Simple grid layout - arrange rooms in a grid pattern
-    const GRID_PADDING = 20;
-    const CANVAS_WIDTH = 1000;
-    let currentX = GRID_PADDING;
-    let currentY = GRID_PADDING;
-    let rowHeight = 0;
-
-    rooms.forEach((room, index) => {
-      // Calculate width/height from target_area_sqm (assume roughly square rooms)
-      const areaSqm = room.target_area_sqm || 12;
-      const roomWidth = Math.sqrt(areaSqm) * 1.2; // slightly wider than square
-      const roomHeight = areaSqm / roomWidth;
-      const width = roomWidth * PIXELS_PER_METER;
-      const height = roomHeight * PIXELS_PER_METER;
-
-      // Move to next row if room doesn't fit
-      if (currentX + width > CANVAS_WIDTH - GRID_PADDING) {
-        currentX = GRID_PADDING;
-        currentY += rowHeight + GRID_PADDING;
-        rowHeight = 0;
-      }
-
-      // Create room polygon (rectangle)
-      const roomId = `room_${Date.now()}_${index}`;
-      const roomColor = ROOM_COLORS[room.room_type] || 'rgba(200, 200, 200, 0.4)';
-
-      // Room rectangle
-      objects.push({
-        type: 'polygon',
-        version: '5.3.0',
-        originX: 'left',
-        originY: 'top',
-        left: currentX,
-        top: currentY,
-        width,
-        height,
-        fill: roomColor,
-        stroke: '#1e40af',
-        strokeWidth: 2,
-        scaleX: 1,
-        scaleY: 1,
-        angle: 0,
-        flipX: false,
-        flipY: false,
-        skewX: 0,
-        skewY: 0,
-        opacity: 1,
-        visible: true,
-        backgroundColor: '',
-        fillRule: 'nonzero',
-        paintFirst: 'fill',
-        globalCompositeOperation: 'source-over',
-        points: [
-          { x: 0, y: 0 },
-          { x: width, y: 0 },
-          { x: width, y: height },
-          { x: 0, y: height },
-        ],
-        roomId,
-        roomType: room.room_type,
-        roomName: room.room_name || room.room_type,
-        isRoom: true,
-        selectable: true,
-        hasControls: true,
-      });
-
-      // Room label - use room_name and target_area_sqm from room_program
-      const displayName = room.room_name || room.room_type;
-      const displayArea = room.target_area_sqm || areaSqm;
-      objects.push({
-        type: 'text',
-        version: '5.3.0',
-        originX: 'center',
-        originY: 'center',
-        left: currentX + width / 2,
-        top: currentY + height / 2,
-        width: 100,
-        height: 30,
-        fill: '#1f2937',
-        stroke: null,
-        strokeWidth: 1,
-        fontSize: 12,
-        fontWeight: 'normal',
-        fontFamily: 'sans-serif',
-        textAlign: 'center',
-        text: `${displayName}\n${displayArea.toFixed(1)}m²`,
-        selectable: false,
-        evented: false,
-        roomId,
-      });
-
-      // Update position for next room
-      currentX += width + GRID_PADDING;
-      rowHeight = Math.max(rowHeight, height);
-    });
-
-    // Build rooms array for FloorPlanBuilder state
-    const roomsForBuilder = rooms.map((room, index) => {
-      const areaSqm = room.target_area_sqm || 12;
-      const roomWidth = Math.sqrt(areaSqm) * 1.2;
-      const roomHeight = areaSqm / roomWidth;
-      return {
-        id: `room_${Date.now()}_${index}`,
-        type: room.room_type,
-        label: room.room_name || room.room_type,
-        area: areaSqm,
-        width: roomWidth,
-        height: roomHeight,
-      };
-    });
-
-    // Return the full floor plan structure expected by FloorPlanBuilder
-    // FloorPlanBuilder expects: { canvasData: {...}, rooms: [...], scale: number, gridSize: number }
-    return JSON.stringify({
-      canvasData: {
-        version: '5.3.0',
-        objects,
-      },
-      rooms: roomsForBuilder,
-      scale: PIXELS_PER_METER,
-      gridSize: 10,
-    });
-  },
-};
-
-// ============================================================================
 // FLOOR PLAN API - Routes to TypeScript backend
 // Endpoints: POST/GET /:id/floor-plans, PUT/DELETE /floor-plans/:planId
 // ============================================================================
@@ -901,6 +610,65 @@ export const floorPlanApi = {
       return response;
     } catch (error: any) {
       return { success: false, data: {} as FloorPlanData, error: error.message };
+    }
+  },
+
+  /**
+   * Unlock a locked floor plan (requires authentication)
+   */
+  async unlock(planId: string): Promise<{ success: boolean; data: FloorPlanData; error?: string }> {
+    try {
+      const response = await fetchTypescriptApi(`/floor-plans/${planId}/unlock`, {
+        method: 'POST',
+      });
+      return response;
+    } catch (error: any) {
+      return { success: false, data: {} as FloorPlanData, error: error.message };
+    }
+  },
+
+  /**
+   * Upload an image into the valuation's report pictures (Appendix D) —
+   * used for the floor plan studio's 3D view snapshots.
+   */
+  async uploadReportPhoto(
+    valuationId: string,
+    dataUrl: string,
+    caption: string,
+    docType: 'photo' | '3d_view' = 'photo',
+  ): Promise<{ success: boolean; data?: unknown; error?: string }> {
+    try {
+      const response = await fetchTypescriptApi(`/${valuationId}/documents`, {
+        method: 'POST',
+        body: JSON.stringify({ dataUrl, docType, caption }),
+      });
+      return response;
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  /** List valuation documents, optionally filtered by type */
+  async listDocuments(
+    valuationId: string,
+    type?: string,
+  ): Promise<{ success: boolean; data: Array<{ id: string; doc_type: string; caption?: string }>; error?: string }> {
+    try {
+      const q = type ? `?type=${encodeURIComponent(type)}` : '';
+      const response = await fetchTypescriptApi(`/${valuationId}/documents${q}`);
+      return response;
+    } catch (error: any) {
+      return { success: false, data: [], error: error.message };
+    }
+  },
+
+  /** Delete a valuation document */
+  async deleteDocument(valuationId: string, docId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetchTypescriptApi(`/${valuationId}/documents/${docId}`, { method: 'DELETE' });
+      return response;
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   },
 

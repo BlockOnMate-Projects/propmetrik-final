@@ -4,15 +4,6 @@
  * Exports all valuation-related components for property assessment.
  */
 
-export { default as FloorPlanBuilder } from './KonvaFloorPlanBuilder';
-export type {
-  RoomType,
-  Point,
-  RoomMeasurement,
-  FloorPlanSpecs,
-  PropertyMeasurements,
-} from './KonvaFloorPlanBuilder';
-
 // Data Contribution Workflow (consumed by valuations/[id]/market page)
 export {
   GapAnalysisAlert,
@@ -91,12 +82,3 @@ export type {
   RentalComparableWithAdjustments,
   RentalAdjustmentGridProps,
 } from './RentalAdjustmentGrid';
-
-
-export { LayoutAlternatives } from './LayoutAlternatives';
-export type {
-  LayoutStrategy,
-  RoomProgram,
-  LayoutAlternative,
-  LayoutAlternativesProps,
-} from './LayoutAlternatives';

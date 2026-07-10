@@ -168,7 +168,9 @@ class FloorPlanService {
   async create(input: CreateFloorPlanInput): Promise<FloorPlan> {
     const id = uuidv4();
     const rooms = this.extractRoomsFromCanvas(input.canvas_json, input.scale_pixels_per_meter || 20);
-    const measurements = this.calculateMeasurements(rooms);
+    // v2 studio documents carry exact engine-computed measurements (boundary GFA,
+    // miter-offset net areas); prefer them over the sum-of-rooms approximation
+    const measurements = this.providedMeasurements(input.canvas_json) ?? this.calculateMeasurements(rooms);
     
     // Use UPSERT to handle duplicate (valuation_id, floor_number) constraint
     const query = `
@@ -273,7 +275,7 @@ class FloorPlanService {
     if (input.canvas_json) {
       const scale = input.scale_pixels_per_meter || existing.scale_pixels_per_meter;
       rooms = this.extractRoomsFromCanvas(input.canvas_json, scale);
-      measurements = this.calculateMeasurements(rooms);
+      measurements = this.providedMeasurements(input.canvas_json) ?? this.calculateMeasurements(rooms);
     }
 
     const query = `
@@ -331,10 +333,10 @@ class FloorPlanService {
 
     // Re-extract rooms from existing canvas
     const rooms = this.extractRoomsFromCanvas(
-      existing.canvas_json, 
+      existing.canvas_json,
       existing.scale_pixels_per_meter
     );
-    const measurements = this.calculateMeasurements(rooms);
+    const measurements = this.providedMeasurements(existing.canvas_json) ?? this.calculateMeasurements(rooms);
 
     const query = `
       UPDATE valuation_floor_plans SET
@@ -758,6 +760,41 @@ class FloorPlanService {
   /**
    * Calculate aggregate measurements from rooms
    */
+  /**
+   * v2 canvas documents include measurements computed by the editor's exact
+   * geometry engine: { grossArea, netUsableArea, efficiencyRatio }. Returns
+   * null for legacy documents so the sum-of-rooms fallback applies.
+   */
+  private providedMeasurements(canvasJson: unknown): {
+    grossArea: number;
+    netUsableArea: number;
+    efficiencyRatio: number;
+  } | null {
+    const canvas = typeof canvasJson === 'string' ? this.safeParse(canvasJson) : canvasJson;
+    const m = (canvas as { measurements?: { grossArea?: unknown; netUsableArea?: unknown; efficiencyRatio?: unknown } } | null)
+      ?.measurements;
+    if (!m || typeof m.grossArea !== 'number' || typeof m.netUsableArea !== 'number' || !isFinite(m.grossArea)) {
+      return null;
+    }
+    const gross = Math.round(m.grossArea * 100) / 100;
+    const net = Math.round(m.netUsableArea * 100) / 100;
+    const eff =
+      typeof m.efficiencyRatio === 'number' && isFinite(m.efficiencyRatio)
+        ? Math.round(m.efficiencyRatio * 10000) / 10000
+        : gross > 0
+          ? Math.round((net / gross) * 10000) / 10000
+          : 0;
+    return { grossArea: gross, netUsableArea: net, efficiencyRatio: eff };
+  }
+
+  private safeParse(s: string): unknown {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return null;
+    }
+  }
+
   calculateMeasurements(rooms: Room[]): {
     grossArea: number;
     netUsableArea: number;
@@ -996,311 +1033,6 @@ class FloorPlanService {
 
   private async deleteRooms(floorPlanId: string): Promise<void> {
     await pool.query('DELETE FROM valuation_floor_plan_rooms WHERE floor_plan_id = $1', [floorPlanId]);
-  }
-
-  // --------------------------------------------------------------------------
-  // GEOMETRY VERSIONING METHODS (Phase 1 Enhancement)
-  // --------------------------------------------------------------------------
-
-  /**
-   * Create a new geometry version
-   * Used when Blender generates new geometry (Phase 2)
-   */
-  async createGeometryVersion(input: {
-    valuation_id: string;
-    floor_plan_id?: string;
-    blender_output: Record<string, unknown>;
-    fabric_projection: Record<string, unknown>;
-    measurements: Record<string, unknown>;
-    validation_result?: Record<string, unknown>;
-    created_by?: string;
-  }): Promise<{ id: string; version_number: number }> {
-    // Get next version number
-    const versionResult = await pool.query(
-      `SELECT COALESCE(MAX(version_number), 0) + 1 as next_version 
-       FROM valuation_floor_plan_geometry_versions 
-       WHERE valuation_id = $1`,
-      [input.valuation_id]
-    );
-    const versionNumber = versionResult.rows[0].next_version;
-
-    // Create hash of geometry for deduplication
-    const crypto = await import('crypto');
-    const geometryHash = crypto
-      .createHash('sha256')
-      .update(JSON.stringify(input.blender_output))
-      .digest('hex')
-      .substring(0, 64);
-
-    const query = `
-      INSERT INTO valuation_floor_plan_geometry_versions (
-        valuation_id, floor_plan_id, version_number, geometry_hash,
-        blender_output, fabric_projection, measurements, validation_result,
-        status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9)
-      RETURNING id, version_number
-    `;
-
-    const result = await pool.query(query, [
-      input.valuation_id,
-      input.floor_plan_id || null,
-      versionNumber,
-      geometryHash,
-      JSON.stringify(input.blender_output),
-      JSON.stringify(input.fabric_projection),
-      JSON.stringify(input.measurements),
-      input.validation_result ? JSON.stringify(input.validation_result) : null,
-      input.created_by || null,
-    ]);
-
-    return {
-      id: result.rows[0].id,
-      version_number: result.rows[0].version_number,
-    };
-  }
-
-  /**
-   * Get the current (latest valid) geometry version
-   */
-  async getCurrentGeometryVersion(valuationId: string): Promise<any | null> {
-    const result = await pool.query(
-      `SELECT * FROM valuation_floor_plan_geometry_versions
-       WHERE valuation_id = $1 
-         AND superseded_at IS NULL
-         AND status IN ('validated', 'approved', 'locked')
-       ORDER BY version_number DESC
-       LIMIT 1`,
-      [valuationId]
-    );
-    
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
-  }
-
-  /**
-   * Validate and approve a geometry version
-   */
-  async approveGeometryVersion(versionId: string, userId?: string): Promise<boolean> {
-    // Get the version
-    const versionResult = await pool.query(
-      'SELECT * FROM valuation_floor_plan_geometry_versions WHERE id = $1',
-      [versionId]
-    );
-    
-    if (versionResult.rows.length === 0) return false;
-    
-    const version = versionResult.rows[0];
-    
-    // Supersede any existing approved versions
-    await pool.query(
-      `UPDATE valuation_floor_plan_geometry_versions
-       SET superseded_at = NOW(), superseded_by = $2
-       WHERE valuation_id = $1 AND status = 'approved' AND id != $2`,
-      [version.valuation_id, versionId]
-    );
-
-    // Approve this version
-    await pool.query(
-      `UPDATE valuation_floor_plan_geometry_versions
-       SET status = 'approved'
-       WHERE id = $1`,
-      [versionId]
-    );
-
-    // Log to audit trail
-    await this.logAuditEntry({
-      valuation_id: version.valuation_id,
-      geometry_version_id: versionId,
-      action: 'approve_geometry',
-      actor_id: userId,
-      actor_type: 'user',
-    });
-
-    return true;
-  }
-
-  // --------------------------------------------------------------------------
-  // AUDIT LOG METHODS (Phase 1 Enhancement)
-  // --------------------------------------------------------------------------
-
-  /**
-   * Log an entry to the audit trail
-   */
-  async logAuditEntry(entry: {
-    valuation_id: string;
-    floor_plan_id?: string;
-    geometry_version_id?: string;
-    design_intent_id?: string;
-    action: string;
-    actor_id?: string;
-    actor_type: 'user' | 'system' | 'llm' | 'blender';
-    adjustment_deltas?: Record<string, unknown>;
-    previous_state?: Record<string, unknown>;
-    new_state?: Record<string, unknown>;
-    justification?: string;
-    validation_passed?: boolean;
-    ip_address?: string;
-    user_agent?: string;
-  }): Promise<string> {
-    const query = `
-      INSERT INTO valuation_floor_plan_audit_log (
-        valuation_id, floor_plan_id, geometry_version_id, design_intent_id,
-        action, actor_id, actor_type, adjustment_deltas,
-        previous_state, new_state, justification, validation_passed,
-        ip_address, user_agent
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING id
-    `;
-
-    const result = await pool.query(query, [
-      entry.valuation_id,
-      entry.floor_plan_id || null,
-      entry.geometry_version_id || null,
-      entry.design_intent_id || null,
-      entry.action,
-      entry.actor_id || null,
-      entry.actor_type,
-      entry.adjustment_deltas ? JSON.stringify(entry.adjustment_deltas) : null,
-      entry.previous_state ? JSON.stringify(entry.previous_state) : null,
-      entry.new_state ? JSON.stringify(entry.new_state) : null,
-      entry.justification || null,
-      entry.validation_passed,
-      entry.ip_address || null,
-      entry.user_agent || null,
-    ]);
-
-    return result.rows[0].id;
-  }
-
-  /**
-   * Get audit history for a floor plan
-   */
-  async getAuditHistory(valuationId: string, options?: {
-    limit?: number;
-    offset?: number;
-    actions?: string[];
-  }): Promise<{ entries: any[]; total: number }> {
-    let sql = `
-      SELECT * FROM valuation_floor_plan_audit_log
-      WHERE valuation_id = $1
-    `;
-    const params: any[] = [valuationId];
-
-    if (options?.actions && options.actions.length > 0) {
-      sql += ` AND action = ANY($${params.length + 1})`;
-      params.push(options.actions);
-    }
-
-    // Get total count
-    const countResult = await pool.query(
-      sql.replace('SELECT *', 'SELECT COUNT(*)'),
-      params
-    );
-    const total = parseInt(countResult.rows[0].count, 10);
-
-    // Add pagination
-    sql += ` ORDER BY timestamp DESC`;
-    sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-    params.push(options?.limit || 20);
-    params.push(options?.offset || 0);
-
-    const result = await pool.query(sql, params);
-
-    return {
-      entries: result.rows,
-      total,
-    };
-  }
-
-  // --------------------------------------------------------------------------
-  // DESIGN INTENT METHODS (Phase 1 Enhancement)
-  // --------------------------------------------------------------------------
-
-  /**
-   * Save a design intent from LLM
-   */
-  async saveDesignIntent(input: {
-    valuation_id: string;
-    llm_model: string;
-    llm_request_id?: string;
-    input_features: Record<string, unknown>;
-    layout_strategy: Record<string, unknown>;
-    room_program: Record<string, unknown>[];
-    assumptions: Record<string, unknown>[];
-    alternatives?: Record<string, unknown>[];
-    created_by?: string;
-  }): Promise<string> {
-    const query = `
-      INSERT INTO valuation_floor_plan_design_intents (
-        valuation_id, llm_model, llm_request_id,
-        input_features, layout_strategy, room_program, assumptions, alternatives,
-        status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'generated', $9)
-      RETURNING id
-    `;
-
-    const result = await pool.query(query, [
-      input.valuation_id,
-      input.llm_model,
-      input.llm_request_id || null,
-      JSON.stringify(input.input_features),
-      JSON.stringify(input.layout_strategy),
-      JSON.stringify(input.room_program),
-      JSON.stringify(input.assumptions),
-      input.alternatives ? JSON.stringify(input.alternatives) : null,
-      input.created_by || null,
-    ]);
-
-    return result.rows[0].id;
-  }
-
-  /**
-   * Get design intents for a valuation
-   */
-  async getDesignIntents(valuationId: string, status?: string): Promise<any[]> {
-    let sql = `
-      SELECT * FROM valuation_floor_plan_design_intents
-      WHERE valuation_id = $1
-    `;
-    const params: any[] = [valuationId];
-
-    if (status) {
-      sql += ` AND status = $2`;
-      params.push(status);
-    }
-
-    sql += ` ORDER BY created_at DESC`;
-
-    const result = await pool.query(sql, params);
-    return result.rows;
-  }
-
-  /**
-   * Apply a design intent (mark as applied and link to geometry version)
-   */
-  async applyDesignIntent(intentId: string, geometryVersionId: string): Promise<boolean> {
-    const result = await pool.query(
-      `UPDATE valuation_floor_plan_design_intents
-       SET status = 'applied', 
-           applied_at = NOW(),
-           applied_geometry_version_id = $2
-       WHERE id = $1
-       RETURNING valuation_id`,
-      [intentId, geometryVersionId]
-    );
-
-    if (result.rows.length === 0) return false;
-
-    // Log to audit trail
-    await this.logAuditEntry({
-      valuation_id: result.rows[0].valuation_id,
-      design_intent_id: intentId,
-      geometry_version_id: geometryVersionId,
-      action: 'apply_design_intent',
-      actor_type: 'system',
-    });
-
-    return true;
   }
 
   // --------------------------------------------------------------------------

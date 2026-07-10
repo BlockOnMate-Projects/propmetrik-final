@@ -18,6 +18,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { FloorPlanAreasBadge } from '@/components/valuation/floorplan-studio/FloorPlanAreas'
 import {
   TerminalPanel,
   StatusBadge,
@@ -721,6 +722,7 @@ export default function RentalMarketPage() {
           <div>
             <div className="font-mono text-[10px] text-muted-foreground">SIZE</div>
             <div className="font-mono text-sm text-foreground">{property?.gfa_sqm || property?.built_area_sqm || property?.plot_size || '—'} sqm</div>
+            <FloorPlanAreasBadge valuationId={valuationId} basis="net" />
           </div>
           <div>
             <div className="font-mono text-[10px] text-muted-foreground">BEDROOMS</div>

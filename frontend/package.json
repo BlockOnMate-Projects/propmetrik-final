@@ -9,7 +9,8 @@
     "dev:agents": "next dev -p 3003",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:floorplan": "vitest run src/components/valuation/floorplan-studio"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -92,21 +93,24 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.185.1",
     "viem": "2.47.4",
     "wagmi": "3.5.0",
     "zod": "^3.22.4",
-    "zustand": "^4.5.0"
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@types/node": "^20.11.16",
     "@types/react": "^18.2.52",
     "@types/react-dom": "^18.2.18",
+    "@types/three": "^0.185.1",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
     "eslint-config-next": "^15.5.9",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.19",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
   },
   "comments": {
     "overrides": "Pin the wagmi trio to the exact versions the root workspace build resolves (wagmi 3.5.0 / @wagmi/core 3.4.0 / @wagmi/connectors 7.2.1). A fresh standalone resolve floats @wagmi/core to 3.5.x, whose new `tempo` export imports optional deps (e.g. 'accounts') that break `next build`. npm ignores overrides in a workspace MEMBER, so this only affects the standalone Coolify/Nixpacks build, not the root build."

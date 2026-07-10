@@ -81,10 +81,18 @@ export default function ReportPage() {
         if (!currentReport) {
           // Create new draft report
           setPageState('generating')
-          currentReport = await reportsApi.create({
-            valuation_id: valuationId,
-            template: 'ghis_standard',
-          })
+          try {
+            currentReport = await reportsApi.create({
+              valuation_id: valuationId,
+              template: 'ghis_standard',
+            })
+          } catch (createErr) {
+            // Concurrent init (e.g. StrictMode double-mount) can race two creates;
+            // the loser 500s while the winner's draft exists — re-fetch before failing.
+            const retry = await reportsApi.getForValuation(valuationId).catch(() => null)
+            currentReport = retry?.reports?.find((r) => r.status === 'draft') || retry?.reports?.[0] || null
+            if (!currentReport) throw createErr
+          }
         }
 
         setReport(currentReport)
@@ -187,8 +195,8 @@ export default function ReportPage() {
         }
       }
 
-      // Get valuer ID
-      const valuerId = valuation?.created_by
+      // Get valuer ID — the assigned valuer signs; creator is only a fallback
+      const valuerId = (valuation as any)?.valuer_id || valuation?.created_by
       if (!valuerId) {
         setError('This valuation has no assigned valuer. Please assign a valuer first.')
         return
