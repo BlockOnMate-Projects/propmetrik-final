@@ -403,25 +403,19 @@ class ReportTemplateService {
     // Fetch valuer info - try multiple sources
     let valuer: any = {};
     try {
-      // Try 1: Look up valuer assigned to this valuation
+      // Try 1: Look up valuer assigned to this valuation. valuer_id may hold either
+      // the valuers row id OR the valuer's user id (see pdfGenerationService join).
       if (valuationRow?.valuer_id) {
         const valuerResult = await pool.query(
-          `SELECT v.* FROM valuers v WHERE v.id = $1`,
+          `SELECT v.* FROM valuers v WHERE v.id = $1 OR v.user_id = $1`,
           [valuationRow.valuer_id]
         );
         if (valuerResult.rows.length > 0) {
           valuer = valuerResult.rows[0];
         }
       }
-      // Try 1b: Fallback to any active valuer
-      if (!valuer.name) {
-        const valuerResult = await pool.query(`
-          SELECT v.* FROM valuers v WHERE v.is_active = true ORDER BY v.created_at ASC LIMIT 1
-        `);
-        if (valuerResult.rows.length > 0) {
-          valuer = valuerResult.rows[0];
-        }
-      }
+      // NEVER fall back to a different registered valuer: a report must not carry
+      // the name/GhIS credentials of anyone but the valuer assigned to this valuation.
     } catch (e: any) {
       logger.debug('Valuers table query failed', { error: e.message });
     }
@@ -450,25 +444,8 @@ class ReportTemplateService {
       }
     }
 
-    // Try 3: If still no valuer found, use the first user in the system as a last resort
-    if (!valuer.name && !valuer.full_name) {
-      try {
-        const anyUserResult = await pool.query(
-          'SELECT full_name, first_name, last_name, email, display_name FROM users ORDER BY created_at ASC LIMIT 1'
-        );
-        if (anyUserResult.rows.length > 0) {
-          const u = anyUserResult.rows[0];
-          valuer = {
-            name: u.full_name || u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-            full_name: u.full_name || u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
-            contact_email: u.email,
-          };
-          logger.debug('Using first system user as valuer last-resort fallback', { name: valuer.name });
-        }
-      } catch (e: any) {
-        logger.debug('Last-resort user query failed', { error: e.message });
-      }
-    }
+    // If still no valuer, leave empty — the template renders "[Valuer Name]" placeholders,
+    // which correctly signals "assign/register a valuer" instead of mis-attributing the report.
 
     // Fetch reconciliation
     let reconciliation = {};

@@ -293,17 +293,16 @@ class ValuationReportService {
    */
   private async getValuerForReport(valuerId?: string): Promise<any> {
     if (valuerId) {
+      // valuer_id may hold either the valuers row id OR the valuer's user id.
       const result = await query(
-        `SELECT name, title, qualifications, license_number, company_name, contact_address FROM valuers WHERE id = $1`,
+        `SELECT name, title, qualifications, license_number, company_name, contact_address FROM valuers WHERE id = $1 OR user_id = $1`,
         [valuerId]
       );
       if (result.rows.length > 0) return result.rows[0];
     }
-    // Fallback to any active valuer
-    const result = await query(
-      `SELECT name, title, qualifications, license_number, company_name, contact_address FROM valuers WHERE is_active = true ORDER BY created_at DESC LIMIT 1`
-    );
-    return result.rows[0] || null;
+    // No fallback to another registered valuer: a report must never carry the
+    // credentials of anyone but the valuer assigned to this valuation.
+    return null;
   }
 
   /**

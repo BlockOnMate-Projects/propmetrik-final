@@ -18,6 +18,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import config from '../config';
 import { logger } from '../utils/logger';
 import { pool } from '../database';
 import { scanUploadedFiles } from '../middleware/virusScan';
@@ -2039,8 +2040,10 @@ router.post('/:id/prepare-esign', validateUUID('id'), async (req: Request, res: 
 
     const pdfStorageKey = pdfResult.storageKey;
 
-    // Use backend proxy URL to avoid CORS issues with S3 presigned URLs
-    const apiBase = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
+    // Use backend proxy URL to avoid CORS issues with S3 presigned URLs.
+    // config.app.url (DEV_/PROD_APP_URL by NODE_ENV) — NOT raw APP_URL, which is the
+    // public OAuth-redirect base and may hold a stale ngrok tunnel in local dev.
+    const apiBase = config.app.url;
     const documentUrl = `${apiBase}/api/v1/reports/${req.params.id}/pdf-stream?v=${Date.now()}`;
 
     const baseFilename = content?.filename?.replace(/\.docx$/i, '') || `valuation_report_${req.params.id}`;

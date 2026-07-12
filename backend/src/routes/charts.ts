@@ -242,7 +242,9 @@ router.get('/preview', async (req: Request, res: Response) => {
 
     // Fetch from the internal analytics API. Identity comes from the
     // authenticated session only — never from client-supplied headers.
-    const apiBase = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
+    // Self-call: always loopback — never APP_URL (public OAuth-redirect base,
+    // may hold a stale ngrok tunnel) and no reason to leave the process's host.
+    const apiBase = `http://localhost:${process.env.PORT || 4000}`;
     const apiUrl = `${apiBase}${endpoint}`;
 
     const response = await fetch(apiUrl, {

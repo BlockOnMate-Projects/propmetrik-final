@@ -493,3 +493,7 @@ __pycache__/
 *.pyo
 .Python
 *.so
+
+# Coolify env mirrors (credentials — never commit)
+.env.backend
+.env.frontend

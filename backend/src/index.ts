@@ -25,6 +25,7 @@ import valuationClientsRouter from './routes/valuation-clients';
 // Import routes
 import healthRoutes from './routes/health';
 import dataHubRoutes from './routes/dataHub';
+import engineProxyRoutes from './routes/engineProxy';
 import valuationRoutes from './routes/valuations';
 import propertyRoutes from './routes/publicProperties';
 import { ingestionRouter } from './routes/ingestion';
@@ -215,6 +216,9 @@ app.use(auditMutations);
 
 // API routes
 app.use('/health', healthRoutes);
+// Secret-gated bridge: frontend server → Python valuation engine (different machines).
+// Outside /api so no auth catch-all applies; the route itself enforces X-Engine-Secret.
+app.use('/engine', engineProxyRoutes);
 app.use('/api/docs', docsRoutes);  // OpenAPI documentation (PM + CRM)
 app.use('/api/v1/data-hub', authenticate, requireServiceAccess('data_hub'), dataHubRoutes);
 app.use('/api/v1/valuations', optionalAuth, valuationRoutes);

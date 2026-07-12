@@ -959,21 +959,20 @@ class ReportDataService {
   }
 
   private async getActiveValuer(valuerId?: string): Promise<any> {
-    // First try the specific valuer assigned to the valuation
+    // First try the specific valuer assigned to the valuation. valuer_id may hold
+    // either the valuers row id OR the valuer's user id.
     if (valuerId) {
       const specific = await query(
-        `SELECT * FROM valuers WHERE id = $1`,
+        `SELECT * FROM valuers WHERE id = $1 OR user_id = $1`,
         [valuerId]
       );
       if (specific.rows.length > 0) {
         return specific.rows[0];
       }
     }
-    // Fallback to any active valuer
-    const result = await query(
-      `SELECT * FROM valuers WHERE is_active = true ORDER BY created_at DESC LIMIT 1`
-    );
-    return result.rows[0];
+    // No fallback to another registered valuer: a report must never carry the
+    // credentials of anyone but the valuer assigned to this valuation.
+    return null;
   }
 
   private formatPropertyLocation(property: any): string {
