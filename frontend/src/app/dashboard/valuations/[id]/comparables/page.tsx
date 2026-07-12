@@ -13,7 +13,7 @@
  * This page comes AFTER Method Selection and BEFORE Market Analysis.
  */
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { 
@@ -185,6 +185,9 @@ function ComparablesPageContent() {
   const [searchResults, setSearchResults] = useState<ComparableResult[]>([])
   const [searchMeta, setSearchMeta] = useState<SearchMeta | null>(null)
   const [selectedComparables, setSelectedComparables] = useState<string[]>([])
+  // Similarity scores of comps restored from the saved basket — used on re-save when a
+  // restored comp isn't in the current search results (else its score would reset to 0).
+  const restoredScoresRef = useRef<Record<string, number>>({})
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(DEFAULT_FILTERS)
   const [showFilters, setShowFilters] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -242,7 +245,33 @@ function ComparablesPageContent() {
         
         // Run initial search
         await runSearch()
-        
+
+        // Restore the previously saved selection (comparable basket) so returning to
+        // this step shows — and re-saves — the SAME evidence the valuation already
+        // used. Without this, going Back reset the selection to zero and forced a
+        // reselection that could silently change the value conclusion.
+        try {
+          const baskets = await comparableBasketApi.getByValuation(valuationId)
+          const primaryBasket = baskets.success && baskets.data.length > 0 ? baskets.data[0] : null
+          if (primaryBasket) {
+            const saved = await comparableBasketApi.getComparables(primaryBasket.id)
+            if (saved.success && saved.data.length > 0) {
+              const scores: Record<string, number> = {}
+              const ids = saved.data
+                .map((c: any) => {
+                  // Basket rows store the id as comparable_property_id (raw table
+                  // columns) — property_id is only the API's INPUT field name.
+                  const pid = String(c.comparable_property_id || c.property_id || '')
+                  if (pid) scores[pid] = Number(c.quality_score ?? c.similarity_score) || 0
+                  return pid
+                })
+                .filter(Boolean)
+              restoredScoresRef.current = scores
+              if (ids.length > 0) setSelectedComparables(ids)
+            }
+          }
+        } catch { /* restore is best-effort — a fresh selection still works */ }
+
       } catch (err) {
         console.error('Failed to load valuation:', err)
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
@@ -250,7 +279,7 @@ function ComparablesPageContent() {
         setLoading(false)
       }
     }
-    
+
     loadData()
   }, [valuationId])
 
@@ -355,12 +384,14 @@ function ComparablesPageContent() {
         // Clear existing comparables from basket before adding new selection
         await comparableBasketApi.clearComparables(basketId)
 
-        // Add selected comparables to basket
+        // Add selected comparables to basket. A restored comp may not be in the
+        // current search results — fall back to its previously saved similarity
+        // score instead of resetting it to 0.
         for (const propertyId of selectedComparables) {
           const comp = searchResults.find(r => r.id === propertyId)
           await comparableBasketApi.addComparable(basketId, {
             property_id: propertyId,
-            similarity_score: comp?.similarity_score || 0,
+            similarity_score: comp?.similarity_score ?? restoredScoresRef.current[propertyId] ?? 0,
             weight: 1.0,
           })
         }

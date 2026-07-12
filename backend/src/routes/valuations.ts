@@ -41,6 +41,17 @@ import type {
 
 const router = Router();
 
+// Direct engine fetches must carry the shared secret — the engine enforces
+// X-Engine-Secret whenever ENGINE_SHARED_SECRET is configured. pythonClient
+// already attaches it; every raw fetch to the engine in this file must too,
+// or enabling the secret in prod breaks all method calculations with 401→502.
+const engineHeaders = (): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  ...(process.env.ENGINE_SHARED_SECRET?.trim()
+    ? { 'X-Engine-Secret': process.env.ENGINE_SHARED_SECRET.trim() }
+    : {}),
+});
+
 // In-memory multer for valuation document uploads (photos + title/indenture scans).
 // Streamed multipart avoids the base64-in-JSON path, which inflates files ~33% and blows
 // the global 10 MB express.json limit — a scanned title deed of ~8 MB used to 500 there.
@@ -1066,6 +1077,9 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
           p.address_district,
           p.property_type,
           p.evidence_type,
+          p.transaction_date,
+          p.latitude,
+          p.longitude,
           p.created_at as listing_date
         FROM valuation_basket_comparables bc
         JOIN properties p ON bc.comparable_property_id = p.id
@@ -1090,7 +1104,11 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
         address_district: comp.address_district,
         property_type: comp.property_type,
         evidence_type: comp.evidence_type || 'listing',
-        transaction_date: comp.listing_date,
+        // REAL transaction date drives the RICS time adjustment; the row's created_at
+        // (listing_date) is only a proxy when no transaction date is recorded.
+        transaction_date: comp.transaction_date || comp.listing_date,
+        latitude: comp.latitude != null ? Number(comp.latitude) : null,
+        longitude: comp.longitude != null ? Number(comp.longitude) : null,
         weight: parseFloat(comp.weight) || 1.0,
         adjustments: {} // Adjustments calculated by Python service
       }));
@@ -1136,6 +1154,91 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       });
     }
 
+    // ── Market-derived adjustment inputs (RICS Comparable Evidence GN) ──
+    // 1) TIME: regional 12-month movement of median GHS/sqm from the transaction
+    //    record (recent 6 months vs the 12-18-months-ago window). Passed to the
+    //    engine as options.annual_market_movement_pct; the engine falls back to its
+    //    flagged default when the sample is too thin (nulls here).
+    let annualMarketMovementPct: number | null = null;
+    try {
+      const mv = await query(
+        `WITH recent AS (
+           SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY price / NULLIF(built_area_sqm, 0)) AS med,
+                  COUNT(*) AS n
+           FROM properties
+           WHERE region = $1::region_code_enum AND price > 0 AND built_area_sqm > 0
+             AND transaction_type = 'sale'
+             AND COALESCE(transaction_date, created_at::date) >= CURRENT_DATE - INTERVAL '6 months'
+         ), prior AS (
+           SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY price / NULLIF(built_area_sqm, 0)) AS med,
+                  COUNT(*) AS n
+           FROM properties
+           WHERE region = $1::region_code_enum AND price > 0 AND built_area_sqm > 0
+             AND transaction_type = 'sale'
+             AND COALESCE(transaction_date, created_at::date) BETWEEN CURRENT_DATE - INTERVAL '18 months'
+                                                                  AND CURRENT_DATE - INTERVAL '12 months'
+         )
+         SELECT recent.med AS recent_med, recent.n AS recent_n, prior.med AS prior_med, prior.n AS prior_n
+         FROM recent, prior`,
+        [valuation.region || 'greater_accra']
+      );
+      const r = mv.rows[0];
+      if (r?.recent_med && r?.prior_med && Number(r.recent_n) >= 8 && Number(r.prior_n) >= 8) {
+        annualMarketMovementPct = (Number(r.recent_med) / Number(r.prior_med) - 1) * 100;
+      }
+    } catch (e: any) {
+      logger.warn('Market movement derivation failed — engine will use its flagged default', { error: e.message });
+    }
+
+    // 2) LOCATION: district price relativity — median GHS/sqm of the subject's district
+    //    vs each comp's district (last 24 months, min sample 5). The engine converts the
+    //    observed differential into the location adjustment; distance alone never signs it.
+    const districtMedians = new Map<string, number>();
+    try {
+      const districts = Array.from(new Set(
+        [valuation.address_district, ...comparables.map((c: any) => c.address_district)]
+          .filter((d: any) => typeof d === 'string' && d.trim())
+          .map((d: string) => d.trim().toLowerCase())
+      ));
+      if (districts.length > 1 && valuation.address_district) {
+        const dm = await query(
+          `SELECT LOWER(TRIM(address_district)) AS district,
+                  percentile_cont(0.5) WITHIN GROUP (ORDER BY price / NULLIF(built_area_sqm, 0)) AS med
+           FROM properties
+           WHERE region = $1::region_code_enum AND price > 0 AND built_area_sqm > 0
+             AND LOWER(TRIM(address_district)) = ANY($2)
+             AND COALESCE(transaction_date, created_at::date) >= CURRENT_DATE - INTERVAL '24 months'
+           GROUP BY LOWER(TRIM(address_district))
+           HAVING COUNT(*) >= 5`,
+          [valuation.region || 'greater_accra', districts]
+        );
+        for (const row of dm.rows) districtMedians.set(row.district, Number(row.med));
+      }
+    } catch (e: any) {
+      logger.warn('District relativity derivation failed — engine falls back per-comp', { error: e.message });
+    }
+    const subjDistrictMed = valuation.address_district
+      ? districtMedians.get(String(valuation.address_district).trim().toLowerCase())
+      : undefined;
+
+    // 3) DISTANCE: Haversine subject→comp so the engine can recognise same-locality
+    //    comps (<=2 km ⇒ no location adjustment needed).
+    const toRad = (x: number) => (x * Math.PI) / 180;
+    const haversineKm = (aLat: number, aLng: number, bLat: number, bLng: number) => {
+      const dLat = toRad(bLat - aLat);
+      const dLng = toRad(bLng - aLng);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+      return 6371 * 2 * Math.asin(Math.sqrt(h));
+    };
+    for (const c of comparables as any[]) {
+      const compDistrict = c.address_district ? String(c.address_district).trim().toLowerCase() : null;
+      const compMed = compDistrict ? districtMedians.get(compDistrict) : undefined;
+      c.district_price_relativity = subjDistrictMed && compMed ? subjDistrictMed / compMed : null;
+      c.distance_km = (valuation.latitude != null && valuation.longitude != null && c.latitude != null && c.longitude != null)
+        ? haversineKm(Number(valuation.latitude), Number(valuation.longitude), c.latitude, c.longitude)
+        : null;
+    }
+
     const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pythonEndpoint = `${pythonBase}/api/v1/methods/sales-comparison`;
 
@@ -1144,14 +1247,15 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       comparables: comparables,
       valuation_date: new Date().toISOString(),
       usd_to_ghs_rate: usdToGhs, // live DB rate (comps already GHS; passed only as a safety net)
-      options: req.body.options || {},
+      options: {
+        ...(req.body.options || {}),
+        ...(annualMarketMovementPct != null ? { annual_market_movement_pct: annualMarketMovementPct } : {}),
+      },
     };
 
     const pythonResponse = await fetch(pythonEndpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: engineHeaders(),
       body: JSON.stringify(requestBody),
     });
 
@@ -1352,9 +1456,7 @@ router.get('/test/python-health', async (req: Request, res: Response) => {
     const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pythonResponse = await fetch(`${pythonBase}/health`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: engineHeaders(),
     });
 
     if (!pythonResponse.ok) {
@@ -2811,7 +2913,7 @@ router.post('/:id/rental-comparables/value', validateUUID('id'), async (req: Req
     const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pyRes = await fetch(`${pythonBase}/api/v1/methods/market-rent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders(),
       body: JSON.stringify({
         subject: {
           bedrooms: subject.bedrooms,
@@ -2956,7 +3058,7 @@ router.post('/:id/drc/value', validateUUID('id'), async (req: Request, res: Resp
     const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pyRes = await fetch(`${pythonBase}/api/v1/methods/drc`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders(),
       body: JSON.stringify({
         property: {
           id: prop.id,
@@ -3128,7 +3230,7 @@ router.post('/:id/profits/value', validateUUID('id'), async (req: Request, res: 
     const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pyRes = await fetch(`${pythonBase}/api/v1/methods/profits`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders(),
       body: JSON.stringify({
         property: {
           id: prop.id,
@@ -3293,7 +3395,7 @@ router.post('/:id/residual/value', validateUUID('id'), async (req: Request, res:
     const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pyRes = await fetch(`${pythonBase}/api/v1/methods/residual`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders(),
       body: JSON.stringify({
         property: { id: prop.id, property_type: devType, region, land_area_sqm: plotSize },
         options: {
@@ -3419,7 +3521,7 @@ router.post('/:id/sensitivity', validateUUID('id'), async (req: Request, res: Re
       const pyBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
       const callPy = async (endpoint: string, property: any, options: any): Promise<number | null> => {
         try {
-          const r = await fetch(`${pyBase}/api/v1/methods/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ property, options }) });
+          const r = await fetch(`${pyBase}/api/v1/methods/${endpoint}`, { method: 'POST', headers: engineHeaders(), body: JSON.stringify({ property, options }) });
           if (!r.ok) return null;
           const j: any = await r.json();
           return Number(j?.estimated_value);
@@ -4530,14 +4632,31 @@ router.delete('/:id/documents/:docId', validateUUID('id'), async (req: Request, 
 router.post('/:id/documents/location-map', validateUUID('id'), async (req: Request, res: Response) => {
   try {
     const propRes = await query(
-      `SELECT p.id, p.latitude, p.longitude FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+      `SELECT p.id, p.latitude, p.longitude, p.digital_address FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
       [req.params.id]
     );
     const prop = propRes.rows[0];
-    const lat = prop?.latitude != null ? Number(prop.latitude) : null;
-    const lng = prop?.longitude != null ? Number(prop.longitude) : null;
+    let lat = prop?.latitude != null ? Number(prop.latitude) : null;
+    let lng = prop?.longitude != null ? Number(prop.longitude) : null;
+    // No stored coordinates but the subject has a Ghana Post digital address —
+    // resolve it (self-hosted GhanaPostGPS → public API → neighborhood fallback)
+    // and persist the coordinates so every later consumer (report, analytics) has them.
+    if ((lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) && prop?.digital_address) {
+      const geo = await ghanaPostService.geocodeDigitalAddress(String(prop.digital_address)).catch(() => null);
+      if (geo?.latitude != null && geo?.longitude != null) {
+        lat = geo.latitude;
+        lng = geo.longitude;
+        await query(`UPDATE properties SET latitude = $1, longitude = $2 WHERE id = $3 AND latitude IS NULL`, [lat, lng, prop.id])
+          .catch(() => { /* best-effort persist — map generation proceeds regardless */ });
+      }
+    }
     if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
-      return res.status(400).json({ error: 'Bad Request', message: 'Subject property has no coordinates to map' });
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: prop?.digital_address
+          ? `Could not resolve coordinates from digital address ${prop.digital_address} — set the property's location on the map or enter coordinates.`
+          : 'Subject property has no coordinates to map — enter a digital address or set the location on the property.',
+      });
     }
     const row = await valuationDocumentService.generateLocationMap(req.params.id, lat, lng, { propertyId: prop.id });
     if (!row) return res.status(502).json({ error: 'Map generation failed', message: 'Could not generate static map (check GOOGLE_MAPS_API_KEY)' });
@@ -5409,12 +5528,19 @@ router.post('/baskets/:basketId/comparables', async (req: Request, res: Response
       return res.status(400).json({ error: 'property_id or comparable_property_id is required' });
     }
 
+    // weight = analyst weighting (defaults 1.0); quality_score = the search's
+    // similarity score persisted so a restored selection keeps its provenance.
+    // Search reports similarity on a 0-100 scale but the column is numeric(5,4) —
+    // store as a 0-1 fraction (95 → 0.95) or the insert overflows.
+    const qualityScore = similarity_score != null && Number.isFinite(Number(similarity_score))
+      ? Math.max(0, Math.min(1, Number(similarity_score) > 1 ? Number(similarity_score) / 100 : Number(similarity_score)))
+      : null;
     const result = await query(
-      `INSERT INTO valuation_basket_comparables 
-        (basket_id, comparable_property_id, is_manual_entry, manual_data, weight, tags, added_by, added_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      `INSERT INTO valuation_basket_comparables
+        (basket_id, comparable_property_id, is_manual_entry, manual_data, weight, quality_score, tags, added_by, added_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       RETURNING *`,
-      [req.params.basketId, propertyId, is_manual_entry || false, manual_data, weight || similarity_score || 1.0, tags, (req as any).user?.id]
+      [req.params.basketId, propertyId, is_manual_entry || false, manual_data, weight || 1.0, qualityScore, tags, (req as any).user?.id]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error: any) {

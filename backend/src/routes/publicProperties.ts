@@ -1,6 +1,7 @@
 
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
+import { ghanaPostService } from '../services/data-hub/ghanaPostGeocodingService';
 import { propertyEnrichmentService } from '../services/data-hub/propertyEnrichmentService';
 import { reportDataService } from '../services/valuation-engine/reportDataService';
 import { logger } from '../utils/logger';
@@ -361,6 +362,28 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
       return;
     }
 
+    // Auto-geocode on update: creation geocodes digital_address → lat/lng, but the
+    // /new auto-draft creates the property BEFORE the digital address is typed, so the
+    // address arrives through THIS path. Mirror the create-time behavior whenever the
+    // row has a digital address but no coordinates (location map, comps and analytics
+    // all depend on them).
+    const updated = result.rows[0];
+    if (updated?.digital_address && (updated.latitude == null || updated.longitude == null)) {
+      try {
+        const geo = await ghanaPostService.geocodeDigitalAddress(String(updated.digital_address));
+        if (geo?.latitude != null && geo?.longitude != null) {
+          await query(`UPDATE properties SET latitude = $1, longitude = $2 WHERE id = $3`, [geo.latitude, geo.longitude, id]);
+          updated.latitude = geo.latitude;
+          updated.longitude = geo.longitude;
+          logger.info('Geocoded digital address on property update', {
+            propertyId: id, digitalAddress: updated.digital_address, latitude: geo.latitude, longitude: geo.longitude,
+          });
+        }
+      } catch (geoErr: any) {
+        logger.warn('Geocoding on property update failed', { propertyId: id, error: geoErr.message });
+      }
+    }
+
     logger.info('Property updated successfully', {
       propertyId: id,
       fieldsUpdated: updates.length - 1
@@ -368,7 +391,7 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: result.rows[0],
+      data: updated,
       message: 'Property updated successfully'
     });
   } catch (error: any) {

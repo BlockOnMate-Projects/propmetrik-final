@@ -616,28 +616,47 @@ router.post('/contributions', asyncHandler(async (req: Request, res: Response) =
           const region = d.region || input.property_region || 'greater_accra';
           const city = d.address_city || d.city || 'Accra';
 
+          // Transaction date — RICS-critical (drives the time adjustment in the
+          // sales comparison). Empty string must become NULL (Postgres date).
+          const saleDate = d.sale_date && String(d.sale_date).trim() ? String(d.sale_date).trim() : null;
+
+          // Amenity flags → the existing jsonb amenities column (only true flags kept).
+          const amenityFlags: Record<string, boolean> = {};
+          for (const k of ['pool', 'garden', 'security', 'elevator', 'balcony', 'terrace', 'gym', 'generator', 'solar', 'borehole', 'parking']) {
+            if (d[`has_${k}`]) amenityFlags[k] = true;
+          }
+
+          // Adjustment-relevant attributes without dedicated columns → metadata,
+          // using the SAME keys the property update route files there.
+          const compMetadata: Record<string, any> = {};
+          for (const k of ['quality_rating', 'tenure_type', 'lease_years_remaining', 'view_quality', 'neighborhood_rating', 'accessibility_rating', 'parking_spaces']) {
+            if (d[k] !== undefined && d[k] !== null && d[k] !== '') compMetadata[k] = d[k];
+          }
+
           // Insert into properties table
           const insertResult = await query(
             `INSERT INTO properties (
-              region, address_street, address_city, address_district,
+              region, address_street, address_city, address_district, digital_address,
               latitude, longitude,
-              property_type, transaction_type,
+              property_type, transaction_type, transaction_date,
               title, description,
               bedrooms, bathrooms, floors,
               built_area_sqm, total_area_sqm, land_area_sqm,
               year_built, condition,
               price, price_currency,
+              amenities, metadata,
               data_source, evidence_type,
               status, verification_status
             ) VALUES (
-              $1::region_code_enum, $2, $3, $4,
-              $5, $6,
-              $7::property_type_enum, $8::transaction_type_enum,
-              $9, $10,
-              $11, $12, $13,
-              $14, $15, $16,
-              $17, $18::property_condition_enum,
-              $19, $20::currency_enum,
+              $1::region_code_enum, $2, $3, $4, $5,
+              $6, $7,
+              $8::property_type_enum, $9::transaction_type_enum, $10,
+              $11, $12,
+              $13, $14, $15,
+              $16, $17, $18,
+              $19, $20::property_condition_enum,
+              $21, $22::currency_enum,
+              $23::jsonb, $24::jsonb,
               'tier4_user'::source_type_enum, 'contributed',
               'active'::listing_status_enum, 'unverified'::verification_status_enum
             ) RETURNING id, reference_number`,
@@ -646,10 +665,12 @@ router.post('/contributions', asyncHandler(async (req: Request, res: Response) =
               d.address_street || d.address || fullAddress,
               city,
               d.address_district || d.neighborhood || null,
+              d.digital_address || null,
               latitude,
               longitude,
               propertyType,
               transactionType,
+              saleDate,
               d.title || `Contributed ${propertyType.replace('_', ' ')} in ${city}`,
               d.description || `User-contributed comparable property`,
               d.bedrooms ? parseInt(d.bedrooms) : null,
@@ -662,6 +683,8 @@ router.post('/contributions', asyncHandler(async (req: Request, res: Response) =
               ['excellent', 'good', 'fair', 'poor', 'renovation_required', 'under_construction'].includes(d.condition) ? d.condition : null,
               price > 0 ? price : 0,
               ['GHS', 'USD', 'EUR', 'GBP'].includes(currency) ? currency : 'GHS',
+              JSON.stringify(amenityFlags),
+              JSON.stringify(compMetadata),
             ]
           );
 

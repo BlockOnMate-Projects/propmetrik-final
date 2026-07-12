@@ -369,13 +369,14 @@ export default function IncomeApproachPage() {
         const rates = MARKET_RATES.capRates[propType as keyof typeof MARKET_RATES.capRates]
         if (rates) setCapRate(rates.typical)
 
-        // Fetch economic data for discount rate calculation
+        // Fetch economic data for discount rate calculation.
+        // MUST go through economicApi (authed fetchApi): the data-hub mount requires a
+        // Bearer token — a raw fetch() 401s silently and the DCF discount rate falls
+        // back to defaults instead of live BoG rates.
         try {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
-          const economicRes = await fetch(`${API_URL}/data-hub/economic/snapshot`)
-          if (economicRes.ok) {
-            const economicJson = await economicRes.json()
-            if (economicJson.success && economicJson.data) {
+          const { economicApi } = await import('@/lib/api')
+          const economicJson: any = await economicApi.getSnapshot()
+          if (economicJson?.success && economicJson.data) {
               const econ = economicJson.data
               // The snapshot returns SCALAR values (e.g. inflation_rate: 23.2), not { value }.
               // Read both shapes so live rates actually reach the engine (the `.value`-only read
@@ -401,7 +402,6 @@ export default function IncomeApproachPage() {
               setSystemDiscountRate(Math.round(calculatedRate * 100) / 100)
               setDiscountRate(Math.round(calculatedRate * 100) / 100)
               setDiscountRateMode('system')
-            }
           }
         } catch (econError) {
           console.warn('Failed to fetch economic data:', econError)

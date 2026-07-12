@@ -150,6 +150,7 @@ export default function NewValuationPage() {
   // /new resumes the SAME draft instead of spawning duplicates.
   const DRAFT_KEY = 'pm:valuation-new-draft'
   const [draftIds, setDraftIds] = useState<{ valuationId: string; propertyId: string } | null>(null)
+  const [draftNonce, setDraftNonce] = useState(0) // bumped to re-arm draft creation after a stale draft is discarded
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const draftIdsRef = useRef<{ valuationId: string; propertyId: string } | null>(null)
   const creatingDraftRef = useRef(false)
@@ -170,6 +171,18 @@ export default function NewValuationPage() {
         setDraftIds(d.draftIds)
         draftIdsRef.current = d.draftIds
         creatingDraftRef.current = true // a draft already exists — never create a second
+        // The stored draft may have been deleted from the terminal since (draft valuations
+        // get cleaned up). Verify it still exists; if not, forget it and re-arm creation —
+        // otherwise every auto-save and "Generate with AI" call 404s against a ghost id.
+        ;(async () => {
+          const res = await valuationsApi.getById(d.draftIds.valuationId)
+          if (res.error || !(res.data as any)?.id) {
+            draftIdsRef.current = null
+            creatingDraftRef.current = false
+            setDraftIds(null)
+            setDraftNonce((n) => n + 1)
+          }
+        })()
       }
     } catch { /* corrupt draft — ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,8 +245,9 @@ export default function NewValuationPage() {
       }
     })()
     // Depend on the address/city fields directly (not the whole object) so creation is not
-    // starved by continuous edits to other fields.
-  }, [createNewProperty, newProperty.address, newProperty.city, valuationPurpose, initialClientId])
+    // starved by continuous edits to other fields. draftNonce re-arms creation after a
+    // restored-but-deleted draft is discarded.
+  }, [createNewProperty, newProperty.address, newProperty.city, valuationPurpose, initialClientId, draftNonce])
 
   // Debounced auto-save of every subsequent edit to the SAME draft (creation is handled above).
   // Uses the SAME endpoint [id]/subject uses (PUT /properties/{id}) with the SAME payload

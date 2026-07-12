@@ -360,7 +360,10 @@ export interface AddressComponents {
  * Format: XX-XXXX-XXXX or XX-XXX-XXXX where XX is the region/district code
  */
 const GHANA_POST_PATTERNS = [
-  /\b([A-Z]{2})-?(\d{3,4})-?(\d{3,4})\b/i,  // With or without dashes: GA-1234-5678
+  // Unique (last) part is 3-5 digits — Ghana Post spec allows 4 OR 5 digit unique
+  // addresses in dense areas. 5-digit codes resolve via the live API only (the
+  // offline grid decoder's math is 4-digit and would produce garbage for them).
+  /\b([A-Z]{2})-?(\d{3,4})-?(\d{3,5})\b/i,  // With or without dashes: GA-1234-5678(9)
   /\b([A-Z]{2})\s+(\d{3,4})\s+(\d{4})\b/i,   // Space-separated: GA 1234 5678
   /\bGPS[:\s]*([A-Z]{2})-?(\d{3,4})-?(\d{4})\b/i, // Prefixed with GPS: GPS: GA-1234-5678
   /\bDigital\s*Address[:\s]*([A-Z]{2})-?(\d{3,4})-?(\d{4})\b/i, // Prefixed with Digital Address
@@ -409,19 +412,31 @@ class GhanaPostGeocodingService {
         let region: string, part1: string, part2: string;
         
         if (match.length === 3) {
-          // Pattern like XX12345678 (no separators)
+          // Pattern like XX1838164 (no separators). Real codes are 2 letters +
+          // 3-digit district + 4-5 digit unique (7-8 digits total) — split 3/rest.
           region = match[1];
           const digits = match[2];
-          part1 = digits.substring(0, 4);
-          part2 = digits.substring(4);
+          part1 = digits.substring(0, 3);
+          part2 = digits.substring(3);
         } else {
           [, region, part1, part2] = match;
         }
-        
-        // Pad parts to 4 digits
-        const normalizedPart1 = part1.padStart(4, '0');
-        const normalizedPart2 = part2.padStart(4, '0');
-        return `${region.toUpperCase()}-${normalizedPart1}-${normalizedPart2}`;
+
+        // Canonical split: real codes are a 3-digit district + 4-5 digit unique part
+        // (7-8 digits total). Regex grouping can mis-split dashless input
+        // (GA1838164 → 1838/164), so re-split from the combined digits whenever they
+        // form a full-length code.
+        const combined = `${part1}${part2}`;
+        if (combined.length === 7 || combined.length === 8) {
+          part1 = combined.substring(0, 3);
+          part2 = combined.substring(3);
+        }
+
+        // NEVER pad the district part: Ghana Post districts are 3 digits, and padding
+        // (GA-183-… → GA-0183-…) corrupts the code — every live API lookup silently
+        // returned not-found, leaving only the approximate offline grid decoder.
+        const normalizedPart2 = part2.length > 4 ? part2 : part2.padStart(4, '0');
+        return `${region.toUpperCase()}-${part1}-${normalizedPart2}`;
       }
     }
 
@@ -579,6 +594,12 @@ class GhanaPostGeocodingService {
     // Parse the numeric parts
     const parts = normalized.split('-');
     if (parts.length !== 3) return null;
+
+    // The grid math below assumes a 4-digit cell code (0000-9999). Ghana Post's
+    // 5-digit unique addresses use a finer grid this decoder doesn't model —
+    // decoding them here would yield coordinates outside the district. Let the
+    // live API resolve those; offline we honestly return null.
+    if (parts[2].length > 4) return null;
 
     const postCode = parseInt(parts[1], 10);  // Zone code (0000-9999)
     const cellCode = parseInt(parts[2], 10);  // Cell within zone (0000-9999)
