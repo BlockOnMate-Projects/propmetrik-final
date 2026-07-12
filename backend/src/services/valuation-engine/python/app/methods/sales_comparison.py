@@ -45,6 +45,12 @@ class ComparableInput(BaseModel):
     transaction_date: Optional[str] = None
     distance_km: Optional[float] = None
     weight: Optional[float] = Field(default=1.0, ge=0, le=1)
+    # Market-derived location relativity supplied by the caller: median GHS/sqm of the
+    # SUBJECT's district ÷ median GHS/sqm of THIS comp's district (recent sales, min
+    # sample enforced caller-side). >1 means the subject sits in a pricier locality, so
+    # the comp adjusts UP. RICS Comparable Evidence GN: adjustments must be derived from
+    # market data, and distance alone cannot sign a location adjustment.
+    district_price_relativity: Optional[float] = None
 
     # Pre-calculated adjustments from frontend (optional)
     adjustments: Optional[Dict[str, float]] = Field(default_factory=dict)
@@ -134,10 +140,23 @@ async def calculate_sales_comparison(request: RICSSalesComparisonRequest):
         subject_year = prop.year_built or (datetime.now().year - 10)
         subject_age = datetime.now().year - subject_year
 
+        # Market movement (%/yr) for the time adjustment — supplied by the caller from
+        # the regional transaction record (12-month median GHS/sqm movement). The 9%/yr
+        # Ghana residential default applies only when no index could be derived, and is
+        # flagged in the methodology notes. Clamped ±30%/yr as a data-sanity guard.
+        _opt_movement = (request.options or {}).get("annual_market_movement_pct")
+        try:
+            annual_market_movement = float(_opt_movement) if _opt_movement is not None else 9.0
+        except (TypeError, ValueError):
+            _opt_movement = None
+            annual_market_movement = 9.0
+        annual_market_movement = max(-30.0, min(30.0, annual_market_movement))
+        movement_is_market_derived = _opt_movement is not None
+
         analyzed_comparables: List[ComparableAnalysis] = []
         adjustment_grid: Dict[str, Dict[str, float]] = {}
-        total_weighted_value = 0.0
-        total_weight = 0.0
+        staged: List[Dict[str, Any]] = []
+        location_bases_used: set = set()
 
         for comp in comparables:
             # Convert price to GHS
@@ -197,26 +216,45 @@ async def calculate_sales_comparison(request: RICSSalesComparisonRequest):
             else:
                 adjustments["evidence_type"] = 0.0  # Transaction = no adjustment
 
-            # 6. LOCATION ADJUSTMENT (if different districts)
+            # 6. LOCATION ADJUSTMENT — market-derived, per RICS Comparable Evidence GN.
+            # Precedence:
+            #   a) Same immediate locality (<=2 km): no adjustment — the comp shares the
+            #      subject's micro-market.
+            #   b) District price relativity (median GHS/sqm subject-district ÷ comp-district,
+            #      computed by the caller from recent transactions): adjustment = the observed
+            #      differential, capped ±20%. This is the market-derived route.
+            #   c) Fallback heuristic (premium-area list) ONLY when no market data exists —
+            #      flagged in the notes so the valuer knows it is not evidence-based.
             location_adj = 0.0
-            if comp.address_district and hasattr(prop, 'address_city'):
-                # Premium areas in Greater Accra
+            location_basis = "none"
+            rel = comp.district_price_relativity
+            if comp.distance_km is not None and comp.distance_km <= 2.0:
+                location_adj = 0.0
+                location_basis = "same_locality"
+            elif rel is not None and 0.5 <= rel <= 2.0:
+                location_adj = max(-20.0, min(20.0, (rel - 1.0) * 100.0))
+                location_basis = "district_price_relativity"
+            elif comp.address_district and hasattr(prop, 'address_city'):
+                # Last-resort heuristic — insufficient transaction data for relativity.
                 premium_areas = ["east legon", "cantonments", "airport residential", "ridge", "labone"]
-                standard_areas = ["tema", "spintex", "achimota", "dansoman"]
-
                 comp_district = (comp.address_district or "").lower()
                 subject_city = (prop.address_city or "").lower()
-
                 comp_premium = any(area in comp_district for area in premium_areas)
                 subject_premium = any(area in subject_city for area in premium_areas)
-
                 if subject_premium and not comp_premium:
-                    location_adj = 15.0  # Subject in premium area
+                    location_adj = 15.0
+                    location_basis = "heuristic_premium_area"
                 elif not subject_premium and comp_premium:
-                    location_adj = -15.0  # Comp in premium area
-            adjustments["location"] = location_adj
+                    location_adj = -15.0
+                    location_basis = "heuristic_premium_area"
+            adjustments["location"] = round(location_adj, 1)
 
-            # 7. TIME ADJUSTMENT (market movement since the comparable's transaction/listing date)
+            # 7. TIME ADJUSTMENT (market movement since the comparable's transaction/listing
+            # date). RICS Comparable Evidence GN: derive from an observed market index. The
+            # caller passes options.annual_market_movement_pct computed from the regional
+            # transaction record (12-month median GHS/sqm movement); the historical Ghana
+            # residential default (9%/yr) applies only when no index can be derived. A
+            # falling market therefore produces a NEGATIVE time adjustment. Capped ±15%.
             months_since = 0.0
             try:
                 raw_date = getattr(comp, "transaction_date", None)
@@ -225,8 +263,7 @@ async def calculate_sales_comparison(request: RICSSalesComparisonRequest):
                     months_since = max(0.0, (datetime.now() - comp_date).days / 30.0)
             except Exception:
                 months_since = 0.0
-            annual_appreciation = 9.0  # %/yr Ghana residential
-            time_adj = min(15.0, months_since * (annual_appreciation / 12.0))
+            time_adj = max(-15.0, min(15.0, months_since * (annual_market_movement / 12.0)))
             adjustments["time"] = round(time_adj, 1)
 
             # CALCULATE TOTAL ADJUSTMENT
@@ -235,17 +272,9 @@ async def calculate_sales_comparison(request: RICSSalesComparisonRequest):
             # Apply adjustment to total price
             adjusted_price = price_ghs * (1 + total_adj_pct)
 
-            # Weight (use provided weight or default)
-            weight = comp.weight or 1.0
-
-            # Store in grid
-            adjustment_grid[comp.id] = {
-                "original_price_ghs": round(price_ghs, 2),
-                **{k: v for k, v in adjustments.items()},
-                "total_adjustment": round(total_adj_pct * 100, 1),
-                "adjusted_price_ghs": round(adjusted_price, 2),
-                "weight": weight
-            }
+            # Gross adjustment (sum of ABSOLUTE adjustments) — the RICS/appraisal measure
+            # of how much massaging the comparable needed. Drives auto-weighting below.
+            gross_adjustment = sum(abs(v) for v in adjustments.values()) / 100.0
 
             # Confidence contribution based on adjustment magnitude
             adj_magnitude = abs(total_adj_pct)
@@ -265,27 +294,86 @@ async def calculate_sales_comparison(request: RICSSalesComparisonRequest):
             adj_penalty = max(0.0, 1.0 - adj_magnitude / 0.30)
             quality_score = round((0.45 * size_sim + 0.35 * adj_penalty + 0.20 * recency) * 100, 0)
 
+            location_bases_used.add(location_basis)
+            staged.append({
+                "comp": comp,
+                "price_ghs": price_ghs,
+                "adjusted_price": adjusted_price,
+                "adjustments": adjustments,
+                "total_adj_pct": total_adj_pct,
+                "gross_adjustment": gross_adjustment,
+                "months_since": months_since,
+                "conf_contribution": conf_contribution,
+                "adj_per_sqm": adj_per_sqm,
+                "quality_score": quality_score,
+            })
+
+        # ================================================================
+        # WEIGHTING — RICS Comparable Evidence GN: "most weight should be attached to
+        # the evidence requiring least adjustment", tempered by the hierarchy of
+        # evidence (Category A direct transactions over asking prices) and recency.
+        # Auto-weighting applies UNLESS the valuer supplied differentiated weights —
+        # explicit professional judgment is always honored.
+        # ================================================================
+        provided_weights = [s["comp"].weight if s["comp"].weight is not None else 1.0 for s in staged]
+        valuer_weighted = len(set(round(w, 4) for w in provided_weights)) > 1 and sum(provided_weights) > 0
+
+        # Hierarchy of evidence (RICS Comparable Evidence GN, category A > B):
+        # completed/verified transactions best; inferred sales next; offers made are
+        # firmer evidence than asking prices.
+        EVIDENCE_RELIABILITY = {
+            "verified_sale": 1.0,
+            "sale": 1.0,
+            "transaction": 1.0,
+            "contributed": 0.95,
+            "delisted_inferred": 0.9,
+            "offer": 0.85,
+            "listing": 0.75,
+        }
+
+        raw_weights: List[float] = []
+        for i, s in enumerate(staged):
+            if valuer_weighted:
+                raw_weights.append(max(0.0, provided_weights[i]))
+            else:
+                comparability = 1.0 / (1.0 + s["gross_adjustment"])  # least adjustment, most weight
+                reliability = EVIDENCE_RELIABILITY.get((s["comp"].evidence_type or "listing").lower(), 0.8)
+                time_reliability = 1.0 / (1.0 + s["months_since"] / 12.0)  # recency of evidence
+                raw_weights.append(comparability * reliability * time_reliability)
+
+        weight_sum = sum(raw_weights) or 1.0
+        norm_weights = [w / weight_sum for w in raw_weights]
+
+        total_weighted_value = 0.0
+        for s, weight in zip(staged, norm_weights):
+            comp = s["comp"]
+            adjusted_price = s["adjusted_price"]
+            adjustment_grid[comp.id] = {
+                "original_price_ghs": round(s["price_ghs"], 2),
+                **{k: v for k, v in s["adjustments"].items()},
+                "gross_adjustment": round(s["gross_adjustment"] * 100, 1),
+                "total_adjustment": round(s["total_adj_pct"] * 100, 1),
+                "adjusted_price_ghs": round(adjusted_price, 2),
+                "weight": round(weight, 4),
+            }
             analyzed_comparables.append(ComparableAnalysis(
                 id=comp.id,
-                original_price_ghs=round(price_ghs, 2),
+                original_price_ghs=round(s["price_ghs"], 2),
                 adjusted_price_ghs=round(adjusted_price, 2),
-                adjustments_applied=adjustments,
-                total_adjustment_percent=round(total_adj_pct * 100, 1),
-                weight=weight,
+                adjustments_applied=s["adjustments"],
+                total_adjustment_percent=round(s["total_adj_pct"] * 100, 1),
+                weight=round(weight, 4),
                 weighted_value=round(adjusted_price * weight, 2),
-                confidence_contribution=conf_contribution,
-                adjusted_price_per_sqm=adj_per_sqm,
-                quality_score=quality_score
+                confidence_contribution=s["conf_contribution"],
+                adjusted_price_per_sqm=s["adj_per_sqm"],
+                quality_score=s["quality_score"],
             ))
-
             total_weighted_value += adjusted_price * weight
-            total_weight += weight
 
-        # Calculate weighted average
-        if total_weight > 0:
-            estimated_value = total_weighted_value / total_weight
-        else:
-            estimated_value = sum(c.adjusted_price_ghs for c in analyzed_comparables) / len(analyzed_comparables)
+        # Weights are normalized to sum 1, so the weighted value IS the estimate.
+        estimated_value = total_weighted_value if total_weighted_value > 0 else (
+            sum(c.adjusted_price_ghs for c in analyzed_comparables) / len(analyzed_comparables)
+        )
 
         # Calculate value range from adjusted prices
         adjusted_prices = [c.adjusted_price_ghs for c in analyzed_comparables]
@@ -315,12 +403,21 @@ async def calculate_sales_comparison(request: RICSSalesComparisonRequest):
             comparables_analyzed=analyzed_comparables,
             adjustment_grid=adjustment_grid,
             methodology_notes=[
-                "RICS Valuation Global Standards methodology applied",
+                "RICS Valuation Global Standards (Red Book) / IVS 105 Market Approach; RICS 'Comparable Evidence in Real Estate Valuation' guidance applied",
                 "Adjustments calculated on total price, not per-unit basis",
                 "Size adjustments capped at ±25% per RICS guidelines",
+                (f"Time adjustment from market-derived regional index: {annual_market_movement:+.1f}%/yr"
+                 if movement_is_market_derived
+                 else f"Time adjustment used DEFAULT {annual_market_movement:+.1f}%/yr — no regional index could be derived from the transaction record"),
+                ("Location adjustments market-derived from district price relativity (median GHS/sqm)"
+                 if "district_price_relativity" in location_bases_used
+                 else "Location adjustments: no district price relativity available"
+                 ) + (" — heuristic premium-area fallback used for some comparables" if "heuristic_premium_area" in location_bases_used else ""),
+                ("Weights supplied by the valuer (professional judgment honored)"
+                 if valuer_weighted
+                 else "Auto-weighted per RICS: most weight to least-adjusted evidence × evidence hierarchy (transactions over asking prices) × recency"),
                 f"USD to GHS exchange rate: {usd_rate}",
                 f"Total comparables analyzed: {len(comparables)}",
-                f"Weighted average calculation used with {round(total_weight, 2)} total weight"
             ],
             details={
                 # Indicated value of this method (= its estimated value). Uniform field exposed by

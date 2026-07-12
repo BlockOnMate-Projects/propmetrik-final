@@ -551,31 +551,29 @@ export default function MarketDataPage() {
   // SAVE & NAVIGATION
   // =====================================================
 
-  // Handle contribution submission
+  // Handle contribution submission — goes through the SAME data-hub pipeline as the
+  // comparables page's "Add New Comparable" (auto-approves, geocodes the address and
+  // inserts a searchable properties row). The legacy /api/contributions/submit
+  // pipeline was retired: its insert omitted `region` on the partitioned table.
   const handleContributionSubmit = async (data: Record<string, unknown>) => {
-    try {
-      const response = await fetch('/api/contributions/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          promptId: contributionPrompt?.id,
-          data,
-          sourceType: 'personal_knowledge',
-          attestation: true,
-          valuationId,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to submit contribution')
-      }
-
-      setShowContributionDialog(false)
-      setGapAnalysis(null)
-      await handleSearch()
-    } catch (err) {
-      throw err
+    const { submitContribution } = await import('@/lib/contributions-api')
+    const res = await submitContribution({
+      type: 'comparable',
+      data: {
+        ...data,
+        // Dialog field names → data-hub reader's keys
+        sale_price: data.transaction_price,
+        sale_date: data.transaction_date,
+      },
+      subject_property_id: subjectProperty?.id,
+      notes: `Contributed via market-analysis gap prompt (valuation ${valuationId})`,
+    })
+    if (!res.success) {
+      throw new Error(res.error || 'Failed to submit contribution')
     }
+    setShowContributionDialog(false)
+    setGapAnalysis(null)
+    await handleSearch()
   }
 
   // Save basket and navigate. goBack=true persists best-effort then steps to the

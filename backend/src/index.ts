@@ -29,7 +29,6 @@ import engineProxyRoutes from './routes/engineProxy';
 import valuationRoutes from './routes/valuations';
 import propertyRoutes from './routes/publicProperties';
 import { ingestionRouter } from './routes/ingestion';
-import contributionRoutes from './routes/contributions';
 import pullIntegrationRoutes from './routes/pullIntegrations';
 import reportRoutes from './routes/reports';
 import valuersRoutes from './routes/valuers';
@@ -226,7 +225,9 @@ app.use('/api/valuations', optionalAuth, valuationRoutes);  // Also mount for fr
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/public/properties', propertyRoutes);  // Also mount at public path for frontend compatibility
 app.use('/api/v1/ingestion', requireIngestionAuth, ingestionRouter);
-app.use('/api/v1/contributions', authenticate, contributionRoutes);
+// NOTE: property contributions go through /api/data-hub/contributions (dataHub.ts).
+// The legacy /api/v1/contributions pipeline (contributionWorkflowService) was retired
+// 2026-07-12 — its property insert omitted `region` on the partitioned table.
 app.use('/api/v1/pull-integrations', requireIngestionAuth, pullIntegrationRoutes);
 app.use('/api/pull-integrations', requireIngestionAuth, pullIntegrationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/reports', reportRoutes);

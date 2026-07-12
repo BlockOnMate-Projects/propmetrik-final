@@ -1027,7 +1027,11 @@ export default function ComprehensivePropertyForm({
         </div>
       </div>
 
-      {/* Chapter 3: Report Data Section */}
+      {/* Chapter 3: Report Data Section — SUBJECT ONLY. RICS comparable evidence is
+          identification + value-affecting attributes + transaction facts; report
+          writeups (city/neighbourhood narratives, construction detail, risk matrix)
+          belong to the subject being valued, not to comparable records. */}
+      {mode === 'subject' && (
       <div className="space-y-6 border border-amber-500/30 p-4 bg-amber-500/5">
         <div className="flex items-center gap-2 mb-3">
           <FileText className="w-4 h-4 text-amber-500" />
@@ -1383,8 +1387,11 @@ export default function ComprehensivePropertyForm({
           </div>
         </div>
       </div>
+      )}
 
-      {/* Owner Information */}
+      {/* Owner Information — SUBJECT ONLY: owner KYC/contact is instruction data,
+          not comparable evidence (a comp's provenance lives on the contribution). */}
+      {mode === 'subject' && (
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <Home className="w-4 h-4 text-emerald-500" />
@@ -1456,6 +1463,7 @@ export default function ComprehensivePropertyForm({
           </p>
         </div>
       </div>
+      )}
 
       {/* Transaction Fields (for comparables) */}
       {showTransactionFields && (

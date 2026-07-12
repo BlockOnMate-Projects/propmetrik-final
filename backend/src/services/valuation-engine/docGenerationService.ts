@@ -25,6 +25,7 @@ import { valuationReportService } from './valuationReportService';
 import { reportTemplateService } from './reportTemplateService';
 import { valuationDocumentService } from './valuationDocumentService';
 import { floorPlanService } from './floorPlanService';
+import { ghanaPostService } from '../data-hub/ghanaPostGeocodingService';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { buildProfessionalDocx } from './professionalDocxBuilder';
@@ -242,12 +243,25 @@ class DocGenerationService {
       const existing = await valuationDocumentService.list(valuationId, 'location_map');
       if (existing.length === 0) {
         const coordRes = await query(
-          `SELECT p.id, p.latitude, p.longitude FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
+          `SELECT p.id, p.latitude, p.longitude, p.digital_address FROM valuations v JOIN properties p ON v.property_id = p.id WHERE v.id = $1`,
           [valuationId]
         );
         const c = coordRes.rows[0];
-        if (c?.latitude != null && c?.longitude != null) {
-          await valuationDocumentService.generateLocationMap(valuationId, Number(c.latitude), Number(c.longitude), { propertyId: c.id });
+        let lat = c?.latitude != null ? Number(c.latitude) : null;
+        let lng = c?.longitude != null ? Number(c.longitude) : null;
+        // Subjects entered with only a Ghana Post digital address have no stored
+        // coordinates — resolve and persist them so Appendix C still gets its map.
+        if ((lat == null || lng == null) && c?.digital_address) {
+          const geo = await ghanaPostService.geocodeDigitalAddress(String(c.digital_address)).catch(() => null);
+          if (geo?.latitude != null && geo?.longitude != null) {
+            lat = geo.latitude;
+            lng = geo.longitude;
+            await query(`UPDATE properties SET latitude = $1, longitude = $2 WHERE id = $3 AND latitude IS NULL`, [lat, lng, c.id])
+              .catch(() => { /* best-effort persist */ });
+          }
+        }
+        if (lat != null && lng != null) {
+          await valuationDocumentService.generateLocationMap(valuationId, lat, lng, { propertyId: c.id });
         }
       }
     } catch (e: any) {

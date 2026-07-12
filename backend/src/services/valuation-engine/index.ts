@@ -10,8 +10,7 @@
  *     - floorPlanService - Floor plan data management
  *     - hbuAnalysisService - Highest & Best Use analysis
  *     - overrideTrackingService - Manual override tracking
- *     - contributionWorkflowService - Gap detection and contributions
- * 
+ *
  *   Python (Calculations) - via pythonClient:
  *     - Sales Comparison Method
  *     - Cost Approach Method
@@ -152,14 +151,6 @@ export {
   type ListingDerivedCapRate,
   type CapRateMethodology,
 } from '../analytics/capRateService';
-
-// Contribution workflow
-export {
-  GapDetectionService,
-  ContributionService,
-  gapDetectionService,
-  contributionService
-} from './contributionWorkflowService';
 
 // Gap analysis services
 export { floorPlanService } from './floorPlanService';
