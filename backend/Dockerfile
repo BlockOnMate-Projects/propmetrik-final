@@ -53,6 +53,9 @@ FROM node:20-alpine AS production
 # (lease/report PDF generation). Puppeteer's bundled Chromium is glibc-based and
 # cannot run on Alpine/musl, so we install the Alpine chromium package and point
 # Puppeteer at it. Fonts are required or generated PDFs render blank/tofu text.
+# libreoffice-writer provides /usr/bin/soffice for the valuation report
+# DOCX -> PDF conversion (pdfGenerationService) — the API execs it directly;
+# the compose `libreoffice` sidecar is NOT reachable from this container.
 RUN apk add --no-cache \
     dumb-init \
     chromium \
@@ -61,7 +64,8 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    font-noto
+    font-noto \
+    libreoffice-writer
 ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 

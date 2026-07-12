@@ -113,6 +113,8 @@ services:
       ml-serving:
         condition: service_started
     networks:
+      # Internal-only: the frontend (different SERVER) reaches the engine through the
+      # api's secret-gated /engine bridge (routes/engineProxy.ts), never directly.
       - propmetrik-network
     deploy:
       resources:

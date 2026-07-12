@@ -52,7 +52,11 @@ interface OAuthApp {
 // wins (see firstEnv below). This tolerates naming drift across deployments (AUTH_GOOGLE_ID
 // vs GOOGLE_CLIENT_ID, XERO_CLIENT_ID vs CLIENT_XERO_ID, …) so whichever the env uses works.
 const OAUTH_APPS: Record<string, OAuthApp> = {
-  google:    { authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', tokenUrl: 'https://oauth2.googleapis.com/token', clientIdEnv: 'AUTH_GOOGLE_ID|GOOGLE_CLIENT_ID', clientSecretEnv: 'AUTH_GOOGLE_SECRET|GOOGLE_CLIENT_SECRET', tokenAuth: 'body', extraAuthParams: { access_type: 'offline', prompt: 'consent' } },
+  // GOOGLE_CLIENT_ID first: that's the backend drive/calendar/Gmail app (its GCP config has
+  // this API's OAuth callback registered). AUTH_GOOGLE_ID is the FRONTEND auth app — on the
+  // backend it exists only so /auth/google accepts frontend-issued id_tokens; BYO OAuth must
+  // not use it.
+  google:    { authUrl: 'https://accounts.google.com/o/oauth2/v2/auth', tokenUrl: 'https://oauth2.googleapis.com/token', clientIdEnv: 'GOOGLE_CLIENT_ID|AUTH_GOOGLE_ID', clientSecretEnv: 'GOOGLE_CLIENT_SECRET|AUTH_GOOGLE_SECRET', tokenAuth: 'body', extraAuthParams: { access_type: 'offline', prompt: 'consent' } },
   // `/organizations` (work/school accounts in ANY tenant) — matches the app's "Accounts in any
   // organizational directory (Multitenant)" audience. NOT `/common`: a single-tenant app on /common
   // throws AADSTS50194, and /common also admits personal MSAs which can't grant the app-only perms
