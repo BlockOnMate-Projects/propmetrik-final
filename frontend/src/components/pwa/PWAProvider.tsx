@@ -101,8 +101,14 @@ export function PWAProvider({ children }: { children: ReactNode }) {
           }
         })();
       } else {
+        // Append the build id so a redeploy installs a fresh worker that purges
+        // the previous build's caches (see sw.js SW_VERSION). Without the query
+        // the SW script is byte-identical across builds and old caches linger.
+        const swUrl = process.env.NEXT_PUBLIC_BUILD_ID
+          ? `/sw.js?v=${process.env.NEXT_PUBLIC_BUILD_ID}`
+          : '/sw.js';
         navigator.serviceWorker
-          .register('/sw.js')
+          .register(swUrl)
           .then((reg) => {
             console.log('[PWA] Service worker registered');
             setRegistration(reg);

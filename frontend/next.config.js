@@ -1,7 +1,18 @@
+// Stable per-build identifier, inlined into the client bundle as
+// NEXT_PUBLIC_BUILD_ID. The service worker registration appends it as
+// `/sw.js?v=<id>` so the SW versions (and purges) its caches per deploy,
+// preventing stale-chunk 404s after a redeploy. Coolify/nixpacks set
+// SOURCE_COMMIT during the build; fall back to a build-time timestamp so the
+// value still changes on every build when no commit SHA is available.
+const BUILD_ID = process.env.SOURCE_COMMIT || process.env.GIT_COMMIT_SHA || String(Date.now());
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
+  },
   // Lower peak build memory (frees webpack caches sooner) so `next build` fits under
   // the deploy server's Node heap — the prod build was OOM-ing at ~2GB.
   experimental: {

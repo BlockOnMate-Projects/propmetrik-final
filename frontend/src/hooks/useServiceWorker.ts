@@ -67,7 +67,12 @@ export function useServiceWorker(): UseServiceWorkerReturn {
     }
 
     try {
-      const registration = await navigator.serviceWorker.register(SW_PATH, {
+      // Append the build id so a redeploy installs a fresh worker that purges
+      // the previous build's caches (see sw.js SW_VERSION).
+      const swUrl = process.env.NEXT_PUBLIC_BUILD_ID
+        ? `${SW_PATH}?v=${process.env.NEXT_PUBLIC_BUILD_ID}`
+        : SW_PATH
+      const registration = await navigator.serviceWorker.register(swUrl, {
         scope: SW_SCOPE,
       })
 

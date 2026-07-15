@@ -11,17 +11,25 @@
 // Service Worker globals
 const selfSW = self;
 
-const CACHE_NAME = 'propmetrik-v3';
-const STATIC_CACHE = 'propmetrik-static-v3';
-const DYNAMIC_CACHE = 'propmetrik-dynamic-v3';
-const API_CACHE = 'propmetrik-api-v3';
+// Version the caches per deploy. The page registers this worker as
+// `/sw.js?v=<BUILD_ID>`, so a new build changes the cache names, and the
+// activate handler below purges the previous build's caches. Without this the
+// caches lived under a hardcoded '-v3' forever, pinning returning browsers to a
+// stale build. Falls back to 'v3' if registered without the query.
+const SW_VERSION = new URL(selfSW.location.href).searchParams.get('v') || 'v3';
+const CACHE_NAME = `propmetrik-${SW_VERSION}`;
+const STATIC_CACHE = `propmetrik-static-${SW_VERSION}`;
+const DYNAMIC_CACHE = `propmetrik-dynamic-${SW_VERSION}`;
+const API_CACHE = `propmetrik-api-${SW_VERSION}`;
 
-// Static assets to cache on install
-// NOTE: Do NOT cache auth-protected routes (e.g. /dashboard/*) here.
-// They return redirects when unauthenticated, and cached redirects cause
-// ERR_FAILED ("redirect mode is not follow") on subsequent navigation.
+// Static assets to cache on install.
+// NOTE: Never precache HTML documents (e.g. '/'). A document embeds
+// content-hashed /_next/static chunk URLs; caching it pins the browser to one
+// build, so after a redeploy those chunk hashes 404. Navigation is network-first
+// (see fetch handler) which always fetches the current document instead.
+// Also do NOT cache auth-protected routes (e.g. /dashboard/*): they return
+// redirects when unauthenticated, and cached redirects cause ERR_FAILED.
 const STATIC_ASSETS = [
-  '/',
   '/offline',
   '/manifest.json',
 ];
@@ -91,6 +99,15 @@ selfSW.addEventListener('activate', (event) => {
 
   // Take control immediately
   selfSW.clients.claim();
+});
+
+// Allow the page to activate a waiting worker on demand (the update prompt in
+// useServiceWorker posts this). skipWaiting() is also called on install, so this
+// is a belt-and-suspenders path for the "new version available" flow.
+selfSW.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    selfSW.skipWaiting();
+  }
 });
 
 // Fetch event - serve from cache or network
