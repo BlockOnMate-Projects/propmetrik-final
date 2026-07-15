@@ -59,7 +59,16 @@
       "Bash(gh run *)",
       "Bash(git check-ignore *)",
       "Bash(npx tsc *)",
-      "Bash(echo \"exit $? | errors $\\(grep -c 'error TS' /tmp/topnav.log\\)\")"
+      "Bash(echo \"exit $? | errors $\\(grep -c 'error TS' /tmp/topnav.log\\)\")",
+      "Bash(curl -s -o /dev/null -w \"propmetrik.com -> %{http_code} \\(dns:%{time_namelookup}s connect:%{time_connect}s total:%{time_total}s\\)\\\\n\" -m 20 https://propmetrik.com/)",
+      "Bash(curl -s -o /dev/null -w \"api.propmetrik.com/health -> %{http_code}\\\\n\" -m 20 https://api.propmetrik.com/health)",
+      "Bash(dig +short propmetrik.com)",
+      "Bash(ssh -i ~/.ssh/id_cedyn_vps -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@132.145.133.11 'echo \"=== HOST ===\"; hostname; uptime; echo; echo \"=== DOCKER PS ===\"; docker ps --format \"table {{.Names}}\\\\t{{.Status}}\\\\t{{.Ports}}\"; echo; echo \"=== DISK ===\"; df -h / ; echo; echo \"=== MEM ===\"; free -h')",
+      "Bash(ssh -i ~/.ssh/id_cedyn_vps -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@13.221.6.23 'hostname; uptime; echo \"--- containers ---\"; docker ps --format \"{{.Names}}\\\\t{{.Status}}\" 2>/dev/null; echo \"--- disk ---\"; df -h / | tail -1')",
+      "Bash(ssh -i ~/.ssh/id_cedyn_vps -o StrictHostKeyChecking=no root@13.221.6.23 ' *)",
+      "Bash(ssh -i ~/.ssh/id_cedyn_vps -o StrictHostKeyChecking=no -o ConnectTimeout=12 root@178.156.251.53 ' *)",
+      "Bash(ssh -i ~/.ssh/id_cedyn_vps -o StrictHostKeyChecking=no -o ConnectTimeout=20 root@207.244.240.66 ' *)",
+      "Bash(ssh -i ~/.ssh/id_cedyn_vps -o StrictHostKeyChecking=no root@207.244.240.66 ' *)"
     ]
   }
 }
