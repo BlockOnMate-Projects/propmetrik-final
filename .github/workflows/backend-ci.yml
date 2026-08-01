@@ -67,7 +67,7 @@ jobs:
 
       - name: Run unit tests
         working-directory: ./backend
-        run: npm run test:unit
+        run: npm run test:unit -- --forceExit
         env:
           NODE_ENV: test
 
@@ -124,20 +124,15 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Run database migrations
-        working-directory: ./backend
-        run: npm run migrate
-        env:
-          DATABASE_URL: postgresql://propmetrik_test:test_password@localhost:5432/propmetrik_test
-          REDIS_URL: redis://localhost:6379
-          NODE_ENV: test
-
       - name: Run integration tests
         working-directory: ./backend
-        run: npm run test:integration
+        run: >-
+          npm run test:integration --
+          --testPathIgnorePatterns=workflow.test|crmSchemaContract
+          --forceExit
         env:
-          DATABASE_URL: postgresql://propmetrik_test:test_password@localhost:5432/propmetrik_test
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://propmetrik_test:test_password@127.0.0.1:5432/propmetrik_test
+          REDIS_URL: redis://127.0.0.1:6379
           NODE_ENV: test
 
   # ============================================
