@@ -1596,6 +1596,19 @@ router.get('/economic/sync/stats', asyncHandler(async (req: Request, res: Respon
 }));
 
 /**
+ * Clear all caches
+ * POST /data-hub/economic/sync/clear-cache
+ */
+router.post('/economic/sync/clear-cache', asyncHandler(async (req: Request, res: Response) => {
+  await economicDataSyncService.clearCaches();
+
+  res.json({
+    success: true,
+    message: 'All caches cleared',
+  });
+}));
+
+/**
  * Trigger manual sync for a source
  * POST /data-hub/economic/sync/:source
  */
@@ -1698,19 +1711,6 @@ router.post('/economic/fx/backfill', asyncHandler(async (req: Request, res: Resp
   res.json({
     success: true,
     data: result,
-  });
-}));
-
-/**
- * Clear all caches
- * POST /data-hub/economic/sync/clear-cache
- */
-router.post('/economic/sync/clear-cache', asyncHandler(async (req: Request, res: Response) => {
-  await economicDataSyncService.clearCaches();
-
-  res.json({
-    success: true,
-    message: 'All caches cleared',
   });
 }));
 
