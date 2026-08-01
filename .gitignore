@@ -497,3 +497,4 @@ __pycache__/
 # Coolify env mirrors (credentials — never commit)
 .env.backend
 .env.frontend
+backend/devtunnel_key
