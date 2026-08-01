@@ -105,9 +105,9 @@ export const config = {
     },
   },
 
-  // OpenSearch (OPENSEARCH_NODE is a legacy alias used in marketplace env snippets)
+  // OpenSearch
   opensearch: {
-    url: process.env.OPENSEARCH_URL || process.env.OPENSEARCH_NODE,
+    url: process.env.OPENSEARCH_URL,
     username: process.env.OPENSEARCH_USERNAME,
     password: process.env.OPENSEARCH_PASSWORD!,
     indexPrefix: process.env.OPENSEARCH_INDEX_PREFIX || 'propmetrik_',
