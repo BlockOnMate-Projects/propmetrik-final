@@ -3,7 +3,21 @@
  * Tests for lease management including overlapping tenancy detection
  */
 
-import { TenancyService, TenancyStatus } from '../../../src/services/property-management/leases/tenancyService';
+import { TenancyService } from '../../../src/services/property-management/leases/tenancyService';
+import { TenancyStatus } from '../../../src/types/property-management.types';
+
+jest.mock('../../../src/services/data-hub/serviceHooks', () => ({
+    ServiceHooks: {
+        createContribution: jest.fn().mockResolvedValue(undefined),
+    },
+}));
+
+jest.mock('../../../shared-services/notifications/in-mail', () => ({
+    notify: jest.fn().mockResolvedValue(undefined),
+    resolveTenantByTenancy: jest.fn().mockResolvedValue(null),
+}));
+
+const OVERLAP_ERROR = 'An active tenancy already overlaps this lease period for the selected property/unit';
 
 // Mock the database pool
 const mockQuery = jest.fn();
@@ -84,7 +98,7 @@ describe('TenancyService', () => {
 
             await expect(
                 service.createTenancy(mockOrganizationId, baseTenancyData, mockUserId)
-            ).rejects.toThrow('Overlapping tenancy exists for this property/unit');
+            ).rejects.toThrow(OVERLAP_ERROR);
         });
 
         it('should throw error when property not found', async () => {
@@ -167,7 +181,7 @@ describe('TenancyService', () => {
                 if (shouldOverlap) {
                     await expect(
                         service.createTenancy(mockOrganizationId, tenancyData)
-                    ).rejects.toThrow('Overlapping tenancy exists');
+                    ).rejects.toThrow(OVERLAP_ERROR);
                 } else {
                     // Mock insert for non-overlapping
                     mockQuery.mockResolvedValueOnce({
@@ -272,24 +286,6 @@ describe('TenancyService', () => {
             const tenancyId = 'tenancy-123';
             const orgId = 'org-456';
 
-            // Mock get tenancy
-            mockQuery.mockResolvedValueOnce({
-                rows: [{
-                    id: tenancyId,
-                    organization_id: orgId,
-                    status: TenancyStatus.PENDING,
-                    property_id: 'prop-789',
-                    tenant_id: 'tenant-abc',
-                    lease_start_date: new Date('2026-02-01'),
-                    lease_end_date: new Date('2027-01-31'),
-                    monthly_rent: 3000,
-                    rent_currency: 'GHS',
-                    created_at: new Date(),
-                    updated_at: new Date()
-                }]
-            });
-
-            // Mock update
             mockQuery.mockResolvedValueOnce({
                 rows: [{
                     id: tenancyId,
@@ -306,9 +302,10 @@ describe('TenancyService', () => {
                 }]
             });
 
-            const result = await service.activateTenancy(tenancyId, orgId);
+            const result = await service.activateTenancy(tenancyId, orgId, undefined, { skipEsign: true });
 
-            expect(result.status).toBe(TenancyStatus.ACTIVE);
+            expect(result).not.toBeNull();
+            expect(result!.status).toBe(TenancyStatus.ACTIVE);
         });
     });
 
@@ -318,24 +315,6 @@ describe('TenancyService', () => {
             const orgId = 'org-456';
             const reason = 'Tenant requested early termination';
 
-            // Mock get tenancy
-            mockQuery.mockResolvedValueOnce({
-                rows: [{
-                    id: tenancyId,
-                    organization_id: orgId,
-                    status: TenancyStatus.ACTIVE,
-                    property_id: 'prop-789',
-                    tenant_id: 'tenant-abc',
-                    lease_start_date: new Date('2026-02-01'),
-                    lease_end_date: new Date('2027-01-31'),
-                    monthly_rent: 3000,
-                    rent_currency: 'GHS',
-                    created_at: new Date(),
-                    updated_at: new Date()
-                }]
-            });
-
-            // Mock update
             mockQuery.mockResolvedValueOnce({
                 rows: [{
                     id: tenancyId,
@@ -356,8 +335,9 @@ describe('TenancyService', () => {
 
             const result = await service.terminateTenancy(tenancyId, orgId, reason);
 
-            expect(result.status).toBe(TenancyStatus.TERMINATED);
-            expect(result.terminationReason).toBe(reason);
+            expect(result).not.toBeNull();
+            expect(result!.status).toBe(TenancyStatus.TERMINATED);
+            expect(result!.terminationReason).toBe(reason);
         });
     });
 });

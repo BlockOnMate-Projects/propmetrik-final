@@ -86,7 +86,8 @@ export class FXFeedService {
       },
     });
 
-    axiosRetry(this.forexRateApiClient, {
+    // axios-retry ships its own Axios types; cast avoids duplicate-package mismatch in ts-jest.
+    axiosRetry(this.forexRateApiClient as Parameters<typeof axiosRetry>[0], {
       retries: FX_CONFIG.retry_attempts,
       retryDelay: (retryCount) => retryCount * FX_CONFIG.retry_delay_ms,
       retryCondition: (error: AxiosError) => {
@@ -108,7 +109,7 @@ export class FXFeedService {
       },
     });
 
-    axiosRetry(this.yahooClient, {
+    axiosRetry(this.yahooClient as Parameters<typeof axiosRetry>[0], {
       retries: FX_CONFIG.retry_attempts,
       retryDelay: (retryCount) => retryCount * FX_CONFIG.retry_delay_ms,
     });
