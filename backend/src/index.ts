@@ -1011,28 +1011,35 @@ async function bootstrap(): Promise<void> {
     });
 
     // ── 9. Scrapy scheduler ───────────────────────────
-    await recordStep('Scrapy scheduler', async () => {
-      await scrapyScheduler.start();
-      return { status: 'ok', detail: `spiders: ${scrapyScheduler.getStatus().config.enabledSpiders}` };
-    });
+    if (config.app.runBackgroundJobs) {
+      await recordStep('Scrapy scheduler', async () => {
+        await scrapyScheduler.start();
+        return { status: 'ok', detail: `spiders: ${scrapyScheduler.getStatus().config.enabledSpiders}` };
+      });
 
-    // ── 10. Economic data scheduler ───────────────────
-    await recordStep('Economic data scheduler', async () => {
-      economicDataScheduler.start();
-      return { status: 'ok', detail: `jobs: ${Object.keys(economicDataScheduler.getStatus()).join(', ')}` };
-    });
+      // ── 10. Economic data scheduler ───────────────────
+      await recordStep('Economic data scheduler', async () => {
+        economicDataScheduler.start();
+        return { status: 'ok', detail: `jobs: ${Object.keys(economicDataScheduler.getStatus()).join(', ')}` };
+      });
 
-    // ── 11. Autopilot scheduler ───────────────────────
-    await recordStep('Autopilot scheduler', async () => {
-      await autopilotScheduler.start();
-      return { status: 'ok' };
-    });
+      // ── 11. Autopilot scheduler ───────────────────────
+      await recordStep('Autopilot scheduler', async () => {
+        await autopilotScheduler.start();
+        return { status: 'ok' };
+      });
 
-    // ── 12. Analytics scheduler (derived snapshots + history) ──
-    await recordStep('Analytics scheduler', async () => {
-      await analyticsScheduler.start();
-      return { status: 'ok', detail: 'GHAI/CCI/market/investment/valuation/RHDS monthly + startup catch-up' };
-    });
+      // ── 12. Analytics scheduler (derived snapshots + history) ──
+      await recordStep('Analytics scheduler', async () => {
+        await analyticsScheduler.start();
+        return { status: 'ok', detail: 'GHAI/CCI/market/investment/valuation/RHDS monthly + startup catch-up' };
+      });
+    } else {
+      await recordStep('Background jobs', async () => ({
+        status: 'warn',
+        detail: 'disabled (set RUN_BACKGROUND_JOBS=true to enable schedulers)',
+      }));
+    }
 
   } catch (error) {
     const err = error as Error;
@@ -1079,31 +1086,36 @@ const server = app.listen(config.port, async () => {
   server.keepAliveTimeout = 65000; // Slightly above typical proxy keep-alive (60s)
 
   await bootstrap();
-  // Start Kobby AI Proactive Monitor
-  initKobbyMonitor();
-  // Start WhatsApp Daily Digest
-  initWhatsAppDigest();
-  // Start daily rent reminder / overdue notice job
-  initRentReminderJob();
-  // Start daily CRM task due / overdue reminder job
-  initCrmTaskReminderJob();
-  // Start CRM drip-campaign execution engine (sends due enrollment steps by email)
-  initDripExecutionJob();
-  // Start daily subscription renewal / dunning sweep
-  initSubscriptionRenewalJob();
-  // Start daily tenant rent Auto-Pay sweep (charges saved authorizations on the due day)
-  initTenantAutopayJob();
-  // Start CRM→data-hub property sync sweep (DH-B) so Deal Management properties
-  // enrich the centralized valuation dataset automatically.
-  initDataHubSyncJob();
-  // Start data-hub contribution processor (DH-C) so pending contributions are
-  // validated/applied instead of piling up.
-  initContributionProcessorJob();
-  // Recompute ALL platform analytics indices (construction cost index, market
-  // intelligence, investment scoring, valuation analytics, cap-rate benchmarks)
-  // from the freshly-scraped raw tables on a daily schedule — previously each was
-  // a manual endpoint, so the indices were frozen at the last manual trigger.
-  initAnalyticsRefreshJob();
+
+  if (config.app.runBackgroundJobs) {
+    // Start Kobby AI Proactive Monitor
+    initKobbyMonitor();
+    // Start WhatsApp Daily Digest
+    initWhatsAppDigest();
+    // Start daily rent reminder / overdue notice job
+    initRentReminderJob();
+    // Start daily CRM task due / overdue reminder job
+    initCrmTaskReminderJob();
+    // Start CRM drip-campaign execution engine (sends due enrollment steps by email)
+    initDripExecutionJob();
+    // Start daily subscription renewal / dunning sweep
+    initSubscriptionRenewalJob();
+    // Start daily tenant rent Auto-Pay sweep (charges saved authorizations on the due day)
+    initTenantAutopayJob();
+    // Start CRM→data-hub property sync sweep (DH-B) so Deal Management properties
+    // enrich the centralized valuation dataset automatically.
+    initDataHubSyncJob();
+    // Start data-hub contribution processor (DH-C) so pending contributions are
+    // validated/applied instead of piling up.
+    initContributionProcessorJob();
+    // Recompute ALL platform analytics indices (construction cost index, market
+    // intelligence, investment scoring, valuation analytics, cap-rate benchmarks)
+    // from the freshly-scraped raw tables on a daily schedule — previously each was
+    // a manual endpoint, so the indices were frozen at the last manual trigger.
+    initAnalyticsRefreshJob();
+  } else {
+    logger.info('Background cron jobs disabled (RUN_BACKGROUND_JOBS is not true in this environment)');
+  }
   // Attach WebSocket server for workspace real-time collaboration
   workspaceWebSocketServer.attach(server);
   // Attach the subscriber analytics streaming gateway (/ws/analytics, pmk_ keys)
