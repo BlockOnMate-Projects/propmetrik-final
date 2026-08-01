@@ -78,7 +78,15 @@ describe('exchangeRateService.normalizeToGhs', () => {
   });
 
   it('refuses unsupported currencies rather than charging an unconverted amount', async () => {
-    await expect(exchangeRateService.normalizeToGhs(1000, 'GBP')).rejects.toThrow(/unsupported/i);
+    await expect(exchangeRateService.normalizeToGhs(1000, 'JPY')).rejects.toThrow(/unsupported/i);
     expect(getExchangeRate).not.toHaveBeenCalled();
+  });
+
+  it('converts GBP obligations via the live rate', async () => {
+    getExchangeRate.mockResolvedValue({ rate: 19.8, source: 'ForexRate-API' });
+    const out = await exchangeRateService.normalizeToGhs(100, 'GBP');
+    expect(out.ghsAmount).toBe(1980);
+    expect(out.rate).toBe(19.8);
+    expect(getExchangeRate).toHaveBeenCalledWith('GBP');
   });
 });
