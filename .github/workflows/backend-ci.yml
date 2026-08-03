@@ -73,6 +73,8 @@ jobs:
         env:
           NODE_ENV: test
           CI: true
+          KEYCLOAK_URL: http://localhost:8080
+          KEYCLOAK_REALM: propmetrik
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
