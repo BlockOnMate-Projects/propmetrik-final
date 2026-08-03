@@ -69,7 +69,7 @@ jobs:
 
       - name: Run unit tests
         working-directory: ./backend
-        run: npm run test:unit -- --forceExit --maxWorkers=2 --ci
+        run: npm run test:unit -- --forceExit --runInBand --ci
         env:
           NODE_ENV: test
           CI: true
