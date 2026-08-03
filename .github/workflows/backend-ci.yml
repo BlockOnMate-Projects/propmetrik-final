@@ -5,10 +5,12 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
 
 env:
   NODE_VERSION: '20'
@@ -67,9 +69,10 @@ jobs:
 
       - name: Run unit tests
         working-directory: ./backend
-        run: npm run test:unit -- --forceExit
+        run: npm run test:unit -- --forceExit --maxWorkers=2 --ci
         env:
           NODE_ENV: test
+          CI: true
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
@@ -126,14 +129,12 @@ jobs:
 
       - name: Run integration tests
         working-directory: ./backend
-        run: >-
-          npm run test:integration --
-          --testPathIgnorePatterns=workflow.test|crmSchemaContract
-          --forceExit
+        run: npm run test:integration -- --testPathIgnorePatterns='workflow.test|crmSchemaContract' --forceExit --maxWorkers=2 --ci
         env:
           DATABASE_URL: postgresql://propmetrik_test:test_password@127.0.0.1:5432/propmetrik_test
           REDIS_URL: redis://127.0.0.1:6379
           NODE_ENV: test
+          CI: true
 
   # ============================================
   # Build Docker Image
