@@ -312,15 +312,21 @@ describe('Auth Middleware', () => {
   // Pre-defined middleware (requireAdmin, requireSuperAdmin, requireAgent)
   // =========================================================================
   describe('Pre-defined role middleware', () => {
-    it('requireAdmin should accept admin or super_admin', () => {
-      const req1 = createMockReq({ user: createMockUser({ realmRoles: ['admin'] }) });
+    it('requireAdmin should accept platform staff with admin or super_admin', () => {
+      const req1 = createMockReq({ user: createMockUser({ realmRoles: ['admin'], userType: 'staff' }) });
       requireAdmin(req1, createMockRes(), mockNext);
       expect(mockNext).toHaveBeenCalledWith();
 
       mockNext.mockClear();
-      const req2 = createMockReq({ user: createMockUser({ realmRoles: ['super_admin'] }) });
+      const req2 = createMockReq({ user: createMockUser({ realmRoles: ['super_admin'], userType: 'staff' }) });
       requireAdmin(req2, createMockRes(), mockNext);
       expect(mockNext).toHaveBeenCalledWith();
+    });
+
+    it('requireAdmin should reject admin role without platform staff userType', () => {
+      const req = createMockReq({ user: createMockUser({ realmRoles: ['admin'], userType: 'customer' }) });
+      requireAdmin(req, createMockRes(), mockNext);
+      expectForbiddenError(mockNext);
     });
 
     it('requireSuperAdmin should reject admin (only super_admin)', () => {

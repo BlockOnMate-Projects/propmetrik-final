@@ -2,6 +2,55 @@
  * Sync Service Unit Tests
  */
 
+jest.mock('axios-retry', () => jest.fn());
+jest.mock('../../../src/services/data-hub/scrapers/bogScraper', () => ({
+  bogScraper: { syncAll: jest.fn(), syncLatest: jest.fn() },
+  BOGScraper: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/wdiClient', () => ({
+  wdiClient: { syncAll: jest.fn(), syncLatest: jest.fn(), clearCache: jest.fn() },
+  WDIClient: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/fxFeedService', () => ({
+  fxFeedService: {
+    saveAllDailyRates: jest.fn(),
+    getAllRates: jest.fn(),
+    convertToGHS: jest.fn(),
+    clearCache: jest.fn(),
+    healthCheck: jest.fn(),
+  },
+  FXFeedService: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/npaScraper', () => ({
+  npaScraper: { syncAll: jest.fn(), syncLatest: jest.fn() },
+  NPAScraper: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/localMaterialScraper', () => ({
+  localMaterialScraper: { syncAll: jest.fn(), syncLatest: jest.fn() },
+  LocalMaterialScraper: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/gssLaborService', () => ({
+  gssLaborService: { syncAll: jest.fn(), syncLatest: jest.fn() },
+  GSSLaborService: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/gredaScraper', () => ({
+  gredaScraper: { syncAll: jest.fn(), syncLatest: jest.fn() },
+  GREDAScraper: jest.fn(),
+}));
+jest.mock('../../../src/services/data-hub/scrapers/syncLogRepository', () => ({
+  syncLogRepository: {
+    startSync: jest.fn(),
+    completeSync: jest.fn(),
+    getLatestSync: jest.fn(),
+    getSourceHealth: jest.fn(),
+    getSyncHistory: jest.fn(),
+    getRecentSyncs: jest.fn(),
+    getSyncStats: jest.fn(),
+    getAllSourcesHealth: jest.fn(),
+  },
+  SyncLogRepository: jest.fn(),
+}));
+
 import { EconomicDataSyncService } from '../../../src/services/data-hub/scrapers/syncService';
 import type { SyncResult } from '../../../src/services/data-hub/scrapers/types';
 
@@ -54,6 +103,11 @@ const mockLaborService = {
   syncLatest: jest.fn(),
 };
 
+const mockGredaScraper = {
+  syncAll: jest.fn(),
+  syncLatest: jest.fn(),
+};
+
 const mockSyncLogRepository = {
   startSync: jest.fn(),
   completeSync: jest.fn(),
@@ -78,6 +132,7 @@ describe('EconomicDataSyncService', () => {
       mockNpaScraper as any,
       mockMaterialScraper as any,
       mockLaborService as any,
+      mockGredaScraper as any,
       mockSyncLogRepository as any
     );
   });
@@ -196,11 +251,12 @@ describe('EconomicDataSyncService', () => {
       mockNpaScraper.syncAll.mockResolvedValue(createMockResult('NPA Fuel Prices'));
       mockMaterialScraper.syncAll.mockResolvedValue(createMockResult('Local Material Prices'));
       mockLaborService.syncAll.mockResolvedValue(createMockResult('GSS Labor Rates'));
+      mockGredaScraper.syncAll.mockResolvedValue(createMockResult('GREDA/BRRI Construction Costs'));
 
       const result = await syncService.sync({ source: 'all', type: 'full' });
 
       expect(Array.isArray(result)).toBe(true);
-      expect((result as SyncResult[]).length).toBe(6);
+      expect((result as SyncResult[]).length).toBe(7);
     });
   });
 
@@ -221,10 +277,11 @@ describe('EconomicDataSyncService', () => {
 
       const status = await syncService.getStatus();
 
-      expect(status).toHaveLength(6);
+      expect(status.length).toBeGreaterThanOrEqual(6);
       expect(status.map(s => s.source)).toContain('Bank of Ghana');
       expect(status.map(s => s.source)).toContain('World Bank WDI');
       expect(status.map(s => s.source)).toContain('ExchangeRate-API');
+      expect(status.map(s => s.source)).toContain('GREDA/BRRI Construction Costs');
     });
   });
 

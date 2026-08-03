@@ -66,6 +66,11 @@ export const config = {
       process.env.DEV_TENANT_PORTAL_URL || 'http://localhost:3001',
       process.env.PROD_TENANT_PORTAL_URL || 'https://tenant.propmetrik.com'
     ),
+    // Audit P0: cron/schedulers must not run from the API process in local dev unless
+    // explicitly opted in. Production runs jobs unless RUN_BACKGROUND_JOBS=false.
+    runBackgroundJobs: isProd
+      ? process.env.RUN_BACKGROUND_JOBS !== 'false'
+      : process.env.RUN_BACKGROUND_JOBS === 'true',
   },
 
   // Database - PostgreSQL with PostGIS

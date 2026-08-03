@@ -12,8 +12,9 @@
         "tests/**/*.{ts,js}"
       ],
       "project": ["src/**/*.ts", "shared-services/**/*.ts"],
-      "ignoreDependencies": ["ts-node", "ts-node-dev", "tsx", "prettier", "node-pg-migrate", "pino-pretty", "@types/cheerio"],
-      "ignoreBinaries": ["redocly"]
+      "ignoreDependencies": ["ts-node", "ts-node-dev", "tsx", "prettier", "node-pg-migrate", "pino-pretty", "@types/cheerio", "@types/node-cron"],
+      "ignoreBinaries": ["redocly"],
+      "ignore": ["src/utils/propertyMapper.ts"]
     },
     "frontend": {
       "entry": ["e2e/**/*.ts", "e2e/playwright.config.ts"],

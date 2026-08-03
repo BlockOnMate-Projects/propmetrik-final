@@ -33,6 +33,12 @@ jest.mock('../../../src/services/data-hub/scrapers/fxFeedService', () => ({
   },
 }));
 
+jest.mock('../../../src/services/data-hub/constructionCostService', () => ({
+  constructionCostService: {
+    updateConstructionIndex: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 // Mock the logger
 jest.mock('../../../src/utils/logger', () => ({
   logger: {
@@ -189,8 +195,8 @@ describe('EconomicDataScheduler', () => {
       
       await scheduler.triggerSync('all');
       
-      // Should be called 3 times (BOG, WDI, FX)
-      expect(economicDataSyncService.sync).toHaveBeenCalledTimes(3);
+      // BOG, WDI, FX daily, fuel, materials, labor
+      expect(economicDataSyncService.sync).toHaveBeenCalledTimes(6);
     });
   });
 
