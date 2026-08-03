@@ -17,6 +17,7 @@
     "migrate:rollback": "ts-node src/database/migrate.ts rollback",
     "seed": "ts-node src/database/seeds/index.ts",
     "lint": "eslint src --ext .ts",
+    "lint:ci": "NODE_PATH=node_modules eslint -c .eslintrc.ci.json src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
