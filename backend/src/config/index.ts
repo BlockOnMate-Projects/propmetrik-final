@@ -13,19 +13,41 @@ const envSelect = <T>(dev: T, prod: T): T => isProd ? prod : dev;
 const isLiveFinance = process.env.FINANCE_MODE === 'live';
 const financeSelect = <T>(test: T, live: T): T => isLiveFinance ? live : test;
 
-// Environment validation
+// Environment validation — warn in dev, fail fast in production (audit P2-11).
 const requiredEnvVars = [
   'DATABASE_URL',
   'REDIS_URL',
   'KEYCLOAK_URL',
   'KEYCLOAK_REALM',
-];
+] as const;
 
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.warn(`Warning: ${envVar} is not set in environment variables`);
-  }
+const productionRequiredEnvVars = [
+  ...requiredEnvVars,
+  'KEYCLOAK_CLIENT_ID',
+  'KEYCLOAK_CLIENT_SECRET',
+  'JWT_SECRET',
+] as const;
+
+function getMissingEnvVars(names: readonly string[]): string[] {
+  return names.filter((name) => !process.env[name]?.trim());
 }
+
+function validateEnvironment(): void {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  if (nodeEnv === 'test') return;
+
+  const names = isProd ? productionRequiredEnvVars : requiredEnvVars;
+  const missing = getMissingEnvVars(names);
+  if (missing.length === 0) return;
+
+  const message = `Missing required environment variables: ${missing.join(', ')}`;
+  if (isProd) {
+    throw new Error(message);
+  }
+  console.warn(`Warning: ${message}`);
+}
+
+validateEnvironment();
 
 export const config = {
   // Application
