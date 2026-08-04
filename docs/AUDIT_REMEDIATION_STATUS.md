@@ -20,6 +20,8 @@ All eight agreed items are merged to `main` (PRs #1–#6). See `AUDIT_DELIVERY.m
 | Extract daily logs from `projects.ts` → `dailyLogs.ts` | Done |
 | Extract payment plans → `paymentPlans.ts` | Done |
 | Extract punch lists → `punchLists.ts` | Done |
+| Extract project integration → `projectIntegrationRoutes.ts` | Done |
+| Extract project wizard → `projectWizardRoutes.ts` | Done |
 | Remove dead middleware exports (`clearCustomerSubCache`, duplicate `requireResourcePermission`, `cleanupExpiredIdempotencyRecords`) | Done |
 | Frontend CI workflow (`next lint` + `next build`) | Done |
 | Fix 3 frontend lint errors blocking CI | Done |
@@ -52,7 +54,7 @@ The audit is a long roadmap. Below is a quick map — not everything from the PD
 ### Performance, dead code, tooling
 
 - **Performance:** auth middleware DB fan-out, no search debounce, root `force-dynamic` — all backlog
-- **Dead code:** scrapy cache + `propertyMapper` + obsolete scripts removed; daily logs, payment plans, and punch lists split from `projects.ts`; mega routes (`valuations.ts`, `propertyManagement.ts`) still backlog
+- **Dead code:** scrapy cache + obsolete scripts removed; `projects.ts` split into 6 sub-routers (6.8k → 5.8k lines); mega routes (`valuations.ts`, `propertyManagement.ts`) still backlog
 - **Tooling:** backend CI green; **frontend CI added** (`next lint` + `next build`); no coverage gate
 
 ### Migrations
