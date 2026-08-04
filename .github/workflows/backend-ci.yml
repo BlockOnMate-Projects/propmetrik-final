@@ -207,6 +207,8 @@ jobs:
     environment:
       name: staging
       url: https://staging-api.propmetrik.com
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Deploy to staging
@@ -220,7 +222,7 @@ jobs:
           # Add smoke test commands
 
       - name: Notify deployment
-        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        if: always() && env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
         continue-on-error: true
         with:
@@ -238,7 +240,7 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}
 
   # ============================================
   # Deploy to Production
@@ -251,6 +253,8 @@ jobs:
     environment:
       name: production
       url: https://api.propmetrik.com
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Deploy to production
@@ -264,7 +268,7 @@ jobs:
           # Add health check commands
 
       - name: Notify deployment
-        if: always() && secrets.SLACK_WEBHOOK_URL != ''
+        if: always() && env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
         continue-on-error: true
         with:
@@ -282,7 +286,7 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}
 
   # ============================================
   # Database Migrations (Production)
