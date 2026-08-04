@@ -578,3 +578,28 @@ export const pmRegisterAccountSchema = z.object({
     contactPhone: z.string().optional(),
 });
 
+// Public PM invoice crypto payment (bootstrap/publicRoutes.ts)
+export const pmPublicInvoiceIdParamSchema = z.object({
+  id: uuidSchema,
+});
+
+export const pmPublicInitiateCryptoSchema = z.object({
+  payCurrency: z
+    .string()
+    .trim()
+    .min(2, 'payCurrency is required')
+    .max(30)
+    .regex(/^[a-zA-Z0-9]+$/, 'payCurrency must be an alphanumeric ticker')
+    .transform((value) => value.toLowerCase()),
+  payChain: z.string().trim().max(50).optional(),
+});
+
+export const pmPublicConfirmCryptoSchema = z.object({
+  paymentReference: z
+    .string()
+    .trim()
+    .min(10, 'paymentReference is required')
+    .max(120)
+    .regex(/^PM-INV-CRYPTO-/, 'paymentReference must be a PM invoice crypto reference'),
+});
+
