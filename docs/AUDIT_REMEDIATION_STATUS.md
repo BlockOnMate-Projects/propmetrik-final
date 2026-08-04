@@ -10,6 +10,18 @@ Living backlog for the full audit report. For PR links, verification commands, a
 
 All eight agreed items are merged to `main` (PRs #1–#6). See `AUDIT_DELIVERY.md` for links and details.
 
+### Phase 2 (in progress — branch `chore/phase2-cleanup`)
+
+| Item | Status |
+|------|--------|
+| Remove tracked Scrapy HTTP cache (~8,958 files / ~49MB) | Done |
+| Delete unused `propertyMapper.ts` | Done |
+| Remove obsolete one-off scripts (Python template fixers, cred-bearing diagnostics, broken `queue-worker`) | Done |
+| Extract daily logs from `projects.ts` → `dailyLogs.ts` | Done |
+| Remove dead middleware exports (`clearCustomerSubCache`, duplicate `requireResourcePermission`, `cleanupExpiredIdempotencyRecords`) | Done |
+| Split more mega-routes (`valuations.ts`, `propertyManagement.ts`) | Backlog |
+| Frontend CI workflow | Backlog |
+
 ---
 
 ## Still open (summary)
@@ -37,7 +49,7 @@ The audit is a long roadmap. Below is a quick map — not everything from the PD
 ### Performance, dead code, tooling
 
 - **Performance:** auth middleware DB fan-out, no search debounce, root `force-dynamic` — all backlog
-- **Dead code:** ~30k LOC PM tree, mega routes, duplicate subsystems — backlog
+- **Dead code:** scrapy cache + `propertyMapper` + obsolete scripts removed; daily logs split from `projects.ts`; mega routes (`valuations.ts`, `propertyManagement.ts`) still backlog
 - **Tooling:** backend CI green; **no frontend CI**; no coverage gate
 
 ### Migrations

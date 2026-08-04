@@ -19,7 +19,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { registerPMParamValidation, registerProjectAccessParams, requireProjectAccess, requireProjectPermission, getAuthUserId, getAuthOrgId, getAuthContext, requirePMWrite } from '../middleware/pmAuth';
 import { requireServiceRole } from '../middleware/serviceAccess';
 import { validate } from '../middleware/validation';
-import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhaseSchema, createMilestoneSchema, updateMilestoneSchema, createDailyLogSchema, createPunchItemSchema, updatePunchItemSchema } from '../middleware/pmProjectValidation';
+import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhaseSchema, createMilestoneSchema, updateMilestoneSchema, createPunchItemSchema, updatePunchItemSchema } from '../middleware/pmProjectValidation';
+import dailyLogRoutes from './dailyLogs';
 import projectService from '../services/project-management/projectService';
 import phaseService from '../services/project-management/phaseService';
 import unitService from '../services/project-management/unitService';
@@ -27,7 +28,6 @@ import projectCostService from '../services/project-management/projectCostServic
 import contractorService from '../services/project-management/contractorService';
 import drawService from '../services/project-management/drawService';
 import { esignConfigService, PmEsignDocType } from '../services/project-management/esignConfigService';
-import dailyLogService from '../services/project-management/dailyLogService';
 import paymentPlanService from '../services/project-management/paymentPlanService';
 import punchListService, { PunchListService } from '../services/project-management/punchListService';
 import projectIntegrationService from '../services/project-management/projectIntegrationService';
@@ -78,6 +78,7 @@ registerPMParamValidation(router);
 // non-admin hitting /:id/* or /:projectId/* must be the owner/PM or an active
 // team member. Org-admins bypass. (Runs after the UUID validator above.)
 registerProjectAccessParams(router, ['id', 'projectId']);
+router.use(dailyLogRoutes);
 
 // Secure helpers — always use authenticated user context (never raw headers)
 const getOrgId = (req: Request): string => getAuthOrgId(req);
@@ -1653,212 +1654,6 @@ router.post('/draws/:drawId/documents', requirePMWrite, async (req: Request, res
     }
     
     res.json(draw);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================================================
-// DAILY LOGS
-// ============================================================================
-
-// Get daily logs for a project
-router.get('/:projectId/logs', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { startDate, endDate, createdBy, isApproved, weather, page, limit } = req.query;
-    
-    const result = await dailyLogService.getAll(
-      req.params.projectId,
-      {
-        start_date: startDate ? new Date(startDate as string) : undefined,
-        end_date: endDate ? new Date(endDate as string) : undefined,
-        created_by: createdBy as string,
-        is_approved: isApproved === 'true',
-        weather_condition: weather as any
-      },
-      parseInt(page as string) || 1,
-      parseInt(limit as string) || 20
-    );
-    
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get daily log summary
-router.get('/:projectId/logs/summary', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { startDate, endDate } = req.query;
-    
-    const summary = await dailyLogService.getSummary(
-      req.params.projectId,
-      startDate ? new Date(startDate as string) : undefined,
-      endDate ? new Date(endDate as string) : undefined
-    );
-    
-    res.json(summary);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get log by date
-router.get('/:projectId/logs/date/:date', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const log = await dailyLogService.getByDate(
-      req.params.projectId,
-      new Date(req.params.date)
-    );
-    
-    if (!log) {
-      return res.status(200).json({ data: null, message: 'No daily log found for this date' });
-    }
-    
-    res.json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get single daily log
-router.get('/logs/:logId', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const log = await dailyLogService.getById(req.params.logId);
-    
-    if (!log) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Create daily log
-router.post('/:projectId/logs', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const userId = getUserId(req);
-    
-    const log = await dailyLogService.create({
-      ...req.body,
-      project_id: req.params.projectId,
-      organization_id: orgId,
-      created_by: userId
-    });
-    
-    res.status(201).json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update daily log
-router.put('/logs/:logId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const log = await dailyLogService.update(req.params.logId, req.body);
-    
-    if (!log) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Delete daily log
-router.delete('/logs/:logId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const success = await dailyLogService.delete(req.params.logId);
-    
-    if (!success) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Add photo to daily log
-router.post('/logs/:logId/photos', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = getUserId(req);
-    const { photoUrl, caption } = req.body;
-    
-    const log = await dailyLogService.addPhoto(req.params.logId, photoUrl, caption, userId);
-    
-    if (!log) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Remove photo from daily log
-router.delete('/logs/:logId/photos/:photoId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const success = await dailyLogService.removePhoto(req.params.logId, req.params.photoId);
-    
-    if (!success) {
-      return res.status(404).json({ error: 'Photo not found' });
-    }
-    
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Add activity to daily log
-router.post('/logs/:logId/activities', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const log = await dailyLogService.addActivity(req.params.logId, req.body);
-    
-    if (!log) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Approve daily log
-router.post('/logs/:logId/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = getUserId(req);
-    const log = await dailyLogService.approve(req.params.logId, userId);
-    
-    if (!log) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.json(log);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Revoke daily log approval
-router.post('/logs/:logId/revoke', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const log = await dailyLogService.revokeApproval(req.params.logId);
-    
-    if (!log) {
-      return res.status(404).json({ error: 'Daily log not found' });
-    }
-    
-    res.json(log);
   } catch (error) {
     next(error);
   }

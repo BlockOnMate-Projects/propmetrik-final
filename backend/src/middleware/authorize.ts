@@ -252,15 +252,6 @@ async function checkCustomerSubscription(userId: string, serviceKey: string): Pr
   }
 }
 
-/** Clear customer subscription cache (call when subscriptions change) */
-export function clearCustomerSubCache(userId?: string): void {
-  if (userId) {
-    customerSubCache.delete(userId);
-  } else {
-    customerSubCache.clear();
-  }
-}
-
 /** @deprecated Use getUserDbInfo instead */
 async function getUserDbRole(req: Request): Promise<string> {
   return (await getUserDbInfo(req)).role;
@@ -378,60 +369,6 @@ async function logAuthDecision(
   } catch {
     // Non-fatal — never block the request for audit logging
   }
-}
-
-/**
- * Middleware: Verify a specific resource instance belongs to the user's organization.
- *
- * Use this for routes that access a single resource by :id when you need
- * org isolation beyond the standard authorize() policy check.
- *
- * @param table - Database table name
- * @param orgColumn - Column name for organization_id (default: 'organization_id')
- * @param idParam - Route param name for the resource ID (default: 'id')
- *
- * @example
- *   router.get('/:id', authenticate, authorize('valuation', 'read'),
- *     requireResourcePermission('valuations'), handler);
- */
-export function requireResourcePermission(
-  table: string,
-  orgColumn = 'organization_id',
-  idParam = 'id',
-) {
-  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
-    try {
-      if (!req.user) return next(new UnauthorizedError('Authentication required'));
-
-      // Super admins can access any org's resources
-      const { role, organizationId } = await getUserDbInfo(req);
-      if (role === 'super_admin') return next();
-
-      if (!organizationId) {
-        return next(new ForbiddenError('Organization membership required'));
-      }
-
-      const resourceId = req.params[idParam];
-      if (!resourceId) return next(); // No ID to check (list endpoints)
-
-      const { pool } = await import('../database');
-      const result = await pool.query(
-        `SELECT 1 FROM ${table} WHERE id = $1 AND ${orgColumn} = $2 LIMIT 1`,
-        [resourceId, organizationId]
-      );
-
-      if (result.rows.length === 0) {
-        await logAuthDecision(req, table, 'resource_access', role, 'denied', 'wrong_organization');
-        return next(new ForbiddenError('Access denied: resource belongs to a different organization'));
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof ForbiddenError || error instanceof UnauthorizedError) return next(error);
-      logger.error('requireResourcePermission error', { error, table });
-      next(new ForbiddenError('Access check failed'));
-    }
-  };
 }
 
 /**
