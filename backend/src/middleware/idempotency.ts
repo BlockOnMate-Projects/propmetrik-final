@@ -187,30 +187,3 @@ export function idempotencyMiddleware() {
     }
   };
 }
-
-/**
- * Cleanup expired idempotency records (run via cron/scheduler)
- */
-export async function cleanupExpiredIdempotencyRecords(): Promise<number> {
-  try {
-    const result = await pool.query(`
-      DELETE FROM ingestion_submissions 
-      WHERE idempotency_key IS NOT NULL 
-      AND created_at < NOW() - INTERVAL '48 hours'
-      AND status IN ('completed', 'failed', 'rejected')
-    `);
-
-    const deletedCount = result.rowCount || 0;
-    
-    if (deletedCount > 0) {
-      logger.info('Cleaned up expired idempotency records', { deletedCount });
-    }
-
-    return deletedCount;
-  } catch (error) {
-    logger.error('Error cleaning up idempotency records', {
-      error: error instanceof Error ? error.message : String(error)
-    });
-    throw error;
-  }
-}

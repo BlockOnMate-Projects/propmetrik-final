@@ -481,6 +481,7 @@ k8s-generated/
 helm-charts/values.local.yaml
 # Scrapy cache and test outputs
 backend/data-pipelines/scrapy/.scrapy/
+backend/src/services/data-hub/pipelines/scrapy/.scrapy/
 backend/data-pipelines/scrapy/test_*.json
 backend/data-pipelines/scrapy/*_test.json
 backend/data-pipelines/scrapy/*.log
