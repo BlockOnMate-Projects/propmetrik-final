@@ -193,7 +193,9 @@ router.param('id', async (req: Request, res: Response, next: NextFunction, value
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) return next();
     const orgId = getAuthOrgId(req);
     const m = await pool.query('SELECT project_id FROM project_team_members WHERE id = $1 AND organization_id = $2', [value, orgId]);
-    if (m.rows.length === 0 || !m.rows[0].project_id) return next(); // let handler 404
+    if (m.rows.length === 0 || !m.rows[0].project_id) {
+      return res.status(404).json({ success: false, error: 'Team member not found' });
+    }
     const access = await getProjectMembership(getAuthUserId(req), m.rows[0].project_id, orgId);
     if (!access.hasAccess || !access.permissions.can_manage_team) {
       return res.status(403).json({ success: false, error: 'Insufficient permission to manage this team member' });

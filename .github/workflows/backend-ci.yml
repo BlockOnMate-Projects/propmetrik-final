@@ -219,27 +219,6 @@ jobs:
           echo "Running smoke tests..."
           # Add smoke test commands
 
-      - name: Notify deployment
-        if: always() && secrets.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.24.0
-        continue-on-error: true
-        with:
-          payload: |
-            {
-              "text": "Staging Deployment: ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*PROPMETRIK API Staging Deployment*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
   # ============================================
   # Deploy to Production
   # ============================================
@@ -262,27 +241,6 @@ jobs:
         run: |
           echo "Running health checks..."
           # Add health check commands
-
-      - name: Notify deployment
-        if: always() && secrets.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.24.0
-        continue-on-error: true
-        with:
-          payload: |
-            {
-              "text": "Production Deployment: ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*PROPMETRIK API Production Deployment*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}\nVersion: ${{ needs.build.outputs.image-tag }}"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # ============================================
   # Database Migrations (Production)
