@@ -18,9 +18,12 @@ All eight agreed items are merged to `main` (PRs #1–#6). See `AUDIT_DELIVERY.m
 | Delete unused `propertyMapper.ts` | Done |
 | Remove obsolete one-off scripts (Python template fixers, cred-bearing diagnostics, broken `queue-worker`) | Done |
 | Extract daily logs from `projects.ts` → `dailyLogs.ts` | Done |
+| Extract payment plans → `paymentPlans.ts` | Done |
+| Extract punch lists → `punchLists.ts` | Done |
 | Remove dead middleware exports (`clearCustomerSubCache`, duplicate `requireResourcePermission`, `cleanupExpiredIdempotencyRecords`) | Done |
+| Frontend CI workflow (`next lint` + `next build`) | Done |
+| Fix 3 frontend lint errors blocking CI | Done |
 | Split more mega-routes (`valuations.ts`, `propertyManagement.ts`) | Backlog |
-| Frontend CI workflow | Backlog |
 
 ---
 
@@ -49,8 +52,8 @@ The audit is a long roadmap. Below is a quick map — not everything from the PD
 ### Performance, dead code, tooling
 
 - **Performance:** auth middleware DB fan-out, no search debounce, root `force-dynamic` — all backlog
-- **Dead code:** scrapy cache + `propertyMapper` + obsolete scripts removed; daily logs split from `projects.ts`; mega routes (`valuations.ts`, `propertyManagement.ts`) still backlog
-- **Tooling:** backend CI green; **no frontend CI**; no coverage gate
+- **Dead code:** scrapy cache + `propertyMapper` + obsolete scripts removed; daily logs, payment plans, and punch lists split from `projects.ts`; mega routes (`valuations.ts`, `propertyManagement.ts`) still backlog
+- **Tooling:** backend CI green; **frontend CI added** (`next lint` + `next build`); no coverage gate
 
 ### Migrations
 
@@ -67,9 +70,9 @@ From `CODEBASE_AUDIT.md`: credential scrub, mutation audit middleware, immutable
 
 ## What I'd do next
 
-1. Security leftovers (admin RBAC, e-sign, webhooks)
-2. Performance quick wins (auth cache, debounced search)
-3. Frontend CI workflow
+1. Split remaining mega-routes (`valuations.ts`, `propertyManagement.ts`)
+2. Security leftovers (admin RBAC, e-sign, webhooks)
+3. Performance quick wins (auth cache, debounced search)
 
 ---
 
