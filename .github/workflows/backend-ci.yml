@@ -220,8 +220,9 @@ jobs:
           # Add smoke test commands
 
       - name: Notify deployment
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
-        if: always()
+        continue-on-error: true
         with:
           payload: |
             {
@@ -263,8 +264,9 @@ jobs:
           # Add health check commands
 
       - name: Notify deployment
+        if: always() && secrets.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
-        if: always()
+        continue-on-error: true
         with:
           payload: |
             {
