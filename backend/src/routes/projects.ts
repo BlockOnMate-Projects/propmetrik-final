@@ -23,6 +23,8 @@ import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhas
 import dailyLogRoutes from './dailyLogs';
 import paymentPlanRoutes from './paymentPlans';
 import punchListRoutes from './punchLists';
+import projectIntegrationRoutes from './projectIntegrationRoutes';
+import projectWizardRoutes from './projectWizardRoutes';
 import projectService from '../services/project-management/projectService';
 import phaseService from '../services/project-management/phaseService';
 import unitService from '../services/project-management/unitService';
@@ -35,7 +37,6 @@ import projectIntegrationService from '../services/project-management/projectInt
 // Phase 1: Ghana Enhancement Services
 import projectLocationService from '../services/project-management/projectLocationService';
 import projectCostCurrencyService from '../services/project-management/projectCostCurrencyService';
-import projectWizardService from '../services/project-management/projectWizardService';
 import { 
   GHANA_REGIONS, 
   LAND_TENURE_TYPES, 
@@ -82,6 +83,8 @@ registerProjectAccessParams(router, ['id', 'projectId']);
 router.use(dailyLogRoutes);
 router.use(paymentPlanRoutes);
 router.use(punchListRoutes);
+router.use(projectIntegrationRoutes);
+router.use(projectWizardRoutes);
 
 // Secure helpers — always use authenticated user context (never raw headers)
 const getOrgId = (req: Request): string => getAuthOrgId(req);
@@ -1663,119 +1666,6 @@ router.post('/draws/:drawId/documents', requirePMWrite, async (req: Request, res
 });
 
 // ============================================================================
-// PROJECT INTEGRATION & LINKING
-// ============================================================================
-
-// Link unit to deal
-router.post('/units/:unitId/link-deal', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = getUserId(req);
-    const { dealId, linkType } = req.body;
-    
-    const link = await projectIntegrationService.linkUnitToDeal(
-      req.params.unitId,
-      dealId,
-      linkType,
-      userId
-    );
-    
-    res.status(201).json(link);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get project deals
-router.get('/:projectId/deals', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const deals = await projectIntegrationService.getProjectDeals(req.params.projectId);
-    res.json(deals);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Unlink deal
-router.delete('/deal-links/:linkId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const success = await projectIntegrationService.unlinkDeal(req.params.linkId);
-    
-    if (!success) {
-      return res.status(404).json({ error: 'Link not found' });
-    }
-    
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get project buyers
-router.get('/:projectId/buyers', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const buyers = await projectIntegrationService.getProjectBuyers(req.params.projectId);
-    res.json(buyers);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Assign buyer to unit
-router.post('/units/:unitId/assign-buyer', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { contactId, salePrice, status } = req.body;
-    
-    await projectIntegrationService.assignBuyerToUnit(
-      req.params.unitId,
-      contactId,
-      salePrice,
-      status
-    );
-    
-    res.json({ message: 'Buyer assigned successfully' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Record unit handover
-router.post('/units/:unitId/handover', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { handoverDate, notes } = req.body;
-    
-    await projectIntegrationService.recordHandover(
-      req.params.unitId,
-      handoverDate ? new Date(handoverDate) : undefined,
-      notes
-    );
-    
-    res.json({ message: 'Handover recorded successfully' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Export project data
-router.get('/:projectId/export', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const data = await projectIntegrationService.exportProject(req.params.projectId);
-    res.json(data);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get project report
-router.get('/:projectId/report', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const report = await projectIntegrationService.getProjectReport(req.params.projectId);
-    res.json(report);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================================================
 // PDF REPORT GENERATION — Uses shared pdfReportKit
 // ============================================================================
 import {
@@ -2451,198 +2341,6 @@ router.get('/:projectId/reports/:reportType', async (req: Request, res: Response
 
     PDF.addFooters(doc, pmFooterLine(branding));
     doc.end();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Add project to portfolio
-router.post('/:projectId/add-to-portfolio', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = getUserId(req);
-    const { portfolioId, includeUnits, asStatus } = req.body;
-    
-    const count = await projectIntegrationService.addProjectToPortfolio({
-      project_id: req.params.projectId,
-      portfolio_id: portfolioId,
-      include_units: includeUnits !== false,
-      as_status: asStatus || 'active',
-      created_by: userId,
-    });
-    
-    res.json({ message: `${count} properties added to portfolio` });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================================================
-// PHASE 1: WIZARD & DRAFT MANAGEMENT
-// ============================================================================
-
-// Get wizard templates
-router.get('/wizard/templates', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const { projectType } = req.query;
-    const templates = await projectWizardService.getTemplates(orgId, projectType as any);
-    res.json(templates);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get user's drafts
-router.get('/wizard/drafts', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const userId = getUserId(req);
-    const drafts = await projectWizardService.getUserDrafts(orgId, userId);
-    res.json(drafts);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Create new wizard draft
-router.post('/wizard/drafts', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = getUserId(req);
-    const orgId = getOrgId(req);
-    const { templateId, draftName, draftType, sourceProjectId } = req.body;
-    
-    const draft = await projectWizardService.createDraft({
-      organization_id: orgId,
-      created_by: userId,
-      draft_name: draftName,
-      draft_type: draftType || 'new_project',
-      source_template_id: templateId,
-      source_project_id: sourceProjectId,
-    });
-    res.status(201).json(draft);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get specific draft
-router.get('/wizard/drafts/:draftId', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const draft = await projectWizardService.getDraftById(req.params.draftId, orgId);
-    
-    if (!draft) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
-    
-    res.json(draft);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update draft (auto-save)
-router.patch('/wizard/drafts/:draftId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const userId = getUserId(req);
-    const { step, data, isAutoSave } = req.body;
-    
-    const draft = await projectWizardService.updateDraft(
-      req.params.draftId,
-      orgId,
-      {
-        step,
-        data,
-        is_auto_save: isAutoSave,
-        last_edited_by: userId,
-      }
-    );
-    
-    res.json(draft);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Validate wizard step
-router.post('/wizard/drafts/:draftId/validate-step', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const { step } = req.body;
-    
-    const validation = await projectWizardService.validateStep(
-      req.params.draftId,
-      orgId,
-      step
-    );
-    
-    res.json(validation);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Complete wizard step
-router.post('/wizard/drafts/:draftId/complete-step', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const { stepNumber } = req.body;
-    
-    const draft = await projectWizardService.completeStep(
-      req.params.draftId,
-      orgId,
-      stepNumber
-    );
-    
-    res.json(draft);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get cost estimate from wizard data
-router.post('/wizard/drafts/:draftId/cost-estimate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    
-    const estimate = await projectWizardService.generateCostEstimate(
-      req.params.draftId,
-      orgId
-    );
-    
-    res.json(estimate);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Submit wizard and create project
-router.post('/wizard/drafts/:draftId/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    const userId = getUserId(req);
-    
-    const project = await projectWizardService.submitWizard(
-      req.params.draftId,
-      orgId,
-      userId
-    );
-    
-    res.status(201).json(project);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Delete draft
-router.delete('/wizard/drafts/:draftId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = getOrgId(req);
-    
-    await projectWizardService.deleteDraft(req.params.draftId, orgId);
-    
-    res.status(204).send();
   } catch (error) {
     next(error);
   }
