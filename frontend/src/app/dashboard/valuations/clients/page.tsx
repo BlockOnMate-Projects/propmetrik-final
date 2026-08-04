@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { authedFetch } from '@/lib/authed-fetch'
 import {
     Building2,
@@ -636,12 +637,12 @@ export default function ClientsPage() {
                                                     <Send className="w-3 h-3" /> SEND EMAIL
                                                 </button>
                                             )}
-                                            <a href={`/dashboard/valuations/finance?client_id=${selectedClient.id}`} className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-[10px] hover:text-amber-400 hover:bg-zinc-700 transition-colors">
+                                            <Link href={`/dashboard/valuations/finance?client_id=${selectedClient.id}`} className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-[10px] hover:text-amber-400 hover:bg-zinc-700 transition-colors">
                                                 <Receipt className="w-3 h-3" /> NEW INVOICE
-                                            </a>
-                                            <a href={`/dashboard/valuations/new?client_id=${selectedClient.id}`} className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-[10px] hover:text-green-400 hover:bg-zinc-700 transition-colors">
+                                            </Link>
+                                            <Link href={`/dashboard/valuations/new?client_id=${selectedClient.id}`} className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-[10px] hover:text-green-400 hover:bg-zinc-700 transition-colors">
                                                 <Plus className="w-3 h-3" /> NEW VALUATION
-                                            </a>
+                                            </Link>
                                         </div>
                                         <button onClick={() => handleDelete(selectedClient.id)} className="flex items-center gap-2 px-3 py-2 w-full bg-muted text-muted-foreground font-mono text-[10px] hover:text-red-400 hover:bg-zinc-700 transition-colors">
                                             <Trash2 className="w-3 h-3" /> DELETE CLIENT
@@ -654,7 +655,7 @@ export default function ClientsPage() {
                                         <div className="text-center py-8">
                                             <Receipt className="w-6 h-6 text-zinc-700 mx-auto mb-2" />
                                             <p className="font-mono text-xs text-muted-foreground">No invoices yet</p>
-                                            <a href="/dashboard/valuations/finance" className="font-mono text-[10px] text-amber-500 hover:text-amber-400">Create first invoice →</a>
+                                            <Link href="/dashboard/valuations/finance" className="font-mono text-[10px] text-amber-500 hover:text-amber-400">Create first invoice →</Link>
                                         </div>
                                     ) : (
                                         clientInvoices.map(inv => (
@@ -684,11 +685,11 @@ export default function ClientsPage() {
                                         <div className="text-center py-8">
                                             <FileText className="w-6 h-6 text-zinc-700 mx-auto mb-2" />
                                             <p className="font-mono text-xs text-muted-foreground">No valuations yet</p>
-                                            <a href={`/dashboard/valuations/new?client_id=${selectedClient.id}`} className="font-mono text-[10px] text-amber-500 hover:text-amber-400">Start first valuation →</a>
+                                            <Link href={`/dashboard/valuations/new?client_id=${selectedClient.id}`} className="font-mono text-[10px] text-amber-500 hover:text-amber-400">Start first valuation →</Link>
                                         </div>
                                     ) : (
                                         clientValuations.map(val => (
-                                            <a key={val.id} href={`/dashboard/valuations/${val.id}`} className="block bg-background border border-border p-3 hover:border-border transition-colors group/val">
+                                            <Link key={val.id} href={`/dashboard/valuations/${val.id}`} className="block bg-background border border-border p-3 hover:border-border transition-colors group/val">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-mono border rounded ${STATUS_COLORS[val.status] || STATUS_COLORS.draft}`}>
                                                         {val.status?.toUpperCase().replace(/_/g, ' ')}
@@ -704,7 +705,7 @@ export default function ClientsPage() {
                                                     {mounted ? new Date(val.createdAt).toLocaleDateString('en-GB') : '—'}
                                                     {val.propertyType && ` • ${val.propertyType.replace(/_/g, ' ')}`}
                                                 </div>
-                                            </a>
+                                            </Link>
                                         ))
                                     )}
                                 </div>

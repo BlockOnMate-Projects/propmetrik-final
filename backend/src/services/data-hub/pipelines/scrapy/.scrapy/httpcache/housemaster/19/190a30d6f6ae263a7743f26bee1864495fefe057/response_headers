@@ -1,9 +1,0 @@
-Server: nginx/1.14.0 (Ubuntu)
-Date: Tue, 06 Jan 2026 02:42:37 GMT
-Content-Type: text/html; charset=utf-8
-X-Frame-Options: SAMEORIGIN
-Vary: Accept-Language, Cookie
-Content-Language: en
-Set-Cookie: csrftoken=t4yrbpzbWFHUssV55wpU6qQXoPjR1c9qUrgwz5nbXWAgPEUxztlBNc7QCFt1Mely; expires=Tue, 05 Jan 2027 02:42:37 GMT; Max-Age=31449600; Path=/; Secure
-Set-Cookie: sessionid=81m0let55x0jfqkz8o1tuuwtucrep68q; expires=Tue, 20 Jan 2026 02:42:37 GMT; HttpOnly; Max-Age=1209600; Path=/; Secure
-Content-Encoding: gzip

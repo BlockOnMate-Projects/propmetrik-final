@@ -169,7 +169,7 @@ export default function TemplatesPage() {
   };
 
   // Use template → go to new envelope with template pre-loaded
-  const useTemplate = (t: Template) => {
+  const applyTemplate = (t: Template) => {
     sessionStorage.setItem(
       "esign_template",
       JSON.stringify({ templateId: t.id, name: t.name, fields: t.fields || [] })
@@ -269,7 +269,7 @@ export default function TemplatesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => useTemplate(t)}>
+                      <DropdownMenuItem onClick={() => applyTemplate(t)}>
                         <Copy className="h-4 w-4 mr-2" /> Use Template
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -291,7 +291,7 @@ export default function TemplatesPage() {
                   {t.fields && <span>{Array.isArray(t.fields) ? t.fields.length : 0} fields</span>}
                 </div>
 
-                <Button variant="outline" size="sm" className="w-full mt-3" onClick={() => useTemplate(t)}>
+                <Button variant="outline" size="sm" className="w-full mt-3" onClick={() => applyTemplate(t)}>
                   Use Template
                 </Button>
               </CardContent>
