@@ -4,11 +4,16 @@
 // preventing stale-chunk 404s after a redeploy. Coolify/nixpacks set
 // SOURCE_COMMIT during the build; fall back to a build-time timestamp so the
 // value still changes on every build when no commit SHA is available.
+const path = require('path');
+
 const BUILD_ID = process.env.SOURCE_COMMIT || process.env.GIT_COMMIT_SHA || String(Date.now());
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // Monorepo: Next infers the repo root when multiple lockfiles exist; trace
+  // and resolve deps from the workspace root so webpack can find next loaders.
+  outputFileTracingRoot: path.join(__dirname, '..'),
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,
@@ -117,6 +122,11 @@ const nextConfig = {
     ];
   },
   webpack: (config, { isServer }) => {
+    config.resolve.modules = [
+      path.resolve(__dirname, 'node_modules'),
+      path.resolve(__dirname, '../node_modules'),
+      ...(config.resolve.modules || []),
+    ];
     if (!isServer) {
       // pdfjs-dist optional dependencies
       config.resolve.alias.canvas = false;
