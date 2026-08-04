@@ -1,9 +1,10 @@
-import { Application } from 'express';
+import { Application, NextFunction, Request, Response } from 'express';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { pool } from '../database';
 import { getPresignedDownloadUrl, buckets } from '../database/minio';
 import transmittalService from '../services/project-management/transmittalService';
+import { validateRequest, pmPublicConfirmCryptoSchema, pmPublicInitiateCryptoSchema, pmPublicInvoiceIdParamSchema } from '../middleware/validation';
 
 export function registerPublicPmInvoiceRoutes(app: Application): void {
 app.get('/api/v1/pm-invoices/public/:id', async (req, res) => {
@@ -106,7 +107,10 @@ app.get('/api/v1/pm-invoices/public/:id/verify-payment/:reference', async (req, 
 });
 
 // ── Public PM Invoice initiate-crypto endpoint (no auth — client crypto payment) ──
-app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
+app.post(
+  '/api/v1/pm-invoices/public/:id/initiate-crypto',
+  validateRequest({ params: pmPublicInvoiceIdParamSchema, body: pmPublicInitiateCryptoSchema }),
+  async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { invoiceService } = await import('../services/project-management/invoiceService');
     const invoice = await invoiceService.getById(req.params.id);
@@ -118,9 +122,6 @@ app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
     }
 
     const { payCurrency, payChain } = req.body;
-    if (!payCurrency) {
-      return res.status(400).json({ success: false, error: 'payCurrency is required' });
-    }
 
     const { exchangeRateService } = await import('../../shared-services/payments/crypto');
     const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
@@ -136,7 +137,7 @@ app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
         (invoice as any).totalDue || invoice.totalAmount
       );
     }
-    const ticker = payCurrency.toLowerCase();
+    const ticker = payCurrency;
 
     const reference = `PM-INV-CRYPTO-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const frontendUrl = config.app.frontendUrl;
@@ -219,15 +220,14 @@ app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
 });
 
 // ── Public PM Invoice confirm-crypto endpoint (marks paid after NOWPayments confirms) ──
-app.post('/api/v1/pm-invoices/public/:id/confirm-crypto', async (req, res) => {
+app.post(
+  '/api/v1/pm-invoices/public/:id/confirm-crypto',
+  validateRequest({ params: pmPublicInvoiceIdParamSchema, body: pmPublicConfirmCryptoSchema }),
+  async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const { pool } = await import('../database');
     const { paymentReference } = req.body;
     const invoiceId = req.params.id;
-
-    if (!paymentReference) {
-      return res.status(400).json({ success: false, error: 'paymentReference required' });
-    }
 
     // Verify this payment reference exists and is for this invoice.
     const txRow = await pool.query(
