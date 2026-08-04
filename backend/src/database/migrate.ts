@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { pool, query, transaction } from './index';
@@ -41,9 +42,29 @@ async function getExecutedMigrations(): Promise<Map<string, MigrationRecord>> {
 /**
  * Calculate checksum for migration content
  */
-function calculateChecksum(content: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(content).digest('hex').substring(0, 64);
+export function calculateChecksum(content: string): string {
+  return createHash('sha256').update(content).digest('hex').substring(0, 64);
+}
+
+/**
+ * Strict checksum validation is enabled in production or when explicitly opted in.
+ * Dev/test stays lenient so local iteration on old migrations does not block startup.
+ */
+export function isStrictMigrationChecksumEnabled(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.MIGRATION_STRICT_CHECKSUM === 'true';
+}
+
+function assertMigrationChecksumUnchanged(name: string, existing: MigrationRecord, checksum: string): void {
+  if (!isStrictMigrationChecksumEnabled()) {
+    return;
+  }
+
+  if (existing.checksum !== checksum) {
+    throw new Error(
+      `Migration ${name} has been modified after execution. ` +
+      `Expected checksum: ${existing.checksum}, got: ${checksum}`
+    );
+  }
 }
 
 /**
@@ -86,16 +107,7 @@ export async function runMigrations(): Promise<void> {
     const existing = executedMigrations.get(name);
 
     if (existing) {
-      // CHECKSUM VALIDATION DISABLED FOR DEVELOPMENT
-      // Re-enable in production by uncommenting below:
-      /*
-      if (existing.checksum !== checksum) {
-        throw new Error(
-          `Migration ${name} has been modified after execution. ` +
-          `Expected checksum: ${existing.checksum}, got: ${checksum}`
-        );
-      }
-      */
+      assertMigrationChecksumUnchanged(name, existing, checksum);
       skipped++;
       continue;
     }
