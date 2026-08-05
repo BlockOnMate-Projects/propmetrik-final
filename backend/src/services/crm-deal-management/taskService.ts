@@ -539,7 +539,7 @@ export class TaskService {
                 LEFT JOIN deals d ON t.deal_id = d.id
                 LEFT JOIN contacts c ON t.contact_id = c.id
                 WHERE t.organization_id = $1 
-                    AND t.due_date BETWEEN NOW() AND NOW() + INTERVAL '$2 days'
+                    AND t.due_date BETWEEN NOW() AND NOW() + make_interval(days => $2::int)
                     AND t.task_status IN ('pending', 'in_progress')
                     AND t.deleted_at IS NULL
                     ${userFilter}
