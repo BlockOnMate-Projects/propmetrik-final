@@ -8,6 +8,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import db from '../../database';
+import { buildCrmOrderBy } from './queryHelpers';
 import { logger } from '../../utils/logger';
 import {
     Deal,
@@ -319,9 +320,14 @@ export class DealService {
             }
 
             const whereClause = conditions.join(' AND ');
-            const sortBy = filters.sort_by || 'created_at';
-            const sortOrder = filters.sort_order || 'desc';
-            const orderBy = `d.${sortBy} ${sortOrder.toUpperCase()}`;
+            const orderBy = buildCrmOrderBy(
+                'd',
+                ['created_at', 'updated_at', 'deal_value', 'title', 'deal_status', 'expected_close_date', 'deal_number'],
+                filters.sort_by,
+                'created_at',
+                filters.sort_order,
+                'desc',
+            );
 
             // Get total count
             const countResult = await db.query(
@@ -433,33 +439,13 @@ export class DealService {
 
             params.push(dealId, organizationId);
 
-            // Legacy commission/closing-rate triggers on `deals` reference a
-            // non-existent table (agent_commission_assignments) and break won/lost/
-            // closed updates. Disable them for this UPDATE inside a transaction
-            // (rolled back on error → triggers stay enabled), exactly as
-            // updateDealStage already does.
-            const client = await db.getClient();
-            let result: { rows: Deal[] };
-            try {
-                await client.query('BEGIN');
-                await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_deal_commission');
-                await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_update_agent_closing_rate');
-                result = await client.query<Deal>(
-                    `UPDATE deals
+            const result = await db.query<Deal>(
+                `UPDATE deals
              SET ${updates.join(', ')}
              WHERE id = $${paramIndex} AND organization_id = $${paramIndex + 1} AND deleted_at IS NULL
              RETURNING *`,
-                    params
-                );
-                await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_deal_commission');
-                await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_update_agent_closing_rate');
-                await client.query('COMMIT');
-            } catch (txErr) {
-                await client.query('ROLLBACK').catch(() => {});
-                throw txErr;
-            } finally {
-                client.release();
-            }
+                params
+            );
 
             if (result.rows.length === 0) {
                 throw new Error('Deal not found or unauthorized');
@@ -688,11 +674,7 @@ export class DealService {
                 organizationId
             );
 
-            // Disable legacy triggers that reference non-existent columns
-            await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_deal_commission');
-            await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_update_agent_closing_rate');
-
-            // Update deal stage
+            // Update deal stage (triggers fixed in migration 218 — no ALTER TABLE lock needed)
             const updateResult = await client.query<Deal>(
                 `UPDATE deals
          SET stage_id = $1, stage_changed_at = NOW(), updated_at = NOW(), updated_by = $2
@@ -702,10 +684,6 @@ export class DealService {
             );
 
             const updatedDeal = updateResult.rows[0];
-
-            // Re-enable triggers
-            await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_deal_commission');
-            await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_update_agent_closing_rate');
 
             // Log stage change activity (also protected by savepoint)
             try {

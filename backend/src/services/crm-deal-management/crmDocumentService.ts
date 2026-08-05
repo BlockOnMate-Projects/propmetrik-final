@@ -11,6 +11,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import db from '../../database';
+import { buildCrmOrderBy } from './queryHelpers';
 import { logger } from '../../utils/logger';
 import * as minio from '../../database/minio';
 import { activityService } from './activityService';
@@ -306,9 +307,14 @@ export class CrmDocumentService {
             }
 
             const whereClause = conditions.join(' AND ');
-            const sortBy = filters.sort_by || 'created_at';
-            const sortOrder = filters.sort_order || 'desc';
-            const orderBy = `d.${sortBy} ${sortOrder.toUpperCase()}`;
+            const orderBy = buildCrmOrderBy(
+                'd',
+                ['created_at', 'updated_at', 'title', 'document_type', 'file_size'],
+                filters.sort_by,
+                'created_at',
+                filters.sort_order,
+                'desc',
+            );
 
             // Get total count
             const countResult = await db.query(
