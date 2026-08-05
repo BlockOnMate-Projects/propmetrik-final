@@ -255,18 +255,10 @@ router.post('/deals/:id/status', asyncHandler(async (req: Request, res: Response
             RETURNING *
         `;
 
-        // Disable legacy triggers that reference non-existent columns
-        // (create_commission_on_deal_close uses NEW.stage, update_agent_closing_rate
-        // uses agents.total_deals_attempted). Migration 218 provides the permanent fix.
-        await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_deal_commission');
-        await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_update_agent_closing_rate');
-
+        // Triggers fixed in migration 218 — no per-update ALTER TABLE lock needed.
         const result = await client.query(updateQuery, [
             status, final_value, reason, userId, req.params.id, organizationId, shouldClose
         ]);
-
-        await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_deal_commission');
-        await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_update_agent_closing_rate');
 
         if (result.rows.length === 0) {
             await client.query('ROLLBACK');

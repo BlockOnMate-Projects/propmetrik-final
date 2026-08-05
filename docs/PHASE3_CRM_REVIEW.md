@@ -23,15 +23,15 @@
 
 | # | Issue | Location | Status |
 |---|-------|----------|--------|
-| 1 | `getUpcomingTasks` broken SQL (`INTERVAL '$2 days'` never binds) | `taskService.ts` | **Fixed** (PR pending) |
+| 1 | `getUpcomingTasks` broken SQL (`INTERVAL '$2 days'` never binds) | `taskService.ts` | **Fixed** (#15) |
 | 2 | CRM PDF generation returns empty buffers (stubbed puppeteer) | `documentGenerationService.ts` | Backlog |
-| 3 | `ALTER TABLE deals DISABLE TRIGGER` on every deal update (table lock) | `dealService.ts` | Backlog |
+| 3 | `ALTER TABLE deals DISABLE TRIGGER` on every deal update (table lock) | `dealService.ts`, `routes/crm/deals.ts` | **Fixed** (#16) |
 
 ### P1 — Security
 
 | # | Issue | Location | Status |
 |---|-------|----------|--------|
-| 4 | ORDER BY injection via unconstrained `sort_by` | 6 CRM list services | Backlog |
+| 4 | ORDER BY injection via unconstrained `sort_by` | 6 CRM list services | **Fixed** (#16) |
 | 5 | Commission approve/pay without `organization_id` guard | `commissionService.ts` | Backlog |
 
 ### P2 — Integration test hygiene
