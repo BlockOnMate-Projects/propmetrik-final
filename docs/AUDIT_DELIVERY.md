@@ -9,7 +9,9 @@
 
 ## Summary
 
-I completed the eight backend audit items we scoped. Everything is merged into `main` across six pull requests. Backend CI is green (lint, type-check, unit tests, integration tests, knip, Docker build).
+**Phase 1** (scoped audit items) and **Phase 2** (dead code + route splits + frontend CI) are complete on `main`. **Phase 3** (CRM review + fixes) is now in progress — see `docs/PHASE3_CRM_REVIEW.md`.
+
+Phase 1 covered the eight backend audit items we scoped (PRs #1–#9). Phase 2 removed safe dead code, split `projects.ts` into eight sub-routers, added frontend CI, and fixed Python image CI. Backend + frontend CI are green.
 
 Slack deploy notifications are not used on your side — the workflow no longer depends on `SLACK_WEBHOOK_URL`, so production deploy jobs stay green without that secret.
 
@@ -17,7 +19,21 @@ For what is still open in the full audit report, see the backlog section at the 
 
 ---
 
-## Completed work
+## Phase 2 — completed (PRs #10–#14)
+
+| PR | What shipped |
+|----|----------------|
+| [#10](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/10) | Remove tracked Scrapy cache (~8,958 files), dead scripts, `propertyMapper`; extract `dailyLogs.ts`; dead middleware cleanup |
+| [#11](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/11) | Extract `paymentPlans.ts`, `punchLists.ts`, `projectIntegrationRoutes.ts`, `projectWizardRoutes.ts` |
+| [#12](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/12) | Fix Python service image CI (GHCR push to repo namespace) |
+| [#13](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/13) | Extract `projectCostRoutes.ts` |
+| [#14](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/14) | Extract `projectLocationRoutes.ts` |
+
+**Impact:** `backend/src/routes/projects.ts` reduced from **6,833 → 4,765 lines** (eight sub-routers). Frontend CI added (`.github/workflows/frontend-ci.yml` — `next lint` + `next build`).
+
+---
+
+## Phase 1 — completed (PRs #1–#9)
 
 | # | Item | PR |
 |---|------|-----|
@@ -165,7 +181,8 @@ If you use the SSH tunnel to Hetzner (`devtunnel@178.156.251.53` → `localhost:
 | Integration tests (90, filtered) | Green |
 | Knip | Green |
 | Docker build | Green |
-| Frontend CI | Not configured |
+| Frontend CI (`next lint` + `next build`) | Green |
+| Python service image builds | Green (after PR #12) |
 | Full migration chain on empty DB | Known issue (ordering) — see backlog |
 
 ---

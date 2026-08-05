@@ -10,7 +10,7 @@ Living backlog for the full audit report. For PR links, verification commands, a
 
 All eight agreed items are merged to `main` (PRs #1–#6). See `AUDIT_DELIVERY.md` for links and details.
 
-### Phase 2 (in progress — branch `chore/phase2-cleanup`)
+### Phase 2 (complete — PRs #10–#14)
 
 | Item | Status |
 |------|--------|
@@ -23,11 +23,23 @@ All eight agreed items are merged to `main` (PRs #1–#6). See `AUDIT_DELIVERY.m
 | Extract project integration → `projectIntegrationRoutes.ts` | Done |
 | Extract project wizard → `projectWizardRoutes.ts` | Done |
 | Extract project cost/currency → `projectCostRoutes.ts` | Done |
-| Extract location validation → `projectLocationRoutes.ts` | Done (PR #14) |
-| Remove dead middleware exports (`clearCustomerSubCache`, duplicate `requireResourcePermission`, `cleanupExpiredIdempotencyRecords`) | Done |
+| Extract location validation → `projectLocationRoutes.ts` | Done |
+| Remove dead middleware exports | Done |
 | Frontend CI workflow (`next lint` + `next build`) | Done |
-| Fix 3 frontend lint errors blocking CI | Done |
-| Split more mega-routes (`valuations.ts`, `propertyManagement.ts`) | Backlog |
+| Fix Python image CI GHCR permissions | Done |
+| Split `valuations.ts`, `propertyManagement.ts` | Deferred (Phase 4 / audit backlog) |
+
+### Phase 3 — CRM review (in progress)
+
+See `docs/PHASE3_CRM_REVIEW.md`. Review + fix only — no new CRM features.
+
+| Item | Status |
+|------|--------|
+| Fix `getUpcomingTasks` broken SQL interval | Done (pending PR) |
+| ORDER BY injection on CRM list endpoints | Backlog |
+| Remove `ALTER TABLE DISABLE TRIGGER` on deal updates | Backlog |
+| Fix stubbed CRM PDF generation (empty PDFs) | Backlog |
+| Commission org-scoping on approve/pay | Backlog |
 
 ---
 
@@ -72,11 +84,11 @@ From `CODEBASE_AUDIT.md`: credential scrub, mutation audit middleware, immutable
 
 ---
 
-## What I'd do next
+## What I'd do next (Phase 3)
 
-1. Split remaining mega-routes (`valuations.ts`, `propertyManagement.ts`)
-2. Security leftovers (admin RBAC, e-sign, webhooks)
-3. Performance quick wins (auth cache, debounced search)
+1. CRM correctness fixes (task SQL, deal update locks, empty PDFs)
+2. CRM security (sort allowlists, commission org guards)
+3. Integration test cleanup (`workflow.test.ts` phantom tables)
 
 ---
 
