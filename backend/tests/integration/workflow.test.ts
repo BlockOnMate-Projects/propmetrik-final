@@ -46,23 +46,24 @@ describe('Workflow Automation Integration Tests', () => {
     
     // Create test organization
     const orgResult = await testPool.query(`
-      INSERT INTO organizations (id, name, slug, status, created_at)
-      VALUES ($1, 'Test Org for Workflows', 'test-workflow-org', 'active', NOW())
+      INSERT INTO organizations (id, name, slug, type, created_at)
+      VALUES ($1, 'Test Org for Workflows', 'test-workflow-org', 'agency', NOW())
       RETURNING id
     `, [uuidv4()]);
     testOrgId = orgResult.rows[0].id;
     
     // Create test user
+    const userId = uuidv4();
     const userResult = await testPool.query(`
-      INSERT INTO users (id, organization_id, email, full_name, role, status, created_at)
-      VALUES ($1, $2, 'workflow-test@propmetrik.com', 'Workflow Tester', 'admin', 'active', NOW())
+      INSERT INTO users (id, keycloak_id, organization_id, email, first_name, last_name, role, status, created_at)
+      VALUES ($1, $2, $3, 'workflow-test@propmetrik.com', 'Workflow', 'Tester', 'admin', 'active', NOW())
       RETURNING id
-    `, [uuidv4(), testOrgId]);
+    `, [userId, `kc-workflow-test-${userId}`, testOrgId]);
     testUserId = userResult.rows[0].id;
     
     // Create test pipeline
     const pipelineResult = await testPool.query(`
-      INSERT INTO crm_pipelines (id, organization_id, name, deal_type, is_default, created_by, created_at)
+      INSERT INTO deal_pipelines (id, organization_id, pipeline_name, pipeline_type, is_default, created_by, created_at)
       VALUES ($1, $2, 'Test Pipeline', 'sale', true, $3, NOW())
       RETURNING id
     `, [uuidv4(), testOrgId, testUserId]);
@@ -70,24 +71,24 @@ describe('Workflow Automation Integration Tests', () => {
     
     // Create test stage
     const stageResult = await testPool.query(`
-      INSERT INTO crm_pipeline_stages (id, pipeline_id, name, stage_order, probability, is_won, is_lost, created_at)
-      VALUES ($1, $2, 'Initial Contact', 1, 10, false, false, NOW())
+      INSERT INTO deal_stages (id, pipeline_id, stage_name, stage_order, created_at)
+      VALUES ($1, $2, 'Initial Contact', 1, NOW())
       RETURNING id
     `, [uuidv4(), testPipelineId]);
     testStageId = stageResult.rows[0].id;
     
     // Create test contact
     const contactResult = await testPool.query(`
-      INSERT INTO crm_contacts (id, organization_id, first_name, last_name, email, phone, source, status, created_by, created_at)
-      VALUES ($1, $2, 'John', 'Tester', 'john.tester@example.com', '+233201234567', 'website', 'active', $3, NOW())
+      INSERT INTO contacts (id, organization_id, first_name, last_name, email, primary_phone, lead_source, lead_status, created_by, created_at)
+      VALUES ($1, $2, 'John', 'Tester', 'john.tester@example.com', '+233201234567', 'website', 'new', $3, NOW())
       RETURNING id
     `, [uuidv4(), testOrgId, testUserId]);
     testContactId = contactResult.rows[0].id;
     
     // Create test deal
     const dealResult = await testPool.query(`
-      INSERT INTO crm_deals (id, organization_id, pipeline_id, stage_id, contact_id, title, value, status, created_by, created_at)
-      VALUES ($1, $2, $3, $4, $5, 'Test Deal for Workflow', 500000, 'open', $6, NOW())
+      INSERT INTO deals (id, organization_id, pipeline_id, stage_id, primary_contact_id, title, deal_value, deal_status, deal_type, assigned_agent, created_by, created_at)
+      VALUES ($1, $2, $3, $4, $5, 'Test Deal for Workflow', 500000, 'active', 'sale', $6, $6, NOW())
       RETURNING id
     `, [uuidv4(), testOrgId, testPipelineId, testStageId, testContactId, testUserId]);
     testDealId = dealResult.rows[0].id;
@@ -103,10 +104,10 @@ describe('Workflow Automation Integration Tests', () => {
       await testPool.query('DELETE FROM workflow_executions WHERE organization_id = $1', [testOrgId]);
       await testPool.query('DELETE FROM workflow_steps WHERE workflow_id IN (SELECT id FROM workflows WHERE organization_id = $1)', [testOrgId]);
       await testPool.query('DELETE FROM workflows WHERE organization_id = $1', [testOrgId]);
-      await testPool.query('DELETE FROM crm_deals WHERE organization_id = $1', [testOrgId]);
-      await testPool.query('DELETE FROM crm_contacts WHERE organization_id = $1', [testOrgId]);
-      await testPool.query('DELETE FROM crm_pipeline_stages WHERE pipeline_id = $1', [testPipelineId]);
-      await testPool.query('DELETE FROM crm_pipelines WHERE organization_id = $1', [testOrgId]);
+      await testPool.query('DELETE FROM deals WHERE organization_id = $1', [testOrgId]);
+      await testPool.query('DELETE FROM contacts WHERE organization_id = $1', [testOrgId]);
+      await testPool.query('DELETE FROM deal_stages WHERE pipeline_id = $1', [testPipelineId]);
+      await testPool.query('DELETE FROM deal_pipelines WHERE organization_id = $1', [testOrgId]);
       await testPool.query('DELETE FROM users WHERE organization_id = $1', [testOrgId]);
       await testPool.query('DELETE FROM organizations WHERE id = $1', [testOrgId]);
       await testPool.end();
@@ -690,14 +691,14 @@ describe('Workflow Database Operations', () => {
     userId = uuidv4();
 
     await pool.query(`
-      INSERT INTO organizations (id, name, slug, status, created_at)
-      VALUES ($1, 'DB Test Org', 'db-test-org', 'active', NOW())
+      INSERT INTO organizations (id, name, slug, type, created_at)
+      VALUES ($1, 'DB Test Org', 'db-test-org', 'agency', NOW())
     `, [orgId]);
 
     await pool.query(`
-      INSERT INTO users (id, organization_id, email, full_name, role, status, created_at)
-      VALUES ($1, $2, 'db-test@propmetrik.com', 'DB Tester', 'admin', 'active', NOW())
-    `, [userId, orgId]);
+      INSERT INTO users (id, keycloak_id, organization_id, email, first_name, last_name, role, status, created_at)
+      VALUES ($1, $2, $3, 'db-test@propmetrik.com', 'DB', 'Tester', 'admin', 'active', NOW())
+    `, [userId, `kc-db-test-${userId}`, orgId]);
   });
 
   afterAll(async () => {

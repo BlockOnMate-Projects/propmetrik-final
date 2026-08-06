@@ -16,6 +16,7 @@ env:
   NODE_VERSION: '20'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/propmetrik-api
+  NODE_OPTIONS: --max-old-space-size=8192
 
 jobs:
   # ============================================
