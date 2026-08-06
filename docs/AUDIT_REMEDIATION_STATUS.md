@@ -29,17 +29,18 @@ All eight agreed items are merged to `main` (PRs #1–#6). See `AUDIT_DELIVERY.m
 | Fix Python image CI GHCR permissions | Done |
 | Split `valuations.ts`, `propertyManagement.ts` | Deferred (Phase 4 / audit backlog) |
 
-### Phase 3 — CRM review (in progress)
+### Phase 3 — CRM review (complete)
 
 See `docs/PHASE3_CRM_REVIEW.md`. Review + fix only — no new CRM features.
 
 | Item | Status |
 |------|--------|
-| Fix `getUpcomingTasks` broken SQL interval | Done (pending PR) |
-| ORDER BY injection on CRM list endpoints | Backlog |
-| Remove `ALTER TABLE DISABLE TRIGGER` on deal updates | Backlog |
-| Fix stubbed CRM PDF generation (empty PDFs) | Backlog |
-| Commission org-scoping on approve/pay | Backlog |
+| Fix `getUpcomingTasks` broken SQL interval | Done (#15) |
+| ORDER BY injection on CRM list endpoints | Done (#16) |
+| Remove `ALTER TABLE DISABLE TRIGGER` on deal updates | Done (#16) |
+| CRM PDF generation (empty buffers) | Verified — real Puppeteer; audit claim stale |
+| Commission org-scoping on approve/pay | Verified — already guarded |
+| `workflow.test.ts` phantom `crm_*` tables | Done (#17) |
 
 ---
 
@@ -84,11 +85,12 @@ From `CODEBASE_AUDIT.md`: credential scrub, mutation audit middleware, immutable
 
 ---
 
-## What I'd do next (Phase 3)
+## What I'd do next (Phase 4)
 
-1. CRM correctness fixes (task SQL, deal update locks, empty PDFs)
-2. CRM security (sort allowlists, commission org guards)
-3. Integration test cleanup (`workflow.test.ts` phantom tables)
+1. Split mega routes (`valuations.ts`, `propertyManagement.ts`)
+2. Admin portal server RBAC
+3. Webhook signatures + Python engine auth
+4. Fresh DB migration ordering fix (`054` before CRM tables)
 
 ---
 
