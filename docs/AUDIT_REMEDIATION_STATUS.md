@@ -85,7 +85,9 @@ From `CODEBASE_AUDIT.md`: credential scrub, mutation audit middleware, immutable
 
 ---
 
-## What I'd do next (Phase 4)
+## What I'd do next (Phase 4 — in progress)
+
+See `docs/PHASE4_BACKLOG.md`. First up: split `valuations.ts` (7.3k lines), then `propertyManagement.ts`, then security backlog.
 
 1. Split mega routes (`valuations.ts`, `propertyManagement.ts`)
 2. Admin portal server RBAC
