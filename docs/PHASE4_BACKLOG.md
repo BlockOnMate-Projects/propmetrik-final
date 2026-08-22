@@ -13,7 +13,7 @@
 | # | Item | File(s) | Lines | Status |
 |---|------|---------|------:|--------|
 | 1 | Split valuation AI/writeup routes | `valuations.ts` → `valuationAiRoutes.ts` | ~7,344 → ~7,049 | **Done** (#18) |
-| 2 | Split valuation comparables + method routes | `valuations.ts` | (same file) | Backlog |
+| 2 | Split valuation comparables + method routes | `valuations.ts` → `valuationComparablesRoutes.ts` | ~7,049 → ~4,659 | **Done** (#19) |
 | 3 | Split valuation report/approval/e-sign routes | `valuations.ts` | (same file) | Backlog |
 | 4 | Split PM tenant/tenancy routes | `propertyManagement.ts` | ~3,852 | Backlog |
 | 5 | Split PM payments/maintenance routes | `propertyManagement.ts` | (same file) | Backlog |
@@ -51,7 +51,7 @@ Target: same pattern as Phase 2 (`projects.ts` → 8 sub-routers). `valuations.t
 ## Suggested PR order
 
 1. **#18** — Extract valuation AI routes from `valuations.ts` ✅
-2. **#19** — Extract valuation comparables routes
+2. **#19** — Extract valuation comparables routes ✅
 3. **#20** — Extract valuation report/approval routes
 4. **#21** — Extract PM tenant/tenancy routes from `propertyManagement.ts`
 5. Security items (#6–#9) — one PR each, after route splits or in parallel if scoped small
