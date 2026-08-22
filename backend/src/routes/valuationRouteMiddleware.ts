@@ -1,5 +1,5 @@
 /**
- * Shared middleware for valuation route modules.
+ * Shared middleware and helpers for valuation route modules.
  */
 
 import { Request, Response, NextFunction } from 'express';
@@ -17,3 +17,11 @@ export const validateUUID = (paramName: string) => {
     next();
   };
 };
+
+/** Headers for direct Python valuation engine fetches (includes X-Engine-Secret when configured). */
+export const engineHeaders = (): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  ...(process.env.ENGINE_SHARED_SECRET?.trim()
+    ? { 'X-Engine-Secret': process.env.ENGINE_SHARED_SECRET.trim() }
+    : {}),
+});
