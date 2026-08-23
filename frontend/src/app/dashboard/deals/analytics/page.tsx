@@ -584,11 +584,11 @@ export default function AnalyticsPage() {
                                                     <td className="py-3 text-right">
                                                         <span className={cn(
                                                             'px-1.5 py-0.5 rounded text-xs',
-                                                            (agent.win_rate || 0) >= 30
+                                                            Number(agent.win_rate ?? 0) >= 30
                                                                 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                                                                 : 'bg-muted text-muted-foreground'
                                                         )}>
-                                                            {(agent.win_rate || 0).toFixed(1)}%
+                                                            {Number(agent.win_rate ?? 0).toFixed(1)}%
                                                         </span>
                                                     </td>
                                                 </tr>

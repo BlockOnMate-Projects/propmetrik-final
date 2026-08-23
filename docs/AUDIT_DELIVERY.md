@@ -14,11 +14,27 @@
 | **Phase 1** | Eight scoped backend audit items | **Complete** — PRs #1–#9 |
 | **Phase 2** | Dead code removal, duplicate cleanup, `projects.ts` route splits, maintainability | **Complete** — PRs #10–#14 |
 | **Phase 3** | CRM / Deal Management review + fixes only (no new CRM) | **Complete** — PRs #15–#17 |
-| **Phase 4** | Full audit report backlog | **In progress** — PRs #18–#19 merged; more below |
+| **Phase 4** | Full audit report backlog | **In progress** — PRs #18–#20 merged; frontend bug pass below |
 
 Backend + frontend CI are green. Slack deploy notifications are not used — the workflow no longer depends on `SLACK_WEBHOOK_URL`.
 
 Living backlog: `docs/AUDIT_REMEDIATION_STATUS.md` · Phase 4 queue: `docs/PHASE4_BACKLOG.md` · CRM review: `docs/PHASE3_CRM_REVIEW.md`
+
+---
+
+## Frontend bug pass (manager walkthrough, Aug 2026)
+
+Eric flagged three issues while clicking through the app as super-admin. All were wiring/data-shape bugs, not new features.
+
+| Page | Symptom | Cause | Fix |
+|------|---------|-------|-----|
+| `/dashboard/valuations` | Demo customer's in-progress valuation (VAL-DC9A5A45) visible in Cedyn portal | `super_admin` skipped the org filter on list/stats — saw every org's valuations | Apply `valuer_organization_id` filter whenever the user has an org, including super-admin; block cross-org GET by id |
+| `/dashboard/deals/contacts` | Summary cards stuck at 0; console 500 on `/api/crm/contacts/stats` | Frontend calls `/contacts/stats`; backend only had `/contacts/statistics` with a different JSON shape | Added `/contacts/stats` route mapped to the shape the UI expects (`totalContacts`, `newThisMonth`, `byLeadStatus`, `byBuyerType`) |
+| `/dashboard/deals/analytics` | Page crash: `win_rate.toFixed is not a function` | Postgres `ROUND()` returns numeric as string in node-pg | Coerce `win_rate` to number in the API response and on the analytics page |
+
+**How to verify:** log in as super-admin, open Valuations (no other org's demo rows), Contacts (stat cards match the list), Analytics (agent table renders). Check the browser console on those pages — the stats 500 and analytics TypeError should be gone.
+
+PR: pending (#21)
 
 ---
 
@@ -28,7 +44,7 @@ Living backlog: `docs/AUDIT_REMEDIATION_STATUS.md` · Phase 4 queue: `docs/PHASE
 |----|----------------|
 | [#18](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/18) | Extract valuation AI/writeup routes → `valuationAiRoutes.ts` |
 | [#19](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/19) | Extract comparables, method calc, cap-rate routes → `valuationComparablesRoutes.ts` |
-| #20 (pending) | Extract report, documents, overrides, reconciliation → `valuationReportRoutes.ts` |
+| [#20](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/20) | Extract report, documents, overrides, reconciliation → `valuationReportRoutes.ts` |
 | [#17](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/17) | CI Node heap fix (lint/tests OOM on GitHub Actions) |
 
 **Impact:** `valuations.ts` reduced from **7,344 → ~3,595 lines** (AI, comparables, report routes extracted). Still splitting remaining valuation routes and `propertyManagement.ts`.

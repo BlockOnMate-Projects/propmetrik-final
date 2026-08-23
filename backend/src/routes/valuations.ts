@@ -130,8 +130,8 @@ router.get('/', async (req: Request, res: Response) => {
     if (!hasFullAccess && userId) {
       joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
       params.push(userId);
-    } else if (orgId && !['super_admin'].includes(userRole)) {
-      // Org-scoped: admin/managers see their org's valuations only
+    } else if (orgId) {
+      // Org-scoped: staff see their org's valuations only (including super_admin in the portal)
       whereClause += ` WHERE v.valuer_organization_id = $${paramIndex++}`;
       params.push(orgId);
     }
@@ -252,7 +252,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     if (!hasFullAccess && userId) {
       joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
       params.push(userId);
-    } else if (orgId && !['super_admin'].includes(userRole)) {
+    } else if (orgId) {
       whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
       params.push(orgId);
     }
@@ -1182,6 +1182,7 @@ router.get('/test/python-health', async (req: Request, res: Response) => {
 router.get('/:id', validateUUID('id'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const orgId = req.user?.organizationId;
 
     const valuation = await getValuation(id);
 
@@ -1190,6 +1191,21 @@ router.get('/:id', validateUUID('id'), async (req: Request, res: Response) => {
         error: 'Not Found',
         message: 'Valuation not found',
       });
+    }
+
+    // Org-scoped access — don't leak valuations from other organizations
+    if (orgId) {
+      const orgCheck = await query(
+        'SELECT valuer_organization_id FROM valuations WHERE id = $1',
+        [id]
+      );
+      const valuerOrgId = orgCheck.rows[0]?.valuer_organization_id;
+      if (valuerOrgId && valuerOrgId !== orgId) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'Valuation not found',
+        });
+      }
     }
 
     res.json({

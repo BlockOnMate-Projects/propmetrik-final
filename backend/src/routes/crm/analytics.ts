@@ -173,7 +173,10 @@ router.get('/analytics/agents', asyncHandler(async (req: Request, res: Response)
     `;
 
     const result = await db.query(query, [organizationId]);
-    res.json(result.rows);
+    res.json(result.rows.map((row: Record<string, unknown>) => ({
+        ...row,
+        win_rate: row.win_rate != null ? Number(row.win_rate) : 0,
+    })));
 }));
 
 // ──────────────────────────────────────────────

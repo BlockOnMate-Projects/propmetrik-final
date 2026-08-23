@@ -59,6 +59,21 @@ router.get('/contacts/statistics', asyncHandler(async (req: Request, res: Respon
     res.json(statistics);
 }));
 
+/** GET /contacts/stats — frontend dashboard shape (must be before /contacts/:id) */
+router.get('/contacts/stats', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+    const statistics = await contactService.getContactStats(organizationId);
+    res.json({
+        totalContacts: statistics.total,
+        newThisMonth: statistics.new_this_month,
+        byLeadStatus: statistics.by_status,
+        byBuyerType: statistics.by_type,
+    });
+}));
+
 /** GET /contacts/duplicates — Find potential duplicate contact pairs (must be before /:id) */
 router.get('/contacts/duplicates', asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
