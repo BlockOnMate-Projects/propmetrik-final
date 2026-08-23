@@ -34,7 +34,7 @@ Eric flagged three issues while clicking through the app as super-admin. All wer
 
 **How to verify:** log in as super-admin, open Valuations (no other org's demo rows), Contacts (stat cards match the list), Analytics (agent table renders). Check the browser console on those pages — the stats 500 and analytics TypeError should be gone.
 
-PR: pending (#21)
+PR: [#21](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/21)
 
 ---
 
