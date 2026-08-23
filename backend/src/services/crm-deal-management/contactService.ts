@@ -418,6 +418,7 @@ export class ContactService {
      */
     async getContactStats(organizationId: string): Promise<{
         total: number;
+        new_this_month: number;
         by_status: Record<string, number>;
         by_type: Record<string, number>;
         avg_lead_score: number;
@@ -427,6 +428,7 @@ export class ContactService {
             const result = await db.query(
                 `SELECT 
           COUNT(*) as total,
+          COUNT(*) FILTER (WHERE created_at >= date_trunc('month', CURRENT_DATE)) as new_this_month,
           COALESCE(AVG(lead_score), 0) as avg_lead_score,
           COUNT(*) FILTER (WHERE qualification_level = 'hot') as hot_leads
          FROM contacts
@@ -469,6 +471,7 @@ export class ContactService {
             const row = result.rows[0];
             return {
                 total: parseInt(row?.total || '0', 10),
+                new_this_month: parseInt(row?.new_this_month || '0', 10),
                 by_status,
                 by_type,
                 avg_lead_score: parseFloat(row?.avg_lead_score) || 0,
