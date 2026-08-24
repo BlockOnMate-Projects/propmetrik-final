@@ -122,6 +122,13 @@ GitHub Actions runs on push to `main` when `backend/**` or workflow files change
 npm ci --legacy-peer-deps
 ```
 
+**Local full-stack testing** needs gitignored env files — see **`docs/LOCAL_DEV_SETUP.md`**. Summary:
+
+- `backend/.env` — copy from `backend/.env.example`, fill in DB/Redis/Keycloak/JWT/OpenSearch (or use the team's shared dev `.env`)
+- `frontend/.env.local` — copy from `frontend/.env.example`; **`AUTH_SECRET` is required** or Auth.js throws `MissingSecret`
+
+Start both: `npm run dev:app` from repo root, then http://localhost:3000/login
+
 No new SQL migrations in Phases 1–4 work so far. Key env vars in `backend/.env.example`:
 
 | Variable | Local default | Notes |
