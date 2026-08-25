@@ -46,7 +46,7 @@ Eric reported `GET /api/pm/financials/portfolio-summary` returning 500 with sock
 
 **Fix:** Replaced the per-property loop with six org-scoped aggregate SQL queries (same FX normalization pattern as `portfolioService`). Response shape unchanged.
 
-PR: pending
+PR: [#23](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/23)
 
 ---
 
