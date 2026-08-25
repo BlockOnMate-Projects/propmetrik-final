@@ -38,6 +38,18 @@ PR: [#21](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/21)
 
 ---
 
+## PM portfolio-summary 500 (Aug 2026)
+
+Eric reported `GET /api/pm/financials/portfolio-summary` returning 500 with socket hang up on Property Management dashboard load.
+
+**Cause:** `getPortfolioFinancialSummary()` looped every active property and ran `getPropertyFinancialSummary()` (~8 DB queries each). With 80+ properties that meant hundreds of sequential queries and request timeouts.
+
+**Fix:** Replaced the per-property loop with six org-scoped aggregate SQL queries (same FX normalization pattern as `portfolioService`). Response shape unchanged.
+
+PR: [#23](https://github.com/bhardwj-sarvesh-projects/propmetrik-final/pull/23)
+
+---
+
 ## Phase 4 — in progress (audit report backlog)
 
 | PR | What shipped |
