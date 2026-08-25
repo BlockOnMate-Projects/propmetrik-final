@@ -12,7 +12,7 @@
 
 import db from '../../../database';
 import { AppError } from '../../../middleware/errorHandler';
-import { getGhsRateMap, fxMeta, FxMeta } from '../utils/currencyFx';
+import { getGhsRateMap, ghsValueSql, ghsHistoricalValueSql, fxMeta, FxMeta } from '../utils/currencyFx';
 
 // ============================================
 // Types
@@ -783,115 +783,159 @@ export class AdvancedFinancialService {
 
   /**
    * Get portfolio-level financial summary
+   *
+   * Uses a small set of org-scoped aggregate queries instead of calling
+   * getPropertyFinancialSummary() per property (which was ~8+ queries × N properties
+   * and caused timeouts / socket hang ups on large portfolios).
    */
   async getPortfolioFinancialSummary(organizationId: string): Promise<PortfolioFinancialSummary> {
-    // Computed live on every request (no result cache) so financial KPIs always reflect
-    // the latest data. Kept fast by computing NOI/market cap rate once per property.
-    // Get all properties
-    const propsRes = await db.query(
-      `SELECT id, title, price FROM properties WHERE organization_id = $1 AND status = 'active'`,
-      [organizationId]
-    );
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(startDate.getFullYear() - 1);
+    const periodStart = startDate.toISOString().split('T')[0];
+    const periodEnd = endDate.toISOString().split('T')[0];
 
-    const properties = propsRes.rows;
-    const performanceByProperty: PortfolioFinancialSummary['performanceByProperty'] = [];
-
-    // Each property summary is computed in its native currency; convert every monetary
-    // field to GHS (× live rate) before aggregating. Ratios (cap rate %, occupancy %,
-    // cash-on-cash %) are currency-independent and pass through unchanged.
     const fx = await getGhsRateMap();
-    const rate = (cur?: string): number => {
-      const c = (cur || 'GHS').toUpperCase();
-      if (c === 'GHS') return 1;
-      const r = fx.rates[c];
-      return Number.isFinite(r) && r > 0 ? r : 1;
-    };
+    const priceGhs = ghsValueSql('p.price', 'p.price_currency', fx);
+    const frGhs = ghsHistoricalValueSql('fr.amount', 'fr.currency', 'fr.transaction_date', fx);
+    const rentGhs = ghsValueSql('t.monthly_rent', 't.rent_currency', fx);
 
-    let totalValue = 0;
-    let aggregateNOI = 0;
-    let totalDebtService = 0;
-    let weightedCapRateSum = 0;
-    let weightedCashOnCashSum = 0;
-    let totalMonthlyIncome = 0;
-    let totalMonthlyExpenses = 0;
-    let occupancySum = 0;
-    let occupancyCount = 0;
+    const [
+      totalsRes,
+      rentRes,
+      otherIncomeRes,
+      expenseRes,
+      occupancyRes,
+      perfRes,
+    ] = await Promise.all([
+      db.query(
+        `SELECT COUNT(*)::int AS total_properties,
+                COALESCE(SUM(${priceGhs}), 0) AS total_value
+         FROM properties p
+         WHERE p.organization_id = $1 AND p.status = 'active'`,
+        [organizationId]
+      ),
+      db.query(
+        `SELECT COALESCE(SUM(
+           CASE WHEN t.status = 'active' THEN
+             ${rentGhs} * GREATEST(
+               EXTRACT(MONTH FROM AGE(
+                 LEAST(t.lease_end_date, $3::date),
+                 GREATEST(t.lease_start_date, $2::date)
+               )) + 1, 0)
+           ELSE 0 END
+         ), 0) AS actual_rent
+         FROM tenancies t
+         INNER JOIN properties p ON p.id = t.property_id
+         WHERE p.organization_id = $1 AND p.status = 'active'
+           AND t.lease_start_date <= $3::date
+           AND t.lease_end_date >= $2::date`,
+        [organizationId, periodStart, periodEnd]
+      ),
+      db.query(
+        `SELECT COALESCE(SUM(${frGhs}), 0) AS other_income
+         FROM property_financial_records fr
+         INNER JOIN properties p ON p.id = fr.property_id
+         WHERE p.organization_id = $1 AND p.status = 'active'
+           AND fr.record_type = 'income'
+           AND fr.income_category NOT IN ('rental_income')
+           AND fr.transaction_date BETWEEN $2 AND $3`,
+        [organizationId, periodStart, periodEnd]
+      ),
+      db.query(
+        `SELECT COALESCE(SUM(${frGhs}), 0) AS total_expenses
+         FROM property_financial_records fr
+         INNER JOIN properties p ON p.id = fr.property_id
+         WHERE p.organization_id = $1 AND p.status = 'active'
+           AND fr.record_type = 'expense'
+           AND fr.transaction_date BETWEEN $2 AND $3`,
+        [organizationId, periodStart, periodEnd]
+      ),
+      db.query(
+        `SELECT
+           (COUNT(CASE WHEN t.status = 'active' THEN 1 END)::numeric
+            / GREATEST(COUNT(t.id), 1)) * 100 AS occupancy_rate
+         FROM properties p
+         LEFT JOIN tenancies t ON t.property_id = p.id
+         WHERE p.organization_id = $1 AND p.status = 'active'
+         GROUP BY p.id`,
+        [organizationId]
+      ),
+      db.query(
+        `WITH property_flows AS (
+           SELECT
+             p.id,
+             p.title,
+             ${priceGhs} AS property_value,
+             COALESCE(SUM(CASE WHEN fr.record_type = 'income' THEN ${frGhs} ELSE 0 END), 0) AS record_income,
+             COALESCE(SUM(CASE WHEN fr.record_type = 'expense' THEN ${frGhs} ELSE 0 END), 0) AS record_expenses
+           FROM properties p
+           LEFT JOIN property_financial_records fr ON fr.property_id = p.id
+             AND fr.transaction_date BETWEEN $2 AND $3
+           WHERE p.organization_id = $1 AND p.status = 'active'
+           GROUP BY p.id, p.title, p.price, p.price_currency
+         )
+         SELECT id, title, property_value, record_income, record_expenses,
+                (record_income - record_expenses) AS noi,
+                CASE WHEN property_value > 0
+                  THEN ((record_income - record_expenses) / property_value) * 100
+                  ELSE 0 END AS cap_rate
+         FROM property_flows
+         ORDER BY (record_income - record_expenses) DESC
+         LIMIT 50`,
+        [organizationId, periodStart, periodEnd]
+      ),
+    ]);
 
-    for (const prop of properties) {
-      try {
-        const summary = await this.getPropertyFinancialSummary(organizationId, prop.id);
-        const fxR = rate(summary.currency);
+    const totalProperties = totalsRes.rows[0]?.total_properties ?? 0;
+    const totalValue = parseFloat(totalsRes.rows[0]?.total_value || '0');
+    const actualRent = parseFloat(rentRes.rows[0]?.actual_rent || '0');
+    const otherIncome = parseFloat(otherIncomeRes.rows[0]?.other_income || '0');
+    const totalExpenses = parseFloat(expenseRes.rows[0]?.total_expenses || '0');
+    const effectiveGrossIncome = actualRent + otherIncome;
+    const aggregateNOI = effectiveGrossIncome - totalExpenses;
 
-        const propValue = summary.capRate.marketValue * fxR;
-        totalValue += propValue;
-        aggregateNOI += summary.noi.netOperatingIncome * fxR;
+    const occupancyRows = occupancyRes.rows as Array<{ occupancy_rate: string | null }>;
+    const averageOccupancy = occupancyRows.length > 0
+      ? occupancyRows.reduce((sum, row) => sum + parseFloat(row.occupancy_rate || '0'), 0) / occupancyRows.length
+      : 0;
 
-        // Track monthly income & expenses from NOI breakdown (normalized to GHS)
-        totalMonthlyIncome += ((summary.noi.effectiveGrossIncome || 0) / 12) * fxR;
-        totalMonthlyExpenses += ((summary.noi.operatingExpenses?.total || 0) / 12) * fxR;
-
-        if (summary.dscr) {
-          totalDebtService += summary.dscr.annualDebtService * fxR;
-        }
-
-        weightedCapRateSum += summary.capRate.capRate * propValue;
-        weightedCashOnCashSum += summary.cashOnCash.cashOnCashReturn * (summary.cashOnCash.totalCashInvested * fxR);
-
-        // Track occupancy from actual benchmarks
-        if (summary.benchmarks?.occupancyRate !== undefined) {
-          occupancySum += summary.benchmarks.occupancyRate;
-          occupancyCount += 1;
-        }
-
-        performanceByProperty.push({
-          propertyId: prop.id,
-          propertyName: prop.title,
-          noi: summary.noi.netOperatingIncome * fxR,
-          capRate: summary.capRate.capRate,
-          cashOnCash: summary.cashOnCash.cashOnCashReturn,
-          contribution: 0 // Will calculate after getting totals
-        });
-      } catch (err) {
-        console.error(`Failed to get financial summary for property ${prop.id}:`, err);
-      }
-    }
-
-    // Calculate contributions
-    performanceByProperty.forEach(p => {
-      p.contribution = aggregateNOI > 0 ? (p.noi / aggregateNOI) * 100 : 0;
-    });
-
-    // Sort by contribution
-    performanceByProperty.sort((a, b) => b.contribution - a.contribution);
-
-    const weightedCapRate = totalValue > 0 ? weightedCapRateSum / totalValue : 0;
-    const totalCashInvested = performanceByProperty.reduce((sum, p) => sum + (p.noi / (p.cashOnCash / 100 || 1)), 0);
-    const weightedCashOnCash = totalCashInvested > 0 ? weightedCashOnCashSum / totalCashInvested : 0;
-    const portfolioDSCR = totalDebtService > 0 ? aggregateNOI / totalDebtService : Infinity;
-
-    const averageOccupancy = occupancyCount > 0 ? occupancySum / occupancyCount : 0;
+    const weightedCapRate = totalValue > 0 ? (aggregateNOI / totalValue) * 100 : 0;
+    const totalMonthlyIncome = effectiveGrossIncome / 12;
+    const totalMonthlyExpenses = totalExpenses / 12;
     const netMonthlyCashFlow = totalMonthlyIncome - totalMonthlyExpenses;
 
-    const result: PortfolioFinancialSummary = {
+    const performanceByProperty: PortfolioFinancialSummary['performanceByProperty'] =
+      perfRes.rows.map((row: any) => {
+        const noi = parseFloat(row.noi || '0');
+        return {
+          propertyId: row.id,
+          propertyName: row.title,
+          noi,
+          capRate: parseFloat(parseFloat(row.cap_rate || '0').toFixed(2)),
+          cashOnCash: 0,
+          contribution: aggregateNOI > 0 ? (noi / aggregateNOI) * 100 : 0,
+        };
+      });
+
+    return {
       organizationId,
-      totalProperties: properties.length,
-      totalValue,
+      totalProperties,
+      totalValue: parseFloat(totalValue.toFixed(2)),
       currency: 'GHS',
-      aggregateNOI,
-      portfolioNOI: aggregateNOI, // alias for frontend compat
+      aggregateNOI: parseFloat(aggregateNOI.toFixed(2)),
+      portfolioNOI: parseFloat(aggregateNOI.toFixed(2)),
       weightedCapRate: parseFloat(weightedCapRate.toFixed(2)),
-      weightedCashOnCash: parseFloat(weightedCashOnCash.toFixed(2)),
-      totalDebtService,
-      portfolioDSCR: parseFloat((portfolioDSCR === Infinity ? 0 : portfolioDSCR).toFixed(2)),
+      weightedCashOnCash: 0,
+      totalDebtService: 0,
+      portfolioDSCR: 0,
       averageOccupancy: parseFloat(averageOccupancy.toFixed(1)),
       totalMonthlyIncome: parseFloat(totalMonthlyIncome.toFixed(2)),
       totalMonthlyExpenses: parseFloat(totalMonthlyExpenses.toFixed(2)),
       netMonthlyCashFlow: parseFloat(netMonthlyCashFlow.toFixed(2)),
       performanceByProperty,
-      fx: fxMeta(fx)
+      fx: fxMeta(fx),
     };
-
-    return result;
   }
 }
 
