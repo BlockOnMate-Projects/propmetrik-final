@@ -191,25 +191,25 @@ async function enrichUserFromDb(req: Request): Promise<void> {
   const userId = req.user.id || req.user.sub;
   if (!userId) return;
 
-  // Already enriched (dev mode user or cached)
-  if (req.user.userType) return;
-
   try {
     // PERF: served from a short-TTL cache so this isn't a fresh remote-DB
     // round-trip on every request (see utils/userContextCache).
     const { getUserAuthRecord } = await import('../utils/userContextCache');
     const rec = await getUserAuthRecord(userId);
     if (rec) {
-      // Least-privilege default: unknown/unset → 'customer', never 'staff'
-      // ('staff' = PropMetrik employee = member of the platform org).
+      // Always prefer DB truth over JWT claims (local JWTs may omit or stale fields).
       req.user.userType = rec.user_type || 'customer';
-      req.user.tier = rec.subscription_tier || 'starter';
-    } else {
+      req.user.tier = rec.subscription_tier || req.user.tier || 'starter';
+      if (rec.organization_id) {
+        req.user.organizationId = rec.organization_id;
+        (req.user as any).organization_id = rec.organization_id;
+      }
+    } else if (!req.user.userType) {
       req.user.userType = 'customer';
     }
   } catch {
     // Non-fatal — fail closed (deny platform access) rather than granting staff.
-    req.user.userType = 'customer';
+    if (!req.user.userType) req.user.userType = 'customer';
   }
 }
 
@@ -248,7 +248,8 @@ function tryDecodeLocalJwt(token: string): AuthenticatedUser | null {
       organizationId: payload.organizationId,
       region: undefined,
       tier: payload.tier,
-      userType: payload.userType || 'staff',
+      // Never default to 'staff' — enrichUserFromDb fills the canonical user_type.
+      userType: payload.userType,
     };
   } catch {
     return null;

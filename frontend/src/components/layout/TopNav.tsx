@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useEffect, useState, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { canAccessPlatformTab, isAdminRole, canAccessFeature, buildCustomerNavigation } from '@/lib/rbac'
+import { filterPlatformNavigation, isAdminRole, isPlatformTabLocked } from '@/lib/rbac'
 import { useUpgradeGate } from '@/components/UpgradeGate'
 import { NotificationDropdown } from '@/components/layout/NotificationDropdown'
 import { authedFetch } from '@/lib/authed-fetch'
@@ -427,16 +427,13 @@ export function TopNav() {
   const userType = (effectiveSession?.user as any)?.userType || 'customer'
   const subscribedServices: string[] = (effectiveSession?.user as any)?.subscribedServices || []
 
-  // Show all tabs the user's ROLE allows (based on RBAC).
-  // Tier gating happens on click — locked tabs show a lock icon instead of hiding.
-  // Customer users see only their subscribed service tabs + shared services.
-  const visibleNavigation = mounted
-    ? (sessionReady
-      ? (userType === 'customer'
-        ? buildCustomerNavigation(navigation, subscribedServices).filter(item => !item.adminOnly && !item.staffOnly)
-        : navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey) && (!item.adminOnly || userType === 'staff')))
-      : navigation.filter(item => !item.adminOnly && !item.staffOnly))
-    : navigation.filter(item => !item.adminOnly && !item.staffOnly)
+  // Show workflow tabs for all authenticated users; admin/analytics are staff-only.
+  // Tier and subscription gates apply on click (lock icon) — tabs do not disappear after load.
+  const navUser = effectiveSession?.user
+  const visibleNavigation = filterPlatformNavigation(navigation, {
+    userRole: navUser?.role || userRole,
+    userType: (navUser as any)?.userType ?? userType,
+  })
 
   // Global F-key shortcuts (F1–F8)
   useEffect(() => {
@@ -445,7 +442,9 @@ export function TopNav() {
       if (!match) return
       e.preventDefault()
       e.stopPropagation()
-      const tierLocked = sessionReady && !canAccessFeature(userRole, userTier, match.tabKey)
+      const tierLocked = sessionReady && isPlatformTabLocked(match.tabKey, {
+        userRole, userTier, userType, subscribedServices,
+      })
       if (tierLocked) {
         navigateOrGate(match.href, match.tabKey)
       } else {
@@ -454,7 +453,7 @@ export function TopNav() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [visibleNavigation, sessionReady, userRole, userTier, navigateOrGate, router])
+  }, [visibleNavigation, sessionReady, userRole, userTier, userType, subscribedServices, navigateOrGate, router])
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
@@ -518,7 +517,12 @@ export function TopNav() {
           {visibleNavigation.map((item) => {
             const active = isActive(item.href)
             const isAdminTab = item.adminOnly
-            const tierLocked = sessionReady && !canAccessFeature(userRole, userTier, item.tabKey)
+            const tierLocked = sessionReady && isPlatformTabLocked(item.tabKey, {
+              userRole,
+              userTier,
+              userType,
+              subscribedServices,
+            })
 
             const handleClick = (e: React.MouseEvent) => {
               if (tierLocked) {
@@ -601,7 +605,12 @@ export function TopNav() {
               {visibleNavigation.map((item) => {
                 const active = isActive(item.href)
                 const isAdminTab = item.adminOnly
-                const tierLocked = sessionReady && !canAccessFeature(userRole, userTier, item.tabKey)
+                const tierLocked = sessionReady && isPlatformTabLocked(item.tabKey, {
+              userRole,
+              userTier,
+              userType,
+              subscribedServices,
+            })
 
                 const handleClick = (e: React.MouseEvent) => {
                   if (tierLocked) {

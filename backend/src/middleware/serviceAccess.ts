@@ -105,13 +105,13 @@ async function resolveUserType(req: Request): Promise<string> {
 // authorized to use. Must mirror frontend RBAC config. Module-scoped so both
 // requireServiceAccess and requireAnyServiceAccess share one source of truth.
 const ROLE_SERVICE_ACCESS: Record<string, string[]> = {
-  // admin / firm_principal: full platform access
-  admin:              ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
-  firm_principal:     ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+  // admin / firm_principal: full platform access (incl. dashboard market intelligence)
+  admin:              ['valuations', 'crm', 'projects', 'analytics', 'market_intelligence', 'property_management', 'data_hub', 'construction', 'budget'],
+  firm_principal:     ['valuations', 'crm', 'projects', 'analytics', 'market_intelligence', 'property_management', 'data_hub', 'construction', 'budget'],
   // manager: broad access across services
-  manager:            ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+  manager:            ['valuations', 'crm', 'projects', 'analytics', 'market_intelligence', 'property_management', 'data_hub', 'construction', 'budget'],
   // project_manager: projects + related services only
-  project_manager:    ['projects', 'analytics', 'property_management', 'construction', 'budget'],
+  project_manager:    ['projects', 'analytics', 'market_intelligence', 'property_management', 'construction', 'budget'],
   // finance_manager: valuations (finance tab) only
   finance_manager:    ['valuations'],
   // agent: CRM deal management only
@@ -124,8 +124,10 @@ const ROLE_SERVICE_ACCESS: Record<string, string[]> = {
   // probationer / inspector: valuations (limited)
   probationer:        ['valuations'],
   inspector:          ['valuations'],
-  // analyst: valuations + analytics
-  analyst:            ['valuations', 'analytics'],
+  // analyst: valuations + analytics + market intelligence
+  analyst:            ['valuations', 'analytics', 'market_intelligence'],
+  // viewer: read-only dashboard access for new / invited org members
+  viewer:             ['valuations', 'analytics', 'market_intelligence', 'crm', 'property_management'],
 };
 
 /**

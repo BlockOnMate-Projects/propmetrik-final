@@ -5,10 +5,10 @@ import { UpgradeGateProvider } from '@/components/UpgradeGate'
 import { FloatingWindowManager } from '@/components/workspace/window-manager/FloatingWindowManager'
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
 import { GlobalSearch } from '@/components/layout/GlobalSearch'
-import { useState, useEffect, Suspense } from 'react'
+import { useEffect, Suspense } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { prefetchRbacConfig, canAccessPlatformTab } from '@/lib/rbac'
+import { prefetchRbacConfig, canNavigateToPlatformTab } from '@/lib/rbac'
 
 export default function DashboardLayout({
   children,
@@ -18,10 +18,6 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { data: session } = useSession()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   // Pre-fetch RBAC config when session is available — but NOT for tenant-portal
   // users. Tenants carry a tenant session token with no staff RBAC access, so the
@@ -42,6 +38,9 @@ export default function DashboardLayout({
   // Role-based route guard: redirect users away from pages they can't access
   useEffect(() => {
     const role = session?.user?.role;
+    const userType = (session?.user as any)?.userType || 'customer';
+    const tier = session?.user?.tier || 'starter';
+    const subscribedServices: string[] = (session?.user as any)?.subscribedServices || [];
     if (!role || !pathname) return;
 
     // Tenant users can only access /dashboard/tenant/* routes
@@ -71,38 +70,19 @@ export default function DashboardLayout({
     };
 
     for (const [prefix, tabKey] of Object.entries(PATH_TO_TAB)) {
-      if (pathname.startsWith(prefix) && !canAccessPlatformTab(role, tabKey)) {
+      if (pathname.startsWith(prefix) && !canNavigateToPlatformTab(tabKey, { userRole: role, userTier: tier, userType, subscribedServices })) {
         router.replace('/dashboard');
         return;
       }
     }
-  }, [session?.user?.role, pathname, router])
+  }, [session?.user?.role, session?.user?.tier, session?.user?.userType, session?.user, pathname, router])
 
   const isTenantRoute = pathname?.startsWith('/dashboard/tenant');
 
   return (
     <UpgradeGateProvider>
       <div className="min-h-screen bg-background">
-        {isTenantRoute ? null : mounted ? <TopNav /> : (
-          <header className="sticky top-0 z-50 w-full bg-background border-b border-border">
-            <div className="flex items-center justify-between h-8 px-4 bg-card border-b border-border">
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-[10px] text-muted-foreground">PROPMETRIK TERMINAL</span>
-                <span className="text-[10px] text-muted-foreground">|</span>
-                <span className="font-mono text-[10px] text-green-500">● CONNECTED</span>
-              </div>
-            </div>
-            <div className="flex items-center h-10 px-4">
-              <div className="flex items-center">
-                <span className="font-bold text-amber-500 text-lg tracking-tight">PROP</span>
-                <span className="font-bold text-foreground text-lg tracking-tight">METRIK</span>
-              </div>
-            </div>
-            <div className="h-6 px-4 bg-card/50 border-t border-border">
-              <span className="font-mono text-[10px] text-muted-foreground">Loading market data...</span>
-            </div>
-          </header>
-        )}
+        {isTenantRoute ? null : <TopNav />}
         <main className="flex-1">
           {/* Boundary so any child page using useSearchParams() is prerenderable in Next 15
               (avoids "should be wrapped in a suspense boundary" build failures per-page). */}

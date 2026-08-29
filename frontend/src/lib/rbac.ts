@@ -76,7 +76,19 @@ const TIER_LEVEL: Record<string, number> = {
   starter: 1,
   professional: 2,
   enterprise: 3,
+  annual: 3, // unlimited annual SKU — same access as enterprise
 };
+
+/** Map marketing tier labels to access tiers for comparisons. */
+export function normalizeTier(tier?: string | null): string {
+  if (!tier) return 'starter';
+  if (tier === 'annual') return 'enterprise';
+  return tier;
+}
+
+function getEffectiveTierLevel(tier?: string | null): number {
+  return TIER_LEVEL[normalizeTier(tier)] ?? TIER_LEVEL.starter;
+}
 
 
 
@@ -534,7 +546,7 @@ export function canAccessFeature(
   const gate = gates[featureKey];
   if (!gate) return true; // ungated feature
   
-  const userLevel = TIER_LEVEL[tier || 'starter'] || 0;
+  const userLevel = getEffectiveTierLevel(tier);
   const requiredLevel = TIER_LEVEL[gate.minTier] || 0;
   return userLevel >= requiredLevel;
 }
@@ -759,7 +771,7 @@ export function canCustomerAccessSubTab(
  * Build the customer navigation: Overview + subscribed service tabs + shared services.
  * Customers never see the Admin tab.
  */
-const TAB_TO_SERVICE_KEY: Record<string, string> = {
+export const TAB_TO_SERVICE_KEY: Record<string, string> = {
   valuations: 'valuations',
   deals: 'crm',
   projects: 'projects',
@@ -767,20 +779,84 @@ const TAB_TO_SERVICE_KEY: Record<string, string> = {
   'property-management': 'property_management',
 };
 
+/** Whether a customer org may use a platform tab (subscription row or top-tier plan). */
+export function customerHasServiceForTab(
+  tabKey: string,
+  subscribedServices: string[],
+  tier?: string | null,
+): boolean {
+  if (tabKey === 'overview' || tabKey === 'e-sign') return true;
+  const serviceKey = TAB_TO_SERVICE_KEY[tabKey];
+  if (!serviceKey) return true;
+  if (subscribedServices.includes(serviceKey)) return true;
+  // Full-platform / annual plans unlock all workflow services even if USS rows lag
+  return getEffectiveTierLevel(tier) >= TIER_LEVEL.enterprise;
+}
+
+/**
+ * Platform tabs visible in TopNav. Workflow tabs stay visible for all authenticated
+ * users; admin/staff-only tabs are filtered by role. Tier/subscription gates apply on click.
+ */
+export function filterPlatformNavigation<T extends { tabKey: string; adminOnly?: boolean; staffOnly?: boolean }>(
+  navigation: T[],
+  opts: { userRole?: string | null; userType?: string | null },
+): T[] {
+  const userRole = opts.userRole || '';
+  const userType = opts.userType || 'customer';
+  return navigation.filter((item) => {
+    if (item.adminOnly) {
+      return userType === 'staff' && canAccessPlatformTab(userRole, item.tabKey);
+    }
+    if (item.staffOnly) {
+      return userType === 'staff' && canAccessPlatformTab(userRole, item.tabKey);
+    }
+    return true;
+  });
+}
+
+/** True when a tab should show the lock icon (tier, subscription, or role block). */
+export function isPlatformTabLocked(
+  tabKey: string,
+  opts: {
+    userRole?: string | null;
+    userTier?: string | null;
+    userType?: string | null;
+    subscribedServices?: string[];
+  },
+): boolean {
+  const { userRole, userTier, userType = 'customer', subscribedServices = [] } = opts;
+  if (userType === 'customer') {
+    if (!customerHasServiceForTab(tabKey, subscribedServices, userTier)) return true;
+    return !canAccessFeature(userRole, userTier, tabKey, userType);
+  }
+  if (!canAccessPlatformTab(userRole, tabKey)) return true;
+  return !canAccessFeature(userRole, userTier, tabKey, userType);
+}
+
+/** Route guard + navigation — may the user open this tab? */
+export function canNavigateToPlatformTab(
+  tabKey: string,
+  opts: {
+    userRole?: string | null;
+    userTier?: string | null;
+    userType?: string | null;
+    subscribedServices?: string[];
+  },
+): boolean {
+  return !isPlatformTabLocked(tabKey, opts);
+}
+
+/** @deprecated Use filterPlatformNavigation — tabs are shown, not hidden, for customers. */
 export function buildCustomerNavigation<T extends { tabKey?: string; key?: string; adminOnly?: boolean }>(
   navigation: T[],
   subscribedServices: string[],
 ): T[] {
   return navigation.filter(item => {
     const tabKey = item.tabKey || item.key || '';
-    // Admin tab: never shown to customers
     if (item.adminOnly || tabKey === 'admin') return false;
-    // Overview and shared services: always shown
     if (tabKey === 'overview' || tabKey === 'e-sign') return true;
-    // Service tabs: show only if org has subscription
     const serviceKey = TAB_TO_SERVICE_KEY[tabKey];
     if (serviceKey) return subscribedServices.includes(serviceKey);
-    // Unknown tabs: hide by default for customers
     return false;
   });
 }

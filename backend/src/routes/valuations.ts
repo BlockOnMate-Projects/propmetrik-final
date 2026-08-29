@@ -43,6 +43,45 @@ import { validateUUID, engineHeaders } from './valuationRouteMiddleware';
 
 const router = Router();
 
+/** Org-level roles that may list all org valuations (read-only) without team assignment. */
+const ORG_SCOPED_READ_ROLES = new Set([
+  'viewer', 'analyst', 'finance_manager', 'inspector', 'probationer',
+]);
+
+/** Build JOIN/WHERE scope for valuation list/stats — org-scoped or team-assigned. */
+function buildValuationListScope(req: Request): {
+  joinClause: string;
+  whereClause: string;
+  params: any[];
+  nextParamIndex: number;
+} {
+  const userRole = req.user?.realmRoles?.[0] || req.user?.clientRoles?.[0] || '';
+  const userId = req.user?.id || req.user?.sub;
+  const orgId = req.user?.organizationId;
+  const fullAccessRoles = ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'compliance_officer'];
+  const hasFullAccess = fullAccessRoles.includes(userRole);
+
+  let joinClause = '';
+  let whereClause = '';
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  if (!hasFullAccess && userId) {
+    if (orgId && ORG_SCOPED_READ_ROLES.has(userRole)) {
+      whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+      params.push(orgId);
+    } else {
+      joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
+      params.push(userId);
+    }
+  } else if (orgId) {
+    whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+    params.push(orgId);
+  }
+
+  return { joinClause, whereClause, params, nextParamIndex: paramIndex };
+}
+
 // Direct engine fetches must carry the shared secret — see valuationRouteMiddleware.engineHeaders.
 
 // =====================================================
@@ -114,27 +153,9 @@ router.get('/', async (req: Request, res: Response) => {
     const status = req.query.status as string;
     const purpose = req.query.purpose as string;
 
-    // RBAC: determine if user can see all valuations or only assigned ones
-    const userRole = req.user?.realmRoles?.[0] || req.user?.clientRoles?.[0] || '';
-    const userId = req.user?.id || req.user?.sub;
-    const orgId = req.user?.organizationId;
-    const fullAccessRoles = ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'compliance_officer'];
-    const hasFullAccess = fullAccessRoles.includes(userRole);
-
-    let whereClause = '';
-    let joinClause = '';
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    // Assignment-based filtering for non-admin roles
-    if (!hasFullAccess && userId) {
-      joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
-      params.push(userId);
-    } else if (orgId) {
-      // Org-scoped: staff see their org's valuations only (including super_admin in the portal)
-      whereClause += ` WHERE v.valuer_organization_id = $${paramIndex++}`;
-      params.push(orgId);
-    }
+    const { joinClause, whereClause: scopeWhere, params, nextParamIndex: paramIndexStart } = buildValuationListScope(req);
+    let whereClause = scopeWhere;
+    let paramIndex = paramIndexStart;
 
     if (status) {
       whereClause += whereClause ? ` AND v.status = $${paramIndex++}` : ` WHERE v.status = $${paramIndex++}`;
@@ -237,25 +258,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    // RBAC: same logic as list — filter by assignment for non-admin roles
-    const userRole = req.user?.realmRoles?.[0] || req.user?.clientRoles?.[0] || '';
-    const userId = req.user?.id || req.user?.sub;
-    const orgId = req.user?.organizationId;
-    const fullAccessRoles = ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'compliance_officer'];
-    const hasFullAccess = fullAccessRoles.includes(userRole);
-
-    let joinClause = '';
-    let whereClause = '';
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    if (!hasFullAccess && userId) {
-      joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
-      params.push(userId);
-    } else if (orgId) {
-      whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
-      params.push(orgId);
-    }
+    const { joinClause, whereClause, params } = buildValuationListScope(req);
 
     const result = await query(`
       SELECT 

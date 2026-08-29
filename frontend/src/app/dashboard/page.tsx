@@ -19,6 +19,7 @@ interface TickerData {
   active_deals: number
   pending_valuations: number
   cap_rate: number
+  market_indices?: { key: string; label: string; value: number; unit: string; change: number | null; direction: 'up' | 'down' | null }[]
 }
 
 interface OverviewStats {
@@ -94,9 +95,44 @@ interface HAIData {
   change_yoy: number
 }
 
-// ---------------------------------------------------------------------------
-// Data formatting
-// ---------------------------------------------------------------------------
+function fetchWithTimeout(path: string, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return authedFetch(path, { signal: controller.signal }).finally(() => clearTimeout(timer))
+}
+
+async function fetchJsonOrNull(path: string): Promise<any> {
+  try {
+    const r = await fetchWithTimeout(path)
+    return r.ok ? r.json() : null
+  } catch {
+    return null
+  }
+}
+
+function tickerSegmentToPropertyType(name: string): string {
+  const n = name.toUpperCase()
+  if (n.includes('FLATS')) return 'apartment_flat'
+  if (n.includes('LAND')) return 'land'
+  if (n.includes('COMMERCIAL')) return 'commercial_shop'
+  return 'residential_house'
+}
+
+function priceIndexFromTicker(ticker: TickerData | null): MarketPriceIndex[] {
+  if (!ticker?.neighborhoods?.length) return []
+  return ticker.neighborhoods.map((n) => ({
+    region: n.name.toLowerCase().includes('kumasi') ? 'kumasi_metro' : 'greater_accra',
+    property_type: tickerSegmentToPropertyType(n.name),
+    median_price: n.avg_price,
+    avg_price: n.avg_price,
+    transaction_count: n.count,
+  }))
+}
+
+function tickerIndexValue(ticker: TickerData | null, key: string): number | null {
+  const hit = ticker?.market_indices?.find((i) => i.key === key)
+  return hit?.value ?? null
+}
 
 function fmt(val: number, prefix = '₵'): string {
   if (!val || val === 0) return `${prefix}0`
@@ -350,12 +386,12 @@ export default function DashboardPage() {
   const fetchAll = useCallback(async () => {
     try {
       const [tickerRes, overviewRes, mgmtRes, cciRes, priceRes, haiRes] = await Promise.allSettled([
-        authedFetch('/api/ticker').then(r => r.ok ? r.json() : null),
-        authedFetch('/api/user/overview').then(r => r.ok ? r.json() : null),
-        authedFetch('/api/analytics/management/summary').then(r => r.ok ? r.json() : null),
-        authedFetch('/api/analytics/platform/construction/index').then(r => r.ok ? r.json() : null),
-        authedFetch('/api/analytics/market/price-index').then(r => r.ok ? r.json() : null),
-        authedFetch('/api/analytics/platform/hai/current').then(r => r.ok ? r.json() : null),
+        fetchJsonOrNull('/api/ticker'),
+        fetchJsonOrNull('/api/user/overview'),
+        fetchJsonOrNull('/api/analytics/management/summary'),
+        fetchJsonOrNull('/api/analytics/platform/construction/index'),
+        fetchJsonOrNull('/api/analytics/market/price-index'),
+        fetchJsonOrNull('/api/analytics/platform/hai/current'),
       ])
 
       if (tickerRes.status === 'fulfilled' && tickerRes.value?.data) setTicker(tickerRes.value.data)
@@ -364,6 +400,21 @@ export default function DashboardPage() {
       if (cciRes.status === 'fulfilled' && cciRes.value?.success) setCci(cciRes.value.data)
       if (priceRes.status === 'fulfilled' && priceRes.value?.success) setPriceIndex(priceRes.value.data || [])
       if (haiRes.status === 'fulfilled' && haiRes.value?.success) setHai(haiRes.value.data || [])
+
+      const tickerData = tickerRes.status === 'fulfilled' ? tickerRes.value?.data as TickerData | undefined : undefined
+      if (tickerData) {
+        setPriceIndex((prev) => (prev.length > 0 ? prev : priceIndexFromTicker(tickerData)))
+        setCci((prev) => {
+          if (prev) return prev
+          const cciVal = tickerIndexValue(tickerData, 'cci')
+          return cciVal != null ? { national_index: cciVal, components: { materials: { value: 0, weight: 0, change_mom: 0, change_yoy: null }, labor: { value: 0, weight: 0, change_mom: 0, change_yoy: null }, overhead: { value: 0, weight: 0, change_mom: 0, change_yoy: null } } } : prev
+        })
+        setHai((prev) => {
+          if (prev.length > 0) return prev
+          const ghaiVal = tickerIndexValue(tickerData, 'ghai')
+          return ghaiVal != null ? [{ region: 'greater_accra', ghai_composite: ghaiVal, ghai_category: '', median_property_price: 0, median_household_income: 0, mortgage_rate: 0, median_monthly_rent: 0, trend_direction: '', change_mom: 0, change_yoy: 0 }] : prev
+        })
+      }
     } catch (err) {
       console.error('Dashboard fetch error:', err)
     } finally {
@@ -448,7 +499,7 @@ export default function DashboardPage() {
           />
           <PulseCard
             label="CONSTRUCTION INDEX"
-            value={cci ? cci.national_index.toFixed(0) : '—'}
+            value={cci ? cci.national_index.toFixed(0) : tickerIndexValue(ticker, 'cci')?.toFixed(0) ?? '—'}
             change={cci?.components.materials.change_yoy}
             unit="pts"
             gradient="bg-gradient-to-r from-purple-500 to-pink-500"
@@ -456,7 +507,7 @@ export default function DashboardPage() {
           />
           <PulseCard
             label="AFFORDABILITY"
-            value={accraHAI ? accraHAI.ghai_composite.toFixed(1) : '—'}
+            value={accraHAI ? accraHAI.ghai_composite.toFixed(1) : tickerIndexValue(ticker, 'ghai')?.toFixed(1) ?? '—'}
             change={accraHAI?.change_yoy}
             unit="/100"
             gradient="bg-gradient-to-r from-red-500 to-rose-500"

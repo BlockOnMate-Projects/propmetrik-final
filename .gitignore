@@ -13,6 +13,10 @@ env.txt
 # Turbo build cache
 .turbo/
 
+# Vercel CLI link (local only)
+.vercel/
+frontend/.vercel/
+
 # Redis dumps
 dump.rdb
 

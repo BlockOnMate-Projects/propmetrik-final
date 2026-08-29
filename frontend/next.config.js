@@ -10,10 +10,10 @@ const BUILD_ID = process.env.SOURCE_COMMIT || process.env.GIT_COMMIT_SHA || Stri
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
-  // Monorepo: Next infers the repo root when multiple lockfiles exist; trace
-  // and resolve deps from the workspace root so webpack can find next loaders.
-  outputFileTracingRoot: path.join(__dirname, '..'),
+  // Standalone is for Coolify/Docker self-hosting; Vercel uses its own output layout.
+  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
+  // Monorepo tracing root — skip on Vercel CLI uploads (frontend-only bundle).
+  ...(process.env.VERCEL ? {} : { outputFileTracingRoot: path.join(__dirname, '..') }),
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,

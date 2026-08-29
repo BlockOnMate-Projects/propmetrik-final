@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   canAccessFeature,
   canAccessPlatformTab,
+  customerHasServiceForTab,
   getUpgradeInfo,
   getTierDisplayName,
   getRequiredTierName,
@@ -60,7 +61,8 @@ export function UpgradeGateProvider({ children }: { children: React.ReactNode })
 
   const role = session?.user?.role || 'viewer'
   const tier = session?.user?.tier || 'starter'
-  const userType = session?.user?.userType || 'staff'
+  const userType = session?.user?.userType || 'customer'
+  const subscribedServices: string[] = (session?.user as any)?.subscribedServices || []
 
   const showUpgradeFor = useCallback((featureKey: string) => {
     const info = getUpgradeInfo(role, tier, featureKey, userType)
@@ -79,7 +81,26 @@ export function UpgradeGateProvider({ children }: { children: React.ReactNode })
   }, [role])
 
   const navigateOrGate = useCallback((href: string, featureKey: string) => {
-    // Check role access first
+    // Customers: subscription + tier (org role does not hide workflow tabs)
+    if (userType === 'customer') {
+      if (!customerHasServiceForTab(featureKey, subscribedServices, tier)) {
+        setActiveGate({
+          minTier: 'professional',
+          label: featureKey.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          description: 'Your organization does not have an active subscription for this service. Visit Billing to add it to your plan.',
+          category: 'subscription_required',
+        })
+        setActiveFeatureKey(featureKey)
+        return
+      }
+      if (!canAccessFeature(role, tier, featureKey, userType)) {
+        showUpgradeFor(featureKey)
+        return
+      }
+      router.push(href)
+      return
+    }
+    // Staff / org users: role then tier
     if (!canAccessPlatformTab(role, featureKey)) {
       // Role doesn't allow — no upgrade path, just inform
       setActiveGate({
@@ -97,7 +118,7 @@ export function UpgradeGateProvider({ children }: { children: React.ReactNode })
       return
     }
     router.push(href)
-  }, [role, tier, userType, router, showUpgradeFor])
+  }, [role, tier, userType, subscribedServices, router, showUpgradeFor])
 
   const closeModal = useCallback(() => {
     setActiveGate(null)

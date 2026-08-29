@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:floorplan": "vitest run src/components/valuation/floorplan-studio"
+    "test:floorplan": "vitest run src/components/valuation/floorplan-studio",
+    "deploy:preview": "vercel",
+    "deploy:prod": "vercel --prod"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

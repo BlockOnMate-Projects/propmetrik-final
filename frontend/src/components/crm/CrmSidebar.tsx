@@ -90,28 +90,28 @@ export function CrmSidebar() {
     visibleNavItems.map((item) => {
       const active = isActive(item)
       const Icon = item.icon
+      const linkClassName = cn(
+        'flex items-center gap-2.5 rounded px-2.5 py-2 text-xs font-mono tracking-wide transition-colors',
+        active
+          ? 'bg-amber-500/10 text-amber-500 font-bold'
+          : 'text-muted-foreground hover:bg-muted/80 hover:text-muted-foreground'
+      )
 
-      const link = (
-        <Link
-          key={item.label}
-          href={item.href}
-          onClick={onClickExtra}
-          className={cn(
-            'flex items-center gap-2.5 rounded px-2.5 py-2 text-xs font-mono tracking-wide transition-colors',
-            active
-              ? 'bg-amber-500/10 text-amber-500 font-bold'
-              : 'text-muted-foreground hover:bg-muted/80 hover:text-muted-foreground'
-          )}
-        >
+      const linkInner = (
+        <>
           <Icon className={cn('h-4 w-4 shrink-0', active && 'text-amber-500')} />
           {!collapsed && <span className="truncate">{item.label}</span>}
-        </Link>
+        </>
       )
 
       if (collapsed) {
         return (
-          <Tooltip key={item.label}>
-            <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <Tooltip key={item.href}>
+            <TooltipTrigger asChild>
+              <Link href={item.href} onClick={onClickExtra} className={linkClassName}>
+                {linkInner}
+              </Link>
+            </TooltipTrigger>
             <TooltipContent side="right" className="font-mono text-xs">
               {item.label}
             </TooltipContent>
@@ -119,7 +119,11 @@ export function CrmSidebar() {
         )
       }
 
-      return <div key={item.label}>{link}</div>
+      return (
+        <Link key={item.href} href={item.href} onClick={onClickExtra} className={linkClassName}>
+          {linkInner}
+        </Link>
+      )
     })
 
   return (
@@ -154,7 +158,7 @@ export function CrmSidebar() {
               const Icon = item.icon
               return (
                 <Link
-                  key={item.label}
+                  key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
