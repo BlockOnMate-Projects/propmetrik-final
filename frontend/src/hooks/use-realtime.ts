@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { getSession } from 'next-auth/react';
+import { getCachedSession } from '@/lib/session-cache';
 
 // Event types matching backend
 export enum RealtimeEventType {
@@ -113,6 +113,8 @@ interface UseRealtimeOptions {
   handlers?: Partial<Record<RealtimeEventType | string, EventHandler>>;
   /** Global event handler */
   onEvent?: EventHandler;
+  /** Pre-resolved access token — avoids getSession() on every SSE reconnect */
+  accessToken?: string;
   /** Connection state change handler */
   onConnectionChange?: (connected: boolean) => void;
 }
@@ -152,7 +154,8 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     autoConnect = true,
     autoReconnect = true,
     reconnectDelay = 3000,
-    maxReconnectAttempts = Infinity,
+    maxReconnectAttempts = 5,
+    accessToken: accessTokenProp,
     handlers = {},
     onEvent,
     onConnectionChange,
@@ -225,24 +228,18 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       const url = new URL(`${baseUrl}/realtime/events`, window.location.origin);
 
       // EventSource cannot send Authorization headers, so pass token as query param
-      let token: string | undefined;
-      try {
-        const session = await getSession();
-        token = (session as any)?.accessToken;
-      } catch {
-        // No session available
+      let token: string | undefined = accessTokenProp;
+      if (!token) {
+        try {
+          const session = await getCachedSession();
+          token = (session as any)?.accessToken;
+        } catch {
+          // No session available
+        }
       }
 
       if (!token) {
-        // No token — SSE endpoint requires auth, schedule retry after session loads
-        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
-          reconnectAttemptsRef.current += 1;
-          setReconnectAttempts(reconnectAttemptsRef.current);
-          const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectRef.current?.();
-          }, delay);
-        }
+        // Session not ready — do not reconnect-loop; RealtimeProvider will connect when authenticated
         return;
       }
 
@@ -351,6 +348,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     autoReconnect,
     reconnectDelay,
     maxReconnectAttempts,
+    accessTokenProp,
     handleEvent,
   ]);
 

@@ -9,7 +9,7 @@
  */
 
 import { fetchApi } from '@/lib/api';
-import { getSession } from 'next-auth/react';
+import { getCachedSession } from '@/lib/session-cache';
 import type { ValuationType, ValuationPurpose } from '@/types/valuation';
 
 // ============================================================================
@@ -156,7 +156,7 @@ const fetchTypescriptApi = async (endpoint: string, options: RequestInit = {}) =
   const url = `${TS_VALUATIONS_BASE}${endpoint}`;
 
   // Get session token for authenticated requests
-  const session = await getSession();
+  const session = await getCachedSession();
   const authHeaders: Record<string, string> = {};
   if ((session as any)?.accessToken) {
     authHeaders['Authorization'] = `Bearer ${(session as any).accessToken}`;

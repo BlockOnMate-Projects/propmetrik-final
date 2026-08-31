@@ -9,6 +9,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { PWAProvider, OfflineIndicator } from '@/components/pwa'
 import { RealtimeProvider } from '@/lib/realtime-provider'
 import { SessionProvider } from 'next-auth/react'
+import { SessionErrorHandler } from '@/components/SessionErrorHandler'
 import { initSentryClient } from '@/lib/sentry'
 
 // Initialise Sentry as early as possible (client-side only)
@@ -42,14 +43,11 @@ function ThemedToaster() {
 function StableSessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider
-      // Don't refetch when user refocuses window — avoids race during HMR
       refetchOnWindowFocus={false}
-      // Disable automatic refetching - only refetch on demand
-      // This prevents excessive session checks that cause frontend to stall
       refetchInterval={0}
-      // Keep session alive longer to reduce checks
       refetchWhenOffline={false}
     >
+      <SessionErrorHandler />
       {children}
     </SessionProvider>
   )

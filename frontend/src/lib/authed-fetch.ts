@@ -15,7 +15,7 @@
  * For SSR/server-components (typeof window === 'undefined') the token step
  * is skipped and the call behaves like a normal fetch.
  */
-import { getSession } from 'next-auth/react';
+import { getCachedSession, clearSessionCache } from '@/lib/session-cache';
 
 // ── Token cache (shared across all callers in the browser tab) ──
 let _cachedToken: string | null = null;
@@ -29,7 +29,7 @@ async function getAuthToken(): Promise<string | null> {
     return _cachedToken;
   }
   try {
-    const session = await getSession();
+    const session = await getCachedSession();
     _cachedToken = (session as any)?.accessToken ?? null;
     _tokenFetchedAt = now;
     return _cachedToken;
@@ -42,6 +42,7 @@ async function getAuthToken(): Promise<string | null> {
 export function clearAuthTokenCache() {
   _cachedToken = null;
   _tokenFetchedAt = 0;
+  clearSessionCache();
 }
 
 /**

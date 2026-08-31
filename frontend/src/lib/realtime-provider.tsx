@@ -82,9 +82,10 @@ export function RealtimeProvider({
   enabled = true,
 }: RealtimeProviderProps) {
   const queryClient = useQueryClient();
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const accessToken = (session as any)?.accessToken as string | undefined;
 
   // Only connect SSE on authenticated dashboard pages — marketing/public pages
   // don't need realtime and the backend requires projects service access.
@@ -136,7 +137,8 @@ export function RealtimeProvider({
   } = useRealtime({
     userId,
     organizationId,
-    autoConnect: mounted && enabled && !!isAuthenticatedDashboard,
+    accessToken,
+    autoConnect: mounted && enabled && !!isAuthenticatedDashboard && !!accessToken,
     autoReconnect: true,
     onEvent: handleEvent,
     onConnectionChange: (connected) => {

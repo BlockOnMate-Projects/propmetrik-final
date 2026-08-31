@@ -198,9 +198,8 @@ export default function ValuationsPage() {
 
   // Fetch org members + team assignments once valuations load
   useEffect(() => {
-    if (valuations.length === 0) return
+    if (valuations.length === 0 || !session?.user?.id) return
     fetchOrgMembers()
-    // Fetch team for each valuation
     const loadAssignments = async () => {
       const map: Record<string, TeamMember | null> = {}
       await Promise.all(
@@ -211,7 +210,8 @@ export default function ValuationsPage() {
       setAssignMap(map)
     }
     loadAssignments()
-  }, [valuations, fetchOrgMembers, fetchTeamForValuation])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valuations.length, session?.user?.id])
 
   // Handle search with debounce
   useEffect(() => {
