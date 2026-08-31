@@ -342,7 +342,7 @@ export const valuationsApi = {
    */
   async getStats(): Promise<{ data: any }> {
     try {
-      const response = await fetchTypescriptApi<{ success?: boolean; data?: any }>('/stats');
+      const response = await fetchTypescriptApi('/stats') as { success?: boolean; data?: any };
       if (response?.data) {
         return { data: response.data };
       }
