@@ -187,13 +187,22 @@ export function requirePMWrite(req: Request, res: Response, next: NextFunction):
   const roles = getUserRoles(req);
   const hasWrite = PM_WRITE_ROLES.some(r => roles.includes(r));
 
-  if (!hasWrite) {
-    return next(
-      new ForbiddenError('Insufficient PM permissions — write access denied'),
-    );
+  if (hasWrite) {
+    return next();
   }
 
-  next();
+  // Customers with an active projects subscription and write-capable service role
+  const customerServiceRole = (req as any).customerServiceRole as string | undefined;
+  if (user.userType === 'customer' && customerServiceRole) {
+    const customerWriteRoles = ['service_admin', 'manager', 'admin', 'project_manager'];
+    if (customerWriteRoles.includes(customerServiceRole)) {
+      return next();
+    }
+  }
+
+  return next(
+    new ForbiddenError('Insufficient PM permissions — write access denied'),
+  );
 }
 
 // ============================================================================

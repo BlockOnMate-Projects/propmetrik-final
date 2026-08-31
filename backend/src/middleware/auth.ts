@@ -204,6 +204,12 @@ async function enrichUserFromDb(req: Request): Promise<void> {
         req.user.organizationId = rec.organization_id;
         (req.user as any).organization_id = rec.organization_id;
       }
+      // Canonical DB role must drive RBAC — JWT realmRoles[0] may be a Keycloak default role.
+      if (rec.role) {
+        const existing = [...(req.user.realmRoles || []), ...(req.user.clientRoles || [])];
+        req.user.realmRoles = [rec.role, ...existing.filter((r) => r !== rec.role)];
+        req.user.clientRoles = [rec.role, ...(req.user.clientRoles || []).filter((r) => r !== rec.role)];
+      }
     } else if (!req.user.userType) {
       req.user.userType = 'customer';
     }

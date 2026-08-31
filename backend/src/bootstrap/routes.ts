@@ -107,8 +107,8 @@ app.use('/health', healthRoutes);
 app.use('/engine', engineProxyRoutes);
 app.use('/api/docs', docsRoutes);  // OpenAPI documentation (PM + CRM)
 app.use('/api/v1/data-hub', authenticate, requireServiceAccess('data_hub'), dataHubRoutes);
-app.use('/api/v1/valuations', optionalAuth, valuationRoutes);
-app.use('/api/valuations', optionalAuth, valuationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/valuations', authenticate, requireServiceAccess('valuations'), valuationRoutes);
+app.use('/api/valuations', authenticate, requireServiceAccess('valuations'), valuationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/public/properties', propertyRoutes);  // Also mount at public path for frontend compatibility
 app.use('/api/v1/ingestion', requireIngestionAuth, ingestionRouter);

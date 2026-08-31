@@ -48,38 +48,146 @@ const ORG_SCOPED_READ_ROLES = new Set([
   'viewer', 'analyst', 'finance_manager', 'inspector', 'probationer',
 ]);
 
-/** Build JOIN/WHERE scope for valuation list/stats — org-scoped or team-assigned. */
+/** Org leadership — full read within their organization only (never cross-org). */
+const ORG_LEADERSHIP_ROLES = new Set([
+  'firm_principal', 'senior_valuer', 'manager', 'compliance_officer',
+]);
+
+const ROLE_PRIORITY = [
+  'super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager',
+  'compliance_officer', 'project_manager', 'finance_manager', 'analyst',
+  'viewer', 'valuer', 'agent', 'inspector', 'probationer',
+] as const;
+
+/** Resolve canonical role from enriched JWT (DB role is prepended in enrichUserFromDb). */
+function resolveUserRole(req: Request): string {
+  const roles = [...(req.user?.realmRoles || []), ...(req.user?.clientRoles || [])];
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r;
+  }
+  return roles[0] || '';
+}
+
+/** Personal scope — valuations the user created or is assigned to. */
+function appendPersonalValuationScope(
+  userId: string,
+  paramIndex: number,
+  params: any[],
+): { clause: string; nextParamIndex: number } {
+  params.push(userId);
+  return {
+    clause: `(
+      v.valuer_id = $${paramIndex}
+      OR EXISTS (
+        SELECT 1 FROM valuation_team_members vtm
+        WHERE vtm.valuation_id = v.id
+          AND vtm.user_id = $${paramIndex}
+          AND vtm.is_active = true
+      )
+    )`,
+    nextParamIndex: paramIndex + 1,
+  };
+}
+
+/** Build JOIN/WHERE scope for valuation list/stats — org-private, never global. */
 function buildValuationListScope(req: Request): {
   joinClause: string;
   whereClause: string;
   params: any[];
   nextParamIndex: number;
 } {
-  const userRole = req.user?.realmRoles?.[0] || req.user?.clientRoles?.[0] || '';
+  const userRole = resolveUserRole(req);
   const userId = req.user?.id || req.user?.sub;
   const orgId = req.user?.organizationId;
-  const fullAccessRoles = ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'compliance_officer'];
-  const hasFullAccess = fullAccessRoles.includes(userRole);
 
   let joinClause = '';
   let whereClause = '';
   const params: any[] = [];
   let paramIndex = 1;
 
-  if (!hasFullAccess && userId) {
-    if (orgId && ORG_SCOPED_READ_ROLES.has(userRole)) {
+  if (!userId) {
+    return { joinClause: '', whereClause: ' WHERE FALSE', params, nextParamIndex: paramIndex };
+  }
+
+  // Org leadership: all valuations within their org only.
+  if (orgId && ORG_LEADERSHIP_ROLES.has(userRole)) {
+    whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+    params.push(orgId);
+    return { joinClause, whereClause, params, nextParamIndex: paramIndex };
+  }
+
+  // Org read-only roles: org-wide read within their org.
+  if (orgId && ORG_SCOPED_READ_ROLES.has(userRole)) {
+    whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+    params.push(orgId);
+    return { joinClause, whereClause, params, nextParamIndex: paramIndex };
+  }
+
+  // Platform staff on the customer dashboard — org-scoped when org is set, else personal only.
+  if (userRole === 'super_admin' || userRole === 'admin') {
+    if (orgId) {
       whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
       params.push(orgId);
     } else {
-      joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
-      params.push(userId);
+      const personal = appendPersonalValuationScope(userId, paramIndex, params);
+      whereClause = ` WHERE ${personal.clause}`;
+      paramIndex = personal.nextParamIndex;
     }
-  } else if (orgId) {
-    whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
-    params.push(orgId);
+    return { joinClause, whereClause, params, nextParamIndex: paramIndex };
   }
 
+  // Org member: must be team-assigned within their org.
+  if (orgId) {
+    joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
+    params.push(userId);
+    whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+    params.push(orgId);
+    return { joinClause, whereClause, params, nextParamIndex: paramIndex };
+  }
+
+  // B2C customer without org: own valuations only.
+  const personal = appendPersonalValuationScope(userId, paramIndex, params);
+  whereClause = ` WHERE ${personal.clause}`;
+  paramIndex = personal.nextParamIndex;
   return { joinClause, whereClause, params, nextParamIndex: paramIndex };
+}
+
+/** Check whether the authenticated user may read a single valuation (org-private). */
+async function userCanAccessValuation(req: Request, valuationId: string): Promise<boolean> {
+  const userId = req.user?.id || req.user?.sub;
+  if (!userId) return false;
+
+  const userRole = resolveUserRole(req);
+  const orgId = req.user?.organizationId;
+
+  const row = await query(
+    `SELECT valuer_organization_id, valuer_id FROM valuations WHERE id = $1`,
+    [valuationId],
+  );
+  if (row.rows.length === 0) return false;
+
+  const { valuer_organization_id: valOrgId, valuer_id: valuerId } = row.rows[0];
+
+  if (orgId && valOrgId && valOrgId === orgId) {
+    if (ORG_LEADERSHIP_ROLES.has(userRole) || ORG_SCOPED_READ_ROLES.has(userRole)) {
+      return true;
+    }
+    const team = await query(
+      `SELECT 1 FROM valuation_team_members
+       WHERE valuation_id = $1 AND user_id = $2 AND is_active = true LIMIT 1`,
+      [valuationId, userId],
+    );
+    return team.rows.length > 0;
+  }
+
+  if (valuerId === userId) return true;
+
+  const team = await query(
+    `SELECT 1 FROM valuation_team_members
+     WHERE valuation_id = $1 AND user_id = $2 AND is_active = true LIMIT 1`,
+    [valuationId, userId],
+  );
+  return team.rows.length > 0;
 }
 
 // Direct engine fetches must carry the shared secret — see valuationRouteMiddleware.engineHeaders.
@@ -1185,8 +1293,6 @@ router.get('/test/python-health', async (req: Request, res: Response) => {
 router.get('/:id', validateUUID('id'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const orgId = req.user?.organizationId;
-
     const valuation = await getValuation(id);
 
     if (!valuation) {
@@ -1196,19 +1302,12 @@ router.get('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       });
     }
 
-    // Org-scoped access — don't leak valuations from other organizations
-    if (orgId) {
-      const orgCheck = await query(
-        'SELECT valuer_organization_id FROM valuations WHERE id = $1',
-        [id]
-      );
-      const valuerOrgId = orgCheck.rows[0]?.valuer_organization_id;
-      if (valuerOrgId && valuerOrgId !== orgId) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'Valuation not found',
-        });
-      }
+    const allowed = await userCanAccessValuation(req, id);
+    if (!allowed) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Valuation not found',
+      });
     }
 
     res.json({

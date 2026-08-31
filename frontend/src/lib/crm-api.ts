@@ -256,7 +256,7 @@ export const dealsApi = {
 
     getKanban: (pipelineId?: string, dealStatus: DealStatus = DealStatus.ACTIVE) => {
         const params = new URLSearchParams();
-        if (pipelineId) params.set('pipeline_id', pipelineId);
+        if (pipelineId) params.set('pipelineId', pipelineId);
         params.set('deal_status', dealStatus);
         return fetchApi<KanbanColumn[]>(`${CRM_BASE}/deals/kanban?${params}`);
     },

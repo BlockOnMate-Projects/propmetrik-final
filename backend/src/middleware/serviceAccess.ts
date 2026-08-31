@@ -112,15 +112,15 @@ const ROLE_SERVICE_ACCESS: Record<string, string[]> = {
   manager:            ['valuations', 'crm', 'projects', 'analytics', 'market_intelligence', 'property_management', 'data_hub', 'construction', 'budget'],
   // project_manager: projects + related services only
   project_manager:    ['projects', 'analytics', 'market_intelligence', 'property_management', 'construction', 'budget'],
-  // finance_manager: valuations (finance tab) only
-  finance_manager:    ['valuations'],
+  // finance_manager: valuations + dashboard market widgets
+  finance_manager:    ['valuations', 'market_intelligence'],
   // agent: CRM deal management only
   agent:              ['crm'],
-  // senior_valuer / valuer: valuations only
-  senior_valuer:      ['valuations'],
-  valuer:             ['valuations'],
+  // senior_valuer / valuer: valuations + read-only market data for dashboard
+  senior_valuer:      ['valuations', 'market_intelligence'],
+  valuer:             ['valuations', 'market_intelligence'],
   // compliance_officer: valuations only
-  compliance_officer: ['valuations'],
+  compliance_officer: ['valuations', 'market_intelligence'],
   // probationer / inspector: valuations (limited)
   probationer:        ['valuations'],
   inspector:          ['valuations'],
@@ -166,6 +166,12 @@ async function passesServiceAccess(req: Request, serviceKey: string): Promise<bo
     (req as any).customerServiceRole = roles.get(serviceKey) || 'service_admin';
     return true;
   }
+
+  // Dashboard essentials: valuations subscribers may read market/analytics widgets.
+  if (keys.has('valuations') && (serviceKey === 'market_intelligence' || serviceKey === 'analytics')) {
+    return true;
+  }
+
   return false;
 }
 

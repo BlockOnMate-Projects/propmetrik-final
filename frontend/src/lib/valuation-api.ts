@@ -338,32 +338,35 @@ export const valuationsApi = {
   },
 
   /**
-   * Get valuation statistics (mock implementation)
+   * Get valuation statistics from backend (scoped to user's org/assignments).
    */
   async getStats(): Promise<{ data: any }> {
     try {
-      // Get current valuations to calculate real stats
+      const response = await fetchTypescriptApi<{ success?: boolean; data?: any }>('/stats');
+      if (response?.data) {
+        return { data: response.data };
+      }
+      // Fallback: compute from list if stats endpoint unavailable
       const valuationsResponse = await this.getAll({ limit: 100 });
       const valuations = valuationsResponse.data || [];
-
-      const stats = {
-        total: valuations.length,
-        completed: valuations.filter(v => v.status === 'completed').length,
-        in_progress: valuations.filter(v => v.status === 'in_progress').length,
-        pending: valuations.filter(v => v.status === 'pending').length,
-        failed: valuations.filter(v => v.status === 'failed').length,
-        avg_value: valuations.length > 0 ? valuations.reduce((sum, v) => sum + (v.estimated_value || 0), 0) / valuations.length : 0,
-        total_value: valuations.reduce((sum, v) => sum + (v.estimated_value || 0), 0),
-        byStatus: {
-          draft: valuations.filter(v => v.status === 'draft').length,
-          in_progress: valuations.filter(v => v.status === 'in_progress').length,
-          pending_review: valuations.filter(v => v.status === 'pending').length,
+      return {
+        data: {
+          total: valuations.length,
           completed: valuations.filter(v => v.status === 'completed').length,
-          all: valuations.length
-        }
+          in_progress: valuations.filter(v => v.status === 'in_progress').length,
+          pending: valuations.filter(v => v.status === 'pending').length,
+          failed: valuations.filter(v => v.status === 'failed').length,
+          avg_value: valuations.length > 0 ? valuations.reduce((sum, v) => sum + (v.estimated_value || 0), 0) / valuations.length : 0,
+          total_value: valuations.reduce((sum, v) => sum + (v.estimated_value || 0), 0),
+          byStatus: {
+            draft: valuations.filter(v => v.status === 'draft').length,
+            in_progress: valuations.filter(v => v.status === 'in_progress').length,
+            pending_review: valuations.filter(v => v.status === 'pending').length,
+            completed: valuations.filter(v => v.status === 'completed').length,
+            all: valuations.length,
+          },
+        },
       };
-
-      return { data: stats };
     } catch (error: any) {
       // Return empty stats structure on error
       return {

@@ -177,7 +177,7 @@ export default function ValuationsPage() {
         console.warn('Valuations load issue:', valuationsRes.error)
         setValuations([])
         setStats(statsRes.data || null)
-        setError(null)
+        setError(valuationsRes.error)
         return
       }
 

@@ -53,7 +53,7 @@ router.get('/deals', asyncHandler(async (req: Request, res: Response) => {
 
 router.get('/deals/kanban', asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
-    let pipelineId = req.query.pipelineId as string;
+    let pipelineId = (req.query.pipelineId || req.query.pipeline_id) as string;
     
     if (!pipelineId) {
         const defaultPipeline = await db.query(
@@ -79,8 +79,26 @@ router.get('/deals/kanban', asyncHandler(async (req: Request, res: Response) => 
         }
     }
     const agentId = await getAgentIdForUser(req);
-    const kanbanData = await dealService.getDealsByStage(organizationId, pipelineId, agentId || undefined);
-    res.json(kanbanData);
+    const dealsByStage = await dealService.getDealsByStage(organizationId, pipelineId, agentId || undefined);
+
+    // Return KanbanColumn[] shape expected by the frontend
+    const stagesResult = await db.query(
+        `SELECT ds.id, ds.pipeline_id, ds.stage_name, ds.stage_order, ds.stage_color, ds.description,
+                ds.is_active, ds.created_at, ds.updated_at
+         FROM deal_stages ds
+         JOIN deal_pipelines dp ON dp.id = ds.pipeline_id
+         WHERE ds.pipeline_id = $1 AND dp.organization_id = $2 AND ds.is_active = true
+         ORDER BY ds.stage_order ASC`,
+        [pipelineId, organizationId],
+    );
+
+    const kanbanColumns = stagesResult.rows.map((stage: any) => {
+        const deals = dealsByStage[stage.id] || [];
+        const totalValue = deals.reduce((sum: number, d: any) => sum + (Number(d.deal_value) || 0), 0);
+        return { stage, deals, totalValue };
+    });
+
+    res.json(kanbanColumns);
 }));
 
 router.get('/deals/metrics', asyncHandler(async (req: Request, res: Response) => {

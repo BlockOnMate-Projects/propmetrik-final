@@ -48,7 +48,18 @@ export function useKanban(pipelineId?: string) {
     queryKey: dealKeys.kanban(pipelineId),
     queryFn: () => dealsApi.getKanban(pipelineId),
     enabled: !!pipelineId,
-    select: (data) => (Array.isArray(data) ? data : []),
+    select: (data) => {
+      if (Array.isArray(data)) return data;
+      // Legacy object keyed by stage id — flatten into column shape
+      if (data && typeof data === 'object') {
+        return Object.entries(data as Record<string, Deal[]>).map(([stageId, deals]) => ({
+          stage: { id: stageId, pipeline_id: pipelineId || '', stage_name: stageId, stage_order: 0, is_active: true, created_at: '' },
+          deals,
+          totalValue: deals.reduce((sum, d) => sum + (d.deal_value || 0), 0),
+        }));
+      }
+      return [];
+    },
   })
 }
 
