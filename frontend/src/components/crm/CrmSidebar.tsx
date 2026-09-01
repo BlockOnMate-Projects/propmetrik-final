@@ -86,46 +86,6 @@ export function CrmSidebar() {
   // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
-  const navLinks = (onClickExtra?: () => void) =>
-    visibleNavItems.map((item) => {
-      const active = isActive(item)
-      const Icon = item.icon
-      const linkClassName = cn(
-        'flex items-center gap-2.5 rounded px-2.5 py-2 text-xs font-mono tracking-wide transition-colors',
-        active
-          ? 'bg-amber-500/10 text-amber-500 font-bold'
-          : 'text-muted-foreground hover:bg-muted/80 hover:text-muted-foreground'
-      )
-
-      const linkInner = (
-        <>
-          <Icon className={cn('h-4 w-4 shrink-0', active && 'text-amber-500')} />
-          {!collapsed && <span className="truncate">{item.label}</span>}
-        </>
-      )
-
-      if (collapsed) {
-        return (
-          <Tooltip key={item.href}>
-            <TooltipTrigger asChild>
-              <Link href={item.href} onClick={onClickExtra} className={linkClassName}>
-                {linkInner}
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-mono text-xs">
-              {item.label}
-            </TooltipContent>
-          </Tooltip>
-        )
-      }
-
-      return (
-        <Link key={item.href} href={item.href} onClick={onClickExtra} className={linkClassName}>
-          {linkInner}
-        </Link>
-      )
-    })
-
   return (
     <TooltipProvider delayDuration={0}>
       {/* Mobile toggle button — fixed at top-left of content area */}
@@ -204,7 +164,38 @@ export function CrmSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 py-2 px-1.5 space-y-0.5 overflow-y-auto">
-          {navLinks()}
+          {visibleNavItems.map((item) => {
+            const active = isActive(item)
+            const Icon = item.icon
+            const linkClassName = cn(
+              'flex items-center gap-2.5 rounded px-2.5 py-2 text-xs font-mono tracking-wide transition-colors',
+              active
+                ? 'bg-amber-500/10 text-amber-500 font-bold'
+                : 'text-muted-foreground hover:bg-muted/80 hover:text-muted-foreground'
+            )
+
+            if (collapsed) {
+              return (
+                <Tooltip key={item.href}>
+                  <TooltipTrigger asChild>
+                    <Link href={item.href} className={linkClassName}>
+                      <Icon className={cn('h-4 w-4 shrink-0', active && 'text-amber-500')} />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-mono text-xs">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            }
+
+            return (
+              <Link key={item.href} href={item.href} className={linkClassName}>
+                <Icon className={cn('h-4 w-4 shrink-0', active && 'text-amber-500')} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
 
         {/* Bottom actions */}

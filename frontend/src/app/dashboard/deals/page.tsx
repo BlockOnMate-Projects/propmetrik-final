@@ -41,6 +41,7 @@ import { useKeyboardShortcuts } from '@/components/crm/KeyboardShortcuts'
 import { DEAL_FILTER_FIELDS } from '@/types/crm-filters'
 import type { FilterGroup } from '@/types/crm-filters'
 import { toast } from 'sonner'
+import { EmptyState } from '@/components/crm/EmptyState'
 
 // =====================================================
 // TABLE VIEW
@@ -524,6 +525,24 @@ export default function DealsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : !activePipelineId ? (
+            <EmptyState
+              icon={LayoutGrid}
+              title="No pipeline configured"
+              description="Create a deal pipeline to start tracking opportunities on the kanban board."
+              actions={[
+                { label: 'Set up pipeline', href: '/dashboard/deals/pipelines', icon: Plus },
+              ]}
+            />
+          ) : filteredKanban.length === 0 ? (
+            <EmptyState
+              icon={LayoutGrid}
+              title="No deals yet"
+              description="Create your first deal or adjust filters to see pipeline cards here."
+              actions={[
+                { label: 'Create Deal', href: '/dashboard/deals/new', icon: Plus },
+              ]}
+            />
           ) : (
             <KanbanBoard
               columns={filteredKanban}

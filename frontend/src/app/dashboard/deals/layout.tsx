@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect, lazy, Suspense } from 'react'
-import { usePathname } from 'next/navigation'
 import { CrmSidebar } from '@/components/crm/CrmSidebar'
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '@/components/crm/KeyboardShortcuts'
 
@@ -44,27 +43,18 @@ export default function DealsLayout({
 
     return (
         <div className="flex min-h-[calc(100vh-7rem)]">
-            {/* CRM Left Sidebar */}
-            <CrmSidebar />
-
-            {/* Content */}
-            <main className="flex-1 min-w-0 p-2 sm:p-4 pb-10">
-                {/* Onboarding Wizard (first visit) */}
-                {showOnboarding && (
-                    <Suspense fallback={null}>
-                        <div className="mb-6">
-                            <OnboardingWizard onComplete={handleOnboardingComplete} />
-                        </div>
-                    </Suspense>
-                )}
-                {children}
-            </main>
-
-            {/* Keyboard Shortcuts Help */}
-            <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
-
-            {/* Kobby AI is provided by the global Workspace panel's "KOBBY AI" tab —
-                no separate CRM AI popup here to avoid a redundant bottom-right widget. */}
-        </div>
+      <CrmSidebar />
+      <main className="flex-1 min-w-0 p-2 sm:p-4 pb-10">
+        {showOnboarding ? (
+          <Suspense fallback={null}>
+            <div className="mb-6">
+              <OnboardingWizard onComplete={handleOnboardingComplete} />
+            </div>
+          </Suspense>
+        ) : null}
+        {children}
+      </main>
+      <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
+    </div>
     )
 }

@@ -9,6 +9,7 @@ import { useEffect, Suspense } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { prefetchRbacConfig, canNavigateToPlatformTab } from '@/lib/rbac'
+import { isValidOrganizationId } from '@/lib/utils'
 
 export default function DashboardLayout({
   children,
@@ -97,10 +98,10 @@ export default function DashboardLayout({
             {/* Company-wide workspace — one per organization (Teams-tenant model).
                 The backend forces the platform workspace's entity_id to the caller's own
                 org, so we pass the session org id here for clarity (it can't cross orgs). */}
-            {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && session?.user?.organizationId && (
+            {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && isValidOrganizationId(session?.user?.organizationId) && (
               <WorkspaceWidget
                 entityType="platform"
-                entityId={session.user.organizationId}
+                entityId={session!.user!.organizationId!}
                 entityName="Workspace"
                 currentUserId={session?.user?.id}
                 token={(session as any)?.accessToken ?? null}

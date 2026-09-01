@@ -10,6 +10,7 @@ import { PWAProvider, OfflineIndicator } from '@/components/pwa'
 import { RealtimeProvider } from '@/lib/realtime-provider'
 import { SessionProvider } from 'next-auth/react'
 import { SessionErrorHandler } from '@/components/SessionErrorHandler'
+import { ChunkRecovery } from '@/components/ChunkRecovery'
 import { initSentryClient } from '@/lib/sentry'
 
 // Initialise Sentry as early as possible (client-side only)
@@ -48,6 +49,7 @@ function StableSessionProvider({ children }: { children: React.ReactNode }) {
       refetchWhenOffline={false}
     >
       <SessionErrorHandler />
+      <ChunkRecovery />
       {children}
     </SessionProvider>
   )

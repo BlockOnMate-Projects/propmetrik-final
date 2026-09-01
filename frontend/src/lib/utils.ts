@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Placeholder org ids from seeds/migrations — not real tenant workspaces. */
+const PLACEHOLDER_ORG_IDS = new Set([
+  '00000000-0000-0000-0000-000000000000',
+  '00000000-0000-0000-0000-000000000001',
+]);
+
+export function isValidOrganizationId(id?: string | null): boolean {
+  if (!id) return false;
+  return !PLACEHOLDER_ORG_IDS.has(id);
+}
+
 export function formatNumber(num: number | undefined | null): string {
   if (num === undefined || num === null || isNaN(Number(num))) {
     return '0';
