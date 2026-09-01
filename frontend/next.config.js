@@ -131,7 +131,7 @@ const nextConfig = {
       // pdfjs-dist optional dependencies
       config.resolve.alias.canvas = false;
       // pdfjs-dist fallbacks
-      config.resolve.fallback = { ...config.resolve.fallback, fs: false, http: false, https: false };
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false, http: false, https: false, ws: false };
     }
     // Stub out optional @wagmi/connectors peer deps we never use. The `wagmi/connectors`
     // barrel statically re-exports every connector (coinbase, metaMask, safe, baseAccount,
@@ -149,6 +149,8 @@ const nextConfig = {
     // Stubbed so the build passes with the dep absent; to enable WalletConnect, install
     // @walletconnect/ethereum-provider and delete this alias.
     config.resolve.alias['@walletconnect/ethereum-provider'] = false;
+    config.resolve.alias['ws'] = false;
+    config.resolve.alias['isows'] = false;
     return config;
   },
 };
