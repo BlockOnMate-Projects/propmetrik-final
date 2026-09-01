@@ -20,7 +20,7 @@ import {
   useSwitchChain,
 } from 'wagmi';
 import { polygon, polygonAmoy } from 'viem/chains';
-import { formatUnits } from 'viem';
+import { formatUnits } from 'viem/utils';
 import {
   USDT_ADDRESS,
   ERC20_ABI,
