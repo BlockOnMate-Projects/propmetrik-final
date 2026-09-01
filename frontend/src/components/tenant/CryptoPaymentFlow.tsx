@@ -23,8 +23,8 @@ import { polygon, polygonAmoy } from 'viem/chains';
 import { formatUnits } from 'viem'; 
 import {
   USDT_ADDRESS,
-  ERC20_ABI,
-  PROPMETRIK_PAYMENTS_ABI,
+  ERC20_ABI, 
+  PROPMETRIK_PAYMENTS_ABI, 
 } from '@/lib/tenant/web3';
 import {
   getSettlementCoins,
